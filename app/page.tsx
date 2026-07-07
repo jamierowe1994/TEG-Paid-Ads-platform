@@ -65,7 +65,7 @@ export default function LandingPage() {
             <div className="mt-12 flex items-center justify-center gap-4">
               <Link
                 href="/signup"
-                className="btn-group rounded-xl px-9 py-4 text-base font-medium transition"
+                className="btn-glow px-10 py-4 text-base font-medium"
               >
                 Choose your package
               </Link>
