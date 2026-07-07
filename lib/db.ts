@@ -86,8 +86,30 @@ CREATE TABLE IF NOT EXISTS leads (
 );
 CREATE INDEX IF NOT EXISTS leads_user_idx ON leads(user_id);
 
+CREATE TABLE IF NOT EXISTS referrals (
+  id            TEXT PRIMARY KEY,
+  from_user_id  TEXT NOT NULL,
+  from_name     TEXT NOT NULL DEFAULT '',
+  from_brand_id TEXT NOT NULL,
+  to_brand_id   TEXT NOT NULL,
+  lead_name     TEXT NOT NULL DEFAULT '',
+  lead_phone    TEXT NOT NULL DEFAULT '',
+  lead_email    TEXT NOT NULL DEFAULT '',
+  note          TEXT NOT NULL DEFAULT '',
+  fee_amount    NUMERIC NOT NULL DEFAULT 0,
+  status        TEXT NOT NULL DEFAULT 'pending',
+  stage         TEXT NOT NULL DEFAULT 'new',
+  due_date      TEXT,
+  lead_id       TEXT,
+  activity      JSONB NOT NULL DEFAULT '[]',
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS referrals_from_idx ON referrals(from_user_id);
+CREATE INDEX IF NOT EXISTS referrals_to_idx ON referrals(to_brand_id);
+
 -- Columns added after first release (safe to re-run)
 ALTER TABLE users ADD COLUMN IF NOT EXISTS meta_campaign_id TEXT;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS referral_id TEXT;
 `;
 
 async function ensureSchema(): Promise<void> {

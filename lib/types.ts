@@ -42,16 +42,39 @@ export interface Lead {
   stage: LeadStage;
   receivedAt: string;
   history: { stage: LeadStage; at: string }[];
+  referralId?: string | null; // set when the lead came from a referral
 }
+
+// Referral lifecycle:
+//  pending   — sent, waiting for the receiving business to accept
+//  accepted  — accepted; a lead now exists in the recipient's funnel and its
+//              stage mirrors back here so the referrer can watch progress
+//  converted — the deal converted; the referral fee is now owed
+//  paid      — the referral fee has been paid out
+//  declined  — the receiving business declined it
+export type ReferralStatus =
+  | "pending"
+  | "accepted"
+  | "converted"
+  | "paid"
+  | "declined";
 
 export interface Referral {
   id: string;
-  direction: "sent" | "received";
-  toBrandId: BrandId;
+  direction?: "sent" | "received"; // computed per viewer, not stored
+  fromUserId: string;
+  fromName: string;
   fromBrandId: BrandId;
+  toBrandId: BrandId;
   leadName: string;
-  leadContact: string;
+  leadPhone: string;
+  leadEmail: string;
   note: string;
-  status: "pending" | "accepted" | "converted";
+  feeAmount: number; // what the referrer earns if the deal goes through
+  status: ReferralStatus;
+  stage: LeadStage; // working progress once accepted (mirrors the lead)
+  dueDate: string | null; // when it's expected to come due
+  leadId: string | null; // the linked lead in the recipient's funnel
   createdAt: string;
+  activity: { at: string; text: string }[];
 }

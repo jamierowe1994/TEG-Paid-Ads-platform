@@ -3,13 +3,11 @@ import { promises as fs } from "fs";
 import path from "path";
 import { DATA_DIR } from "./data-dir";
 import { hasDb, q } from "./db";
-import { seedLeads } from "./mock";
 import type { Lead, LeadStage } from "./types";
 
 // Leads, server-side — Postgres on Railway, JSON locally. Each lead belongs
-// to one agent (user_id). Accounts are seeded with demo leads on first read
-// so the dashboard has something to work with; real leads will be inserted
-// by the Meta lead webhook using the same createLead().
+// to one agent (user_id). Leads arrive from accepted referrals now, and from
+// the Meta lead webhook later — both via createLead(). No demo seeding.
 
 const FILE = path.join(DATA_DIR, "leads.json");
 
@@ -26,6 +24,7 @@ interface LeadRow {
   stage: string;
   received_at: string | Date;
   history: unknown;
+  referral_id: string | null;
 }
 
 function fromRow(row: LeadRow): Lead {
@@ -39,10 +38,11 @@ function fromRow(row: LeadRow): Lead {
     stage: row.stage as LeadStage,
     receivedAt: new Date(row.received_at).toISOString(),
     history: (Array.isArray(row.history) ? row.history : []) as Lead["history"],
+    referralId: row.referral_id ?? null,
   };
 }
 
-function uid(): string {
+export function uid(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
 
@@ -62,8 +62,8 @@ async function writeAllFile(leads: OwnedLead[]): Promise<void> {
 export async function createLead(userId: string, lead: Lead): Promise<void> {
   if (hasDb()) {
     await q(
-      `INSERT INTO leads (id, user_id, name, phone, email, source, note, stage, received_at, history)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      `INSERT INTO leads (id, user_id, name, phone, email, source, note, stage, received_at, history, referral_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
       [
         lead.id,
         userId,
@@ -75,6 +75,7 @@ export async function createLead(userId: string, lead: Lead): Promise<void> {
         lead.stage,
         lead.receivedAt,
         JSON.stringify(lead.history),
+        lead.referralId ?? null,
       ]
     );
     return;
@@ -84,36 +85,34 @@ export async function createLead(userId: string, lead: Lead): Promise<void> {
   await writeAllFile(all);
 }
 
-// List an agent's leads, newest first. Seeds demo leads on first read so a
-// fresh account isn't staring at an empty funnel. Delete once real Meta
-// leads flow.
+// List an agent's leads, newest first. Empty for a fresh account — real
+// leads arrive from accepted referrals and (later) the Meta webhook.
 export async function listLeadsForUser(userId: string): Promise<Lead[]> {
   if (hasDb()) {
-    let rows = await q<LeadRow>(
+    const rows = await q<LeadRow>(
       "SELECT * FROM leads WHERE user_id = $1 ORDER BY received_at DESC",
       [userId]
     );
-    if (rows.length === 0) {
-      for (const seed of seedLeads) {
-        await createLead(userId, { ...seed, id: uid() });
-      }
-      rows = await q<LeadRow>(
-        "SELECT * FROM leads WHERE user_id = $1 ORDER BY received_at DESC",
-        [userId]
-      );
-    }
     return rows.map(fromRow);
   }
-  let all = await readAllFile();
-  if (!all.some((l) => l.userId === userId)) {
-    const seeded = seedLeads.map((s) => ({ ...s, id: uid(), userId }));
-    all = [...all, ...seeded];
-    await writeAllFile(all);
-  }
-  return all
+  return (await readAllFile())
     .filter((l) => l.userId === userId)
     .map(({ userId: _omit, ...lead }) => lead)
     .sort((a, b) => b.receivedAt.localeCompare(a.receivedAt));
+}
+
+// Count leads still at the "new" stage — drives the Leads nav dot.
+export async function countNewLeads(userId: string): Promise<number> {
+  if (hasDb()) {
+    const rows = await q<{ n: string }>(
+      "SELECT COUNT(*)::text AS n FROM leads WHERE user_id = $1 AND stage = 'new'",
+      [userId]
+    );
+    return Number(rows[0]?.n ?? 0);
+  }
+  return (await readAllFile()).filter(
+    (l) => l.userId === userId && l.stage === "new"
+  ).length;
 }
 
 // Move a lead to a new stage (appends to its history). Only touches leads

@@ -11,10 +11,8 @@
 // remain local demo data until cross-account delivery is built.
 
 import type { UserProfile, Lead, Referral } from "./types";
-import { seedReferrals } from "./mock";
 
 const USER_KEY = "teg_user";
-const REFERRALS_KEY = "teg_referrals";
 
 function read<T>(key: string): T | null {
   if (typeof window === "undefined") return null;
@@ -146,17 +144,59 @@ export async function moveLeadStage(
   }
 }
 
-export function getReferrals(): Referral[] {
-  const existing = read<Referral[]>(REFERRALS_KEY);
-  if (existing) return existing;
-  write(REFERRALS_KEY, seedReferrals);
-  return seedReferrals;
+// ── Referrals (server-side, Postgres on Railway) ─────────────────────────
+export async function fetchReferrals(): Promise<Referral[]> {
+  try {
+    const res = await fetch("/api/referrals", { cache: "no-store" });
+    if (!res.ok) return [];
+    return (await res.json()) as Referral[];
+  } catch {
+    return [];
+  }
 }
 
-export function saveReferrals(referrals: Referral[]) {
-  write(REFERRALS_KEY, referrals);
+export async function sendReferral(payload: {
+  toBrandId: string;
+  leadName: string;
+  leadPhone: string;
+  leadEmail: string;
+  note: string;
+  feeAmount: number;
+  dueDate: string | null;
+}): Promise<{ referral?: Referral; error?: string }> {
+  const res = await fetch("/api/referrals", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return { error: data.error ?? "Something went wrong" };
+  return { referral: data };
 }
 
-export function uid(): string {
-  return Math.random().toString(36).slice(2, 10);
+export async function actOnReferral(
+  id: string,
+  action: "accept" | "decline" | "markPaid" | "note",
+  text?: string
+): Promise<Referral | null> {
+  const res = await fetch("/api/referrals", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, action, text }),
+  });
+  if (!res.ok) return null;
+  return (await res.json()) as Referral;
+}
+
+export async function fetchNotifications(): Promise<{
+  newLeads: number;
+  pendingReferrals: number;
+}> {
+  try {
+    const res = await fetch("/api/notifications", { cache: "no-store" });
+    if (!res.ok) return { newLeads: 0, pendingReferrals: 0 };
+    return await res.json();
+  } catch {
+    return { newLeads: 0, pendingReferrals: 0 };
+  }
 }

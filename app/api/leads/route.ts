@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
 import { listLeadsForUser, updateLeadStage } from "@/lib/leads-store";
+import { syncReferralFromLead } from "@/lib/referrals-store";
 import type { LeadStage } from "@/lib/types";
 
 // The signed-in agent's leads. Server-side now (Postgres on Railway) — the
@@ -44,6 +45,11 @@ export async function PATCH(req: NextRequest) {
   const lead = await updateLeadStage(userId, leadId, stage);
   if (!lead) {
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+  }
+  // If this lead came from a referral, mirror the progress back to the
+  // referrer so they can see what happened to the lead they sent.
+  if (lead.referralId) {
+    await syncReferralFromLead(lead.id, stage);
   }
   return NextResponse.json(lead);
 }

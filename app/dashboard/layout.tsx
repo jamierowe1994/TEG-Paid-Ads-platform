@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { refreshUser, signOut } from "@/lib/session";
+import { refreshUser, signOut, fetchNotifications } from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
 import type { UserProfile } from "@/lib/types";
 import BrandMark from "@/components/BrandMark";
@@ -27,6 +27,7 @@ export default function DashboardLayout({
   const [user, setUser] = useState<UserProfile | null>(null);
   const [brand, setBrand] = useState<Brand | null>(null);
   const [checked, setChecked] = useState(false);
+  const [notifs, setNotifs] = useState({ newLeads: 0, pendingReferrals: 0 });
 
   useEffect(() => {
     // Validate the session against the server (httpOnly cookie), not just the
@@ -41,6 +42,19 @@ export default function DashboardLayout({
       setChecked(true);
     });
   }, [router]);
+
+  // Notification dots — refresh on navigation and on a light interval so new
+  // leads / referrals surface without a manual reload.
+  useEffect(() => {
+    if (!checked) return;
+    fetchNotifications().then(setNotifs);
+    const t = setInterval(() => fetchNotifications().then(setNotifs), 30000);
+    return () => clearInterval(t);
+  }, [checked, pathname]);
+
+  const dotFor = (href: string) =>
+    (href === "/dashboard/leads" && notifs.newLeads > 0) ||
+    (href === "/dashboard/referrals" && notifs.pendingReferrals > 0);
 
   if (!checked || !user || !brand) {
     return (
@@ -101,6 +115,13 @@ export default function DashboardLayout({
                   <path d={item.icon} />
                 </svg>
                 {item.label}
+                {dotFor(item.href) && (
+                  <span
+                    className="ml-auto h-2 w-2 rounded-full"
+                    style={{ backgroundColor: brand.accent }}
+                    aria-label="New items"
+                  />
+                )}
               </Link>
             );
           })}
