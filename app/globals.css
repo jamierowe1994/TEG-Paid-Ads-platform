@@ -1,15 +1,57 @@
 @import "tailwindcss";
 
+/*
+  ── Uni Text (headings) ──────────────────────────────────────────────
+  The client's heading typeface. Drop the font files into app/fonts/ and
+  UNCOMMENT the @font-face blocks below (adjust the filenames/formats to
+  match what's supplied). Headings will then switch to Uni Text with no
+  other changes — until then they use Montserrat.
+
+  @font-face {
+    font-family: "Uni Text";
+    src: url("/fonts/UniText-Regular.woff2") format("woff2");
+    font-weight: 400;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: "Uni Text";
+    src: url("/fonts/UniText-Bold.woff2") format("woff2");
+    font-weight: 700;
+    font-display: swap;
+  }
+  Then change --font-heading below to:
+  --font-heading: "Uni Text", var(--font-montserrat), system-ui, sans-serif;
+  ─────────────────────────────────────────────────────────────────────
+*/
+
 :root {
-  --accent: #111827; /* overridden per-brand inside the dashboard */
+  --font-body: var(--font-montserrat), system-ui, -apple-system, sans-serif;
+  --font-heading: var(--font-montserrat), system-ui, -apple-system, sans-serif;
+
+  /* Experts Group parent brand (marketing / pre-login pages) */
+  --group: #e31f36;
+  --group-dark: #c11a2e;
+  --group-soft: #fef2f2;
+
+  /* Per-brand accent — overridden inside the dashboard via inline style */
+  --accent: #111827;
   --accent-soft: #f9fafb;
 }
 
 body {
   background: #ffffff;
   color: #111827;
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5 {
+  font-family: var(--font-heading);
+  letter-spacing: -0.01em;
 }
 
 /* Notion-ish minimal scrollbar */
@@ -23,6 +65,15 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #d1d5db;
+}
+
+/* Experts Group primary button (marketing pages) */
+.btn-group {
+  background-color: var(--group);
+  color: #fff;
+}
+.btn-group:hover {
+  background-color: var(--group-dark);
 }
 
 .accent-bg {

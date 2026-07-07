@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BRANDS } from "@/lib/brands";
+import BrandMark from "@/components/BrandMark";
 
 // Admin backend. Password-gated (ADMIN_PASSWORD env var, default
 // "experts-admin") — upgrade to proper admin accounts later. Currently
@@ -131,18 +132,22 @@ export default function AdminPage() {
 
       <div className="mx-auto max-w-6xl px-6 py-10">
         {/* Brand overview strip */}
-        <div className="grid gap-4 sm:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {BRANDS.map((b) => (
             <div
               key={b.id}
               className="rounded-2xl border border-gray-200 bg-white p-4"
             >
-              <span
-                className="inline-block h-2 w-2 rounded-full"
-                style={{ backgroundColor: b.accent }}
-              />
-              <p className="mt-2 text-sm font-medium">{b.shortName}</p>
-              <p className="text-xs text-gray-400">
+              <div className="flex items-center gap-2.5">
+                <BrandMark
+                  name={b.name}
+                  accent={b.accent}
+                  logo={b.logo}
+                  size={28}
+                />
+                <p className="text-sm font-medium">{b.shortName}</p>
+              </div>
+              <p className="mt-2 text-xs text-gray-400">
                 Signups &amp; campaign stats live here once the database is in
               </p>
             </div>

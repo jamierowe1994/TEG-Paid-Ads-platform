@@ -3,8 +3,9 @@
 import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { BRANDS, brandForEmail, brandById, type Brand } from "@/lib/brands";
+import { BRANDS, brandForEmail, EXPERTS_GROUP, type Brand } from "@/lib/brands";
 import { PACKAGES, packageById } from "@/lib/packages";
+import BrandMark from "@/components/BrandMark";
 import { saveUser, uid } from "@/lib/session";
 import type { UserProfile } from "@/lib/types";
 
@@ -122,10 +123,13 @@ function SignupWizard() {
       {/* Top bar with progress */}
       <header className="border-b border-gray-100">
         <div className="mx-auto flex h-16 max-w-2xl items-center justify-between px-6">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-900 text-xs font-bold text-white">
-              E
-            </div>
+          <Link href="/" className="flex items-center gap-2.5">
+            <BrandMark
+              name={EXPERTS_GROUP.name}
+              accent={EXPERTS_GROUP.accent}
+              logo={EXPERTS_GROUP.logo}
+              size={28}
+            />
             <span className="text-sm font-semibold">The Experts Group</span>
           </Link>
           <span className="text-xs text-gray-400">

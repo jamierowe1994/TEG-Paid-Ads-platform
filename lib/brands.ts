@@ -1,13 +1,17 @@
 // The Experts Group — brand registry.
 // Signup email domains are matched against `domains` to route each agent
-// into the correct business dashboard automatically.
+// into the correct business dashboard automatically. Each brand carries its
+// own accent colour (used to theme the dashboard), its CRM, and the label
+// it uses for a "successful" conversion (see conversionLabel).
 
 export type BrandId =
   | "property"
   | "lettings"
   | "mortgage"
   | "recruitment"
-  | "commercial";
+  | "commercial"
+  | "fineandcountry"
+  | "auction";
 
 export interface Brand {
   id: BrandId;
@@ -17,9 +21,21 @@ export interface Brand {
   accent: string; // hex accent colour used to theme the dashboard
   accentSoft: string; // light tint for backgrounds/badges
   crmName: string; // the CRM leads get pushed to
-  conversionLabel: string; // what a "converted" lead is called in this business
+  conversionLabel: string; // what a "successful" converted lead is called
+  conversionVerb: string; // button text, e.g. "Book Market Appraisal"
   audience: string; // who the agents are
+  logo: string; // /brand-logos/<id>.png — falls back to a letter mark
 }
+
+// The parent group brand. Used on the marketing/pre-login pages (landing,
+// signup, login) where we don't yet know which business the visitor is with.
+export const EXPERTS_GROUP = {
+  name: "The Experts Group",
+  accent: "#E31F36", // Experts Group red
+  accentDark: "#C11A2E",
+  accentSoft: "#FEF2F2",
+  logo: "/brand-logos/group.png",
+};
 
 export const BRANDS: Brand[] = [
   {
@@ -27,55 +43,93 @@ export const BRANDS: Brand[] = [
     name: "The Property Experts",
     shortName: "Property",
     domains: ["thepropertyexperts.co.uk", "propertyexperts.co.uk"],
-    accent: "#16A34A",
-    accentSoft: "#F0FDF4",
+    accent: "#E31F36", // red (shared group/estate colour)
+    accentSoft: "#FEF2F2",
     crmName: "REP",
     conversionLabel: "Market Appraisal (MA)",
+    conversionVerb: "Book Market Appraisal",
     audience: "Estate agents",
+    logo: "/brand-logos/property.png",
   },
   {
     id: "lettings",
     name: "The Lettings Experts",
     shortName: "Lettings",
     domains: ["thelettingsexperts.co.uk", "lettingsexperts.co.uk"],
-    accent: "#0D9488",
-    accentSoft: "#F0FDFA",
+    accent: "#E31F36", // red
+    accentSoft: "#FEF2F2",
     crmName: "REP",
-    conversionLabel: "Landlord Appraisal",
+    conversionLabel: "Market Appraisal (MA)",
+    conversionVerb: "Book Market Appraisal",
     audience: "Lettings agents",
+    logo: "/brand-logos/lettings.png",
   },
   {
     id: "mortgage",
     name: "The Mortgage Experts",
     shortName: "Mortgage",
     domains: ["themortgageexperts.co.uk", "mortgageexperts.co.uk"],
-    accent: "#2563EB",
-    accentSoft: "#EFF6FF",
+    accent: "#2B6193", // blue
+    accentSoft: "#EEF4FA",
     crmName: "CRM",
-    conversionLabel: "Booked Appointment",
+    conversionLabel: "Appointment Booked",
+    conversionVerb: "Book Appointment",
     audience: "Mortgage advisers",
+    logo: "/brand-logos/mortgage.png",
   },
   {
     id: "recruitment",
     name: "The Recruitment Experts",
     shortName: "Recruitment",
     domains: ["therecruitmentexperts.co.uk", "recruitmentexperts.co.uk"],
-    accent: "#7C3AED",
-    accentSoft: "#F5F3FF",
+    accent: "#998170", // bronze
+    accentSoft: "#F6F3F1",
     crmName: "Atlas",
-    conversionLabel: "Terms Signed",
+    conversionLabel: "Appointment Booked",
+    conversionVerb: "Book Appointment",
     audience: "Recruiters",
+    logo: "/brand-logos/recruitment.png",
   },
   {
     id: "commercial",
     name: "The Commercial Experts",
     shortName: "Commercial",
     domains: ["thecommercialexperts.co.uk", "commercialexperts.co.uk"],
-    accent: "#EA580C",
-    accentSoft: "#FFF7ED",
+    accent: "#334155", // TODO(brand): awaiting Commercial Experts colour code
+    accentSoft: "#F1F5F9",
     crmName: "CRM",
-    conversionLabel: "Instruction Won",
+    conversionLabel: "Appointment Booked",
+    conversionVerb: "Book Appointment",
     audience: "Commercial agents",
+    logo: "/brand-logos/commercial.png",
+  },
+  {
+    id: "fineandcountry",
+    name: "Fine & Country",
+    shortName: "Fine & Country",
+    // TODO(brand): confirm the exact email domain(s) Fine & Country agents use
+    domains: ["fineandcountry.com", "fineandcountry.co.uk"],
+    accent: "#A78F51", // gold
+    accentSoft: "#F7F4EC",
+    crmName: "REP",
+    conversionLabel: "Market Appraisal (MA)",
+    conversionVerb: "Book Market Appraisal",
+    audience: "Premium estate agents",
+    logo: "/brand-logos/fineandcountry.png",
+  },
+  {
+    id: "auction",
+    name: "The Auction Company",
+    shortName: "Auction",
+    // TODO(brand): confirm the exact email domain(s) for The Auction Company
+    domains: ["theauctioncompany.co.uk", "auctioncompany.co.uk"],
+    accent: "#A3C739", // green
+    accentSoft: "#F4F8E9",
+    crmName: "REP",
+    conversionLabel: "Valuation Booked",
+    conversionVerb: "Book Valuation",
+    audience: "Auction valuers",
+    logo: "/brand-logos/auction.png",
   },
 ];
 

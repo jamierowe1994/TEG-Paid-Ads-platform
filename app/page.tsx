@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { BRANDS } from "@/lib/brands";
+import { BRANDS, EXPERTS_GROUP } from "@/lib/brands";
 import { PACKAGES } from "@/lib/packages";
+import BrandMark from "@/components/BrandMark";
 
 export default function LandingPage() {
   return (
@@ -8,10 +9,13 @@ export default function LandingPage() {
       {/* Nav */}
       <header className="sticky top-0 z-40 border-b border-gray-100 bg-white/80 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-900 text-sm font-bold text-white">
-              E
-            </div>
+          <div className="flex items-center gap-2.5">
+            <BrandMark
+              name={EXPERTS_GROUP.name}
+              accent={EXPERTS_GROUP.accent}
+              logo={EXPERTS_GROUP.logo}
+              size={32}
+            />
             <span className="text-sm font-semibold tracking-tight">
               The Experts Group
             </span>
@@ -28,7 +32,7 @@ export default function LandingPage() {
             </Link>
             <Link
               href="/signup"
-              className="rounded-lg bg-gray-900 px-4 py-2 font-medium text-white transition hover:bg-gray-700"
+              className="btn-group rounded-lg px-4 py-2 font-medium transition"
             >
               Get started
             </Link>
@@ -54,7 +58,7 @@ export default function LandingPage() {
         <div className="mt-10 flex items-center justify-center gap-4">
           <Link
             href="/signup"
-            className="rounded-xl bg-gray-900 px-8 py-3.5 text-sm font-medium text-white transition hover:bg-gray-700"
+            className="btn-group rounded-xl px-8 py-3.5 text-sm font-medium transition"
           >
             Choose your package
           </Link>
@@ -68,12 +72,12 @@ export default function LandingPage() {
       </section>
 
       {/* Brands strip */}
-      <section className="border-y border-gray-100 bg-gray-50/60">
+      <section className="border-y border-gray-100">
         <div className="mx-auto max-w-6xl px-6 py-10">
           <p className="mb-6 text-center text-xs font-medium uppercase tracking-widest text-gray-400">
-            One group, five businesses
+            One group, seven businesses
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
+          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4">
             {BRANDS.map((b) => (
               <div key={b.id} className="flex items-center gap-2">
                 <span
@@ -124,7 +128,7 @@ export default function LandingPage() {
       </section>
 
       {/* Packages */}
-      <section id="packages" className="border-t border-gray-100 bg-gray-50/60">
+      <section id="packages" className="border-t border-gray-100">
         <div className="mx-auto max-w-6xl px-6 py-24">
           <h2 className="text-center text-3xl font-semibold tracking-tight">
             Simple packages, no surprises
@@ -144,7 +148,7 @@ export default function LandingPage() {
                 }`}
               >
                 {p.highlighted && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gray-900 px-3 py-1 text-xs font-medium text-white">
+                  <span className="btn-group absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-xs font-medium">
                     Most popular
                   </span>
                 )}
@@ -160,7 +164,8 @@ export default function LandingPage() {
                   {p.features.map((f) => (
                     <li key={f} className="flex gap-3 text-sm text-gray-600">
                       <svg
-                        className="mt-0.5 h-4 w-4 shrink-0 text-gray-900"
+                        className="mt-0.5 h-4 w-4 shrink-0"
+                        style={{ color: EXPERTS_GROUP.accent }}
                         viewBox="0 0 20 20"
                         fill="currentColor"
                       >
@@ -178,7 +183,7 @@ export default function LandingPage() {
                   href={`/signup?package=${p.id}`}
                   className={`mt-8 rounded-xl py-3 text-center text-sm font-medium transition ${
                     p.highlighted
-                      ? "bg-gray-900 text-white hover:bg-gray-700"
+                      ? "btn-group"
                       : "border border-gray-200 text-gray-900 hover:bg-gray-50"
                   }`}
                 >

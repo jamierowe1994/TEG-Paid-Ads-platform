@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getUser } from "@/lib/session";
-import { brandForEmail } from "@/lib/brands";
+import { brandForEmail, EXPERTS_GROUP } from "@/lib/brands";
+import BrandMark from "@/components/BrandMark";
 
 // Demo sign-in. Once Stripe + a real database exist this becomes proper
 // auth (magic link or password) checking the customer has an active
@@ -40,10 +41,13 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-white px-6">
       <div className="w-full max-w-sm">
-        <Link href="/" className="mb-10 flex items-center justify-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-900 text-sm font-bold text-white">
-            E
-          </div>
+        <Link href="/" className="mb-10 flex items-center justify-center gap-2.5">
+          <BrandMark
+            name={EXPERTS_GROUP.name}
+            accent={EXPERTS_GROUP.accent}
+            logo={EXPERTS_GROUP.logo}
+            size={32}
+          />
           <span className="text-sm font-semibold">The Experts Group</span>
         </Link>
         <h1 className="text-center text-2xl font-semibold tracking-tight">
@@ -64,7 +68,7 @@ export default function LoginPage() {
         {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
         <button
           onClick={signIn}
-          className="mt-4 w-full rounded-xl bg-gray-900 py-3 text-sm font-medium text-white transition hover:bg-gray-700"
+          className="btn-group mt-4 w-full rounded-xl py-3 text-sm font-medium transition"
         >
           Sign in
         </button>

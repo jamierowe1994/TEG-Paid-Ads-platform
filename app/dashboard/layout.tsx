@@ -6,6 +6,7 @@ import Link from "next/link";
 import { getUser, signOut } from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
 import type { UserProfile } from "@/lib/types";
+import BrandMark from "@/components/BrandMark";
 
 const NAV = [
   { href: "/dashboard", label: "Overview", icon: "M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10" },
@@ -57,12 +58,12 @@ export default function DashboardLayout({
       {/* Sidebar */}
       <aside className="fixed inset-y-0 left-0 z-30 flex w-60 flex-col border-r border-gray-100 bg-gray-50/40">
         <div className="flex items-center gap-2.5 px-5 py-5">
-          <div
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-bold text-white"
-            style={{ backgroundColor: brand.accent }}
-          >
-            E
-          </div>
+          <BrandMark
+            name={brand.name}
+            accent={brand.accent}
+            logo={brand.logo}
+            size={32}
+          />
           <div className="leading-tight">
             <p className="text-sm font-semibold">{brand.name}</p>
             <p className="text-xs text-gray-400">Paid Ads Portal</p>

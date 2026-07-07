@@ -184,7 +184,7 @@ export default function LeadsPage() {
                     className="rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
                     style={{ backgroundColor: brand.accent }}
                   >
-                    Convert to {brand.conversionLabel}
+                    {brand.conversionVerb}
                   </button>
                 )}
                 {lead.stage === "converted" && (

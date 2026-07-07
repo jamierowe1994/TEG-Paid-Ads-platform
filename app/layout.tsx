@@ -1,14 +1,22 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Montserrat } from "next/font/google";
 import "./globals.css";
 import FeedbackWidget from "@/components/FeedbackWidget";
 
-const inter = Inter({ subsets: ["latin"] });
+// Body font: Montserrat (Experts Group brand typeface).
+// Heading font: "Uni Text" — a custom font supplied by the client. Until the
+// font files are added (see app/fonts/README.md), headings fall back to
+// Montserrat automatically. The @font-face + swap is wired in globals.css.
+const montserrat = Montserrat({
+  subsets: ["latin"],
+  variable: "--font-montserrat",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "The Experts Group — Paid Ads Portal",
   description:
-    "Paid advertising portal for The Experts Group agents — Property, Lettings, Mortgage, Recruitment and Commercial.",
+    "Paid advertising portal for The Experts Group agents — Property, Lettings, Mortgage, Recruitment, Commercial, Fine & Country and The Auction Company.",
 };
 
 export default function RootLayout({
@@ -17,8 +25,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="en" className={montserrat.variable}>
+      <body>
         {children}
         <FeedbackWidget />
       </body>
