@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import Link from "next/link";
 
-// The hero's dark glass pill — the centrepiece of the page. Starfields
-// drift continuously inside, a soft light tracks the cursor from ANYWHERE
-// on the page (window-level mousemove + scroll, not just hover), and a very
-// subtle chromatic rim rotates slowly around the edge for a 3D, lit-glass
-// feel. Styling lives in globals.css under .btn-glow*.
+// The hero CTA — an Ali Braid-style liquid-glass pill. Frosted refractive
+// body with a crisp bevel, chromatic corners, a cursor-driven shine, a gentle
+// tilt toward the pointer, and a chromatic edge that rotates on hover. Styling
+// lives in globals.css under .btn-glass*.
 
 export default function GlowButton({
   href,
@@ -20,54 +19,44 @@ export default function GlowButton({
 }) {
   const ref = useRef<HTMLAnchorElement>(null);
 
-  useEffect(() => {
+  function onMove(e: React.PointerEvent<HTMLAnchorElement>) {
     const el = ref.current;
     if (!el) return;
-    let mouseX = window.innerWidth / 2;
-    let mouseY = window.innerHeight / 3;
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    const px = (e.clientX - r.left) / r.width;
+    const py = (e.clientY - r.top) / r.height;
+    el.style.setProperty("--gx", `${px * 100}%`);
+    el.style.setProperty("--gy", `${py * 100}%`);
+    el.style.setProperty("--rx", `${(0.5 - py) * 8}deg`);
+    el.style.setProperty("--ry", `${(px - 0.5) * 9}deg`);
+    el.style.setProperty("--ty", "-2px");
+    el.style.setProperty("--glow-o", "0.9");
+  }
 
-    const update = () => {
-      const r = el.getBoundingClientRect();
-      if (r.width === 0 || r.height === 0) return;
-      // Position of the cursor relative to the button — deliberately
-      // unclamped-ish so the light leans toward the cursor even when it's
-      // far away, like a reflection tracking a torch across the room.
-      const mx = ((mouseX - r.left) / r.width) * 100;
-      const my = ((mouseY - r.top) / r.height) * 100;
-      el.style.setProperty("--mx", `${Math.max(-80, Math.min(180, mx))}%`);
-      el.style.setProperty("--my", `${Math.max(-150, Math.min(250, my))}%`);
-    };
-
-    const onMove = (e: MouseEvent) => {
-      mouseX = e.clientX;
-      mouseY = e.clientY;
-      update();
-    };
-    window.addEventListener("mousemove", onMove, { passive: true });
-    window.addEventListener("scroll", update, { passive: true });
-    update();
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("scroll", update);
-    };
-  }, []);
+  function onLeave() {
+    const el = ref.current;
+    if (!el) return;
+    el.style.setProperty("--gx", "50%");
+    el.style.setProperty("--gy", "12%");
+    el.style.setProperty("--rx", "0deg");
+    el.style.setProperty("--ry", "0deg");
+    el.style.setProperty("--ty", "0px");
+    el.style.setProperty("--glow-o", "0.2");
+  }
 
   return (
-    <Link ref={ref} href={href} className={`btn-glow ${className}`}>
-      <span className="btn-glow-rim" aria-hidden />
-      <span className="btn-glow-stars" aria-hidden />
-      <span className="btn-glow-stars2" aria-hidden />
-      <span className="btn-glow-stars3" aria-hidden />
-      <span className="btn-glow-cursor" aria-hidden />
-      {/* Water ripples radiating from the light spot on hover — each ring
-          its own size and pace, like real water */}
-      <span className="btn-glow-ripple" aria-hidden>
-        <span />
-        <span />
-        <span />
-        <span />
-      </span>
-      <span className="relative">{children}</span>
+    <Link
+      ref={ref}
+      href={href}
+      className={`btn-glass ${className}`}
+      onPointerMove={onMove}
+      onPointerLeave={onLeave}
+    >
+      <span className="btn-glass-corners" aria-hidden />
+      <span className="btn-glass-shine" aria-hidden />
+      <span className="btn-glass-rim" aria-hidden />
+      <span className="relative z-[2]">{children}</span>
     </Link>
   );
 }

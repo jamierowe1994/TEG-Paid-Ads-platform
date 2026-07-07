@@ -92,7 +92,7 @@ export default function LandingPage() {
             <div className="mt-12 flex items-center justify-center gap-4">
               <GlowButton
                 href="/signup"
-                className="px-10 py-4 text-base font-medium"
+                className="px-10 py-4 text-base font-semibold"
               >
                 Choose your package
               </GlowButton>
@@ -134,14 +134,14 @@ export default function LandingPage() {
               </div>
             </Reveal>
             <Reveal direction="right" delay={120}>
-              <div className="relative mx-auto max-w-sm lg:mr-0">
+              <div className="relative mx-auto w-full max-w-md lg:mr-0 lg:max-w-xl">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/images/paid-ads.jpg"
                   alt="An agent's next client, mid-scroll"
                   className="aspect-[4/5] w-full rounded-3xl object-cover"
                 />
-                {/* Infographic overlay — counts up + bars bounce on scroll */}
+                {/* Infographic overlay — same size, counts up on scroll */}
                 <LeadsStat />
               </div>
             </Reveal>

@@ -76,226 +76,108 @@ h5 {
   background-color: var(--group-dark);
 }
 
-/* ── Glow pill (hero CTA) ────────────────────────────────────────────────
-   Dark glass pill, dynamic: two starfields drift continuously at different
-   speeds, a soft light follows the cursor, and on hover the label fills
-   bottom-to-top with Experts red. Layers are spans inside GlowButton.tsx. */
-.btn-glow {
-  position: relative;
-  isolation: isolate;
-  display: inline-block;
-  overflow: hidden;
-  border-radius: 9999px;
-  background: #0a0a0e;
-  color: #fff;
-  text-shadow:
-    0 0 10px rgba(255, 255, 255, 0.9),
-    0 0 28px rgba(255, 255, 255, 0.45);
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.06),
-    0 14px 34px -10px rgba(0, 0, 0, 0.5),
-    inset 0 1px 1px rgba(255, 255, 255, 0.18),
-    inset -8px 0 16px -6px rgba(255, 255, 255, 0.3);
-  transition:
-    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.3s ease;
-}
-.btn-glow:hover {
-  transform: translateY(-1px);
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.1),
-    0 18px 44px -10px rgba(0, 0, 0, 0.55),
-    0 0 36px -6px rgba(255, 255, 255, 0.35),
-    inset 0 1px 1px rgba(255, 255, 255, 0.22),
-    inset -8px 0 16px -6px rgba(255, 255, 255, 0.4);
-}
-
-/* Star layers — seamless diagonal drift (offsets are multiples of the
-   background-size so the loop never jumps), plus gentle twinkles. */
-.btn-glow-stars,
-.btn-glow-stars2,
-.btn-glow-stars3 {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background-repeat: repeat;
-  pointer-events: none;
-}
-.btn-glow-stars {
-  background-image:
-    radial-gradient(1.5px 1.5px at 25% 35%, rgba(255, 255, 255, 0.9), transparent),
-    radial-gradient(1px 1px at 65% 70%, rgba(255, 255, 255, 0.7), transparent),
-    radial-gradient(1.2px 1.2px at 85% 20%, rgba(255, 255, 255, 0.8), transparent),
-    radial-gradient(1px 1px at 45% 85%, rgba(255, 255, 255, 0.6), transparent),
-    radial-gradient(1.3px 1.3px at 8% 15%, rgba(255, 255, 255, 0.75), transparent),
-    radial-gradient(1px 1px at 92% 80%, rgba(255, 255, 255, 0.65), transparent);
-  background-size: 140px 70px;
-  opacity: 0.85;
-  animation:
-    stars-drift-a 18s linear infinite,
-    twinkle 3.2s ease-in-out infinite;
-}
-.btn-glow-stars2 {
-  background-image:
-    radial-gradient(1px 1px at 15% 60%, rgba(255, 255, 255, 0.8), transparent),
-    radial-gradient(0.8px 0.8px at 75% 40%, rgba(255, 255, 255, 0.6), transparent),
-    radial-gradient(1px 1px at 55% 15%, rgba(255, 255, 255, 0.55), transparent),
-    radial-gradient(0.9px 0.9px at 35% 90%, rgba(255, 255, 255, 0.6), transparent),
-    radial-gradient(0.8px 0.8px at 90% 30%, rgba(255, 255, 255, 0.5), transparent);
-  background-size: 90px 45px;
-  opacity: 0.5;
-  animation:
-    stars-drift-b 12s linear infinite,
-    twinkle 2.3s ease-in-out infinite 0.8s;
-}
-/* Slow deep layer — barely-there dust for depth */
-.btn-glow-stars3 {
-  background-image:
-    radial-gradient(0.7px 0.7px at 30% 25%, rgba(255, 255, 255, 0.45), transparent),
-    radial-gradient(0.6px 0.6px at 70% 75%, rgba(255, 255, 255, 0.4), transparent),
-    radial-gradient(0.7px 0.7px at 50% 50%, rgba(255, 255, 255, 0.35), transparent),
-    radial-gradient(0.6px 0.6px at 10% 80%, rgba(255, 255, 255, 0.35), transparent);
-  background-size: 70px 35px;
-  opacity: 0.4;
-  animation:
-    stars-drift-c 26s linear infinite,
-    twinkle 4.1s ease-in-out infinite 1.6s;
-}
-@keyframes stars-drift-a {
-  to {
-    background-position: 140px -70px;
-  }
-}
-@keyframes stars-drift-b {
-  to {
-    background-position: -90px 45px;
-  }
-}
-@keyframes stars-drift-c {
-  to {
-    background-position: 70px 35px;
-  }
-}
-@keyframes twinkle {
-  0%,
-  100% {
-    opacity: 0.85;
-  }
-  50% {
-    opacity: 0.45;
-  }
-}
-
-/* Light that leans toward the cursor from anywhere on the page
-   (GlowButton sets --mx/--my from window-level mousemove + scroll) */
-.btn-glow-cursor {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  background: radial-gradient(
-    110px circle at var(--mx, 62%) var(--my, 45%),
-    rgba(255, 255, 255, 0.38),
-    transparent 68%
-  );
-  filter: blur(8px);
-}
-
-/* Water ripples — on hover, rings radiate out from wherever the cursor
-   light currently sits, like drops landing on the glass. Behind the text. */
-.btn-glow-ripple {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  overflow: hidden;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.45s ease;
-}
-.btn-glow:hover .btn-glow-ripple {
-  opacity: 1;
-}
-/* Rings expand via width/height (not scale) so the line stays hairline as
-   it grows — the way a real ripple thins out. Each ring has its own final
-   size, pace and offset for a natural, uneven water feel. */
-.btn-glow-ripple > span {
-  position: absolute;
-  left: var(--mx, 62%);
-  top: var(--my, 45%);
-  width: 8px;
-  height: 8px;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.32);
-  box-shadow: 0 0 6px rgba(255, 255, 255, 0.06);
-  opacity: 0;
-}
-.btn-glow:hover .btn-glow-ripple > span {
-  animation: ripple-water var(--rd, 4.6s) cubic-bezier(0.16, 0.5, 0.35, 1)
-    infinite;
-}
-.btn-glow-ripple > span:nth-child(1) {
-  --rs: 210px;
-  --rd: 4.4s;
-}
-.btn-glow-ripple > span:nth-child(2) {
-  --rs: 300px;
-  --rd: 5.4s;
-  animation-delay: 1.5s !important;
-}
-.btn-glow-ripple > span:nth-child(3) {
-  --rs: 150px;
-  --rd: 3.8s;
-  animation-delay: 2.8s !important;
-}
-.btn-glow-ripple > span:nth-child(4) {
-  --rs: 340px;
-  --rd: 6.2s;
-  animation-delay: 0.7s !important;
-}
-@keyframes ripple-water {
-  0% {
-    width: 8px;
-    height: 8px;
-    opacity: 0;
-  }
-  7% {
-    opacity: 0.5;
-  }
-  60% {
-    opacity: 0.18;
-  }
-  100% {
-    width: var(--rs, 260px);
-    height: var(--rs, 260px);
-    opacity: 0;
-  }
-}
-
-/* Chromatic rim — a whisper of spectral colour circling the edge, with
-   brighter glints, for a lit-glass 3D feel. */
+/* ── Liquid-glass pill (hero CTA) ────────────────────────────────────────
+   Ali Braid "See Ali's Diary" material: frosted refractive body, crisp
+   bevel, chromatic colour pooled in opposite corners, a cursor-driven shine,
+   a gentle 3D tilt, and a chromatic edge that rotates on hover. Layers are
+   spans inside GlowButton.tsx; cursor vars (--gx/--gy/--rx/--ry/--ty/--glow-o)
+   are set on pointer move. */
 @property --rim-angle {
   syntax: "<angle>";
   initial-value: 0deg;
   inherits: false;
 }
-.btn-glow-rim {
+.btn-glass {
+  position: relative;
+  isolation: isolate;
+  display: inline-block;
+  overflow: hidden;
+  border-radius: 9999px;
+  color: #0f1115;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.72) 0%,
+      rgba(255, 255, 255, 0.28) 26%,
+      rgba(255, 255, 255, 0.06) 52%
+    ),
+    rgba(255, 255, 255, 0.32);
+  -webkit-backdrop-filter: blur(9px) saturate(150%) brightness(1.04);
+  backdrop-filter: blur(9px) saturate(150%) brightness(1.04);
+  box-shadow:
+    inset 3px 3px 0 -3px rgba(255, 255, 255, 0.95), /* crisp top-left bevel */
+    inset -2px -2px 0 -3px rgba(255, 255, 255, 0.5), /* faint opposite bevel */
+    inset 0 0 8px 1px rgba(255, 255, 255, 0.5), /* inner rim = glass thickness */
+    inset 0 1px 1px rgba(255, 255, 255, 0.7),
+    0 0 0 1px rgba(17, 24, 39, 0.06), /* hairline edge on white */
+    0 12px 28px -8px rgba(20, 14, 10, 0.22); /* float shadow */
+  transform: perspective(720px) rotateX(var(--rx, 0deg))
+    rotateY(var(--ry, 0deg)) translateY(var(--ty, 0px));
+  transition:
+    transform 0.18s ease-out,
+    box-shadow 0.4s ease;
+}
+.btn-glass:hover {
+  box-shadow:
+    inset 3px 3px 0 -3px rgba(255, 255, 255, 1),
+    inset -2px -2px 0 -3px rgba(255, 255, 255, 0.55),
+    inset 0 0 10px 1px rgba(255, 255, 255, 0.6),
+    inset 0 1px 1px rgba(255, 255, 255, 0.8),
+    0 0 0 1px rgba(17, 24, 39, 0.08),
+    0 18px 40px -10px rgba(20, 14, 10, 0.28);
+}
+
+/* Chromatic corner light — colour pooled in two opposite corners (not a
+   full ring), like thick edges refracting light. */
+.btn-glass-corners {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(60% 82% at 0% -4%, rgba(255, 150, 120, 0.28), transparent 46%),
+    radial-gradient(62% 84% at 100% 104%, rgba(120, 165, 255, 0.24), transparent 48%);
+}
+
+/* Cursor-driven shine — soft highlight that drifts with the pointer; mostly
+   hidden at rest (low --glow-o), rises on hover. */
+.btn-glass-shine {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(
+    42% 58% at var(--gx, 50%) var(--gy, 12%),
+    rgba(255, 255, 255, 0.6),
+    rgba(210, 225, 255, 0.28) 46%,
+    transparent 72%
+  );
+  opacity: var(--glow-o, 0.22);
+  transition: opacity 0.5s ease;
+}
+
+/* Rotating chromatic edge — visible on hover, sweeping spectral light around
+   the pill. Masked to a ring; segmented so it reads as light on the edge,
+   not a solid rainbow outline. */
+.btn-glass-rim {
   position: absolute;
   inset: 0;
   border-radius: inherit;
   padding: 1.5px;
   pointer-events: none;
+  z-index: 1;
   background: conic-gradient(
     from var(--rim-angle),
-    rgba(255, 255, 255, 0.55),
-    rgba(140, 200, 255, 0.35) 12%,
-    rgba(255, 255, 255, 0.08) 28%,
-    rgba(255, 150, 190, 0.28) 44%,
-    rgba(255, 255, 255, 0.5) 55%,
-    rgba(255, 220, 160, 0.3) 68%,
-    rgba(255, 255, 255, 0.06) 82%,
-    rgba(160, 235, 255, 0.32) 92%,
-    rgba(255, 255, 255, 0.55)
+    rgba(255, 90, 120, 0) 0%,
+    rgba(255, 120, 90, 0.85) 10%,
+    rgba(255, 255, 255, 0) 24%,
+    rgba(90, 170, 255, 0.8) 44%,
+    rgba(255, 255, 255, 0) 58%,
+    rgba(200, 120, 255, 0.8) 78%,
+    rgba(255, 255, 255, 0) 92%,
+    rgba(255, 90, 120, 0) 100%
   );
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
@@ -305,7 +187,12 @@ h5 {
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   mask-composite: exclude;
-  animation: rim-spin 14s linear infinite;
+  opacity: 0;
+  transition: opacity 0.45s ease;
+  animation: rim-spin 6s linear infinite;
+}
+.btn-glass:hover .btn-glass-rim {
+  opacity: 0.95;
 }
 @keyframes rim-spin {
   to {
@@ -404,6 +291,31 @@ h5 {
     0 6px 12px -6px rgb(0 0 0 / 0.06);
 }
 
+/* ── Hero icon load wave: pop up + bleed black→colour, then settle ──────
+   Runs once on mount, staggered per icon (see HeroIconStrip). `both` holds
+   the resting state during the pre-delay and after, so icons sit black and
+   still until their turn. --icon-color is the per-icon brand colour. */
+.hero-pop-icon {
+  animation-name: hero-pop;
+  animation-timing-function: cubic-bezier(0.34, 1.15, 0.5, 1);
+  animation-fill-mode: both;
+  will-change: transform, color;
+}
+@keyframes hero-pop {
+  0% {
+    transform: translateY(0) scale(1);
+    color: #111827;
+  }
+  50% {
+    transform: translateY(-18px) scale(1.12);
+    color: var(--icon-color, #111827);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    color: #111827;
+  }
+}
+
 /* ── Stat card bars: spring up from the baseline with a bounce ─────────── */
 .bar-grow {
   transform: scaleY(0);
@@ -456,14 +368,11 @@ h5 {
   .ad-reveal {
     transition: none;
   }
-  .btn-glow-stars,
-  .btn-glow-stars2,
-  .btn-glow-stars3,
-  .btn-glow-rim {
+  .btn-glass-rim {
     animation: none;
   }
-  .btn-glow:hover .btn-glow-ripple > span {
-    animation: none;
+  .hero-pop-icon {
+    animation: none !important;
   }
   .bar-grow,
   .bar-grow.grown {

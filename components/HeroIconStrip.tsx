@@ -3,11 +3,15 @@
 import { useEffect, useState } from "react";
 import ICONS, { SocialIcon } from "./SocialIcons";
 
-// The platform icons sitting along the bottom of the hero. When the red
-// panel scrolls into view, PhysicsIcons fires "teg-icons-fall" — this strip
-// fades away as the chips drop into the panel from these exact positions
-// (each icon is tagged with data-hero-icon so the physics can measure it).
-// One-time: once they've fallen, they stay fallen.
+// The platform icons along the bottom of the hero. On page load they play a
+// slow left-to-right wave: each icon pops up and bleeds from black into its
+// brand colour, then settles back to black as the next one rises — like a
+// black-and-white photo turning to colour, ending on TikTok. When the red
+// panel scrolls into view, PhysicsIcons fires "teg-icons-fall" and this strip
+// fades out. One-time: once fallen, they stay fallen.
+
+const STAGGER = 0.8; // s between each icon starting to rise
+const DURATION = 1.6; // s per pop
 
 export default function HeroIconStrip() {
   const [gone, setGone] = useState(false);
@@ -24,8 +28,19 @@ export default function HeroIconStrip() {
         gone ? "translate-y-10 opacity-0" : "translate-y-0 opacity-100"
       }`}
     >
-      {ICONS.map((icon) => (
-        <span key={icon.name} data-hero-icon={icon.name}>
+      {ICONS.map((icon, i) => (
+        <span
+          key={icon.name}
+          data-hero-icon={icon.name}
+          className="hero-pop-icon inline-flex"
+          style={
+            {
+              "--icon-color": icon.colorOnLight ?? icon.color,
+              animationDelay: `${i * STAGGER}s`,
+              animationDuration: `${DURATION}s`,
+            } as React.CSSProperties
+          }
+        >
           <SocialIcon icon={icon} className="h-10 w-10 sm:h-14 sm:w-14" />
         </span>
       ))}
