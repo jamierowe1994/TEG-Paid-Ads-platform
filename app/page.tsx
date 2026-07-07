@@ -7,6 +7,7 @@ import PhysicsIcons from "@/components/PhysicsIcons";
 import HeroIconStrip from "@/components/HeroIconStrip";
 import GlowButton from "@/components/GlowButton";
 import LeadsStat from "@/components/LeadsStat";
+import PanelReveal from "@/components/PanelReveal";
 
 export default function LandingPage() {
   return (
@@ -66,7 +67,7 @@ export default function LandingPage() {
           </Link>
           <Link
             href="/login"
-            className="btn-group rounded-full px-7 py-3 text-base font-medium transition sm:px-9 sm:py-3.5"
+            className="btn-dark rounded-full px-7 py-3 text-base font-medium sm:px-9 sm:py-3.5"
           >
             Sign in
           </Link>
@@ -82,7 +83,7 @@ export default function LandingPage() {
             </p>
             {/* nowrap keeps "Our ad engine." on one line while the hidden
                 card expands on hover */}
-            <h1 className="mx-auto max-w-6xl text-6xl font-semibold tracking-[-0.04em] text-gray-900 sm:text-7xl lg:text-8xl">
+            <h1 className="mx-auto max-w-6xl text-6xl font-semibold tracking-[-0.055em] text-gray-900 sm:text-7xl lg:text-8xl">
               Your personal brand.
               <br />
               <span className="lg:whitespace-nowrap">
@@ -115,9 +116,9 @@ export default function LandingPage() {
           and below: bold copy left, photo + infographic right, physics icons
           landing at the bottom */}
       <section className="px-3 py-20 sm:py-28">
-        <div className="relative flex min-h-[64vh] flex-col overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-[#20242e] to-[#12151c]">
+        <PanelReveal className="relative flex min-h-[64vh] flex-col overflow-hidden rounded-[2.5rem] bg-gradient-to-b from-[#3d3d3c] to-[#2a2a29]">
           <div className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-10 px-8 py-12 sm:px-12 lg:grid-cols-2">
-            <Reveal direction="left">
+            <div className="p-words">
               <span className="inline-block rounded-full bg-[#E31F36] px-4 py-1.5 text-sm font-medium text-white">
                 Built for agents
               </span>
@@ -137,33 +138,38 @@ export default function LandingPage() {
                   Start your campaign
                 </Link>
               </div>
-            </Reveal>
-            <Reveal direction="right" delay={120}>
-              <div className="relative mx-auto w-full max-w-md lg:mr-0 lg:max-w-xl">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/images/paid-ads.jpg"
-                  alt="An agent's next client, mid-scroll"
-                  className="aspect-[4/5] w-full rounded-3xl object-cover"
-                />
-                {/* Infographic overlay — same size, counts up on scroll */}
-                <LeadsStat />
-              </div>
-            </Reveal>
+            </div>
+            <div className="relative mx-auto w-full max-w-md lg:mr-0 lg:max-w-xl">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/images/paid-ads.jpg"
+                alt="An agent's next client, mid-scroll"
+                className="p-image aspect-[4/5] w-full rounded-3xl object-cover"
+              />
+              {/* Infographic overlay — expands after the image, then counts */}
+              <LeadsStat className="p-stat" startDelay={1500} />
+            </div>
           </div>
 
           {/* One group, seven businesses — inside the panel. Sits above the
               physics layer, so falling icons pass behind the pills and land
-              at the bottom of the box. */}
+              at the bottom of the box. Each pill floats up on reveal and
+              fills with its brand colour on hover. */}
           <div className="relative z-10 mx-auto w-full max-w-5xl px-8 pb-4">
-            <p className="text-center text-xs font-medium uppercase tracking-widest text-white/50">
+            <p className="p-words text-center text-xs font-medium uppercase tracking-widest text-white/50">
               One group, seven businesses
             </p>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-              {BRANDS.map((b) => (
+              {BRANDS.map((b, i) => (
                 <span
                   key={b.id}
-                  className="rounded-full border border-white/25 px-4 py-2 text-sm font-medium text-white/90"
+                  className="brand-pill p-pill rounded-full border border-white/25 px-4 py-2 text-sm font-medium text-white/90"
+                  style={
+                    {
+                      "--pill": b.accent,
+                      animationDelay: `${1.5 + i * 0.16}s`,
+                    } as React.CSSProperties
+                  }
                 >
                   {b.name}
                 </span>
@@ -176,7 +182,7 @@ export default function LandingPage() {
           <div className="h-32" />
           {/* The hero's icons fall in behind the pills and hit the bottom */}
           <PhysicsIcons />
-        </div>
+        </PanelReveal>
       </section>
 
       {/* How it works — steps left, mock dashboard right */}

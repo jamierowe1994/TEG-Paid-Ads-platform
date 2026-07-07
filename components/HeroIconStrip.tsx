@@ -20,22 +20,25 @@ export default function HeroIconStrip() {
 
   return (
     <div
-      className={`flex items-end justify-between text-gray-900 transition-all duration-500 ${
+      className={`flex items-center justify-between text-gray-900 transition-all duration-500 ${
         gone ? "translate-y-10 opacity-0" : "translate-y-0 opacity-100"
       }`}
     >
       {ICONS.map((icon) => (
+        // Outer hit area is wider than the icon and stays put, so lifting the
+        // inner icon never pulls it out from under the cursor (no flicker).
         <span
           key={icon.name}
-          data-hero-icon={icon.name}
-          className="hero-pop-icon inline-flex cursor-pointer"
+          className="hero-icon-hit"
           style={
             {
               "--icon-color": icon.colorOnLight ?? icon.color,
             } as React.CSSProperties
           }
         >
-          <SocialIcon icon={icon} className="h-8 w-8 sm:h-11 sm:w-11" />
+          <span data-hero-icon={icon.name} className="hero-pop-icon inline-flex">
+            <SocialIcon icon={icon} className="h-8 w-8 sm:h-11 sm:w-11" />
+          </span>
         </span>
       ))}
     </div>

@@ -8,7 +8,13 @@ import { useEffect, useRef, useState } from "react";
 
 const TARGET = 41;
 
-export default function LeadsStat() {
+export default function LeadsStat({
+  className = "",
+  startDelay = 0,
+}: {
+  className?: string;
+  startDelay?: number;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const [on, setOn] = useState(false);
   const [count, setCount] = useState(0);
@@ -27,15 +33,17 @@ export default function LeadsStat() {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((e) => e.isIntersecting)) {
-          setOn(true);
+          // Wait for the card's expand animation before ticking up.
+          const t = setTimeout(() => setOn(true), startDelay);
           observer.disconnect();
+          return () => clearTimeout(t);
         }
       },
       { threshold: 0.25 }
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [startDelay]);
 
   // Count up with an ease-out once visible.
   useEffect(() => {
@@ -59,7 +67,8 @@ export default function LeadsStat() {
   return (
     <div
       ref={ref}
-      className="absolute -left-4 bottom-10 w-48 rounded-2xl bg-white p-4 shadow-2xl sm:-left-8"
+      className={`absolute -left-4 bottom-10 w-48 rounded-2xl bg-white p-4 shadow-2xl sm:-left-8 ${className}`}
+      style={{ transformOrigin: "center" }}
     >
       <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
         Leads this month
