@@ -201,6 +201,58 @@ h5 {
   filter: blur(8px);
 }
 
+/* Water ripples — on hover, rings radiate out from wherever the cursor
+   light currently sits, like drops landing on the glass. Behind the text. */
+.btn-glow-ripple {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.45s ease;
+}
+.btn-glow:hover .btn-glow-ripple {
+  opacity: 1;
+}
+.btn-glow-ripple > span {
+  position: absolute;
+  left: var(--mx, 62%);
+  top: var(--my, 45%);
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  box-shadow:
+    inset 0 0 10px rgba(255, 255, 255, 0.12),
+    0 0 8px rgba(255, 255, 255, 0.08);
+  transform: scale(0);
+  opacity: 0;
+}
+.btn-glow:hover .btn-glow-ripple > span {
+  animation: ripple-out 2.2s cubic-bezier(0.2, 0.55, 0.35, 1) infinite;
+}
+.btn-glow:hover .btn-glow-ripple > span:nth-child(2) {
+  animation-delay: 0.73s;
+}
+.btn-glow:hover .btn-glow-ripple > span:nth-child(3) {
+  animation-delay: 1.46s;
+}
+@keyframes ripple-out {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.75;
+  }
+  100% {
+    transform: scale(18);
+    opacity: 0;
+  }
+}
+
 /* Chromatic rim — a whisper of spectral colour circling the edge, with
    brighter glints, for a lit-glass 3D feel. */
 @property --rim-angle {
@@ -389,6 +441,9 @@ h5 {
   .btn-glow-stars2,
   .btn-glow-stars3,
   .btn-glow-rim {
+    animation: none;
+  }
+  .btn-glow:hover .btn-glow-ripple > span {
     animation: none;
   }
   .bar-grow,

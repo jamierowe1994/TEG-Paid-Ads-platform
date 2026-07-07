@@ -59,6 +59,12 @@ export default function GlowButton({
       <span className="btn-glow-stars2" aria-hidden />
       <span className="btn-glow-stars3" aria-hidden />
       <span className="btn-glow-cursor" aria-hidden />
+      {/* Water ripples radiating from the light spot on hover */}
+      <span className="btn-glow-ripple" aria-hidden>
+        <span />
+        <span />
+        <span />
+      </span>
       <span className="relative">{children}</span>
     </Link>
   );

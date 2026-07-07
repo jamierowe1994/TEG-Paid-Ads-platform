@@ -351,10 +351,29 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Statement piece — big, bold, centre stage */}
+      <section className="px-6 py-32">
+        <Reveal>
+          <div className="mx-auto max-w-4xl text-center">
+            <blockquote className="text-4xl font-semibold leading-[1.15] tracking-tight text-gray-900 sm:text-5xl lg:text-6xl">
+              “The average person scrolls{" "}
+              <span className="text-[#E31F36]">
+                the height of Big&nbsp;Ben
+              </span>{" "}
+              through their feed every single day. Your next client is in
+              that scroll.”
+            </blockquote>
+            <p className="mt-10 text-xl font-semibold tracking-tight text-[#E31F36]">
+              #StopTheScroll
+            </p>
+          </div>
+        </Reveal>
+      </section>
+
       {/* Showcase — mocked ad creatives until real campaign shots arrive.
           TODO(showcase): swap mocks for real ads + add the filter-by-brand
           chips once enough brands are live. */}
-      <section className="border-t border-gray-100">
+      <section>
         <div className="mx-auto max-w-6xl px-6 py-28">
           <Reveal>
             <h2 className="mx-auto max-w-2xl text-center text-4xl font-semibold tracking-tight">
@@ -471,7 +490,7 @@ export default function LandingPage() {
       </section>
 
       {/* Packages */}
-      <section id="packages" className="border-t border-gray-100">
+      <section id="packages">
         <div className="mx-auto max-w-6xl px-6 py-28">
           <Reveal>
             <h2 className="text-center text-4xl font-semibold tracking-tight">
