@@ -57,22 +57,39 @@ export default function PhysicsIcons() {
       });
     };
 
-    // Spawn above the panel, staggered, with a bit of sideways energy.
+    // Spawn each chip exactly where its icon sits in the hero strip, so the
+    // drop reads as the same icon continuing seamlessly down into the panel.
     const init = () => {
+      const contRect = container.getBoundingClientRect();
       const w = container.clientWidth;
       const usable = w - SIZE - WALL_PAD * 2;
-      bodies = ICONS.map((_, i) => ({
-        x:
-          WALL_PAD +
-          (usable * i) / Math.max(ICONS.length - 1, 1) +
-          (Math.random() * 40 - 20),
-        y: -SIZE - i * 90 - Math.random() * 160,
-        vx: Math.random() * 200 - 100,
-        vy: 0,
-        a: Math.random() * 50 - 25,
-        va: Math.random() * 300 - 150,
-        asleep: false,
-      }));
+      bodies = ICONS.map((icon, i) => {
+        const heroIcon = document.querySelector(
+          `[data-hero-icon="${icon.name}"]`
+        );
+        let x: number;
+        let y: number;
+        if (heroIcon) {
+          const r = heroIcon.getBoundingClientRect();
+          // Centre the chip on the hero icon, in panel coordinates.
+          x = r.left + r.width / 2 - SIZE / 2 - contRect.left;
+          y = r.top - contRect.top;
+        } else {
+          x = WALL_PAD + (usable * i) / Math.max(ICONS.length - 1, 1);
+          y = -SIZE - i * 90;
+        }
+        return {
+          x: Math.min(Math.max(x, WALL_PAD), w - SIZE - WALL_PAD),
+          y,
+          // Straight-down fall — just a whisper of drift; the collisions
+          // provide the chaos once they land.
+          vx: Math.random() * 40 - 20,
+          vy: 0,
+          a: 0,
+          va: Math.random() * 160 - 80,
+          asleep: false,
+        };
+      });
       show(true);
       paint();
     };
@@ -190,12 +207,6 @@ export default function PhysicsIcons() {
       rafId.current = requestAnimationFrame(step);
     };
 
-    const reset = () => {
-      running.current = false;
-      cancelAnimationFrame(rafId.current);
-      show(false);
-    };
-
     // Environments without frames/observer just show the resting layout.
     if (
       typeof IntersectionObserver === "undefined" ||
@@ -205,17 +216,15 @@ export default function PhysicsIcons() {
       return;
     }
 
+    // One-time: fire the drop the first time the panel comes into view,
+    // then stop observing. Once fallen, they stay fallen.
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           if (entry.isIntersecting) {
             window.dispatchEvent(new Event("teg-icons-fall"));
             start();
-          } else if (entry.boundingClientRect.top > 0) {
-            // Scrolled back above the panel — return icons to the hero and
-            // arm the drop to replay.
-            window.dispatchEvent(new Event("teg-icons-return"));
-            reset();
+            observer.disconnect();
           }
         }
       },

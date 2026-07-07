@@ -78,40 +78,35 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Second screen — red rounded panel: bold copy left, photo +
-          infographic right, physics icons landing at the bottom */}
-      <section className="flex min-h-screen flex-col p-3">
-        <div className="relative flex flex-1 flex-col overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-[#E31F36] to-[#AE1226]">
-          <div className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-14 px-8 py-20 sm:px-12 lg:grid-cols-2">
+      {/* Second screen — red rounded panel, roughly half a viewport tall:
+          bold copy left, photo + infographic right, physics icons landing
+          at the bottom */}
+      <section className="p-3">
+        <div className="relative flex min-h-[55vh] flex-col overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-[#E31F36] to-[#AE1226]">
+          <div className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-10 px-8 py-12 sm:px-12 lg:grid-cols-2">
             <Reveal direction="left">
               <span className="inline-block rounded-full bg-white/15 px-4 py-1.5 text-sm font-medium text-white">
                 Built for agents
               </span>
-              <h2 className="mt-6 max-w-lg text-4xl font-semibold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl">
+              <h2 className="mt-5 max-w-lg text-4xl font-semibold leading-[1.05] tracking-tight text-white sm:text-5xl">
                 Paid ads that stop the scroll.
               </h2>
-              <p className="mt-6 max-w-md text-lg leading-relaxed text-white/75">
+              <p className="mt-5 max-w-md text-lg leading-relaxed text-white/75">
                 Seven businesses, one engine. We run your campaigns on the
                 platforms that matter, branded as you — so your patch sees
                 your face, not a faceless portal.
               </p>
-              <div className="mt-10 flex flex-wrap items-center gap-4">
+              <div className="mt-8">
                 <Link
                   href="/signup"
-                  className="rounded-xl bg-white px-8 py-4 text-base font-semibold text-gray-900 transition hover:bg-gray-100"
+                  className="inline-block rounded-xl bg-white px-8 py-4 text-base font-semibold text-gray-900 transition hover:bg-gray-100"
                 >
                   Start your campaign
                 </Link>
-                <a
-                  href="#packages"
-                  className="rounded-xl border border-white/30 px-8 py-4 text-base font-medium text-white transition hover:bg-white/10"
-                >
-                  See the packages
-                </a>
               </div>
             </Reveal>
             <Reveal direction="right" delay={120}>
-              <div className="relative mx-auto max-w-md lg:mr-0">
+              <div className="relative mx-auto max-w-sm lg:mr-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/images/paid-ads.jpg"
@@ -119,7 +114,7 @@ export default function LandingPage() {
                   className="aspect-[4/5] w-full rounded-3xl object-cover"
                 />
                 {/* Infographic overlay */}
-                <div className="absolute -left-4 bottom-12 w-52 rounded-2xl bg-white p-5 shadow-2xl sm:-left-8">
+                <div className="absolute -left-4 bottom-10 w-48 rounded-2xl bg-white p-4 shadow-2xl sm:-left-8">
                   <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
                     Leads this month
                   </p>
@@ -127,8 +122,8 @@ export default function LandingPage() {
                     ↑ 41%
                   </p>
                   <div className="mt-3 flex items-end gap-2">
-                    <div className="h-9 flex-1 rounded-md bg-red-100" />
-                    <div className="h-14 flex-1 rounded-md bg-[#E31F36]" />
+                    <div className="h-8 flex-1 rounded-md bg-red-100" />
+                    <div className="h-12 flex-1 rounded-md bg-[#E31F36]" />
                   </div>
                   <p className="mt-2 text-[10px] text-gray-400">
                     vs last month
@@ -138,7 +133,7 @@ export default function LandingPage() {
             </Reveal>
           </div>
           {/* Landing zone so settled icons don't sit on the content */}
-          <div className="h-28" />
+          <div className="h-20" />
           {/* The hero's icons fall in here, turn to colour and bounce */}
           <PhysicsIcons />
         </div>
