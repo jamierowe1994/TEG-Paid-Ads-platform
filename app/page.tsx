@@ -132,7 +132,7 @@ export default function LandingPage() {
               <div className="mt-8">
                 <Link
                   href="/signup"
-                  className="inline-block rounded-xl bg-white px-8 py-4 text-base font-semibold text-gray-900 transition hover:bg-gray-100"
+                  className="btn-press inline-block rounded-xl bg-white px-8 py-4 text-base font-semibold text-gray-900 shadow-lg transition hover:bg-gray-100"
                 >
                   Start your campaign
                 </Link>
@@ -576,7 +576,7 @@ export default function LandingPage() {
                     className={`mt-8 rounded-xl py-3 text-center text-sm font-medium transition ${
                       p.highlighted
                         ? "btn-group"
-                        : "border border-gray-200 text-gray-900 hover:bg-gray-50"
+                        : "btn-press border border-gray-200 text-gray-900 hover:bg-gray-50"
                     }`}
                   >
                     Choose {p.name}
@@ -599,7 +599,7 @@ export default function LandingPage() {
               </h2>
               <Link
                 href="/signup"
-                className="rounded-xl bg-white px-8 py-4 text-base font-semibold text-gray-900 transition hover:bg-gray-200"
+                className="btn-press rounded-xl bg-white px-8 py-4 text-base font-semibold text-gray-900 shadow-lg transition hover:bg-gray-200"
               >
                 Choose your package
               </Link>
