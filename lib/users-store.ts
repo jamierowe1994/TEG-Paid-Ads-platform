@@ -18,10 +18,16 @@ export interface StoredUser extends UserProfile {
   passwordHash: string;
 }
 
-// Strip the password hash before anything leaves the server.
+// Agent-facing: strip the password hash AND internal admin notes.
 export function toPublic(user: StoredUser): UserProfile {
-  const { passwordHash: _omit, ...pub } = user;
+  const { passwordHash: _pw, adminNotes: _notes, ...pub } = user;
   return pub;
+}
+
+// Admin-facing: strip only the password hash (keeps notes, location, stage).
+export function toAdmin(user: StoredUser): UserProfile {
+  const { passwordHash: _pw, ...rest } = user;
+  return rest;
 }
 
 // ── Postgres row mapping ─────────────────────────────────────────────────
@@ -39,6 +45,9 @@ interface UserRow {
   created_at: string | Date;
   password_hash: string;
   meta_campaign_id: string | null;
+  location: string | null;
+  onboarding_stage: string | null;
+  admin_notes: unknown;
 }
 
 function fromRow(row: UserRow): StoredUser {
@@ -58,6 +67,12 @@ function fromRow(row: UserRow): StoredUser {
     createdAt: new Date(row.created_at).toISOString(),
     passwordHash: row.password_hash,
     metaCampaignId: row.meta_campaign_id,
+    location: row.location,
+    onboardingStage:
+      (row.onboarding_stage as StoredUser["onboardingStage"]) ?? "signed_up",
+    adminNotes: (Array.isArray(row.admin_notes)
+      ? row.admin_notes
+      : []) as StoredUser["adminNotes"],
   };
 }
 
@@ -102,8 +117,9 @@ export async function createUser(user: StoredUser): Promise<void> {
     await q(
       `INSERT INTO users
          (id, name, email, mobile, photo, brand_id, platforms, goal,
-          package_id, paid, created_at, password_hash, meta_campaign_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+          package_id, paid, created_at, password_hash, meta_campaign_id,
+          location, onboarding_stage, admin_notes)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
       [
         user.id,
         user.name,
@@ -118,6 +134,9 @@ export async function createUser(user: StoredUser): Promise<void> {
         user.createdAt,
         user.passwordHash,
         user.metaCampaignId ?? null,
+        user.location ?? null,
+        user.onboardingStage ?? "signed_up",
+        JSON.stringify(user.adminNotes ?? []),
       ]
     );
     return;
@@ -139,7 +158,8 @@ export async function updateUser(
       `UPDATE users SET
          name = $2, mobile = $3, photo = $4, brand_id = $5, platforms = $6,
          goal = $7, package_id = $8, paid = $9, password_hash = $10,
-         meta_campaign_id = $11
+         meta_campaign_id = $11, location = $12, onboarding_stage = $13,
+         admin_notes = $14
        WHERE id = $1`,
       [
         next.id,
@@ -153,6 +173,9 @@ export async function updateUser(
         next.paid,
         next.passwordHash,
         next.metaCampaignId ?? null,
+        next.location ?? null,
+        next.onboardingStage ?? "signed_up",
+        JSON.stringify(next.adminNotes ?? []),
       ]
     );
     return next;
@@ -165,15 +188,15 @@ export async function updateUser(
   return all[idx];
 }
 
-// Admin listing — public profiles only, newest first.
+// Admin listing — full records (with notes/location/stage), newest first.
 export async function listUsers(): Promise<UserProfile[]> {
   if (hasDb()) {
     const rows = await q<UserRow>(
       "SELECT * FROM users ORDER BY created_at DESC"
     );
-    return rows.map((r) => toPublic(fromRow(r)));
+    return rows.map((r) => toAdmin(fromRow(r)));
   }
   return (await readAllFile())
-    .map(toPublic)
+    .map(toAdmin)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }

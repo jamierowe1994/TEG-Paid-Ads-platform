@@ -1,4 +1,10 @@
 import type { BrandId } from "./brands";
+import type { OnboardingStage } from "./onboarding";
+
+export interface AdminNote {
+  at: string;
+  text: string;
+}
 
 export interface UserProfile {
   id: string;
@@ -15,6 +21,10 @@ export interface UserProfile {
   // The Meta campaign this agent's ads run under — set by the admin, used to
   // pull per-agent stats/leads once Meta is connected.
   metaCampaignId?: string | null;
+  // Admin-managed fields:
+  location?: string | null; // the agent's town / patch
+  onboardingStage?: OnboardingStage;
+  adminNotes?: AdminNote[]; // internal — stripped before reaching the agent
 }
 
 // Lead funnel stages. Progressive: each stage reveals the next relevant

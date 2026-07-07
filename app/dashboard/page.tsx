@@ -5,16 +5,8 @@ import Link from "next/link";
 import { getUser, fetchLeads } from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
 import { packageById } from "@/lib/packages";
+import { ONBOARDING_STAGES, stageIndex } from "@/lib/onboarding";
 import type { UserProfile, Lead } from "@/lib/types";
-
-// Campaign preparation timeline — statuses will be driven by the admin
-// backend later; for now every new account sits at "Creatives in production".
-const CAMPAIGN_STEPS = [
-  { label: "Signed up", done: true },
-  { label: "Creatives in production", done: false, current: true },
-  { label: "Campaign review", done: false },
-  { label: "Ads live", done: false },
-];
 
 export default function DashboardOverview() {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -35,6 +27,14 @@ export default function DashboardOverview() {
   const converted = leads.filter(
     (l) => l.stage === "converted" || l.stage === "pushed"
   ).length;
+
+  // Timeline driven by the admin-set onboarding stage.
+  const curStage = stageIndex(user.onboardingStage);
+  const campaignSteps = ONBOARDING_STAGES.map((s, i) => ({
+    label: s.label,
+    done: i < curStage,
+    current: i === curStage && user.onboardingStage !== "paused",
+  }));
 
   const stats = [
     { label: "Impressions", value: "—", note: "Live once ads launch" },
@@ -82,11 +82,15 @@ export default function DashboardOverview() {
             className="rounded-full px-3 py-1 text-xs font-medium"
             style={{ backgroundColor: brand.accentSoft, color: brand.accent }}
           >
-            In preparation
+            {user.onboardingStage === "paused"
+              ? "Paused"
+              : user.onboardingStage === "live"
+                ? "Ads live"
+                : "In preparation"}
           </span>
         </div>
         <div className="mt-8 flex items-center">
-          {CAMPAIGN_STEPS.map((step, i) => (
+          {campaignSteps.map((step, i) => (
             <div key={step.label} className="flex flex-1 items-center last:flex-none">
               <div className="flex flex-col items-center">
                 <div
@@ -117,7 +121,7 @@ export default function DashboardOverview() {
                   {step.label}
                 </span>
               </div>
-              {i < CAMPAIGN_STEPS.length - 1 && (
+              {i < campaignSteps.length - 1 && (
                 <div
                   className="mx-2 mb-6 h-px flex-1"
                   style={{

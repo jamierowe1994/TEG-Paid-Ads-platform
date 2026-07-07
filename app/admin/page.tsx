@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BRANDS, brandById } from "@/lib/brands";
-import { packageById } from "@/lib/packages";
+import { packageById, PACKAGES } from "@/lib/packages";
+import { stageLabel } from "@/lib/onboarding";
 import BrandMark from "@/components/BrandMark";
+import AgentProfile from "@/components/AgentProfile";
 import type { UserProfile } from "@/lib/types";
 
 // Admin backend. Password-gated (ADMIN_PASSWORD env var, default
@@ -60,10 +62,16 @@ export default function AdminPage() {
   const [starts, setStarts] = useState<SignupEvent[]>([]);
   const [leadSummaries, setLeadSummaries] = useState<LeadSummary[]>([]);
   const [selected, setSelected] = useState<FeedbackItem | null>(null);
-  const [resetResult, setResetResult] = useState<{
-    email: string;
-    temporaryPassword: string;
-  } | null>(null);
+
+  // CRM view state
+  const [selectedAgent, setSelectedAgent] = useState<UserProfile | null>(null);
+  const [crmSort, setCrmSort] = useState<"recent" | "oldest" | "payHigh" | "payLow">(
+    "recent"
+  );
+  const [crmPackage, setCrmPackage] = useState<"all" | "starter" | "growth" | "scale">(
+    "all"
+  );
+  const [crmSearch, setCrmSearch] = useState("");
 
   async function loadData(pass: string): Promise<boolean> {
     const headers = { Authorization: `Bearer ${pass}` };
@@ -81,15 +89,11 @@ export default function AdminPage() {
     return true;
   }
 
-  async function saveCampaignId(userId: string, metaCampaignId: string) {
-    await fetch("/api/admin/users", {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${password}`,
-      },
-      body: JSON.stringify({ userId, metaCampaignId }),
-    });
+  // Merge an updated agent record back into the list (and the open drawer)
+  // after an edit in the profile, without a full reload.
+  function applyAgentUpdate(u: UserProfile) {
+    setUsers((prev) => prev.map((x) => (x.id === u.id ? u : x)));
+    setSelectedAgent((cur) => (cur && cur.id === u.id ? u : cur));
   }
 
   async function signIn() {
@@ -116,17 +120,36 @@ export default function AdminPage() {
     });
   }, []);
 
-  async function resetPassword(user: UserProfile) {
-    const res = await fetch("/api/admin/reset-password", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${password}`,
-      },
-      body: JSON.stringify({ userId: user.id }),
+  // Filtered + sorted agents for the CRM table.
+  const crmUsers = useMemo(() => {
+    const q = crmSearch.trim().toLowerCase();
+    let list = users.filter((u) => {
+      if (crmPackage !== "all" && u.packageId !== crmPackage) return false;
+      if (
+        q &&
+        !`${u.name} ${u.email} ${u.location ?? ""}`.toLowerCase().includes(q)
+      )
+        return false;
+      return true;
     });
-    if (res.ok) setResetResult(await res.json());
-  }
+    const price = (u: UserProfile) => packageById(u.packageId)?.price ?? 0;
+    list = [...list].sort((a, b) => {
+      switch (crmSort) {
+        case "recent":
+          return b.createdAt.localeCompare(a.createdAt);
+        case "oldest":
+          return a.createdAt.localeCompare(b.createdAt);
+        case "payHigh":
+          return price(b) - price(a);
+        case "payLow":
+          return price(a) - price(b);
+      }
+    });
+    return list;
+  }, [users, crmSearch, crmPackage, crmSort]);
+
+  const summaryFor = (userId: string) =>
+    leadSummaries.find((s) => s.userId === userId);
 
   // Drop-offs: started the wizard but no completed account with that email.
   const dropOffs = useMemo(() => {
@@ -364,35 +387,72 @@ export default function AdminPage() {
               />
             </div>
 
-            {/* Signups table */}
+            {/* Signups — filterable, click a row for the full record */}
             <section className="mt-10">
-              <h2 className="text-lg font-semibold">
-                Signed-up agents{" "}
-                <span className="text-sm font-normal text-gray-400">
-                  {users.length}
-                </span>
-              </h2>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold">
+                  Signed-up agents{" "}
+                  <span className="text-sm font-normal text-gray-400">
+                    {crmUsers.length}
+                    {crmUsers.length !== users.length && ` of ${users.length}`}
+                  </span>
+                </h2>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    value={crmSearch}
+                    onChange={(e) => setCrmSearch(e.target.value)}
+                    placeholder="Search name, email, location…"
+                    className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm outline-none focus:border-gray-900"
+                  />
+                  <select
+                    value={crmPackage}
+                    onChange={(e) =>
+                      setCrmPackage(e.target.value as typeof crmPackage)
+                    }
+                    className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 outline-none focus:border-gray-900"
+                  >
+                    <option value="all">All packages</option>
+                    {PACKAGES.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} (£{p.price})
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={crmSort}
+                    onChange={(e) => setCrmSort(e.target.value as typeof crmSort)}
+                    className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 outline-none focus:border-gray-900"
+                  >
+                    <option value="recent">Newest signup</option>
+                    <option value="oldest">Oldest signup</option>
+                    <option value="payHigh">Pays most</option>
+                    <option value="payLow">Pays least</option>
+                  </select>
+                </div>
+              </div>
+
               <div className="mt-4 overflow-x-auto rounded-2xl border border-gray-200 bg-white">
                 <table className="w-full text-left text-sm">
                   <thead className="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-400">
                     <tr>
                       <th className="px-5 py-3 font-medium">Agent</th>
                       <th className="px-5 py-3 font-medium">Business</th>
+                      <th className="px-5 py-3 font-medium">Stage</th>
                       <th className="px-5 py-3 font-medium">Package</th>
                       <th className="px-5 py-3 font-medium">Signed up</th>
-                      <th className="px-5 py-3 font-medium">Meta campaign</th>
-                      <th className="px-5 py-3 font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                    {users.map((u) => {
+                    {crmUsers.map((u) => {
                       const b = brandById(u.brandId);
                       return (
-                        <tr key={u.id}>
+                        <tr
+                          key={u.id}
+                          onClick={() => setSelectedAgent(u)}
+                          className="cursor-pointer transition hover:bg-gray-50"
+                        >
                           <td className="px-5 py-3">
-                            <p className="font-medium text-gray-800">
-                              {u.name}
-                            </p>
+                            <p className="font-medium text-gray-800">{u.name}</p>
                             <p className="text-xs text-gray-400">{u.email}</p>
                           </td>
                           <td className="px-5 py-3">
@@ -405,6 +465,11 @@ export default function AdminPage() {
                             </span>
                           </td>
                           <td className="px-5 py-3">
+                            <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+                              {stageLabel(u.onboardingStage)}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3">
                             {packageById(u.packageId)?.name ?? u.packageId}
                             <span className="ml-1 text-xs text-gray-400">
                               £{packageById(u.packageId)?.price}/mo
@@ -413,36 +478,18 @@ export default function AdminPage() {
                           <td className="px-5 py-3 text-gray-500">
                             {new Date(u.createdAt).toLocaleDateString("en-GB")}
                           </td>
-                          <td className="px-5 py-3">
-                            {/* Links this agent to their Meta campaign so
-                                stats/leads are theirs alone. Saves on blur. */}
-                            <input
-                              placeholder="Campaign ID"
-                              defaultValue={u.metaCampaignId ?? ""}
-                              onBlur={(e) =>
-                                saveCampaignId(u.id, e.target.value)
-                              }
-                              className="w-32 rounded-lg border border-gray-200 px-2 py-1.5 text-xs outline-none focus:border-gray-900"
-                            />
-                          </td>
-                          <td className="px-5 py-3">
-                            <button
-                              onClick={() => resetPassword(u)}
-                              className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
-                            >
-                              Reset password
-                            </button>
-                          </td>
                         </tr>
                       );
                     })}
-                    {users.length === 0 && (
+                    {crmUsers.length === 0 && (
                       <tr>
                         <td
-                          colSpan={6}
+                          colSpan={5}
                           className="px-5 py-12 text-center text-sm text-gray-400"
                         >
-                          No signups yet.
+                          {users.length === 0
+                            ? "No signups yet."
+                            : "No agents match those filters."}
                         </td>
                       </tr>
                     )}
@@ -715,33 +762,15 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Password reset result */}
-      {resetResult && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/30 p-6 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-semibold">Password reset</h2>
-            <p className="mt-1 text-sm text-gray-500">
-              New temporary password for{" "}
-              <span className="font-medium text-gray-800">
-                {resetResult.email}
-              </span>
-              :
-            </p>
-            <div className="mt-4 rounded-xl bg-gray-50 p-4 text-center font-mono text-lg font-semibold tracking-wide">
-              {resetResult.temporaryPassword}
-            </div>
-            <p className="mt-3 text-xs text-gray-400">
-              Send this to the agent — it's shown once only. Automatic reset
-              emails arrive once the info@ mailbox is connected.
-            </p>
-            <button
-              onClick={() => setResetResult(null)}
-              className="mt-5 w-full rounded-xl bg-gray-900 py-2.5 text-sm font-medium text-white hover:bg-gray-700"
-            >
-              Done
-            </button>
-          </div>
-        </div>
+      {/* Agent CRM record */}
+      {selectedAgent && (
+        <AgentProfile
+          agent={selectedAgent}
+          summary={summaryFor(selectedAgent.id)}
+          adminPassword={password}
+          onClose={() => setSelectedAgent(null)}
+          onUpdated={applyAgentUpdate}
+        />
       )}
     </main>
   );

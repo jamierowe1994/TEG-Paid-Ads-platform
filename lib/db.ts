@@ -109,6 +109,9 @@ CREATE INDEX IF NOT EXISTS referrals_to_idx ON referrals(to_brand_id);
 
 -- Columns added after first release (safe to re-run)
 ALTER TABLE users ADD COLUMN IF NOT EXISTS meta_campaign_id TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS location TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_stage TEXT DEFAULT 'signed_up';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_notes JSONB DEFAULT '[]';
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS referral_id TEXT;
 `;
 

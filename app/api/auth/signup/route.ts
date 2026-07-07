@@ -63,6 +63,9 @@ export async function POST(req: NextRequest) {
     paid: true,
     createdAt: new Date().toISOString(),
     passwordHash: hashPassword(password),
+    location: null,
+    onboardingStage: "signed_up",
+    adminNotes: [],
   };
 
   await createUser(user);
