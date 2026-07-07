@@ -53,7 +53,6 @@ export default function GlowButton({
       onPointerMove={onMove}
       onPointerLeave={onLeave}
     >
-      <span className="btn-glass-corners" aria-hidden />
       <span className="btn-glass-shine" aria-hidden />
       <span className="btn-glass-rim" aria-hidden />
       <span className="relative z-[2]">{children}</span>

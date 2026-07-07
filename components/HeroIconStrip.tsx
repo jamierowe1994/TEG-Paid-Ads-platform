@@ -41,7 +41,7 @@ export default function HeroIconStrip() {
             } as React.CSSProperties
           }
         >
-          <SocialIcon icon={icon} className="h-10 w-10 sm:h-14 sm:w-14" />
+          <SocialIcon icon={icon} className="h-8 w-8 sm:h-11 sm:w-11" />
         </span>
       ))}
     </div>

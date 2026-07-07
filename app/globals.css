@@ -94,23 +94,29 @@ h5 {
   overflow: hidden;
   border-radius: 9999px;
   color: #0f1115;
+  /* Clean off-white body with a faint top sheen — the depth comes from the
+     shadows below, not colour. */
   background:
     linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.72) 0%,
-      rgba(255, 255, 255, 0.28) 26%,
-      rgba(255, 255, 255, 0.06) 52%
-    ),
-    rgba(255, 255, 255, 0.32);
-  -webkit-backdrop-filter: blur(9px) saturate(150%) brightness(1.04);
-  backdrop-filter: blur(9px) saturate(150%) brightness(1.04);
+      180deg,
+      rgba(255, 255, 255, 0.95) 0%,
+      rgba(255, 255, 255, 0.7) 45%,
+      rgba(244, 245, 248, 0.72) 100%
+    );
+  -webkit-backdrop-filter: blur(6px) saturate(120%);
+  backdrop-filter: blur(6px) saturate(120%);
+  /* Depth is all shadow: bright top inner highlight, dark bottom inner
+     shadow for the carved look, a hairline edge, a close contact shadow and
+     a heavy soft drop shadow underneath. */
   box-shadow:
-    inset 3px 3px 0 -3px rgba(255, 255, 255, 0.95), /* crisp top-left bevel */
-    inset -2px -2px 0 -3px rgba(255, 255, 255, 0.5), /* faint opposite bevel */
-    inset 0 0 8px 1px rgba(255, 255, 255, 0.5), /* inner rim = glass thickness */
-    inset 0 1px 1px rgba(255, 255, 255, 0.7),
-    0 0 0 1px rgba(17, 24, 39, 0.06), /* hairline edge on white */
-    0 12px 28px -8px rgba(20, 14, 10, 0.22); /* float shadow */
+    inset 0 2px 1px rgba(255, 255, 255, 1),
+    inset 0 -3px 4px rgba(17, 24, 39, 0.07),
+    inset 2px 0 3px -1px rgba(255, 255, 255, 0.7),
+    inset -2px 0 3px -1px rgba(17, 24, 39, 0.05),
+    0 1px 0 rgba(255, 255, 255, 0.9),
+    0 0 0 1px rgba(17, 24, 39, 0.05),
+    0 3px 8px rgba(17, 24, 39, 0.08),
+    0 22px 42px -14px rgba(17, 24, 39, 0.32);
   transform: perspective(720px) rotateX(var(--rx, 0deg))
     rotateY(var(--ry, 0deg)) translateY(var(--ty, 0px));
   transition:
@@ -119,25 +125,14 @@ h5 {
 }
 .btn-glass:hover {
   box-shadow:
-    inset 3px 3px 0 -3px rgba(255, 255, 255, 1),
-    inset -2px -2px 0 -3px rgba(255, 255, 255, 0.55),
-    inset 0 0 10px 1px rgba(255, 255, 255, 0.6),
-    inset 0 1px 1px rgba(255, 255, 255, 0.8),
-    0 0 0 1px rgba(17, 24, 39, 0.08),
-    0 18px 40px -10px rgba(20, 14, 10, 0.28);
-}
-
-/* Chromatic corner light — colour pooled in two opposite corners (not a
-   full ring), like thick edges refracting light. */
-.btn-glass-corners {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  z-index: 0;
-  background:
-    radial-gradient(60% 82% at 0% -4%, rgba(255, 150, 120, 0.28), transparent 46%),
-    radial-gradient(62% 84% at 100% 104%, rgba(120, 165, 255, 0.24), transparent 48%);
+    inset 0 2px 1px rgba(255, 255, 255, 1),
+    inset 0 -3px 5px rgba(17, 24, 39, 0.08),
+    inset 2px 0 3px -1px rgba(255, 255, 255, 0.8),
+    inset -2px 0 3px -1px rgba(17, 24, 39, 0.06),
+    0 1px 0 rgba(255, 255, 255, 0.9),
+    0 0 0 1px rgba(17, 24, 39, 0.06),
+    0 4px 10px rgba(17, 24, 39, 0.1),
+    0 30px 54px -16px rgba(17, 24, 39, 0.38);
 }
 
 /* Cursor-driven shine — soft highlight that drifts with the pointer; mostly
@@ -187,12 +182,14 @@ h5 {
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   mask-composite: exclude;
-  opacity: 0;
+  /* Always running — the chromatic edge sweeps around constantly, brighter
+     on hover. */
+  opacity: 0.7;
   transition: opacity 0.45s ease;
   animation: rim-spin 6s linear infinite;
 }
 .btn-glass:hover .btn-glass-rim {
-  opacity: 0.95;
+  opacity: 1;
 }
 @keyframes rim-spin {
   to {
@@ -297,21 +294,33 @@ h5 {
    still until their turn. --icon-color is the per-icon brand colour. */
 .hero-pop-icon {
   animation-name: hero-pop;
-  animation-timing-function: cubic-bezier(0.34, 1.15, 0.5, 1);
+  animation-timing-function: cubic-bezier(0.34, 1.2, 0.5, 1);
   animation-fill-mode: both;
+  transform-origin: center bottom;
   will-change: transform, color;
 }
+/* Squeeze-up: a quick anticipation squash, then it's pushed up — stretching
+   taller and narrower (squeezed together) and getting bigger — colour
+   bleeding in at the top, before settling back. */
 @keyframes hero-pop {
   0% {
-    transform: translateY(0) scale(1);
+    transform: translateY(0) scale(1, 1);
     color: #111827;
   }
-  50% {
-    transform: translateY(-18px) scale(1.12);
+  14% {
+    transform: translateY(2px) scale(1.12, 0.82);
+    color: #111827;
+  }
+  52% {
+    transform: translateY(-20px) scale(0.92, 1.28);
+    color: var(--icon-color, #111827);
+  }
+  72% {
+    transform: translateY(-12px) scale(1.06, 1.06);
     color: var(--icon-color, #111827);
   }
   100% {
-    transform: translateY(0) scale(1);
+    transform: translateY(0) scale(1, 1);
     color: #111827;
   }
 }
