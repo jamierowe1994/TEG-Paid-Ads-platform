@@ -7,8 +7,8 @@ import { useEffect, useRef } from "react";
 // moving 1:1. Very understated. Disabled for reduced-motion.
 
 export default function Parallax({
-  speed = 0.18,
-  max = 180,
+  speed = 0.32,
+  max = 300,
   className = "",
   children,
 }: {

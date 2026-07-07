@@ -83,7 +83,7 @@ export default function BackgroundTexture() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none fixed inset-0 -z-10 opacity-70"
+      className="pointer-events-none fixed inset-0 -z-10 opacity-80"
     >
       <svg
         className="h-full w-full"
@@ -91,7 +91,7 @@ export default function BackgroundTexture() {
         preserveAspectRatio="xMidYMid slice"
         fill="none"
       >
-        <g stroke="#eef0f3" vectorEffect="non-scaling-stroke">
+        <g stroke="#d9dce2" vectorEffect="non-scaling-stroke">
           {ISLANDS.map((isl, i) => (
             <g key={i} transform={`translate(${isl.x} ${isl.y})`}>
               <g
