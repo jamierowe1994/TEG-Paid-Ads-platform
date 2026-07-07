@@ -121,9 +121,10 @@ export default function LandingPage() {
             </Reveal>
           </div>
 
-          {/* One group, seven businesses — inside the panel; the falling
-              icons treat each pill as solid and bounce off it */}
-          <div className="mx-auto w-full max-w-5xl px-8 pb-4">
+          {/* One group, seven businesses — inside the panel. Sits above the
+              physics layer, so falling icons pass behind the pills and land
+              at the bottom of the box. */}
+          <div className="relative z-10 mx-auto w-full max-w-5xl px-8 pb-4">
             <p className="text-center text-xs font-medium uppercase tracking-widest text-white/50">
               One group, seven businesses
             </p>
@@ -131,7 +132,6 @@ export default function LandingPage() {
               {BRANDS.map((b) => (
                 <span
                   key={b.id}
-                  data-icon-obstacle
                   className="rounded-full border border-white/25 px-4 py-2 text-sm font-medium text-white/90"
                 >
                   {b.name}
@@ -142,7 +142,7 @@ export default function LandingPage() {
 
           {/* Landing zone so settled icons don't sit on the content */}
           <div className="h-20" />
-          {/* The hero's icons fall in here and bounce off the brand pills */}
+          {/* The hero's icons fall in behind the pills and hit the bottom */}
           <PhysicsIcons />
         </div>
       </section>
@@ -355,7 +355,7 @@ export default function LandingPage() {
       <section className="px-6 py-32">
         <Reveal>
           <div className="mx-auto max-w-4xl text-center">
-            <blockquote className="text-4xl font-semibold leading-[1.15] tracking-tight text-gray-900 sm:text-5xl lg:text-6xl">
+            <blockquote className="text-4xl font-bold leading-[1.12] tracking-[-0.04em] text-gray-900 sm:text-5xl lg:text-6xl">
               “The average person scrolls{" "}
               <span className="text-[#E31F36]">
                 the height of Big&nbsp;Ben
