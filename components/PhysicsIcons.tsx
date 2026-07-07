@@ -3,32 +3,39 @@
 import { useEffect, useRef } from "react";
 import ICONS, { SocialIcon } from "./SocialIcons";
 
-// Platform icons falling into the red panel with real-world-ish physics:
-// gravity, bouncing off the floor/walls and each other, tumbling rotation,
-// then settling naturally to rest. Each icon rides a white circular chip in
-// its brand colour — the "black icons turn to colour as they hit the box".
-//
-// Tiny purpose-built simulation (rAF + refs, no per-frame React renders),
-// coordinated with the hero strip via the teg-icons-fall/return events.
+// The hero's platform icons falling into the red panel with physics:
+// gravity, bouncing off the floor, the walls, each other AND the brand-name
+// pills (elements marked data-icon-obstacle), tumbling until they settle.
+// The falling icons are the icons themselves — same size, same black as the
+// hero strip, no chips — so the drop reads as the exact same icons
+// continuing down from the section above. One-time animation.
 
-const SIZE = 60; // chip diameter, px
+const FALLBACK_SIZE = 56;
 const GRAVITY = 2400; // px/s²
 const FLOOR_PAD = 20;
 const WALL_PAD = 10;
+const OBSTACLE_REST = 0.5; // bounciness off brand pills
 
 interface Body {
   x: number;
   y: number;
   vx: number;
   vy: number;
-  a: number; // rotation, deg
-  va: number; // angular velocity, deg/s
+  a: number;
+  va: number;
   asleep: boolean;
+}
+
+interface Rect {
+  l: number;
+  t: number;
+  r: number;
+  b: number;
 }
 
 export default function PhysicsIcons() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const chipRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const iconRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const rafId = useRef(0);
   const running = useRef(false);
 
@@ -40,11 +47,13 @@ export default function PhysicsIcons() {
     )?.matches;
 
     let bodies: Body[] = [];
+    let obstacles: Rect[] = [];
+    let size = FALLBACK_SIZE;
     let last = 0;
 
     const paint = () => {
       bodies.forEach((b, i) => {
-        const el = chipRefs.current[i];
+        const el = iconRefs.current[i];
         if (el) {
           el.style.transform = `translate(${b.x}px, ${b.y}px) rotate(${b.a}deg)`;
         }
@@ -52,17 +61,44 @@ export default function PhysicsIcons() {
     };
 
     const show = (visible: boolean) => {
-      chipRefs.current.forEach((el) => {
-        if (el) el.style.opacity = visible ? "1" : "0";
+      iconRefs.current.forEach((el) => {
+        if (el) {
+          el.style.opacity = visible ? "1" : "0";
+          el.style.width = `${size}px`;
+          el.style.height = `${size}px`;
+        }
       });
     };
 
-    // Spawn each chip exactly where its icon sits in the hero strip, so the
-    // drop reads as the same icon continuing seamlessly down into the panel.
+    // Brand pills (and anything else tagged) become solid objects, measured
+    // in panel coordinates. The panel is the container's parent.
+    const measureObstacles = () => {
+      const contRect = container.getBoundingClientRect();
+      const panel = container.parentElement ?? container;
+      obstacles = [...panel.querySelectorAll("[data-icon-obstacle]")].map(
+        (el) => {
+          const r = el.getBoundingClientRect();
+          return {
+            l: r.left - contRect.left,
+            t: r.top - contRect.top,
+            r: r.right - contRect.left,
+            b: r.bottom - contRect.top,
+          };
+        }
+      );
+    };
+
+    // Spawn each icon exactly where it sits in the hero strip — same spot,
+    // same size, so the fall is seamless.
     const init = () => {
       const contRect = container.getBoundingClientRect();
       const w = container.clientWidth;
-      const usable = w - SIZE - WALL_PAD * 2;
+      const firstHero = document.querySelector("[data-hero-icon]");
+      if (firstHero) {
+        size = Math.round(firstHero.getBoundingClientRect().width) || size;
+      }
+      const usable = w - size - WALL_PAD * 2;
+      measureObstacles();
       bodies = ICONS.map((icon, i) => {
         const heroIcon = document.querySelector(
           `[data-hero-icon="${icon.name}"]`
@@ -71,18 +107,15 @@ export default function PhysicsIcons() {
         let y: number;
         if (heroIcon) {
           const r = heroIcon.getBoundingClientRect();
-          // Centre the chip on the hero icon, in panel coordinates.
-          x = r.left + r.width / 2 - SIZE / 2 - contRect.left;
+          x = r.left - contRect.left;
           y = r.top - contRect.top;
         } else {
           x = WALL_PAD + (usable * i) / Math.max(ICONS.length - 1, 1);
-          y = -SIZE - i * 90;
+          y = -size - i * 90;
         }
         return {
-          x: Math.min(Math.max(x, WALL_PAD), w - SIZE - WALL_PAD),
+          x: Math.min(Math.max(x, WALL_PAD), w - size - WALL_PAD),
           y,
-          // Straight-down fall — just a whisper of drift; the collisions
-          // provide the chaos once they land.
           vx: Math.random() * 40 - 20,
           vy: 0,
           a: 0,
@@ -94,14 +127,13 @@ export default function PhysicsIcons() {
       paint();
     };
 
-    // Instant resting layout (reduced motion / no-JS-frames fallback).
     const restLayout = () => {
       const w = container.clientWidth;
       const h = container.clientHeight;
-      const usable = w - SIZE - WALL_PAD * 2;
+      const usable = w - size - WALL_PAD * 2;
       bodies = ICONS.map((_, i) => ({
         x: WALL_PAD + (usable * i) / Math.max(ICONS.length - 1, 1),
-        y: h - SIZE - FLOOR_PAD,
+        y: h - size - FLOOR_PAD,
         vx: 0,
         vy: 0,
         a: 0,
@@ -112,10 +144,29 @@ export default function PhysicsIcons() {
       paint();
     };
 
+    // Settle-or-bounce shared by the floor and the tops of obstacles.
+    const land = (b: Body, impactSpeed: number) => {
+      if (impactSpeed > 130) {
+        b.vy = -impactSpeed * 0.55;
+        b.vx += Math.random() * 70 - 35;
+        b.va = -b.va * 0.6 + (Math.random() * 100 - 50);
+      } else {
+        b.vy = 0;
+        b.vx *= 0.9;
+        b.va *= 0.86;
+        if (Math.abs(b.vx) < 8 && Math.abs(b.va) < 12) {
+          b.vx = 0;
+          b.va = 0;
+          b.asleep = true;
+        }
+      }
+    };
+
     const step = (t: number) => {
       const w = container.clientWidth;
       const h = container.clientHeight;
-      const floor = h - SIZE - FLOOR_PAD;
+      const floor = h - size - FLOOR_PAD;
+      const R = size / 2;
       const dt = Math.min((t - last) / 1000, 1 / 30);
       last = t;
 
@@ -130,34 +181,49 @@ export default function PhysicsIcons() {
         if (b.x < WALL_PAD) {
           b.x = WALL_PAD;
           b.vx = Math.abs(b.vx) * 0.7;
-        } else if (b.x > w - SIZE - WALL_PAD) {
-          b.x = w - SIZE - WALL_PAD;
+        } else if (b.x > w - size - WALL_PAD) {
+          b.x = w - size - WALL_PAD;
           b.vx = -Math.abs(b.vx) * 0.7;
+        }
+
+        // Brand pills — solid: bounce off, or come to rest on top
+        const cx = b.x + R;
+        const cy = b.y + R;
+        for (const o of obstacles) {
+          const nx = Math.min(Math.max(cx, o.l), o.r);
+          const ny = Math.min(Math.max(cy, o.t), o.b);
+          const dx = cx - nx;
+          const dy = cy - ny;
+          const d2 = dx * dx + dy * dy;
+          if (d2 < R * R) {
+            const d = Math.sqrt(d2) || 1;
+            const ux = d2 === 0 ? 0 : dx / d;
+            const uy = d2 === 0 ? -1 : dy / d;
+            const push = R - (d2 === 0 ? 0 : d);
+            b.x += ux * push;
+            b.y += uy * push;
+            const vn = b.vx * ux + b.vy * uy;
+            if (vn < 0) {
+              if (uy < -0.7) {
+                // Hit the top of a pill — can settle there like a ledge
+                land(b, Math.abs(b.vy));
+              } else {
+                b.vx -= (1 + OBSTACLE_REST) * vn * ux;
+                b.vy -= (1 + OBSTACLE_REST) * vn * uy;
+                b.va += Math.random() * 120 - 60;
+              }
+            }
+          }
         }
 
         // Floor
         if (b.y >= floor) {
           b.y = floor;
-          if (Math.abs(b.vy) > 130) {
-            // Bounce with energy loss + a little chaotic tumble
-            b.vy = -b.vy * 0.55;
-            b.vx += Math.random() * 70 - 35;
-            b.va = -b.va * 0.6 + (Math.random() * 100 - 50);
-          } else {
-            // Rolling to a stop
-            b.vy = 0;
-            b.vx *= 0.9;
-            b.va *= 0.86;
-            if (Math.abs(b.vx) < 8 && Math.abs(b.va) < 12) {
-              b.vx = 0;
-              b.va = 0;
-              b.asleep = true;
-            }
-          }
+          land(b, Math.abs(b.vy));
         }
       }
 
-      // Chip-on-chip collisions (equal-mass circles)
+      // Icon-on-icon collisions (equal-mass circles)
       for (let i = 0; i < bodies.length; i++) {
         for (let j = i + 1; j < bodies.length; j++) {
           const a = bodies[i];
@@ -165,10 +231,10 @@ export default function PhysicsIcons() {
           const dx = c.x - a.x;
           const dy = c.y - a.y;
           const d = Math.hypot(dx, dy);
-          if (d > 0 && d < SIZE) {
+          if (d > 0 && d < size) {
             const nx = dx / d;
             const ny = dy / d;
-            const push = (SIZE - d) / 2;
+            const push = (size - d) / 2;
             a.x -= nx * push;
             a.y -= ny * push;
             c.x += nx * push;
@@ -216,8 +282,7 @@ export default function PhysicsIcons() {
       return;
     }
 
-    // One-time: fire the drop the first time the panel comes into view,
-    // then stop observing. Once fallen, they stay fallen.
+    // One-time: fire on first sight, then stop observing.
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
@@ -245,18 +310,21 @@ export default function PhysicsIcons() {
       className="pointer-events-none absolute inset-0 overflow-hidden"
     >
       {ICONS.map((icon, i) => (
-        <div
+        <span
           key={icon.name}
           ref={(el) => {
-            chipRefs.current[i] = el;
+            iconRefs.current[i] = el;
           }}
-          style={{ opacity: 0, willChange: "transform", width: SIZE, height: SIZE }}
-          className="absolute left-0 top-0 flex items-center justify-center rounded-full bg-white shadow-lg"
+          style={{
+            opacity: 0,
+            willChange: "transform",
+            width: FALLBACK_SIZE,
+            height: FALLBACK_SIZE,
+          }}
+          className="absolute left-0 top-0 text-gray-900"
         >
-          <span style={{ color: icon.color }}>
-            <SocialIcon icon={icon} className="h-7 w-7" />
-          </span>
-        </div>
+          <SocialIcon icon={icon} className="h-full w-full" />
+        </span>
       ))}
     </div>
   );

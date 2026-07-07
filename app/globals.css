@@ -281,6 +281,29 @@ h5 {
     0 6px 12px -6px rgb(0 0 0 / 0.06);
 }
 
+/* ── Stat card bars: spring up from the baseline with a bounce ─────────── */
+.bar-grow {
+  transform: scaleY(0);
+  transform-origin: bottom;
+}
+.bar-grow.grown {
+  animation: bar-bounce 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes bar-bounce {
+  0% {
+    transform: scaleY(0);
+  }
+  55% {
+    transform: scaleY(1.14);
+  }
+  75% {
+    transform: scaleY(0.92);
+  }
+  100% {
+    transform: scaleY(1);
+  }
+}
+
 /* Live-dot pulse (mock dashboard) */
 @keyframes pulse-dot {
   0%,
@@ -316,6 +339,11 @@ h5 {
   }
   .btn-glow-fill {
     transition: none;
+  }
+  .bar-grow,
+  .bar-grow.grown {
+    animation: none;
+    transform: scaleY(1);
   }
   .fade-up {
     animation-duration: 0.01s;

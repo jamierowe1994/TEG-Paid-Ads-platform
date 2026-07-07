@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { BRANDS, EXPERTS_GROUP } from "@/lib/brands";
 import { PACKAGES } from "@/lib/packages";
-import BrandMark from "@/components/BrandMark";
 import Reveal from "@/components/Reveal";
 import HeroAdWord from "@/components/HeroAdWord";
 import PhysicsIcons from "@/components/PhysicsIcons";
 import HeroIconStrip from "@/components/HeroIconStrip";
 import GlowButton from "@/components/GlowButton";
+import LeadsStat from "@/components/LeadsStat";
 
 export default function LandingPage() {
   return (
@@ -42,10 +42,11 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* Hero — full screen: content in a light grey rounded box that stops
-          just above the icon strip */}
-      <section className="flex min-h-screen flex-col px-3 pt-3">
-        <div className="flex flex-1 flex-col items-center justify-center rounded-[2.5rem] bg-gray-100 px-6 pt-24 text-center shadow-[0_30px_60px_-25px_rgba(0,0,0,0.25)]">
+      {/* Hero — full screen: content in a light grey box that bleeds to the
+          top and sides, curves at the bottom, and stops well above the
+          icon strip */}
+      <section className="flex min-h-screen flex-col">
+        <div className="flex flex-1 flex-col items-center justify-center rounded-b-[2.5rem] bg-gray-100 px-6 pb-10 pt-24 text-center shadow-[0_30px_60px_-25px_rgba(0,0,0,0.25)]">
           <Reveal>
             <p className="mb-5 text-sm font-medium uppercase tracking-widest text-gray-400">
               Paid ads, done for you
@@ -64,7 +65,7 @@ export default function LandingPage() {
               — you track every lead from first click to your CRM, all in one
               clean dashboard.
             </p>
-            <div className="mb-16 mt-12 flex items-center justify-center gap-4">
+            <div className="mt-12 flex items-center justify-center gap-4">
               <GlowButton
                 href="/signup"
                 className="px-10 py-4 text-base font-medium"
@@ -74,9 +75,9 @@ export default function LandingPage() {
             </div>
           </Reveal>
         </div>
-        {/* Social platforms strip — outside the box, falls into the next
-            screen on scroll */}
-        <div className="mx-auto w-full max-w-5xl px-3 py-7">
+        {/* Social platforms strip — outside the box with breathing room,
+            falls into the next screen on scroll */}
+        <div className="mx-auto w-full max-w-5xl px-6 py-12">
           <HeroIconStrip />
         </div>
       </section>
@@ -116,56 +117,35 @@ export default function LandingPage() {
                   alt="An agent's next client, mid-scroll"
                   className="aspect-[4/5] w-full rounded-3xl object-cover"
                 />
-                {/* Infographic overlay */}
-                <div className="absolute -left-4 bottom-10 w-48 rounded-2xl bg-white p-4 shadow-2xl sm:-left-8">
-                  <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
-                    Leads this month
-                  </p>
-                  <p className="mt-1 text-3xl font-semibold text-[#E31F36]">
-                    ↑ 41%
-                  </p>
-                  <div className="mt-3 flex items-end gap-2">
-                    <div className="h-8 flex-1 rounded-md bg-red-100" />
-                    <div className="h-12 flex-1 rounded-md bg-[#E31F36]" />
-                  </div>
-                  <p className="mt-2 text-[10px] text-gray-400">
-                    vs last month
-                  </p>
-                </div>
+                {/* Infographic overlay — counts up + bars bounce on scroll */}
+                <LeadsStat />
               </div>
             </Reveal>
           </div>
-          {/* Landing zone so settled icons don't sit on the content */}
-          <div className="h-20" />
-          {/* The hero's icons fall in here, turn to colour and bounce */}
-          <PhysicsIcons />
-        </div>
-      </section>
 
-      {/* Brands strip */}
-      <section className="border-y border-gray-100">
-        <div className="mx-auto max-w-6xl px-6 py-10">
-          <Reveal>
-            <p className="mb-7 text-center text-xs font-medium uppercase tracking-widest text-gray-400">
+          {/* One group, seven businesses — inside the panel; the falling
+              icons treat each pill as solid and bounce off it */}
+          <div className="mx-auto w-full max-w-5xl px-8 pb-4">
+            <p className="text-center text-xs font-medium uppercase tracking-widest text-white/50">
               One group, seven businesses
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-x-9 gap-y-5">
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
               {BRANDS.map((b) => (
-                <div key={b.id} className="flex items-center gap-2">
-                  <BrandMark
-                    name={b.name}
-                    accent={b.accent}
-                    logo={b.logo}
-                    size={22}
-                    rounded="rounded-none"
-                  />
-                  <span className="text-sm font-medium text-gray-600">
-                    {b.name}
-                  </span>
-                </div>
+                <span
+                  key={b.id}
+                  data-icon-obstacle
+                  className="rounded-full border border-white/25 px-4 py-2 text-sm font-medium text-white/90"
+                >
+                  {b.name}
+                </span>
               ))}
             </div>
-          </Reveal>
+          </div>
+
+          {/* Landing zone so settled icons don't sit on the content */}
+          <div className="h-20" />
+          {/* The hero's icons fall in here and bounce off the brand pills */}
+          <PhysicsIcons />
         </div>
       </section>
 
