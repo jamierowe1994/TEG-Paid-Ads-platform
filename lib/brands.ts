@@ -49,7 +49,7 @@ export const BRANDS: Brand[] = [
     conversionLabel: "Market Appraisal (MA)",
     conversionVerb: "Book Market Appraisal",
     audience: "Estate agents",
-    logo: "/brand-logos/property.png",
+    logo: "/brand-logos/TPE - Icon.png",
   },
   {
     id: "lettings",
@@ -62,7 +62,7 @@ export const BRANDS: Brand[] = [
     conversionLabel: "Market Appraisal (MA)",
     conversionVerb: "Book Market Appraisal",
     audience: "Lettings agents",
-    logo: "/brand-logos/lettings.png",
+    logo: "/brand-logos/TLE - Icon.png",
   },
   {
     id: "mortgage",
@@ -75,7 +75,7 @@ export const BRANDS: Brand[] = [
     conversionLabel: "Appointment Booked",
     conversionVerb: "Book Appointment",
     audience: "Mortgage advisers",
-    logo: "/brand-logos/mortgage.png",
+    logo: "/brand-logos/TMGE - Icon.png",
   },
   {
     id: "recruitment",
@@ -88,20 +88,22 @@ export const BRANDS: Brand[] = [
     conversionLabel: "Appointment Booked",
     conversionVerb: "Book Appointment",
     audience: "Recruiters",
-    logo: "/brand-logos/recruitment.png",
+    // Full lockup (pin + wordmark) — a pin-only "Icon" version would match
+    // the other brands better at small sizes.
+    logo: "/brand-logos/TRE - Colour.png",
   },
   {
     id: "commercial",
-    name: "The Commercial Experts",
+    name: "The Commercial Property Experts",
     shortName: "Commercial",
-    domains: ["thecommercialexperts.co.uk", "commercialexperts.co.uk"],
+    domains: ["thecommercialpropertyexperts.co.uk", "commercialpropertyexperts.co.uk"],
     accent: "#41AAE1", // blue
     accentSoft: "#ECF7FC",
     crmName: "CRM",
     conversionLabel: "Appointment Booked",
     conversionVerb: "Book Appointment",
-    audience: "Commercial agents",
-    logo: "/brand-logos/commercial.png",
+    audience: "Commercial property agents",
+    logo: "/brand-logos/TCPE - Icon.png",
   },
   {
     id: "fineandcountry",
@@ -115,7 +117,7 @@ export const BRANDS: Brand[] = [
     conversionLabel: "Market Appraisal (MA)",
     conversionVerb: "Book Market Appraisal",
     audience: "Premium estate agents",
-    logo: "/brand-logos/fineandcountry.png",
+    logo: "/brand-logos/F&C - Icon.png",
   },
   {
     id: "auction",
@@ -129,7 +131,7 @@ export const BRANDS: Brand[] = [
     conversionLabel: "Valuation Booked",
     conversionVerb: "Book Valuation",
     audience: "Auction valuers",
-    logo: "/brand-logos/auction.png",
+    logo: "/brand-logos/TAC - Icon.png",
   },
 ];
 

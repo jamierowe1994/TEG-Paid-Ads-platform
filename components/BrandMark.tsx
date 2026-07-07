@@ -22,6 +22,8 @@ export default function BrandMark({
 }) {
   const [failed, setFailed] = useState(false);
   const showImage = logo && !failed;
+  // Logo filenames contain spaces and "&", so encode for a valid URL.
+  const src = logo ? encodeURI(logo) : undefined;
 
   return (
     <div
@@ -35,7 +37,7 @@ export default function BrandMark({
       {showImage ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={logo}
+          src={src}
           alt={name}
           className="h-full w-full object-contain"
           onError={() => setFailed(true)}
