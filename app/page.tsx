@@ -109,6 +109,7 @@ export default function LandingPage() {
           and below: bold copy left, photo + infographic right, physics icons
           landing at the bottom */}
       <section className="px-3 py-20 sm:py-28">
+        <Parallax mode="element" strength={-130} max={150}>
         <PanelReveal className="relative flex min-h-[64vh] flex-col overflow-hidden rounded-[2.5rem] bg-gradient-to-b from-[#3d3d3c] to-[#2a2a29]">
           <div className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-10 px-8 py-12 sm:px-12 lg:grid-cols-2">
             <div className="p-words">
@@ -176,10 +177,12 @@ export default function LandingPage() {
           {/* The hero's icons fall in behind the pills and hit the bottom */}
           <PhysicsIcons />
         </PanelReveal>
+        </Parallax>
       </section>
 
       {/* How it works — steps left, mock dashboard right */}
       <section id="how" className="mx-auto max-w-6xl px-6 py-28">
+        <Parallax mode="element" strength={-70} max={110}>
         <div className="grid items-center gap-16 lg:grid-cols-2">
           {/* Steps */}
           <div>
@@ -380,6 +383,7 @@ export default function LandingPage() {
             </div>
           </Reveal>
         </div>
+        </Parallax>
       </section>
 
       {/* Statement piece — big, bold, centre stage */}
@@ -401,6 +405,7 @@ export default function LandingPage() {
           TODO(showcase): swap mocks for real ads + add the filter-by-brand
           chips once enough brands are live. */}
       <section>
+        <Parallax mode="element" strength={-70} max={110}>
         <div className="mx-auto max-w-6xl px-6 py-28">
           <Reveal>
             <h2 className="mx-auto max-w-2xl text-center text-4xl font-semibold tracking-tight">
@@ -514,6 +519,7 @@ export default function LandingPage() {
             with them.
           </p>
         </div>
+        </Parallax>
       </section>
 
       {/* Packages */}
