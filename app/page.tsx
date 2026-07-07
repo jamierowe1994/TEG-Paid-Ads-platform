@@ -51,7 +51,7 @@ export default function LandingPage() {
             </p>
             {/* nowrap keeps "Our ad engine." on one line while the hidden
                 card expands on hover */}
-            <h1 className="mx-auto max-w-5xl text-5xl font-semibold tracking-tight text-gray-900 sm:text-6xl lg:text-7xl">
+            <h1 className="mx-auto max-w-5xl text-5xl font-semibold tracking-[-0.04em] text-gray-900 sm:text-6xl lg:text-7xl">
               Your personal brand.
               <br />
               <span className="lg:whitespace-nowrap">
@@ -80,11 +80,11 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Second screen — red rounded panel, roughly half a viewport tall:
-          bold copy left, photo + infographic right, physics icons landing
-          at the bottom */}
-      <section className="p-3">
-        <div className="relative flex min-h-[55vh] flex-col overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-[#E31F36] to-[#AE1226]">
+      {/* Second screen — red rounded panel with breathing room above and
+          below (not full screen): bold copy left, photo + infographic right,
+          physics icons landing at the bottom */}
+      <section className="px-3 py-20 sm:py-28">
+        <div className="relative flex min-h-[52vh] flex-col overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-[#E31F36] to-[#AE1226]">
           <div className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-10 px-8 py-12 sm:px-12 lg:grid-cols-2">
             <Reveal direction="left">
               <span className="inline-block rounded-full bg-white/15 px-4 py-1.5 text-sm font-medium text-white">
@@ -355,15 +355,11 @@ export default function LandingPage() {
       <section className="px-6 py-32">
         <Reveal>
           <div className="mx-auto max-w-4xl text-center">
-            <blockquote className="text-4xl font-bold leading-[1.12] tracking-[-0.04em] text-gray-900 sm:text-5xl lg:text-6xl">
-              “The average person scrolls{" "}
-              <span className="text-[#E31F36]">
-                the height of Big&nbsp;Ben
-              </span>{" "}
-              through their feed every single day. Your next client is in
-              that scroll.”
+            <blockquote className="text-4xl font-bold leading-[1.1] tracking-[-0.055em] text-gray-900 sm:text-5xl lg:text-6xl">
+              “The average person scrolls through their feed every single
+              day. Your next client is in that scroll.”
             </blockquote>
-            <p className="mt-10 text-xl font-semibold tracking-tight text-[#E31F36]">
+            <p className="mt-10 text-xl font-semibold tracking-[-0.02em] text-[#E31F36]">
               #StopTheScroll
             </p>
           </div>

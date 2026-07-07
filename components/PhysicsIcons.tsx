@@ -70,6 +70,14 @@ export default function PhysicsIcons() {
       });
     };
 
+    // Icons leave the hero black, then bloom into their platform colours as
+    // they drop into the panel.
+    const colourise = () => {
+      iconRefs.current.forEach((el, i) => {
+        if (el) el.style.color = ICONS[i].color;
+      });
+    };
+
     // Brand pills (and anything else tagged) become solid objects, measured
     // in panel coordinates. The panel is the container's parent.
     const measureObstacles = () => {
@@ -141,6 +149,7 @@ export default function PhysicsIcons() {
         asleep: true,
       }));
       show(true);
+      colourise();
       paint();
     };
 
@@ -269,6 +278,8 @@ export default function PhysicsIcons() {
       }
       running.current = true;
       init();
+      // Kick off the black → colour transition a beat into the fall.
+      setTimeout(colourise, 250);
       last = performance.now();
       rafId.current = requestAnimationFrame(step);
     };
@@ -320,8 +331,10 @@ export default function PhysicsIcons() {
             willChange: "transform",
             width: FALLBACK_SIZE,
             height: FALLBACK_SIZE,
+            color: "#111827",
+            transition: "color 0.8s ease",
           }}
-          className="absolute left-0 top-0 text-gray-900"
+          className="absolute left-0 top-0"
         >
           <SocialIcon icon={icon} className="h-full w-full" />
         </span>
