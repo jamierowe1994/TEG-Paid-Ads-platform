@@ -3,6 +3,7 @@ import { BRANDS, EXPERTS_GROUP } from "@/lib/brands";
 import { PACKAGES } from "@/lib/packages";
 import BrandMark from "@/components/BrandMark";
 import Reveal from "@/components/Reveal";
+import HeroAdWord from "@/components/HeroAdWord";
 
 export default function LandingPage() {
   return (
@@ -51,47 +52,7 @@ export default function LandingPage() {
             Your personal brand.
             <br />
             <span className="text-gray-400">
-              Our{" "}
-              <span
-                className="ad-trigger"
-                tabIndex={0}
-                aria-label="ad — hover to see a lead arriving"
-              >
-                {/* Expands between “Our” and “ad” on hover */}
-                <span
-                  className="ad-reveal"
-                  style={{ "--ad-card-w": "300px" } as React.CSSProperties}
-                >
-                  <span className="mx-3 inline-block w-[276px] whitespace-normal rounded-2xl border border-gray-100 bg-white p-4 text-left align-middle font-normal normal-case tracking-normal shadow-xl">
-                    <span className="flex items-center justify-between">
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
-                        New lead
-                      </span>
-                      <span className="flex items-center gap-1 text-[10px] font-medium text-green-600">
-                        <span className="pulse-dot h-1.5 w-1.5 rounded-full bg-green-500" />
-                        Just now
-                      </span>
-                    </span>
-                    <span className="mt-2.5 flex items-center gap-2.5">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-xs font-semibold text-gray-600">
-                        SM
-                      </span>
-                      <span className="leading-tight">
-                        <span className="block text-xs font-semibold text-gray-900">
-                          Sarah Mitchell
-                        </span>
-                        <span className="block text-[10px] text-gray-400">
-                          via Facebook ad
-                        </span>
-                      </span>
-                    </span>
-                  </span>
-                </span>
-                <span className="underline decoration-[#E31F36]/40 decoration-dashed decoration-2 underline-offset-8 transition hover:text-gray-500">
-                  ad
-                </span>
-              </span>{" "}
-              engine.
+              Our <HeroAdWord /> engine.
             </span>
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-lg text-gray-500">

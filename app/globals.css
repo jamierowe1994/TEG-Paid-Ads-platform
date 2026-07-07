@@ -120,13 +120,15 @@ h5 {
   transform: none;
 }
 
-/* ── Inline hero reveal: hovering "ad" splits the headline and a card
-     expands in between (à la the Ali Braid hero) ─────────────────────── */
+/* ── Inline hero reveal: hovering/clicking "ad" splits the headline and a
+     card expands in between (à la the Ali Braid hero) ────────────────────
+   The trigger stays display:inline so "ad" sits on the exact same baseline
+   as the surrounding words. The reveal clips horizontally while expanding,
+   but carries vertical padding (offset by negative margins) so the card's
+   drop shadow isn't sliced into hard lines. */
 .ad-trigger {
-  display: inline-flex;
-  align-items: center;
-  vertical-align: bottom;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 .ad-reveal {
   display: inline-block;
@@ -136,14 +138,18 @@ h5 {
   overflow: hidden;
   vertical-align: middle;
   white-space: nowrap;
+  /* room for the shadow above/below; negative margin cancels the layout */
+  padding: 40px 0;
+  margin: -40px 0;
   transition:
     width 0.5s cubic-bezier(0.22, 1, 0.36, 1),
     opacity 0.35s ease,
     transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .ad-trigger:hover .ad-reveal,
-.ad-trigger:focus-visible .ad-reveal {
-  width: var(--ad-card-w, 300px);
+.ad-trigger:focus-visible .ad-reveal,
+.ad-trigger.ad-open .ad-reveal {
+  width: var(--ad-card-w, 324px);
   opacity: 1;
   transform: scale(1);
 }

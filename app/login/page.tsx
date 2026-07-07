@@ -6,6 +6,7 @@ import Link from "next/link";
 import { logIn } from "@/lib/session";
 import { EXPERTS_GROUP } from "@/lib/brands";
 import BrandMark from "@/components/BrandMark";
+import PasswordInput from "@/components/PasswordInput";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -62,14 +63,15 @@ export default function LoginPage() {
           onChange={(e) => setEmail(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && signIn()}
         />
-        <input
-          type="password"
-          className="mt-3 w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-gray-900 focus:ring-4 focus:ring-gray-100"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && signIn()}
-        />
+        <div className="mt-3">
+          <PasswordInput
+            className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-gray-900 focus:ring-4 focus:ring-gray-100"
+            placeholder="Password"
+            value={password}
+            onChange={setPassword}
+            onEnter={signIn}
+          />
+        </div>
         {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
         <button
           onClick={signIn}

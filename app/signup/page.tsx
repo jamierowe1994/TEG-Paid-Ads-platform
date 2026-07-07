@@ -6,6 +6,7 @@ import Link from "next/link";
 import { BRANDS, brandForEmail, EXPERTS_GROUP, type Brand } from "@/lib/brands";
 import { PACKAGES, packageById } from "@/lib/packages";
 import BrandMark from "@/components/BrandMark";
+import PasswordInput from "@/components/PasswordInput";
 import { signUp } from "@/lib/session";
 
 // One-question-at-a-time signup. Order:
@@ -288,17 +289,16 @@ function SignupWizard() {
             <p className="mt-3 text-gray-500">
               You'll use this with your email to sign in. At least 8 characters.
             </p>
-            <input
-              autoFocus
-              type="password"
-              className={`${inputClass} mt-8`}
-              placeholder="Choose a password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) =>
-                e.key === "Enter" && password.length >= 8 && go("mobile")
-              }
-            />
+            <div className="mt-8">
+              <PasswordInput
+                autoFocus
+                className={inputClass}
+                placeholder="Choose a password"
+                value={password}
+                onChange={setPassword}
+                onEnter={() => password.length >= 8 && go("mobile")}
+              />
+            </div>
             {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
             <div className="mt-8 flex gap-3">
               <button
