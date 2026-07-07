@@ -115,7 +115,7 @@ export default function LandingPage() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/images/paid-ads.jpg"
-                  alt="A sold home — what a converted lead looks like"
+                  alt="An agent's next client, mid-scroll"
                   className="aspect-[4/5] w-full rounded-3xl object-cover"
                 />
                 {/* Infographic overlay */}
