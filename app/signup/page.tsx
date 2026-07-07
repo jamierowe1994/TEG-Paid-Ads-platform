@@ -85,6 +85,16 @@ function SignupWizard() {
     }
     const detected = brandForEmail(trimmed);
     setBrand(detected ?? null);
+    // Record the signup start so the admin CRM can spot drop-offs.
+    fetch("/api/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: trimmed,
+        name: name.trim(),
+        brandId: detected?.id ?? null,
+      }),
+    }).catch(() => {});
     // Known domain → set a password. Unknown → ask which business first.
     go(detected ? "password" : "brand");
   }

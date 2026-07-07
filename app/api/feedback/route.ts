@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
+import { DATA_DIR } from "@/lib/data-dir";
 
 // Feedback from the on-page annotation widget. Stored as JSON on disk for
 // the framework stage — swap for a database (or forward to Slack/email)
 // before real launch. Note: Railway's filesystem is ephemeral, so stored
 // feedback survives only until the next deploy.
 
-const DATA_DIR = path.join(process.cwd(), "data");
 const FILE = path.join(DATA_DIR, "feedback.json");
 
 interface FeedbackItem {

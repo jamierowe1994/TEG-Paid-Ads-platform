@@ -1,6 +1,7 @@
 import "server-only";
 import { promises as fs } from "fs";
 import path from "path";
+import { DATA_DIR } from "./data-dir";
 import type { UserProfile } from "./types";
 
 // Server-side user store. Backed by a JSON file for the framework stage so
@@ -12,7 +13,6 @@ import type { UserProfile } from "./types";
 // Clerk. The function signatures below are what the rest of the app depends
 // on, so a swap is contained to this file.
 
-const DATA_DIR = path.join(process.cwd(), "data");
 const FILE = path.join(DATA_DIR, "users.json");
 
 // Stored record = public profile + the password hash (never sent to client).

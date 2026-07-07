@@ -40,7 +40,16 @@ Open http://localhost:3000.
 | --- | --- | --- |
 | `ADMIN_PASSWORD` | `experts-admin` | Admin backend password — **set this in Railway** |
 | `AUTH_SECRET` | dev fallback | Secret used to sign session cookies — **set a long random value in Railway** |
-| `META_APP_ID` / `META_APP_SECRET` / `META_ACCESS_TOKEN` | — | Meta Marketing API (not wired yet — see admin → Meta Ads connection) |
+| `DATA_DIR` | `./data` | Where users/feedback/events JSON lives. **On Railway: attach a Volume (mount path `/data`) and set `DATA_DIR=/data`** so accounts survive deploys |
+| `META_APP_ID` / `META_APP_SECRET` / `META_ACCESS_TOKEN` | — | Meta Marketing API (not wired yet — see admin → Connections) |
+
+### Stop accounts being wiped on deploy (Railway Volume)
+
+Accounts/feedback live in JSON files. Railway wipes the filesystem on every
+deploy, so without a volume **every deploy deletes all accounts**. Fix (one
+time, ~1 minute): Railway → your service → **Settings → Volumes → Attach
+Volume**, mount path `/data`, then add env var `DATA_DIR=/data` and redeploy.
+(The proper fix later is Postgres/Clerk, but the volume makes the demo solid.)
 
 Brands (domains, accent colours, CRM names, conversion labels) live in
 [lib/brands.ts](lib/brands.ts). Packages and placeholder pricing in
