@@ -48,10 +48,12 @@ export default function LandingPage() {
           <p className="mb-4 text-sm font-medium uppercase tracking-widest text-gray-400">
             Paid ads, done for you
           </p>
-          <h1 className="mx-auto max-w-3xl text-5xl font-semibold tracking-tight text-gray-900 sm:text-6xl">
+          {/* max-w-4xl + nowrap give the expanded card room on desktop so
+              "engine." never drops to a second line mid-hover */}
+          <h1 className="mx-auto max-w-4xl text-5xl font-semibold tracking-tight text-gray-900 sm:text-6xl">
             Your personal brand.
             <br />
-            <span className="text-gray-400">
+            <span className="text-gray-400 lg:whitespace-nowrap">
               Our <HeroAdWord /> engine.
             </span>
           </h1>
