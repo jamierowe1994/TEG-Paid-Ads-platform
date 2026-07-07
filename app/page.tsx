@@ -8,6 +8,7 @@ import HeroIconStrip from "@/components/HeroIconStrip";
 import GlowButton from "@/components/GlowButton";
 import LeadsStat from "@/components/LeadsStat";
 import PanelReveal from "@/components/PanelReveal";
+import BackgroundTexture from "@/components/BackgroundTexture";
 
 export default function LandingPage() {
   return (
@@ -27,20 +28,8 @@ export default function LandingPage() {
             "radial-gradient(45% 40% at 8% 80%, rgba(43,97,147,0.06), transparent 62%)",
         }}
       />
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 -z-10 opacity-[0.7]"
-        style={{
-          backgroundImage:
-            "linear-gradient(to right, rgba(17,24,39,0.04) 1px, transparent 1px)," +
-            "linear-gradient(to bottom, rgba(17,24,39,0.04) 1px, transparent 1px)",
-          backgroundSize: "48px 48px",
-          maskImage:
-            "radial-gradient(ellipse 85% 70% at 50% 35%, black, transparent 78%)",
-          WebkitMaskImage:
-            "radial-gradient(ellipse 85% 70% at 50% 35%, black, transparent 78%)",
-        }}
-      />
+      {/* Topographic contour texture across all white sections */}
+      <BackgroundTexture />
 
       {/* Nav — hashtag wordmark + a big Sign in */}
       <header className="absolute inset-x-0 top-0 z-40">
