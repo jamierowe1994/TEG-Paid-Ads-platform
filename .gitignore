@@ -5,7 +5,9 @@ build/
 .env
 .env.local
 .env*.local
-data/feedback.json
+# Local server-side stores (feedback, user accounts + password hashes).
+# Never commit these — and they're ephemeral on Railway until moved to a DB.
+/data/
 npm-debug.log*
 .DS_Store
 *.tsbuildinfo

@@ -3,39 +3,36 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { getUser } from "@/lib/session";
-import { brandForEmail, EXPERTS_GROUP } from "@/lib/brands";
+import { logIn } from "@/lib/session";
+import { EXPERTS_GROUP } from "@/lib/brands";
 import BrandMark from "@/components/BrandMark";
-
-// Demo sign-in. Once Stripe + a real database exist this becomes proper
-// auth (magic link or password) checking the customer has an active
-// subscription before letting them in.
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  function signIn() {
+  async function signIn() {
     const trimmed = email.trim().toLowerCase();
     if (!/^\S+@\S+\.\S+$/.test(trimmed)) {
       setError("That doesn't look like an email address.");
       return;
     }
-    const existing = getUser();
-    if (existing && existing.email === trimmed) {
-      router.push("/dashboard");
+    if (!password) {
+      setError("Enter your password.");
       return;
     }
-    if (brandForEmail(trimmed)) {
-      setError(
-        "No account found for that email on this device. Sign up first — it only takes a minute."
-      );
+    setBusy(true);
+    setError("");
+    const { error } = await logIn(trimmed, password);
+    setBusy(false);
+    if (error) {
+      setError(error);
       return;
     }
-    setError(
-      "We don't recognise that email. Use your Experts Group work email, or sign up to get started."
-    );
+    router.push("/dashboard");
   }
 
   return (
@@ -65,12 +62,21 @@ export default function LoginPage() {
           onChange={(e) => setEmail(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && signIn()}
         />
+        <input
+          type="password"
+          className="mt-3 w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-gray-900 focus:ring-4 focus:ring-gray-100"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && signIn()}
+        />
         {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
         <button
           onClick={signIn}
-          className="btn-group mt-4 w-full rounded-xl py-3 text-sm font-medium transition"
+          disabled={busy}
+          className="btn-group mt-4 w-full rounded-xl py-3 text-sm font-medium transition disabled:opacity-50"
         >
-          Sign in
+          {busy ? "Signing in…" : "Sign in"}
         </button>
         <p className="mt-6 text-center text-sm text-gray-500">
           New here?{" "}

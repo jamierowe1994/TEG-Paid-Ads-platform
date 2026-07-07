@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { getUser, signOut } from "@/lib/session";
+import { refreshUser, signOut } from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
 import type { UserProfile } from "@/lib/types";
 import BrandMark from "@/components/BrandMark";
@@ -27,14 +27,17 @@ export default function DashboardLayout({
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    const u = getUser();
-    if (!u) {
-      router.replace("/login");
-      return;
-    }
-    setUser(u);
-    setBrand(brandById(u.brandId) ?? null);
-    setChecked(true);
+    // Validate the session against the server (httpOnly cookie), not just the
+    // localStorage cache — this is what makes sign-in real and secure.
+    refreshUser().then((u) => {
+      if (!u) {
+        router.replace("/login");
+        return;
+      }
+      setUser(u);
+      setBrand(brandById(u.brandId) ?? null);
+      setChecked(true);
+    });
   }, [router]);
 
   if (!checked || !user || !brand) {

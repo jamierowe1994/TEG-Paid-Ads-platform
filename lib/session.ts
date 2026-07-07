@@ -1,9 +1,14 @@
 "use client";
 
-// Demo session layer. The signed-up user lives in localStorage so the whole
-// journey works end-to-end without a backend. When Stripe + a real database
-// land, this file is the only thing that needs swapping (e.g. for NextAuth
-// or a session cookie) — everything else reads through these helpers.
+// Client session layer. Auth is now real: the source of truth is an
+// httpOnly session cookie validated by the server (see lib/auth.ts and the
+// /api/auth routes). We keep a localStorage *cache* of the signed-in user so
+// the dashboard pages can read it synchronously — but it's only ever
+// populated from a server response, and every dashboard load re-validates via
+// /api/auth/me.
+//
+// Leads and referrals remain seeded demo data in localStorage until the Meta
+// lead channel is confirmed.
 
 import type { UserProfile, Lead, Referral } from "./types";
 import { seedLeads, seedReferrals } from "./mock";
@@ -26,6 +31,7 @@ function write(key: string, value: unknown) {
   window.localStorage.setItem(key, JSON.stringify(value));
 }
 
+// ── Auth ─────────────────────────────────────────────────────────────────
 export function getUser(): UserProfile | null {
   return read<UserProfile>(USER_KEY);
 }
@@ -34,13 +40,86 @@ export function saveUser(user: UserProfile) {
   write(USER_KEY, user);
 }
 
-export function signOut() {
+// Re-validate the session against the server. Returns the fresh user (and
+// refreshes the cache) or null if not signed in.
+export async function refreshUser(): Promise<UserProfile | null> {
+  try {
+    const res = await fetch("/api/auth/me", { cache: "no-store" });
+    if (!res.ok) {
+      window.localStorage.removeItem(USER_KEY);
+      return null;
+    }
+    const { user } = await res.json();
+    if (user) saveUser(user);
+    return user ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function signUp(payload: {
+  name: string;
+  email: string;
+  password: string;
+  mobile: string;
+  photo: string | null;
+  brandId: string;
+  platforms: string[];
+  goal: string;
+  packageId: string;
+}): Promise<{ user?: UserProfile; error?: string }> {
+  const res = await fetch("/api/auth/signup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return { error: data.error ?? "Something went wrong" };
+  saveUser(data.user);
+  return { user: data.user };
+}
+
+export async function logIn(
+  email: string,
+  password: string
+): Promise<{ user?: UserProfile; error?: string }> {
+  const res = await fetch("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return { error: data.error ?? "Something went wrong" };
+  saveUser(data.user);
+  return { user: data.user };
+}
+
+export async function updateProfile(patch: {
+  name?: string;
+  mobile?: string;
+  photo?: string | null;
+}): Promise<UserProfile | null> {
+  const res = await fetch("/api/auth/me", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) return null;
+  const { user } = await res.json();
+  if (user) saveUser(user);
+  return user ?? null;
+}
+
+export async function signOut() {
+  try {
+    await fetch("/api/auth/logout", { method: "POST" });
+  } catch {
+    /* ignore network errors on sign-out */
+  }
   window.localStorage.removeItem(USER_KEY);
 }
 
-// Leads and referrals are seeded with demo data on first visit so the
-// dashboard has something to show. Replace with API calls once the lead
-// channel is confirmed.
+// ── Leads & referrals (demo data for now) ─────────────────────────────────
 export function getLeads(): Lead[] {
   const existing = read<Lead[]>(LEADS_KEY);
   if (existing) return existing;

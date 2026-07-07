@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getUser, saveUser } from "@/lib/session";
+import { getUser, updateProfile } from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
 import { packageById } from "@/lib/packages";
 import type { UserProfile } from "@/lib/types";
@@ -24,11 +24,10 @@ export default function ProfilePage() {
 
   if (!user || !brand) return null;
 
-  function save() {
+  async function save() {
     if (!user) return;
-    const next = { ...user, name: name.trim(), mobile: mobile.trim() };
-    saveUser(next);
-    setUser(next);
+    const next = await updateProfile({ name: name.trim(), mobile: mobile.trim() });
+    if (next) setUser(next);
     setToast("Profile saved ✓");
     setTimeout(() => setToast(""), 2500);
   }
@@ -36,10 +35,9 @@ export default function ProfilePage() {
   function handlePhoto(file: File | null) {
     if (!file || !user) return;
     const reader = new FileReader();
-    reader.onload = () => {
-      const next = { ...user, photo: reader.result as string };
-      saveUser(next);
-      setUser(next);
+    reader.onload = async () => {
+      const next = await updateProfile({ photo: reader.result as string });
+      if (next) setUser(next);
     };
     reader.readAsDataURL(file);
   }

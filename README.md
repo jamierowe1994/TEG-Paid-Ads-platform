@@ -38,7 +38,9 @@ Open http://localhost:3000.
 
 | Env var | Default | Purpose |
 | --- | --- | --- |
-| `ADMIN_PASSWORD` | `experts-admin` | Admin backend password |
+| `ADMIN_PASSWORD` | `experts-admin` | Admin backend password — **set this in Railway** |
+| `AUTH_SECRET` | dev fallback | Secret used to sign session cookies — **set a long random value in Railway** |
+| `META_APP_ID` / `META_APP_SECRET` / `META_ACCESS_TOKEN` | — | Meta Marketing API (not wired yet — see admin → Meta Ads connection) |
 
 Brands (domains, accent colours, CRM names, conversion labels) live in
 [lib/brands.ts](lib/brands.ts). Packages and placeholder pricing in
@@ -55,10 +57,17 @@ Brands (domains, accent colours, CRM names, conversion labels) live in
 - **CRM push** — "Push to REP/Atlas" buttons mark the lead pushed locally;
   the real API call goes in `pushToCrm()` in
   `app/dashboard/leads/page.tsx` (`TODO(crm)`).
-- **Real auth + database** — the demo session lives in `localStorage` via
-  `lib/session.ts`; that file is the single swap point for real auth.
-  Feedback is stored in `data/feedback.json` (ephemeral on Railway) — move
-  to a database before launch.
+- **Auth is real but storage is temporary** — sign-up/sign-in use scrypt
+  password hashing + an httpOnly session cookie (`lib/auth.ts`, `/api/auth/*`),
+  validated server-side on every dashboard load. Users are stored in
+  `data/users.json` and feedback in `data/feedback.json`. **Railway's
+  filesystem is ephemeral, so these reset on each deploy** — before real
+  launch, swap `lib/users-store.ts` for a database (Postgres/Prisma) or move
+  auth to Clerk. Everything else stays the same.
+- **Meta Ads** — the admin backend has a Meta Ads connection panel and a
+  per-agent campaign-mapping table (framework only). Real flow: OAuth into the
+  Meta Marketing API, map each agent to their campaign so stats and leads are
+  personal to them. Search for `TODO(meta)`.
 
 ## Deploy to Railway
 

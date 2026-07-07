@@ -14,12 +14,17 @@ export interface UserProfile {
   createdAt: string;
 }
 
-// Lead funnel stages. "converted" is displayed using the brand's own
-// conversion label (e.g. Market Appraisal for The Property Experts).
+// Lead funnel stages. Progressive: each stage reveals the next relevant
+// action in the UI. After three contact attempts with no answer, a lead can
+// be dropped into a marketing/nurture funnel rather than lost outright.
+// "converted" is displayed using the brand's own conversion label
+// (e.g. Market Appraisal for The Property Experts).
 export type LeadStage =
   | "new"
   | "attempt1"
   | "attempt2"
+  | "attempt3"
+  | "nurture" // added to a marketing funnel after no answer
   | "converted"
   | "pushed" // sent to the brand's CRM (REP etc.)
   | "lost";

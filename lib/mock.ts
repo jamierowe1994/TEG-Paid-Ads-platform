@@ -50,13 +50,15 @@ export const seedLeads: Lead[] = [
     phone: "07700 900321",
     email: "j.oneill@example.com",
     source: "instagram",
-    note: "No answer twice. Try evenings.",
-    stage: "attempt2",
+    note: "No answer on three attempts — moved to marketing funnel.",
+    stage: "nurture",
     receivedAt: "2026-07-02T08:05:00Z",
     history: [
       { stage: "new", at: "2026-07-02T08:05:00Z" },
       { stage: "attempt1", at: "2026-07-02T12:15:00Z" },
       { stage: "attempt2", at: "2026-07-03T17:45:00Z" },
+      { stage: "attempt3", at: "2026-07-04T18:30:00Z" },
+      { stage: "nurture", at: "2026-07-05T09:00:00Z" },
     ],
   },
 ];

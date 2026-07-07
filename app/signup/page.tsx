@@ -6,17 +6,17 @@ import Link from "next/link";
 import { BRANDS, brandForEmail, EXPERTS_GROUP, type Brand } from "@/lib/brands";
 import { PACKAGES, packageById } from "@/lib/packages";
 import BrandMark from "@/components/BrandMark";
-import { saveUser, uid } from "@/lib/session";
-import type { UserProfile } from "@/lib/types";
+import { signUp } from "@/lib/session";
 
 // One-question-at-a-time signup. Order:
-// name → email (brand auto-detect) → mobile → photo → platforms → goal
-// → package → payment (Stripe placeholder) → dashboard.
+// name → email (brand auto-detect) → password → mobile → photo → platforms
+// → goal → package → payment (Stripe placeholder) → create account → dashboard.
 
 type StepId =
   | "name"
   | "email"
   | "brand"
+  | "password"
   | "mobile"
   | "photo"
   | "platforms"
@@ -39,6 +39,7 @@ function SignupWizard() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [brand, setBrand] = useState<Brand | null>(null);
+  const [password, setPassword] = useState("");
   const [mobile, setMobile] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
   const [platforms, setPlatforms] = useState<("instagram" | "facebook")[]>([]);
@@ -47,12 +48,14 @@ function SignupWizard() {
     packageById(params.get("package"))?.id ?? ""
   );
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const steps: StepId[] = useMemo(
     () => [
       "name",
       "email",
       ...(brand ? [] : (["brand"] as StepId[])),
+      "password",
       "mobile",
       "photo",
       "platforms",
@@ -82,8 +85,8 @@ function SignupWizard() {
     }
     const detected = brandForEmail(trimmed);
     setBrand(detected ?? null);
-    // Known domain → straight to mobile. Unknown → ask which business.
-    go(detected ? "mobile" : "brand");
+    // Known domain → set a password. Unknown → ask which business first.
+    go(detected ? "password" : "brand");
   }
 
   function handlePhoto(file: File | null) {
@@ -93,23 +96,29 @@ function SignupWizard() {
     reader.readAsDataURL(file);
   }
 
-  function completeSignup() {
-    if (!brand) return;
-    const user: UserProfile = {
-      id: uid(),
+  async function completeSignup() {
+    if (!brand || submitting) return;
+    setSubmitting(true);
+    setError("");
+    const { error } = await signUp({
       name: name.trim(),
       email: email.trim().toLowerCase(),
+      password,
       mobile: mobile.trim(),
       photo,
       brandId: brand.id,
       platforms,
       goal,
-      packageId: packageId as UserProfile["packageId"],
-      // TODO(stripe): set via webhook after successful checkout
-      paid: true,
-      createdAt: new Date().toISOString(),
-    };
-    saveUser(user);
+      packageId,
+    });
+    if (error) {
+      setError(error);
+      setSubmitting(false);
+      // Send the user back to fix a duplicate email / weak password.
+      if (/email/i.test(error)) go("email");
+      else if (/password/i.test(error)) go("password");
+      return;
+    }
     router.push("/dashboard");
   }
 
@@ -227,7 +236,7 @@ function SignupWizard() {
                   key={b.id}
                   onClick={() => {
                     setBrand(b);
-                    go("mobile");
+                    go("password");
                   }}
                   className="flex items-center gap-3 rounded-xl border border-gray-200 px-5 py-4 text-left transition hover:border-gray-900"
                 >
@@ -245,6 +254,57 @@ function SignupWizard() {
             >
               Back
             </button>
+          </div>
+        )}
+
+        {/* ---- Password ---- */}
+        {step === "password" && (
+          <div className="fade-up" key="password">
+            {brand && (
+              <div
+                className="mb-6 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium"
+                style={{ backgroundColor: brand.accentSoft, color: brand.accent }}
+              >
+                <span
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ backgroundColor: brand.accent }}
+                />
+                {brand.name}
+              </div>
+            )}
+            <h1 className="text-3xl font-semibold tracking-tight">
+              Create a password
+            </h1>
+            <p className="mt-3 text-gray-500">
+              You'll use this with your email to sign in. At least 8 characters.
+            </p>
+            <input
+              autoFocus
+              type="password"
+              className={`${inputClass} mt-8`}
+              placeholder="Choose a password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) =>
+                e.key === "Enter" && password.length >= 8 && go("mobile")
+              }
+            />
+            {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
+            <div className="mt-8 flex gap-3">
+              <button
+                className="rounded-xl border border-gray-200 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                onClick={back}
+              >
+                Back
+              </button>
+              <button
+                className={primaryBtn}
+                disabled={password.length < 8}
+                onClick={() => go("mobile")}
+              >
+                Continue
+              </button>
+            </div>
           </div>
         )}
 
@@ -531,10 +591,15 @@ function SignupWizard() {
               >
                 Back
               </button>
-              <button className={primaryBtn} onClick={completeSignup}>
-                Complete signup (demo)
+              <button
+                className={primaryBtn}
+                disabled={submitting}
+                onClick={completeSignup}
+              >
+                {submitting ? "Creating account…" : "Complete signup"}
               </button>
             </div>
+            {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
           </div>
         )}
       </div>
