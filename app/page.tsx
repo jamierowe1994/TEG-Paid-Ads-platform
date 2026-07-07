@@ -11,12 +11,13 @@ import PanelReveal from "@/components/PanelReveal";
 import BackgroundTexture from "@/components/BackgroundTexture";
 
 export default function LandingPage() {
+  // No bg-white on <main> — the body provides the white base so the fixed
+  // -z-10 texture/glows show through the transparent sections.
   return (
-    <main className="relative min-h-screen overflow-x-clip bg-white">
-      {/* Subtle background — soft brand-tinted glows + a faint grid, so the
-          white page reads as intentionally light rather than flat. Elegant,
-          barely there, and it shows through the transparent (white) sections
-          while the charcoal panel and footer sit on top of it. */}
+    <main className="relative min-h-screen overflow-x-clip">
+      {/* Subtle background — soft brand-tinted glows + a faint contour
+          texture, showing through the transparent (white) sections while the
+          charcoal panel and footer sit on top of it. */}
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0 -z-10"
