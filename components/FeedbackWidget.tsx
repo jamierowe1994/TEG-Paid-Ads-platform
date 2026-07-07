@@ -16,15 +16,32 @@ export default function FeedbackWidget() {
   const drawing = useRef(false);
   const last = useRef<{ x: number; y: number } | null>(null);
 
-  // Size the annotation canvas to the viewport when drawing starts
+  // Viewport size with a fallback, so the canvas backing store can never
+  // collapse to 0 (which would make strokes invisible).
+  function viewport() {
+    return {
+      w: window.innerWidth || document.documentElement.clientWidth || 1024,
+      h: window.innerHeight || document.documentElement.clientHeight || 768,
+    };
+  }
+
+  function sizeCanvas(canvas: HTMLCanvasElement) {
+    const { w, h } = viewport();
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
+  }
+
+  // Size the annotation canvas's backing store to match the viewport. A
+  // fresh <canvas> defaults to 300×150 internally regardless of its CSS size,
+  // so without this the strokes land on a tiny buffer and scale off-screen.
+  // We only resize when it doesn't already match (resizing clears the canvas),
+  // so switching drawing → note → drawing keeps existing drawings intact.
   useEffect(() => {
     if (mode !== "drawing" && mode !== "note") return;
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    if (canvas.width === 0 || canvas.height === 0) {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    }
+    if (canvas) sizeCanvas(canvas);
   }, [mode]);
 
   function pointerPos(e: React.PointerEvent<HTMLCanvasElement>) {
@@ -33,8 +50,21 @@ export default function FeedbackWidget() {
   }
 
   function startDraw(e: React.PointerEvent<HTMLCanvasElement>) {
+    const canvas = canvasRef.current;
+    if (canvas) {
+      sizeCanvas(canvas);
+      canvas.setPointerCapture?.(e.pointerId);
+    }
     drawing.current = true;
     last.current = pointerPos(e);
+    // Draw a dot immediately so a single tap/click registers.
+    const ctx = canvas?.getContext("2d");
+    if (ctx && last.current) {
+      ctx.fillStyle = "#EF4444";
+      ctx.beginPath();
+      ctx.arc(last.current.x, last.current.y, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   function moveDraw(e: React.PointerEvent<HTMLCanvasElement>) {

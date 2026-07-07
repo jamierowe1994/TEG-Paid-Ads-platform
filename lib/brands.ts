@@ -95,8 +95,8 @@ export const BRANDS: Brand[] = [
     name: "The Commercial Experts",
     shortName: "Commercial",
     domains: ["thecommercialexperts.co.uk", "commercialexperts.co.uk"],
-    accent: "#334155", // TODO(brand): awaiting Commercial Experts colour code
-    accentSoft: "#F1F5F9",
+    accent: "#41AAE1", // blue
+    accentSoft: "#ECF7FC",
     crmName: "CRM",
     conversionLabel: "Appointment Booked",
     conversionVerb: "Book Appointment",

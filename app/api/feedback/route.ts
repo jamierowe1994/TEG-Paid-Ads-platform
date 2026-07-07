@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
+import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
 
 // Feedback from the on-page annotation widget. Stored as JSON on disk for
 // the framework stage — swap for a database (or forward to Slack/email)
@@ -57,12 +58,17 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, id: item.id });
 }
 
-// Admin-only listing. The admin dashboard sends the admin password as a
-// bearer token — replace with real auth later.
+// Notes listing. Visible to the admin (bearer password) AND to any signed-in
+// user — the feedback notes are a shared review list so the whole team can
+// see what's been flagged and prepare changes.
 export async function GET(req: NextRequest) {
   const auth = req.headers.get("authorization") ?? "";
   const password = process.env.ADMIN_PASSWORD ?? "experts-admin";
-  if (auth !== `Bearer ${password}`) {
+  const isAdmin = auth === `Bearer ${password}`;
+  const isSignedIn = !!verifySessionToken(
+    req.cookies.get(SESSION_COOKIE)?.value
+  );
+  if (!isAdmin && !isSignedIn) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
   return NextResponse.json(await readAll());

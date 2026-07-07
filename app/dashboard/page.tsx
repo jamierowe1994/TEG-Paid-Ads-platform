@@ -67,6 +67,16 @@ export default function DashboardOverview() {
                 .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
                 .join(" + ")}
             </p>
+            <p className="mt-1 text-sm text-gray-400">
+              Ad-spend cap £{pkg?.adSpend}/mo ·{" "}
+              <Link
+                href="/dashboard/grow"
+                className="font-medium hover:underline"
+                style={{ color: brand.accent }}
+              >
+                Increase →
+              </Link>
+            </p>
           </div>
           <span
             className="rounded-full px-3 py-1 text-xs font-medium"
