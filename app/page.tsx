@@ -10,22 +10,48 @@ import LeadsStat from "@/components/LeadsStat";
 
 export default function LandingPage() {
   return (
-    <main className="min-h-screen overflow-x-clip bg-white">
-      {/* Nav — big pin + three-line group name, and a big Sign in */}
+    <main className="relative min-h-screen overflow-x-clip bg-white">
+      {/* Subtle background — soft brand-tinted glows + a faint grid, so the
+          white page reads as intentionally light rather than flat. Elegant,
+          barely there, and it shows through the transparent (white) sections
+          while the charcoal panel and footer sit on top of it. */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-10"
+        style={{
+          backgroundImage:
+            "radial-gradient(55% 45% at 18% 8%, rgba(227,31,54,0.05), transparent 60%)," +
+            "radial-gradient(45% 40% at 88% 14%, rgba(43,97,147,0.045), transparent 60%)," +
+            "radial-gradient(50% 45% at 75% 88%, rgba(227,31,54,0.035), transparent 60%)",
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-10 opacity-[0.5]"
+        style={{
+          backgroundImage:
+            "linear-gradient(to right, rgba(17,24,39,0.025) 1px, transparent 1px)," +
+            "linear-gradient(to bottom, rgba(17,24,39,0.025) 1px, transparent 1px)",
+          backgroundSize: "56px 56px",
+          maskImage:
+            "radial-gradient(ellipse 80% 60% at 50% 40%, black, transparent 75%)",
+          WebkitMaskImage:
+            "radial-gradient(ellipse 80% 60% at 50% 40%, black, transparent 75%)",
+        }}
+      />
+
+      {/* Nav — hashtag wordmark + a big Sign in */}
       <header className="absolute inset-x-0 top-0 z-40">
         <div className="mx-auto flex h-28 max-w-7xl items-center justify-between px-6 sm:px-10">
           <Link
             href="/"
             aria-label="The Experts Group"
-            className="flex items-center gap-3"
+            className="flex items-center gap-1.5"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/brand-logos/group-black.png"
-              alt=""
-              className="h-14 w-auto sm:h-[4.5rem]"
-            />
-            <span className="text-sm font-semibold uppercase leading-[1.35] tracking-wide text-gray-900 sm:text-base">
+            <span className="text-5xl font-bold leading-none text-[#E31F36] sm:text-6xl">
+              #
+            </span>
+            <span className="text-base font-bold uppercase leading-[0.98] tracking-tight text-gray-900 sm:text-lg">
               The
               <br />
               Experts
@@ -80,14 +106,14 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Second screen — red rounded panel with breathing room above and
-          below (not full screen): bold copy left, photo + infographic right,
-          physics icons landing at the bottom */}
+      {/* Second screen — charcoal rounded panel with breathing room above
+          and below: bold copy left, photo + infographic right, physics icons
+          landing at the bottom */}
       <section className="px-3 py-20 sm:py-28">
-        <div className="relative flex min-h-[52vh] flex-col overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-[#E31F36] to-[#AE1226]">
+        <div className="relative flex min-h-[64vh] flex-col overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-[#20242e] to-[#12151c]">
           <div className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-10 px-8 py-12 sm:px-12 lg:grid-cols-2">
             <Reveal direction="left">
-              <span className="inline-block rounded-full bg-white/15 px-4 py-1.5 text-sm font-medium text-white">
+              <span className="inline-block rounded-full bg-[#E31F36] px-4 py-1.5 text-sm font-medium text-white">
                 Built for agents
               </span>
               <h2 className="mt-5 max-w-lg text-4xl font-semibold leading-[1.05] tracking-tight text-white sm:text-5xl">
@@ -140,8 +166,9 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Landing zone so settled icons don't sit on the content */}
-          <div className="h-20" />
+          {/* Landing zone so settled icons don't sit on the content — extra
+              room lets them fall lower */}
+          <div className="h-32" />
           {/* The hero's icons fall in behind the pills and hit the bottom */}
           <PhysicsIcons />
         </div>

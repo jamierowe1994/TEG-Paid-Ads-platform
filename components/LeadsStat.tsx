@@ -31,7 +31,7 @@ export default function LeadsStat() {
           observer.disconnect();
         }
       },
-      { threshold: 0.5 }
+      { threshold: 0.25 }
     );
     observer.observe(el);
     return () => observer.disconnect();
@@ -45,7 +45,7 @@ export default function LeadsStat() {
       return;
     }
     const t0 = performance.now();
-    const duration = 1300;
+    const duration = 2800;
     let raf = 0;
     const tick = (t: number) => {
       const p = Math.min((t - t0) / duration, 1);
@@ -71,7 +71,7 @@ export default function LeadsStat() {
         />
         <div
           className={`bar-grow h-12 flex-1 rounded-md bg-[#E31F36] ${on ? "grown" : ""}`}
-          style={{ animationDelay: "0.18s" }}
+          style={{ animationDelay: "0.4s" }}
         />
       </div>
       <p className="mt-2 text-[10px] text-gray-400">vs last month</p>
