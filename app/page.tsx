@@ -20,23 +20,24 @@ export default function LandingPage() {
         className="pointer-events-none fixed inset-0 -z-10"
         style={{
           backgroundImage:
-            "radial-gradient(55% 45% at 18% 8%, rgba(227,31,54,0.05), transparent 60%)," +
-            "radial-gradient(45% 40% at 88% 14%, rgba(43,97,147,0.045), transparent 60%)," +
-            "radial-gradient(50% 45% at 75% 88%, rgba(227,31,54,0.035), transparent 60%)",
+            "radial-gradient(60% 50% at 15% 6%, rgba(227,31,54,0.09), transparent 62%)," +
+            "radial-gradient(50% 45% at 90% 12%, rgba(43,97,147,0.085), transparent 62%)," +
+            "radial-gradient(55% 50% at 78% 92%, rgba(227,31,54,0.07), transparent 62%)," +
+            "radial-gradient(45% 40% at 8% 80%, rgba(43,97,147,0.06), transparent 62%)",
         }}
       />
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 -z-10 opacity-[0.5]"
+        className="pointer-events-none fixed inset-0 -z-10 opacity-[0.7]"
         style={{
           backgroundImage:
-            "linear-gradient(to right, rgba(17,24,39,0.025) 1px, transparent 1px)," +
-            "linear-gradient(to bottom, rgba(17,24,39,0.025) 1px, transparent 1px)",
-          backgroundSize: "56px 56px",
+            "linear-gradient(to right, rgba(17,24,39,0.04) 1px, transparent 1px)," +
+            "linear-gradient(to bottom, rgba(17,24,39,0.04) 1px, transparent 1px)",
+          backgroundSize: "48px 48px",
           maskImage:
-            "radial-gradient(ellipse 80% 60% at 50% 40%, black, transparent 75%)",
+            "radial-gradient(ellipse 85% 70% at 50% 35%, black, transparent 78%)",
           WebkitMaskImage:
-            "radial-gradient(ellipse 80% 60% at 50% 40%, black, transparent 75%)",
+            "radial-gradient(ellipse 85% 70% at 50% 35%, black, transparent 78%)",
         }}
       />
 
@@ -46,12 +47,16 @@ export default function LandingPage() {
           <Link
             href="/"
             aria-label="The Experts Group"
-            className="flex items-center gap-1.5"
+            className="flex items-center gap-3"
           >
-            <span className="text-5xl font-bold leading-none text-[#E31F36] sm:text-6xl">
-              #
+            {/* Red chat-bubble with a white # and a little tail */}
+            <span className="relative flex h-12 w-12 items-center justify-center rounded-[1.1rem] bg-[#E31F36] shadow-sm sm:h-14 sm:w-14">
+              <span className="text-2xl font-extrabold leading-none text-white sm:text-3xl">
+                #
+              </span>
+              <span className="absolute -bottom-1 left-3 h-4 w-4 rotate-45 rounded-[4px] bg-[#E31F36]" />
             </span>
-            <span className="text-base font-bold uppercase leading-[0.98] tracking-tight text-gray-900 sm:text-lg">
+            <span className="text-lg font-extrabold leading-[0.9] tracking-[-0.02em] text-gray-900 sm:text-xl">
               The
               <br />
               Experts
@@ -77,7 +82,7 @@ export default function LandingPage() {
             </p>
             {/* nowrap keeps "Our ad engine." on one line while the hidden
                 card expands on hover */}
-            <h1 className="mx-auto max-w-5xl text-5xl font-semibold tracking-[-0.04em] text-gray-900 sm:text-6xl lg:text-7xl">
+            <h1 className="mx-auto max-w-6xl text-6xl font-semibold tracking-[-0.04em] text-gray-900 sm:text-7xl lg:text-8xl">
               Your personal brand.
               <br />
               <span className="lg:whitespace-nowrap">
