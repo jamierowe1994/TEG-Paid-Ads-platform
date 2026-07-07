@@ -42,11 +42,9 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* Hero — full screen: content in a light grey box that bleeds to the
-          top and sides, curves at the bottom, and stops well above the
-          icon strip */}
+      {/* Hero — full screen, clean white, icons along the bottom */}
       <section className="flex min-h-screen flex-col">
-        <div className="flex flex-1 flex-col items-center justify-center rounded-b-[2.5rem] bg-gray-100 px-6 pb-10 pt-24 text-center shadow-[0_30px_60px_-25px_rgba(0,0,0,0.25)]">
+        <div className="flex flex-1 flex-col items-center justify-center px-6 pb-10 pt-24 text-center">
           <Reveal>
             <p className="mb-5 text-sm font-medium uppercase tracking-widest text-gray-400">
               Paid ads, done for you

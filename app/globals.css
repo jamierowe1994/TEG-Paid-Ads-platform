@@ -111,9 +111,10 @@ h5 {
 }
 
 /* Star layers — seamless diagonal drift (offsets are multiples of the
-   background-size so the loop never jumps), plus a gentle twinkle. */
+   background-size so the loop never jumps), plus gentle twinkles. */
 .btn-glow-stars,
-.btn-glow-stars2 {
+.btn-glow-stars2,
+.btn-glow-stars3 {
   position: absolute;
   inset: 0;
   border-radius: inherit;
@@ -125,7 +126,9 @@ h5 {
     radial-gradient(1.5px 1.5px at 25% 35%, rgba(255, 255, 255, 0.9), transparent),
     radial-gradient(1px 1px at 65% 70%, rgba(255, 255, 255, 0.7), transparent),
     radial-gradient(1.2px 1.2px at 85% 20%, rgba(255, 255, 255, 0.8), transparent),
-    radial-gradient(1px 1px at 45% 85%, rgba(255, 255, 255, 0.6), transparent);
+    radial-gradient(1px 1px at 45% 85%, rgba(255, 255, 255, 0.6), transparent),
+    radial-gradient(1.3px 1.3px at 8% 15%, rgba(255, 255, 255, 0.75), transparent),
+    radial-gradient(1px 1px at 92% 80%, rgba(255, 255, 255, 0.65), transparent);
   background-size: 140px 70px;
   opacity: 0.85;
   animation:
@@ -136,12 +139,27 @@ h5 {
   background-image:
     radial-gradient(1px 1px at 15% 60%, rgba(255, 255, 255, 0.8), transparent),
     radial-gradient(0.8px 0.8px at 75% 40%, rgba(255, 255, 255, 0.6), transparent),
-    radial-gradient(1px 1px at 55% 15%, rgba(255, 255, 255, 0.55), transparent);
+    radial-gradient(1px 1px at 55% 15%, rgba(255, 255, 255, 0.55), transparent),
+    radial-gradient(0.9px 0.9px at 35% 90%, rgba(255, 255, 255, 0.6), transparent),
+    radial-gradient(0.8px 0.8px at 90% 30%, rgba(255, 255, 255, 0.5), transparent);
   background-size: 90px 45px;
   opacity: 0.5;
   animation:
     stars-drift-b 12s linear infinite,
     twinkle 2.3s ease-in-out infinite 0.8s;
+}
+/* Slow deep layer — barely-there dust for depth */
+.btn-glow-stars3 {
+  background-image:
+    radial-gradient(0.7px 0.7px at 30% 25%, rgba(255, 255, 255, 0.45), transparent),
+    radial-gradient(0.6px 0.6px at 70% 75%, rgba(255, 255, 255, 0.4), transparent),
+    radial-gradient(0.7px 0.7px at 50% 50%, rgba(255, 255, 255, 0.35), transparent),
+    radial-gradient(0.6px 0.6px at 10% 80%, rgba(255, 255, 255, 0.35), transparent);
+  background-size: 70px 35px;
+  opacity: 0.4;
+  animation:
+    stars-drift-c 26s linear infinite,
+    twinkle 4.1s ease-in-out infinite 1.6s;
 }
 @keyframes stars-drift-a {
   to {
@@ -151,6 +169,11 @@ h5 {
 @keyframes stars-drift-b {
   to {
     background-position: -90px 45px;
+  }
+}
+@keyframes stars-drift-c {
+  to {
+    background-position: 70px 35px;
   }
 }
 @keyframes twinkle {
@@ -163,31 +186,60 @@ h5 {
   }
 }
 
-/* Light that follows the cursor (GlowButton sets --mx/--my on mousemove) */
+/* Light that leans toward the cursor from anywhere on the page
+   (GlowButton sets --mx/--my from window-level mousemove + scroll) */
 .btn-glow-cursor {
   position: absolute;
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
   background: radial-gradient(
-    90px circle at var(--mx, 62%) var(--my, 45%),
-    rgba(255, 255, 255, 0.5),
-    transparent 65%
+    110px circle at var(--mx, 62%) var(--my, 45%),
+    rgba(255, 255, 255, 0.38),
+    transparent 68%
   );
-  filter: blur(6px);
+  filter: blur(8px);
 }
 
-/* Hover: the label fills bottom-to-top with Experts red */
-.btn-glow-fill {
+/* Chromatic rim — a whisper of spectral colour circling the edge, with
+   brighter glints, for a lit-glass 3D feel. */
+@property --rim-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+.btn-glow-rim {
   position: absolute;
   inset: 0;
-  color: #e31f36;
-  text-shadow: 0 0 14px rgba(227, 31, 54, 0.6);
-  clip-path: inset(100% 0 0 0);
-  transition: clip-path 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  border-radius: inherit;
+  padding: 1.5px;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--rim-angle),
+    rgba(255, 255, 255, 0.55),
+    rgba(140, 200, 255, 0.35) 12%,
+    rgba(255, 255, 255, 0.08) 28%,
+    rgba(255, 150, 190, 0.28) 44%,
+    rgba(255, 255, 255, 0.5) 55%,
+    rgba(255, 220, 160, 0.3) 68%,
+    rgba(255, 255, 255, 0.06) 82%,
+    rgba(160, 235, 255, 0.32) 92%,
+    rgba(255, 255, 255, 0.55)
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  animation: rim-spin 14s linear infinite;
 }
-.btn-glow:hover .btn-glow-fill {
-  clip-path: inset(0 0 0 0);
+@keyframes rim-spin {
+  to {
+    --rim-angle: 360deg;
+  }
 }
 
 .accent-bg {
@@ -334,11 +386,10 @@ h5 {
     transition: none;
   }
   .btn-glow-stars,
-  .btn-glow-stars2 {
+  .btn-glow-stars2,
+  .btn-glow-stars3,
+  .btn-glow-rim {
     animation: none;
-  }
-  .btn-glow-fill {
-    transition: none;
   }
   .bar-grow,
   .bar-grow.grown {
