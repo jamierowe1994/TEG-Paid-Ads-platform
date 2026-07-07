@@ -42,7 +42,7 @@ export default function GlowButton({
     el.style.setProperty("--rx", "0deg");
     el.style.setProperty("--ry", "0deg");
     el.style.setProperty("--ty", "0px");
-    el.style.setProperty("--glow-o", "0.2");
+    el.style.setProperty("--glow-o", "0.06");
   }
 
   return (

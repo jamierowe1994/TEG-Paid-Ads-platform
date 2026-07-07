@@ -40,45 +40,58 @@ interface Island {
 
 const ANIMS = ["topo-a", "topo-b", "topo-c"];
 
+// Placed on a jittered grid (one per cell) so islands stay spread out and
+// don't collide/overlap — smaller than a cell, with only gentle jitter.
+const COLS = 4;
+const ROWS = 4;
+
 const ISLANDS: Island[] = (() => {
   const r = rng(20260707);
   const out: Island[] = [];
-  for (let i = 0; i < 16; i++) {
-    const ringCount = 3 + Math.floor(r() * 6); // 3–8 rings
-    const rings: { scale: number; width: number }[] = [];
-    for (let j = 0; j < ringCount; j++) {
-      const t = ringCount === 1 ? 0.6 : j / (ringCount - 1);
-      rings.push({
-        scale: 0.16 + t * (1.05 + r() * 0.35) + r() * 0.06, // spread outwards
-        width: 0.6 + r() * 1.7, // varied thickness per ring
+  const cw = 1200 / COLS;
+  const ch = 900 / ROWS;
+  for (let row = 0; row < ROWS; row++) {
+    for (let col = 0; col < COLS; col++) {
+      const ringCount = 3 + Math.floor(r() * 5); // 3–7 rings
+      const rings: { scale: number; width: number }[] = [];
+      for (let j = 0; j < ringCount; j++) {
+        const t = ringCount === 1 ? 0.6 : j / (ringCount - 1);
+        rings.push({
+          scale: 0.12 + t * (0.68 + r() * 0.16) + r() * 0.04, // small, contained
+          width: 0.5 + r() * 1.5, // varied thickness per ring
+        });
+      }
+      out.push({
+        // cell centre + gentle jitter (±22% of the cell)
+        x: col * cw + cw / 2 + (r() - 0.5) * cw * 0.44,
+        y: row * ch + ch / 2 + (r() - 0.5) * ch * 0.44,
+        shape: Math.floor(r() * SHAPES.length),
+        sx: 0.7 + r() * 0.55, // oblong horizontally (contained)
+        sy: 0.7 + r() * 0.55, // oblong vertically
+        rot: r() * 360,
+        anim: ANIMS[Math.floor(r() * ANIMS.length)],
+        dur: 34 + r() * 30, // 34–64s — very slow
+        delay: -(r() * 40), // desync so nothing moves in step
+        rings,
       });
     }
-    out.push({
-      x: r() * 1200,
-      y: r() * 900,
-      shape: Math.floor(r() * SHAPES.length),
-      sx: 0.6 + r() * 0.95, // oblong horizontally
-      sy: 0.6 + r() * 0.95, // oblong vertically
-      rot: r() * 360,
-      anim: ANIMS[Math.floor(r() * ANIMS.length)],
-      dur: 34 + r() * 30, // 34–64s — very slow
-      delay: -(r() * 40), // desync so nothing moves in step
-      rings,
-    });
   }
   return out;
 })();
 
 export default function BackgroundTexture() {
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
+    <div
+      aria-hidden
+      className="pointer-events-none fixed inset-0 -z-10 opacity-70"
+    >
       <svg
         className="h-full w-full"
         viewBox="0 0 1200 900"
         preserveAspectRatio="xMidYMid slice"
         fill="none"
       >
-        <g stroke="#eceef1" vectorEffect="non-scaling-stroke">
+        <g stroke="#eef0f3" vectorEffect="non-scaling-stroke">
           {ISLANDS.map((isl, i) => (
             <g key={i} transform={`translate(${isl.x} ${isl.y})`}>
               <g

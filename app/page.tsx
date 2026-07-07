@@ -9,6 +9,7 @@ import GlowButton from "@/components/GlowButton";
 import LeadsStat from "@/components/LeadsStat";
 import PanelReveal from "@/components/PanelReveal";
 import BackgroundTexture from "@/components/BackgroundTexture";
+import Parallax from "@/components/Parallax";
 
 export default function LandingPage() {
   // No bg-white on <main> — the body provides the white base so the fixed
@@ -66,7 +67,7 @@ export default function LandingPage() {
 
       {/* Hero — full screen, clean white, icons along the bottom */}
       <section className="flex min-h-screen flex-col">
-        <div className="flex flex-1 flex-col items-center justify-center px-6 pb-10 pt-24 text-center">
+        <Parallax className="flex flex-1 flex-col items-center justify-center px-6 pb-10 pt-24 text-center">
           <Reveal>
             <p className="mb-5 text-sm font-medium uppercase tracking-widest text-gray-400">
               Paid ads, done for you
@@ -94,7 +95,7 @@ export default function LandingPage() {
               </GlowButton>
             </div>
           </Reveal>
-        </div>
+        </Parallax>
         {/* Social platforms strip — outside the box with breathing room,
             falls into the next screen on scroll */}
         <div className="mx-auto w-full max-w-5xl px-6 py-12">
