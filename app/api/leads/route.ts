@@ -1,0 +1,49 @@
+import { NextRequest, NextResponse } from "next/server";
+import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
+import { listLeadsForUser, updateLeadStage } from "@/lib/leads-store";
+import type { LeadStage } from "@/lib/types";
+
+// The signed-in agent's leads. Server-side now (Postgres on Railway) — the
+// Meta lead webhook will insert into the same store when it goes live.
+
+const STAGES: LeadStage[] = [
+  "new",
+  "attempt1",
+  "attempt2",
+  "attempt3",
+  "nurture",
+  "converted",
+  "pushed",
+  "lost",
+];
+
+function userIdFrom(req: NextRequest): string | null {
+  return verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
+}
+
+export async function GET(req: NextRequest) {
+  const userId = userIdFrom(req);
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  }
+  return NextResponse.json(await listLeadsForUser(userId));
+}
+
+// Move a lead through the funnel: { leadId, stage }
+export async function PATCH(req: NextRequest) {
+  const userId = userIdFrom(req);
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  }
+  const body = await req.json().catch(() => null);
+  const leadId = String(body?.leadId ?? "");
+  const stage = String(body?.stage ?? "") as LeadStage;
+  if (!leadId || !STAGES.includes(stage)) {
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  }
+  const lead = await updateLeadStage(userId, leadId, stage);
+  if (!lead) {
+    return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+  }
+  return NextResponse.json(lead);
+}

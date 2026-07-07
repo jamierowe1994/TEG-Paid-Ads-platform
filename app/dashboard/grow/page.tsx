@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { getUser, getLeads } from "@/lib/session";
+import { getUser, fetchLeads } from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
 import { PACKAGES, packageById } from "@/lib/packages";
 
@@ -29,12 +29,13 @@ export default function GrowPage() {
     setCurrentSpend(pkg?.adSpend ?? 0);
     setDesired(pkg?.adSpend ?? 0);
     setPackageId(u.packageId);
-    const leads = getLeads();
-    setLeadCount(leads.length);
-    setConvertedCount(
-      leads.filter((l) => l.stage === "converted" || l.stage === "pushed")
-        .length
-    );
+    fetchLeads().then((leads) => {
+      setLeadCount(leads.length);
+      setConvertedCount(
+        leads.filter((l) => l.stage === "converted" || l.stage === "pushed")
+          .length
+      );
+    });
   }, []);
 
   const costPerLead = leadCount > 0 ? currentSpend / leadCount : null;

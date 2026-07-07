@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { getUser, getLeads, saveLeads } from "@/lib/session";
+import { getUser, fetchLeads, moveLeadStage } from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
 import { packageById } from "@/lib/packages";
 import type { Lead, LeadStage } from "@/lib/types";
@@ -60,7 +60,7 @@ export default function LeadsPage() {
     if (!u) return;
     setBrand(brandById(u.brandId) ?? null);
     setAdSpend(packageById(u.packageId)?.adSpend ?? 0);
-    setLeads(getLeads());
+    fetchLeads().then(setLeads);
   }, []);
 
   const visible = useMemo(() => {
@@ -76,17 +76,26 @@ export default function LeadsPage() {
   }, [leads, filter, sort]);
 
   function update(leadId: string, stage: LeadStage) {
-    const next = leads.map((l) =>
-      l.id === leadId
-        ? {
-            ...l,
-            stage,
-            history: [...l.history, { stage, at: new Date().toISOString() }],
-          }
-        : l
+    // Optimistic update, then persist server-side; roll back on failure.
+    const previous = leads;
+    setLeads(
+      leads.map((l) =>
+        l.id === leadId
+          ? {
+              ...l,
+              stage,
+              history: [...l.history, { stage, at: new Date().toISOString() }],
+            }
+          : l
+      )
     );
-    setLeads(next);
-    saveLeads(next);
+    moveLeadStage(leadId, stage).then((saved) => {
+      if (!saved) {
+        setLeads(previous);
+        setToast("Couldn't save that — please try again");
+        setTimeout(() => setToast(""), 3000);
+      }
+    });
   }
 
   function pushToCrm(lead: Lead) {

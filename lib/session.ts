@@ -7,14 +7,13 @@
 // populated from a server response, and every dashboard load re-validates via
 // /api/auth/me.
 //
-// Leads and referrals remain seeded demo data in localStorage until the Meta
-// lead channel is confirmed.
+// Leads live server-side (Postgres on Railway) via /api/leads. Referrals
+// remain local demo data until cross-account delivery is built.
 
 import type { UserProfile, Lead, Referral } from "./types";
-import { seedLeads, seedReferrals } from "./mock";
+import { seedReferrals } from "./mock";
 
 const USER_KEY = "teg_user";
-const LEADS_KEY = "teg_leads";
 const REFERRALS_KEY = "teg_referrals";
 
 function read<T>(key: string): T | null {
@@ -119,16 +118,32 @@ export async function signOut() {
   window.localStorage.removeItem(USER_KEY);
 }
 
-// ── Leads & referrals (demo data for now) ─────────────────────────────────
-export function getLeads(): Lead[] {
-  const existing = read<Lead[]>(LEADS_KEY);
-  if (existing) return existing;
-  write(LEADS_KEY, seedLeads);
-  return seedLeads;
+// ── Leads (server-side, Postgres on Railway) ─────────────────────────────
+export async function fetchLeads(): Promise<Lead[]> {
+  try {
+    const res = await fetch("/api/leads", { cache: "no-store" });
+    if (!res.ok) return [];
+    return (await res.json()) as Lead[];
+  } catch {
+    return [];
+  }
 }
 
-export function saveLeads(leads: Lead[]) {
-  write(LEADS_KEY, leads);
+export async function moveLeadStage(
+  leadId: string,
+  stage: Lead["stage"]
+): Promise<Lead | null> {
+  try {
+    const res = await fetch("/api/leads", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ leadId, stage }),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as Lead;
+  } catch {
+    return null;
+  }
 }
 
 export function getReferrals(): Referral[] {

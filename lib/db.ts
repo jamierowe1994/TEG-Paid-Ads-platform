@@ -71,6 +71,23 @@ CREATE TABLE IF NOT EXISTS signup_events (
   brand_id   TEXT,
   started_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS leads (
+  id          TEXT PRIMARY KEY,
+  user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL DEFAULT '',
+  phone       TEXT NOT NULL DEFAULT '',
+  email       TEXT NOT NULL DEFAULT '',
+  source      TEXT NOT NULL DEFAULT 'facebook',
+  note        TEXT NOT NULL DEFAULT '',
+  stage       TEXT NOT NULL DEFAULT 'new',
+  received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  history     JSONB NOT NULL DEFAULT '[]'
+);
+CREATE INDEX IF NOT EXISTS leads_user_idx ON leads(user_id);
+
+-- Columns added after first release (safe to re-run)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS meta_campaign_id TEXT;
 `;
 
 async function ensureSchema(): Promise<void> {

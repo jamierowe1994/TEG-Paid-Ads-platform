@@ -12,6 +12,9 @@ export interface UserProfile {
   packageId: "starter" | "growth" | "scale";
   paid: boolean; // set true by the Stripe webhook once payments are live
   createdAt: string;
+  // The Meta campaign this agent's ads run under — set by the admin, used to
+  // pull per-agent stats/leads once Meta is connected.
+  metaCampaignId?: string | null;
 }
 
 // Lead funnel stages. Progressive: each stage reveals the next relevant

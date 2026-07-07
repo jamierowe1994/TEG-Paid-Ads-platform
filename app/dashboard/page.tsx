@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getUser, getLeads } from "@/lib/session";
+import { getUser, fetchLeads } from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
 import { packageById } from "@/lib/packages";
 import type { UserProfile, Lead } from "@/lib/types";
@@ -26,7 +26,7 @@ export default function DashboardOverview() {
     if (!u) return;
     setUser(u);
     setBrand(brandById(u.brandId) ?? null);
-    setLeads(getLeads());
+    fetchLeads().then(setLeads);
   }, []);
 
   if (!user || !brand) return null;

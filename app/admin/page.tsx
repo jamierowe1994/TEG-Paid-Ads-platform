@@ -33,6 +33,12 @@ interface SignupEvent {
   startedAt: string;
 }
 
+interface LeadSummary {
+  userId: string;
+  total: number;
+  converted: number;
+}
+
 type Tab = "overview" | "crm" | "performance" | "connections";
 
 const TABS: { id: Tab; label: string }[] = [
@@ -52,6 +58,7 @@ export default function AdminPage() {
   const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [starts, setStarts] = useState<SignupEvent[]>([]);
+  const [leadSummaries, setLeadSummaries] = useState<LeadSummary[]>([]);
   const [selected, setSelected] = useState<FeedbackItem | null>(null);
   const [resetResult, setResetResult] = useState<{
     email: string;
@@ -60,16 +67,29 @@ export default function AdminPage() {
 
   async function loadData(pass: string): Promise<boolean> {
     const headers = { Authorization: `Bearer ${pass}` };
-    const [fb, us, ev] = await Promise.all([
+    const [fb, us, ev, ls] = await Promise.all([
       fetch("/api/feedback", { headers }),
       fetch("/api/admin/users", { headers }),
       fetch("/api/track", { headers }),
+      fetch("/api/admin/leads-summary", { headers }),
     ]);
-    if (!fb.ok || !us.ok || !ev.ok) return false;
+    if (!fb.ok || !us.ok || !ev.ok || !ls.ok) return false;
     setFeedback(await fb.json());
     setUsers(await us.json());
     setStarts(await ev.json());
+    setLeadSummaries(await ls.json());
     return true;
+  }
+
+  async function saveCampaignId(userId: string, metaCampaignId: string) {
+    await fetch("/api/admin/users", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${password}`,
+      },
+      body: JSON.stringify({ userId, metaCampaignId }),
+    });
   }
 
   async function signIn() {
@@ -113,6 +133,40 @@ export default function AdminPage() {
     const doneEmails = new Set(users.map((u) => u.email));
     return starts.filter((s) => !doneEmails.has(s.email));
   }, [users, starts]);
+
+  // Per-brand roll-up: agents, spend, leads, conversions (leads are demo
+  // seeds until Meta is live, but the plumbing is real).
+  const brandStats = useMemo(() => {
+    const byUser = new Map(leadSummaries.map((s) => [s.userId, s]));
+    return BRANDS.map((b) => {
+      const agents = users.filter((u) => u.brandId === b.id);
+      let total = 0;
+      let converted = 0;
+      let spend = 0;
+      for (const u of agents) {
+        const s = byUser.get(u.id);
+        total += s?.total ?? 0;
+        converted += s?.converted ?? 0;
+        spend += packageById(u.packageId)?.adSpend ?? 0;
+      }
+      return {
+        brand: b,
+        agents: agents.length,
+        spend,
+        total,
+        converted,
+        rate: total > 0 ? converted / total : null,
+        cpl: total > 0 ? spend / total : null,
+        spendPerConversion: converted > 0 ? spend / converted : null,
+      };
+    });
+  }, [users, leadSummaries]);
+
+  const bestBrand = useMemo(() => {
+    const withData = brandStats.filter((s) => s.rate !== null);
+    if (withData.length === 0) return null;
+    return withData.reduce((a, b) => ((b.rate ?? 0) > (a.rate ?? 0) ? b : a));
+  }, [brandStats]);
 
   if (!authed) {
     return (
@@ -301,8 +355,12 @@ export default function AdminPage() {
               />
               <AdminStat
                 label="Best converting brand"
-                value="—"
-                note="Needs Meta + lead data"
+                value={
+                  bestBrand
+                    ? `${bestBrand.brand.shortName} · ${Math.round((bestBrand.rate ?? 0) * 100)}%`
+                    : "—"
+                }
+                note={bestBrand ? "Demo leads until Meta is live" : "Needs lead data"}
               />
             </div>
 
@@ -322,6 +380,7 @@ export default function AdminPage() {
                       <th className="px-5 py-3 font-medium">Business</th>
                       <th className="px-5 py-3 font-medium">Package</th>
                       <th className="px-5 py-3 font-medium">Signed up</th>
+                      <th className="px-5 py-3 font-medium">Meta campaign</th>
                       <th className="px-5 py-3 font-medium">Actions</th>
                     </tr>
                   </thead>
@@ -355,6 +414,18 @@ export default function AdminPage() {
                             {new Date(u.createdAt).toLocaleDateString("en-GB")}
                           </td>
                           <td className="px-5 py-3">
+                            {/* Links this agent to their Meta campaign so
+                                stats/leads are theirs alone. Saves on blur. */}
+                            <input
+                              placeholder="Campaign ID"
+                              defaultValue={u.metaCampaignId ?? ""}
+                              onBlur={(e) =>
+                                saveCampaignId(u.id, e.target.value)
+                              }
+                              className="w-32 rounded-lg border border-gray-200 px-2 py-1.5 text-xs outline-none focus:border-gray-900"
+                            />
+                          </td>
+                          <td className="px-5 py-3">
                             <button
                               onClick={() => resetPassword(u)}
                               className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
@@ -368,7 +439,7 @@ export default function AdminPage() {
                     {users.length === 0 && (
                       <tr>
                         <td
-                          colSpan={5}
+                          colSpan={6}
                           className="px-5 py-12 text-center text-sm text-gray-400"
                         >
                           No signups yet.
@@ -437,10 +508,9 @@ export default function AdminPage() {
         {tab === "performance" && (
           <>
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
-              This tab fills with live numbers once Meta is connected and the
-              lead channel is live — the layout below shows exactly what
-              you'll see. Spend is real (from packages); leads, conversions
-              and cost metrics arrive with the Meta integration.
+              Spend is real (from packages) and the lead/conversion plumbing
+              is live — but leads are demo-seeded until Meta connects, so
+              treat the rates below as placeholders for now.
             </div>
 
             <section className="mt-8">
@@ -461,36 +531,48 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                    {BRANDS.map((b) => {
-                      const agents = users.filter((u) => u.brandId === b.id);
-                      const spend = agents.reduce(
-                        (sum, u) =>
-                          sum + (packageById(u.packageId)?.adSpend ?? 0),
-                        0
-                      );
-                      return (
-                        <tr key={b.id}>
-                          <td className="px-5 py-3">
-                            <span className="inline-flex items-center gap-2 font-medium">
-                              <BrandMark
-                                name={b.name}
-                                accent={b.accent}
-                                logo={b.logo}
-                                size={22}
-                                rounded="rounded-none"
-                              />
-                              {b.shortName}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3">{agents.length}</td>
-                          <td className="px-5 py-3">£{spend}</td>
-                          <td className="px-5 py-3 text-gray-300">—</td>
-                          <td className="px-5 py-3 text-gray-300">—</td>
-                          <td className="px-5 py-3 text-gray-300">—</td>
-                          <td className="px-5 py-3 text-gray-300">—</td>
-                        </tr>
-                      );
-                    })}
+                    {brandStats.map((s) => (
+                      <tr key={s.brand.id}>
+                        <td className="px-5 py-3">
+                          <span className="inline-flex items-center gap-2 font-medium">
+                            <BrandMark
+                              name={s.brand.name}
+                              accent={s.brand.accent}
+                              logo={s.brand.logo}
+                              size={22}
+                              rounded="rounded-none"
+                            />
+                            {s.brand.shortName}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3">{s.agents}</td>
+                        <td className="px-5 py-3">£{s.spend}</td>
+                        <td className="px-5 py-3">
+                          {s.total || <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-5 py-3">
+                          {s.cpl !== null ? (
+                            `£${s.cpl.toFixed(2)}`
+                          ) : (
+                            <span className="text-gray-300">—</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3">
+                          {s.rate !== null ? (
+                            `${Math.round(s.rate * 100)}%`
+                          ) : (
+                            <span className="text-gray-300">—</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3">
+                          {s.spendPerConversion !== null ? (
+                            `£${s.spendPerConversion.toFixed(2)}`
+                          ) : (
+                            <span className="text-gray-300">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -499,7 +581,11 @@ export default function AdminPage() {
             <section className="mt-8 grid gap-4 sm:grid-cols-3">
               <AdminStat
                 label="Avg spend per conversion (group)"
-                value="—"
+                value={(() => {
+                  const spend = brandStats.reduce((s, b) => s + b.spend, 0);
+                  const conv = brandStats.reduce((s, b) => s + b.converted, 0);
+                  return conv > 0 ? `£${(spend / conv).toFixed(2)}` : "—";
+                })()}
                 note="Total ad spend ÷ total conversions"
               />
               <AdminStat

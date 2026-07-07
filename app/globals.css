@@ -120,29 +120,32 @@ h5 {
   transform: none;
 }
 
-/* ── Floating mock ads in the hero ──────────────────────────────────── */
-@keyframes float-slow {
-  0%,
-  100% {
-    transform: translateY(0) rotate(var(--tilt, -4deg));
-  }
-  50% {
-    transform: translateY(-10px) rotate(var(--tilt, -4deg));
-  }
+/* ── Inline hero reveal: hovering "ad" splits the headline and a card
+     expands in between (à la the Ali Braid hero) ─────────────────────── */
+.ad-trigger {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: bottom;
+  cursor: pointer;
 }
-.float-card {
-  animation: float-slow 6s ease-in-out infinite;
+.ad-reveal {
+  display: inline-block;
+  width: 0;
+  opacity: 0;
+  transform: scale(0.55);
+  overflow: hidden;
+  vertical-align: middle;
+  white-space: nowrap;
   transition:
-    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.35s ease;
+    width 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.35s ease,
+    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
-.float-card:hover {
-  animation-play-state: paused;
-  transform: translateY(-6px) rotate(0deg) scale(1.06);
-  box-shadow:
-    0 24px 48px -12px rgb(0 0 0 / 0.18),
-    0 8px 16px -8px rgb(0 0 0 / 0.1);
-  z-index: 30;
+.ad-trigger:hover .ad-reveal,
+.ad-trigger:focus-visible .ad-reveal {
+  width: var(--ad-card-w, 300px);
+  opacity: 1;
+  transform: scale(1);
 }
 
 /* Package card lift */
@@ -181,9 +184,11 @@ h5 {
     transform: none;
     transition: none;
   }
-  .float-card,
   .pulse-dot {
     animation: none;
+  }
+  .ad-reveal {
+    transition: none;
   }
   .fade-up {
     animation-duration: 0.01s;

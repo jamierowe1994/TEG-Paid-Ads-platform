@@ -38,6 +38,7 @@ interface UserRow {
   paid: boolean;
   created_at: string | Date;
   password_hash: string;
+  meta_campaign_id: string | null;
 }
 
 function fromRow(row: UserRow): StoredUser {
@@ -56,6 +57,7 @@ function fromRow(row: UserRow): StoredUser {
     paid: row.paid,
     createdAt: new Date(row.created_at).toISOString(),
     passwordHash: row.password_hash,
+    metaCampaignId: row.meta_campaign_id,
   };
 }
 
@@ -100,8 +102,8 @@ export async function createUser(user: StoredUser): Promise<void> {
     await q(
       `INSERT INTO users
          (id, name, email, mobile, photo, brand_id, platforms, goal,
-          package_id, paid, created_at, password_hash)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+          package_id, paid, created_at, password_hash, meta_campaign_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
       [
         user.id,
         user.name,
@@ -115,6 +117,7 @@ export async function createUser(user: StoredUser): Promise<void> {
         user.paid,
         user.createdAt,
         user.passwordHash,
+        user.metaCampaignId ?? null,
       ]
     );
     return;
@@ -135,7 +138,8 @@ export async function updateUser(
     await q(
       `UPDATE users SET
          name = $2, mobile = $3, photo = $4, brand_id = $5, platforms = $6,
-         goal = $7, package_id = $8, paid = $9, password_hash = $10
+         goal = $7, package_id = $8, paid = $9, password_hash = $10,
+         meta_campaign_id = $11
        WHERE id = $1`,
       [
         next.id,
@@ -148,6 +152,7 @@ export async function updateUser(
         next.packageId,
         next.paid,
         next.passwordHash,
+        next.metaCampaignId ?? null,
       ]
     );
     return next;
