@@ -167,6 +167,40 @@ h5 {
     0 6px 12px -6px rgb(0 0 0 / 0.06);
 }
 
+/* ── Falling social icons (second screen) ───────────────────────────────
+   Icons drop from above and bounce as they land at the bottom of the
+   section. Hidden until the observer flips .dropped. */
+.fall-icon {
+  opacity: 0;
+  transform: translateY(-60vh);
+}
+.fall-icon.dropped {
+  animation: icon-fall 1.15s cubic-bezier(0.3, 0, 0.4, 1) both;
+}
+@keyframes icon-fall {
+  0% {
+    opacity: 0;
+    transform: translateY(-60vh);
+  }
+  45% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  62% {
+    transform: translateY(-26px); /* bounce up */
+  }
+  78% {
+    transform: translateY(0);
+  }
+  88% {
+    transform: translateY(-9px); /* small second bounce */
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Live-dot pulse (mock dashboard) */
 @keyframes pulse-dot {
   0%,
@@ -195,6 +229,12 @@ h5 {
   }
   .ad-reveal {
     transition: none;
+  }
+  .fall-icon,
+  .fall-icon.dropped {
+    animation: none;
+    opacity: 1;
+    transform: none;
   }
   .fade-up {
     animation-duration: 0.01s;

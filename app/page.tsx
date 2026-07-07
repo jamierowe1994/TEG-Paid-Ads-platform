@@ -4,79 +4,121 @@ import { PACKAGES } from "@/lib/packages";
 import BrandMark from "@/components/BrandMark";
 import Reveal from "@/components/Reveal";
 import HeroAdWord from "@/components/HeroAdWord";
+import FallingIcons from "@/components/FallingIcons";
+import ICONS, { SocialIcon } from "@/components/SocialIcons";
 
 export default function LandingPage() {
   return (
     <main className="min-h-screen overflow-x-clip bg-white">
-      {/* Nav */}
-      <header className="sticky top-0 z-40 border-b border-gray-100 bg-white/80 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-          <div className="flex items-center gap-2.5">
-            <BrandMark
-              name={EXPERTS_GROUP.name}
-              accent={EXPERTS_GROUP.accent}
-              logo={EXPERTS_GROUP.logo}
-              size={32}
+      {/* Nav — just the pin and a big Sign in */}
+      <header className="absolute inset-x-0 top-0 z-40">
+        <div className="mx-auto flex h-24 max-w-7xl items-center justify-between px-6 sm:px-10">
+          <Link href="/" aria-label="The Experts Group">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/brand-logos/group-black.png"
+              alt="The Experts Group"
+              className="h-12 w-auto sm:h-14"
             />
-            <span className="text-sm font-semibold tracking-tight">
-              The Experts Group
-            </span>
-          </div>
-          <nav className="flex items-center gap-6 text-sm text-gray-500">
-            <a href="#packages" className="hidden hover:text-gray-900 sm:block">
-              Packages
-            </a>
-            <a href="#how" className="hidden hover:text-gray-900 sm:block">
-              How it works
-            </a>
-            <Link href="/login" className="hover:text-gray-900">
-              Sign in
-            </Link>
-            <Link
-              href="/signup"
-              className="btn-group rounded-lg px-4 py-2 font-medium transition"
-            >
-              Get started
-            </Link>
-          </nav>
+          </Link>
+          <Link
+            href="/login"
+            className="btn-group rounded-full px-7 py-3 text-base font-medium transition sm:px-9 sm:py-3.5"
+          >
+            Sign in
+          </Link>
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="mx-auto max-w-6xl px-6 pb-20 pt-24 text-center">
-        <Reveal>
-          <p className="mb-4 text-sm font-medium uppercase tracking-widest text-gray-400">
-            Paid ads, done for you
-          </p>
-          {/* max-w-4xl + nowrap give the expanded card room on desktop so
-              "engine." never drops to a second line mid-hover */}
-          <h1 className="mx-auto max-w-4xl text-5xl font-semibold tracking-tight text-gray-900 sm:text-6xl">
-            Your personal brand.
-            <br />
-            <span className="text-gray-400 lg:whitespace-nowrap">
-              Our <HeroAdWord /> engine.
-            </span>
-          </h1>
-          <p className="mx-auto mt-6 max-w-xl text-lg text-gray-500">
-            We build and run Instagram and Facebook campaigns for Experts
-            Group agents — you track every lead from first click to your CRM,
-            all in one clean dashboard.
-          </p>
-          <div className="mt-10 flex items-center justify-center gap-4">
-            <Link
-              href="/signup"
-              className="btn-group rounded-xl px-8 py-3.5 text-sm font-medium transition"
-            >
-              Choose your package
-            </Link>
-            <Link
-              href="/login"
-              className="rounded-xl border border-gray-200 px-8 py-3.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-            >
-              Sign in
-            </Link>
+      {/* Hero — full screen, icons along the bottom */}
+      <section className="flex min-h-screen flex-col px-6 pt-24">
+        <div className="flex flex-1 flex-col items-center justify-center text-center">
+          <Reveal>
+            <p className="mb-5 text-sm font-medium uppercase tracking-widest text-gray-400">
+              Paid ads, done for you
+            </p>
+            {/* nowrap keeps "Our ad engine." on one line while the hidden
+                card expands on hover */}
+            <h1 className="mx-auto max-w-6xl text-5xl font-semibold tracking-tight text-gray-900 sm:text-7xl lg:text-8xl">
+              Your personal brand.
+              <br />
+              <span className="lg:whitespace-nowrap">
+                Our <HeroAdWord /> engine.
+              </span>
+            </h1>
+            <p className="mx-auto mt-8 max-w-2xl text-lg text-gray-500 sm:text-xl">
+              We build and run paid social campaigns for Experts Group agents
+              — you track every lead from first click to your CRM, all in one
+              clean dashboard.
+            </p>
+            <div className="mt-12 flex items-center justify-center gap-4">
+              <Link
+                href="/signup"
+                className="btn-group rounded-xl px-9 py-4 text-base font-medium transition"
+              >
+                Choose your package
+              </Link>
+            </div>
+          </Reveal>
+        </div>
+        {/* Social platforms strip */}
+        <div className="mx-auto w-full max-w-5xl pb-12 pt-8">
+          <div className="flex items-center justify-between text-gray-900">
+            {ICONS.map((icon) => (
+              <SocialIcon
+                key={icon.name}
+                icon={icon}
+                className="h-7 w-7 sm:h-9 sm:w-9"
+              />
+            ))}
           </div>
-        </Reveal>
+        </div>
+      </section>
+
+      {/* Second screen — image left, pitch right, icons land at the bottom */}
+      <section className="flex min-h-screen flex-col border-t border-gray-100 px-6">
+        <div className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-12 py-16 lg:grid-cols-2">
+          <Reveal direction="left">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/images/paid-ads.jpg"
+              alt="Winning the keys — what a converted lead looks like"
+              className="aspect-[4/5] w-full max-w-md rounded-3xl object-cover shadow-xl lg:justify-self-start"
+            />
+          </Reveal>
+          <Reveal direction="right" delay={120}>
+            <h2 className="max-w-lg text-4xl font-semibold tracking-tight sm:text-5xl">
+              Paid ads that stop the scroll.
+            </h2>
+            <p className="mt-6 max-w-md text-lg text-gray-500">
+              Seven businesses, one engine. The Experts Group runs your
+              campaigns on the platforms that matter, branded as you — so the
+              people in your patch see your face, not a faceless portal.
+            </p>
+            <p className="mt-4 max-w-md text-lg text-gray-500">
+              Every click lands in your own dashboard, ready to work from
+              first call to your CRM.
+            </p>
+            <div className="mt-10 flex flex-wrap items-center gap-4">
+              <Link
+                href="/signup"
+                className="btn-group rounded-xl px-8 py-4 text-base font-medium transition"
+              >
+                Start your campaign
+              </Link>
+              <a
+                href="#packages"
+                className="rounded-xl border border-gray-200 px-8 py-4 text-base font-medium text-gray-700 transition hover:bg-gray-50"
+              >
+                See the packages
+              </a>
+            </div>
+          </Reveal>
+        </div>
+        {/* The icons from the hero land here */}
+        <div className="mx-auto w-full max-w-5xl pb-12">
+          <FallingIcons />
+        </div>
       </section>
 
       {/* Brands strip */}
