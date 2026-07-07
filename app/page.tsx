@@ -6,6 +6,7 @@ import Reveal from "@/components/Reveal";
 import HeroAdWord from "@/components/HeroAdWord";
 import PhysicsIcons from "@/components/PhysicsIcons";
 import HeroIconStrip from "@/components/HeroIconStrip";
+import GlowButton from "@/components/GlowButton";
 
 export default function LandingPage() {
   return (
@@ -41,9 +42,10 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* Hero — full screen, icons along the bottom */}
-      <section className="flex min-h-screen flex-col px-6 pt-28">
-        <div className="flex flex-1 flex-col items-center justify-center text-center">
+      {/* Hero — full screen: content in a light grey rounded box that stops
+          just above the icon strip */}
+      <section className="flex min-h-screen flex-col px-3 pt-3">
+        <div className="flex flex-1 flex-col items-center justify-center rounded-[2.5rem] bg-gray-100 px-6 pt-24 text-center shadow-[0_30px_60px_-25px_rgba(0,0,0,0.25)]">
           <Reveal>
             <p className="mb-5 text-sm font-medium uppercase tracking-widest text-gray-400">
               Paid ads, done for you
@@ -62,18 +64,19 @@ export default function LandingPage() {
               — you track every lead from first click to your CRM, all in one
               clean dashboard.
             </p>
-            <div className="mt-12 flex items-center justify-center gap-4">
-              <Link
+            <div className="mb-16 mt-12 flex items-center justify-center gap-4">
+              <GlowButton
                 href="/signup"
-                className="btn-glow px-10 py-4 text-base font-medium"
+                className="px-10 py-4 text-base font-medium"
               >
                 Choose your package
-              </Link>
+              </GlowButton>
             </div>
           </Reveal>
         </div>
-        {/* Social platforms strip — falls into the next screen on scroll */}
-        <div className="mx-auto w-full max-w-5xl pb-12 pt-8">
+        {/* Social platforms strip — outside the box, falls into the next
+            screen on scroll */}
+        <div className="mx-auto w-full max-w-5xl px-3 py-7">
           <HeroIconStrip />
         </div>
       </section>
