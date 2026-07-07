@@ -88,9 +88,7 @@ export const BRANDS: Brand[] = [
     conversionLabel: "Appointment Booked",
     conversionVerb: "Book Appointment",
     audience: "Recruiters",
-    // Full lockup (pin + wordmark) — a pin-only "Icon" version would match
-    // the other brands better at small sizes.
-    logo: "/brand-logos/TRE - Colour.png",
+    logo: "/brand-logos/TRE - Icon.png",
   },
   {
     id: "commercial",
