@@ -67,7 +67,7 @@ export default function LandingPage() {
           </Link>
           <Link
             href="/login"
-            className="btn-dark rounded-full px-7 py-3 text-base font-medium sm:px-9 sm:py-3.5"
+            className="btn-group rounded-full px-7 py-3 text-base font-medium sm:px-9 sm:py-3.5"
           >
             Sign in
           </Link>
