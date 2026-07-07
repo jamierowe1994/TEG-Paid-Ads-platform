@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+:root {
+  --accent: #111827; /* overridden per-brand inside the dashboard */
+  --accent-soft: #f9fafb;
+}
+
+body {
+  background: #ffffff;
+  color: #111827;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Notion-ish minimal scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #d1d5db;
+}
+
+.accent-bg {
+  background-color: var(--accent);
+}
+.accent-text {
+  color: var(--accent);
+}
+.accent-soft-bg {
+  background-color: var(--accent-soft);
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.fade-up {
+  animation: fade-up 0.35s ease both;
+}
