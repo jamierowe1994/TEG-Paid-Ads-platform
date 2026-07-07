@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import ICONS, { SocialIcon } from "./SocialIcons";
 
-// The social icons "fall" from above and bounce as this row scrolls into
-// view — the hero's icon strip appearing to land at the bottom of the next
-// screen. Pure CSS keyframes (see .fall-icon in globals.css), staggered per
-// icon, triggered once by an IntersectionObserver.
+// The landing spot for the hero's platform icons. When this row scrolls
+// into view the icons fall from above and bounce as they land (CSS
+// keyframes, staggered) — and we tell the hero strip to hide, so one set of
+// icons reads as travelling from the hero to the bottom of this screen.
+// Scrolling back above resets both, so the effect replays.
 
 export default function FallingIcons() {
   const ref = useRef<HTMLDivElement>(null);
@@ -27,11 +28,16 @@ export default function FallingIcons() {
         for (const entry of entries) {
           if (entry.isIntersecting) {
             setDropped(true);
-            observer.disconnect();
+            window.dispatchEvent(new Event("teg-icons-fall"));
+          } else if (entry.boundingClientRect.top > 0) {
+            // Row left the viewport downwards → user scrolled back to the
+            // hero. Reset so the icons return and the fall can replay.
+            setDropped(false);
+            window.dispatchEvent(new Event("teg-icons-return"));
           }
         }
       },
-      { threshold: 0.4 }
+      { threshold: 0.35 }
     );
     observer.observe(el);
     return () => observer.disconnect();
@@ -48,7 +54,7 @@ export default function FallingIcons() {
           className={`fall-icon ${dropped ? "dropped" : ""}`}
           style={{ animationDelay: `${i * 110}ms` }}
         >
-          <SocialIcon icon={icon} className="h-8 w-8 sm:h-10 sm:w-10" />
+          <SocialIcon icon={icon} className="h-10 w-10 sm:h-14 sm:w-14" />
         </span>
       ))}
     </div>

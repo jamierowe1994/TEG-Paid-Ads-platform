@@ -5,21 +5,32 @@ import BrandMark from "@/components/BrandMark";
 import Reveal from "@/components/Reveal";
 import HeroAdWord from "@/components/HeroAdWord";
 import FallingIcons from "@/components/FallingIcons";
-import ICONS, { SocialIcon } from "@/components/SocialIcons";
+import HeroIconStrip from "@/components/HeroIconStrip";
 
 export default function LandingPage() {
   return (
     <main className="min-h-screen overflow-x-clip bg-white">
-      {/* Nav — just the pin and a big Sign in */}
+      {/* Nav — big pin + three-line group name, and a big Sign in */}
       <header className="absolute inset-x-0 top-0 z-40">
-        <div className="mx-auto flex h-24 max-w-7xl items-center justify-between px-6 sm:px-10">
-          <Link href="/" aria-label="The Experts Group">
+        <div className="mx-auto flex h-28 max-w-7xl items-center justify-between px-6 sm:px-10">
+          <Link
+            href="/"
+            aria-label="The Experts Group"
+            className="flex items-center gap-3"
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/brand-logos/group-black.png"
-              alt="The Experts Group"
-              className="h-12 w-auto sm:h-14"
+              alt=""
+              className="h-14 w-auto sm:h-[4.5rem]"
             />
+            <span className="text-sm font-semibold uppercase leading-[1.35] tracking-wide text-gray-900 sm:text-base">
+              The
+              <br />
+              Experts
+              <br />
+              Group
+            </span>
           </Link>
           <Link
             href="/login"
@@ -31,7 +42,7 @@ export default function LandingPage() {
       </header>
 
       {/* Hero — full screen, icons along the bottom */}
-      <section className="flex min-h-screen flex-col px-6 pt-24">
+      <section className="flex min-h-screen flex-col px-6 pt-28">
         <div className="flex flex-1 flex-col items-center justify-center text-center">
           <Reveal>
             <p className="mb-5 text-sm font-medium uppercase tracking-widest text-gray-400">
@@ -39,7 +50,7 @@ export default function LandingPage() {
             </p>
             {/* nowrap keeps "Our ad engine." on one line while the hidden
                 card expands on hover */}
-            <h1 className="mx-auto max-w-6xl text-5xl font-semibold tracking-tight text-gray-900 sm:text-7xl lg:text-8xl">
+            <h1 className="mx-auto max-w-5xl text-5xl font-semibold tracking-tight text-gray-900 sm:text-6xl lg:text-7xl">
               Your personal brand.
               <br />
               <span className="lg:whitespace-nowrap">
@@ -61,17 +72,9 @@ export default function LandingPage() {
             </div>
           </Reveal>
         </div>
-        {/* Social platforms strip */}
+        {/* Social platforms strip — falls into the next screen on scroll */}
         <div className="mx-auto w-full max-w-5xl pb-12 pt-8">
-          <div className="flex items-center justify-between text-gray-900">
-            {ICONS.map((icon) => (
-              <SocialIcon
-                key={icon.name}
-                icon={icon}
-                className="h-7 w-7 sm:h-9 sm:w-9"
-              />
-            ))}
-          </div>
+          <HeroIconStrip />
         </div>
       </section>
 
