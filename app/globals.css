@@ -481,6 +481,41 @@ h5 {
   }
 }
 
+/* ── Background topographic islands: very slow, non-uniform pulse/drift so
+   the texture gently breathes without ever syncing up. */
+.topo-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  will-change: transform;
+}
+@keyframes topo-a {
+  0%,
+  100% {
+    transform: scale(1) translate(0, 0);
+  }
+  50% {
+    transform: scale(1.08) translate(9px, -7px);
+  }
+}
+@keyframes topo-b {
+  0%,
+  100% {
+    transform: scale(1.05) translate(0, 0);
+  }
+  50% {
+    transform: scale(0.95) translate(-8px, 6px);
+  }
+}
+@keyframes topo-c {
+  0%,
+  100% {
+    transform: scale(0.97) translate(4px, 5px);
+  }
+  50% {
+    transform: scale(1.1) translate(-6px, -8px);
+  }
+}
+
 /* Live-dot pulse (mock dashboard) */
 @keyframes pulse-dot {
   0%,
@@ -530,6 +565,9 @@ h5 {
   .p-pill {
     opacity: 1;
     animation: none;
+  }
+  .topo-pulse {
+    animation: none !important;
   }
   .fade-up {
     animation-duration: 0.01s;

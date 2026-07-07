@@ -1,48 +1,103 @@
-// A very subtle topographic-contour texture, fixed behind the whole landing
-// page so it reads as one continuous light-grey underlay through every white
-// section as you scroll. Deterministic (no random) so SSR/CSR match. The
-// charcoal panel and dark footer sit on top and cover it.
+// A very subtle, abstract topographic-contour texture fixed behind the whole
+// landing page. Each "island" is generated with a seeded PRNG so it's
+// deterministic (SSR/CSR match) but deliberately non-uniform: random ring
+// counts, varied stroke thicknesses, several base shapes, oblong/rotated
+// forms, and a slow independent pulse/drift so the whole thing gently
+// breathes without ever looking patterned.
 
-// Organic closed "island" outlines centred on the origin (radius ~100).
-const BLOBS = [
+// Several organic base outlines (centred on origin, radius ~100), so islands
+// aren't all circles.
+const SHAPES = [
   "M0,-100 C46,-96 84,-62 88,-14 C92,34 58,78 6,92 C-46,106 -92,64 -94,12 C-96,-42 -54,-96 0,-100 Z",
-  "M0,-96 C52,-100 92,-54 90,-6 C88,42 60,86 8,96 C-44,106 -98,58 -92,6 C-86,-46 -52,-92 0,-96 Z",
-  "M2,-98 C50,-92 96,-58 92,-8 C88,42 52,80 2,94 C-48,108 -96,54 -90,4 C-84,-46 -46,-104 2,-98 Z",
+  "M0,-60 C64,-64 132,-46 142,-8 C152,32 82,66 0,62 C-82,66 -152,32 -142,-8 C-132,-46 -64,-56 0,-60 Z",
+  "M0,-100 C56,-100 72,-54 96,-28 C120,-2 100,46 60,70 C20,94 -30,110 -72,80 C-114,50 -96,0 -100,-40 C-104,-80 -56,-100 0,-100 Z",
+  "M-20,-90 C42,-102 96,-70 90,-14 C84,32 40,42 20,72 C0,102 -60,100 -86,54 C-112,8 -82,-80 -20,-90 Z",
+  "M6,-92 C58,-96 98,-50 88,2 C78,54 54,92 0,96 C-56,100 -98,52 -92,0 C-86,-52 -46,-88 6,-92 Z",
 ];
 
-// Where the islands sit across the viewBox, which base shape, and overall scale.
-const ISLANDS = [
-  { x: 120, y: 150, b: 0, s: 1.15 },
-  { x: 520, y: 80, b: 1, s: 0.8 },
-  { x: 900, y: 190, b: 2, s: 1.25 },
-  { x: 1090, y: 520, b: 0, s: 0.95 },
-  { x: 300, y: 540, b: 1, s: 1.2 },
-  { x: 700, y: 660, b: 2, s: 0.85 },
-  { x: 60, y: 790, b: 2, s: 1.05 },
-  { x: 1130, y: 820, b: 1, s: 1.1 },
-];
+// Deterministic PRNG (mulberry32) with a fixed seed — same output every render.
+function rng(seed: number) {
+  return () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
-// Concentric contour rings within each island.
-const RINGS = [0.26, 0.48, 0.7, 0.92, 1.14];
+interface Island {
+  x: number;
+  y: number;
+  shape: number;
+  sx: number;
+  sy: number;
+  rot: number;
+  anim: string;
+  dur: number;
+  delay: number;
+  rings: { scale: number; width: number }[];
+}
+
+const ANIMS = ["topo-a", "topo-b", "topo-c"];
+
+const ISLANDS: Island[] = (() => {
+  const r = rng(20260707);
+  const out: Island[] = [];
+  for (let i = 0; i < 16; i++) {
+    const ringCount = 3 + Math.floor(r() * 6); // 3–8 rings
+    const rings: { scale: number; width: number }[] = [];
+    for (let j = 0; j < ringCount; j++) {
+      const t = ringCount === 1 ? 0.6 : j / (ringCount - 1);
+      rings.push({
+        scale: 0.16 + t * (1.05 + r() * 0.35) + r() * 0.06, // spread outwards
+        width: 0.6 + r() * 1.7, // varied thickness per ring
+      });
+    }
+    out.push({
+      x: r() * 1200,
+      y: r() * 900,
+      shape: Math.floor(r() * SHAPES.length),
+      sx: 0.6 + r() * 0.95, // oblong horizontally
+      sy: 0.6 + r() * 0.95, // oblong vertically
+      rot: r() * 360,
+      anim: ANIMS[Math.floor(r() * ANIMS.length)],
+      dur: 34 + r() * 30, // 34–64s — very slow
+      delay: -(r() * 40), // desync so nothing moves in step
+      rings,
+    });
+  }
+  return out;
+})();
 
 export default function BackgroundTexture() {
   return (
-    <div
-      aria-hidden
-      className="pointer-events-none fixed inset-0 -z-10 opacity-[0.75]"
-    >
+    <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
       <svg
         className="h-full w-full"
         viewBox="0 0 1200 900"
         preserveAspectRatio="xMidYMid slice"
         fill="none"
       >
-        <g stroke="#b7bcc7" strokeWidth={1} vectorEffect="non-scaling-stroke">
+        <g stroke="#eceef1" vectorEffect="non-scaling-stroke">
           {ISLANDS.map((isl, i) => (
-            <g key={i} transform={`translate(${isl.x} ${isl.y}) scale(${isl.s})`}>
-              {RINGS.map((r, j) => (
-                <path key={j} d={BLOBS[isl.b]} transform={`scale(${r})`} />
-              ))}
+            <g key={i} transform={`translate(${isl.x} ${isl.y})`}>
+              <g
+                className="topo-pulse"
+                style={{
+                  animation: `${isl.anim} ${isl.dur}s ease-in-out ${isl.delay}s infinite`,
+                }}
+              >
+                <g transform={`rotate(${isl.rot}) scale(${isl.sx} ${isl.sy})`}>
+                  {isl.rings.map((ring, j) => (
+                    <path
+                      key={j}
+                      d={SHAPES[isl.shape]}
+                      transform={`scale(${ring.scale})`}
+                      strokeWidth={ring.width}
+                    />
+                  ))}
+                </g>
+              </g>
             </g>
           ))}
         </g>
