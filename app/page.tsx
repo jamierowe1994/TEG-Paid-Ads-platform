@@ -4,7 +4,7 @@ import { PACKAGES } from "@/lib/packages";
 import BrandMark from "@/components/BrandMark";
 import Reveal from "@/components/Reveal";
 import HeroAdWord from "@/components/HeroAdWord";
-import FallingIcons from "@/components/FallingIcons";
+import PhysicsIcons from "@/components/PhysicsIcons";
 import HeroIconStrip from "@/components/HeroIconStrip";
 
 export default function LandingPage() {
@@ -78,49 +78,69 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Second screen — image left, pitch right, icons land at the bottom */}
-      <section className="flex min-h-screen flex-col border-t border-gray-100 px-6">
-        <div className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-12 py-16 lg:grid-cols-2">
-          <Reveal direction="left">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/images/paid-ads.jpg"
-              alt="Winning the keys — what a converted lead looks like"
-              className="aspect-[4/5] w-full max-w-md rounded-3xl object-cover shadow-xl lg:justify-self-start"
-            />
-          </Reveal>
-          <Reveal direction="right" delay={120}>
-            <h2 className="max-w-lg text-4xl font-semibold tracking-tight sm:text-5xl">
-              Paid ads that stop the scroll.
-            </h2>
-            <p className="mt-6 max-w-md text-lg text-gray-500">
-              Seven businesses, one engine. The Experts Group runs your
-              campaigns on the platforms that matter, branded as you — so the
-              people in your patch see your face, not a faceless portal.
-            </p>
-            <p className="mt-4 max-w-md text-lg text-gray-500">
-              Every click lands in your own dashboard, ready to work from
-              first call to your CRM.
-            </p>
-            <div className="mt-10 flex flex-wrap items-center gap-4">
-              <Link
-                href="/signup"
-                className="btn-group rounded-xl px-8 py-4 text-base font-medium transition"
-              >
-                Start your campaign
-              </Link>
-              <a
-                href="#packages"
-                className="rounded-xl border border-gray-200 px-8 py-4 text-base font-medium text-gray-700 transition hover:bg-gray-50"
-              >
-                See the packages
-              </a>
-            </div>
-          </Reveal>
-        </div>
-        {/* The icons from the hero land here */}
-        <div className="mx-auto w-full max-w-5xl pb-12">
-          <FallingIcons />
+      {/* Second screen — red rounded panel: bold copy left, photo +
+          infographic right, physics icons landing at the bottom */}
+      <section className="flex min-h-screen flex-col p-3">
+        <div className="relative flex flex-1 flex-col overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-[#E31F36] to-[#AE1226]">
+          <div className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-14 px-8 py-20 sm:px-12 lg:grid-cols-2">
+            <Reveal direction="left">
+              <span className="inline-block rounded-full bg-white/15 px-4 py-1.5 text-sm font-medium text-white">
+                Built for agents
+              </span>
+              <h2 className="mt-6 max-w-lg text-4xl font-semibold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl">
+                Paid ads that stop the scroll.
+              </h2>
+              <p className="mt-6 max-w-md text-lg leading-relaxed text-white/75">
+                Seven businesses, one engine. We run your campaigns on the
+                platforms that matter, branded as you — so your patch sees
+                your face, not a faceless portal.
+              </p>
+              <div className="mt-10 flex flex-wrap items-center gap-4">
+                <Link
+                  href="/signup"
+                  className="rounded-xl bg-white px-8 py-4 text-base font-semibold text-gray-900 transition hover:bg-gray-100"
+                >
+                  Start your campaign
+                </Link>
+                <a
+                  href="#packages"
+                  className="rounded-xl border border-white/30 px-8 py-4 text-base font-medium text-white transition hover:bg-white/10"
+                >
+                  See the packages
+                </a>
+              </div>
+            </Reveal>
+            <Reveal direction="right" delay={120}>
+              <div className="relative mx-auto max-w-md lg:mr-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/paid-ads.jpg"
+                  alt="A sold home — what a converted lead looks like"
+                  className="aspect-[4/5] w-full rounded-3xl object-cover"
+                />
+                {/* Infographic overlay */}
+                <div className="absolute -left-4 bottom-12 w-52 rounded-2xl bg-white p-5 shadow-2xl sm:-left-8">
+                  <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
+                    Leads this month
+                  </p>
+                  <p className="mt-1 text-3xl font-semibold text-[#E31F36]">
+                    ↑ 41%
+                  </p>
+                  <div className="mt-3 flex items-end gap-2">
+                    <div className="h-9 flex-1 rounded-md bg-red-100" />
+                    <div className="h-14 flex-1 rounded-md bg-[#E31F36]" />
+                  </div>
+                  <p className="mt-2 text-[10px] text-gray-400">
+                    vs last month
+                  </p>
+                </div>
+              </div>
+            </Reveal>
+          </div>
+          {/* Landing zone so settled icons don't sit on the content */}
+          <div className="h-28" />
+          {/* The hero's icons fall in here, turn to colour and bounce */}
+          <PhysicsIcons />
         </div>
       </section>
 
