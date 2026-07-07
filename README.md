@@ -38,18 +38,23 @@ Open http://localhost:3000.
 
 | Env var | Default | Purpose |
 | --- | --- | --- |
+| `DATABASE_URL` | — | **Postgres connection string — the real store.** On Railway set it to the variable reference `${{Postgres.DATABASE_URL}}`. Without it, data falls back to local JSON files |
 | `ADMIN_PASSWORD` | `experts-admin` | Admin backend password — **set this in Railway** |
 | `AUTH_SECRET` | dev fallback | Secret used to sign session cookies — **set a long random value in Railway** |
-| `DATA_DIR` | `./data` | Where users/feedback/events JSON lives. **On Railway: attach a Volume (mount path `/data`) and set `DATA_DIR=/data`** so accounts survive deploys |
+| `DATA_DIR` | `./data` | Only used by the JSON fallback (no `DATABASE_URL`) |
 | `META_APP_ID` / `META_APP_SECRET` / `META_ACCESS_TOKEN` | — | Meta Marketing API (not wired yet — see admin → Connections) |
 
-### Stop accounts being wiped on deploy (Railway Volume)
+### Postgres on Railway (accounts that survive forever)
 
-Accounts/feedback live in JSON files. Railway wipes the filesystem on every
-deploy, so without a volume **every deploy deletes all accounts**. Fix (one
-time, ~1 minute): Railway → your service → **Settings → Volumes → Attach
-Volume**, mount path `/data`, then add env var `DATA_DIR=/data` and redeploy.
-(The proper fix later is Postgres/Clerk, but the volume makes the demo solid.)
+1. In the Railway project: **Create → Database → Add PostgreSQL**.
+2. On the app service: **Variables → New Variable → Add Reference →
+   `Postgres.DATABASE_URL`** (creates `DATABASE_URL=${{Postgres.DATABASE_URL}}`).
+3. Redeploy. Tables (`users`, `feedback`, `signup_events`) are created
+   automatically on first use — no migration step.
+
+Users, feedback and signup-tracking all live in Postgres from then on.
+Locally (no `DATABASE_URL`) everything falls back to JSON files in `data/`,
+so dev needs no database installed.
 
 Brands (domains, accent colours, CRM names, conversion labels) live in
 [lib/brands.ts](lib/brands.ts). Packages and placeholder pricing in
@@ -66,13 +71,11 @@ Brands (domains, accent colours, CRM names, conversion labels) live in
 - **CRM push** — "Push to REP/Atlas" buttons mark the lead pushed locally;
   the real API call goes in `pushToCrm()` in
   `app/dashboard/leads/page.tsx` (`TODO(crm)`).
-- **Auth is real but storage is temporary** — sign-up/sign-in use scrypt
-  password hashing + an httpOnly session cookie (`lib/auth.ts`, `/api/auth/*`),
-  validated server-side on every dashboard load. Users are stored in
-  `data/users.json` and feedback in `data/feedback.json`. **Railway's
-  filesystem is ephemeral, so these reset on each deploy** — before real
-  launch, swap `lib/users-store.ts` for a database (Postgres/Prisma) or move
-  auth to Clerk. Everything else stays the same.
+- **Auth is real** — sign-up/sign-in use scrypt password hashing + an
+  httpOnly session cookie (`lib/auth.ts`, `/api/auth/*`), validated
+  server-side on every dashboard load. With `DATABASE_URL` set, users,
+  feedback and signup events live in Postgres (`lib/db.ts` +
+  `lib/*-store.ts`) and survive deploys.
 - **Meta Ads** — the admin backend has a Meta Ads connection panel and a
   per-agent campaign-mapping table (framework only). Real flow: OAuth into the
   Meta Marketing API, map each agent to their campaign so stats and leads are

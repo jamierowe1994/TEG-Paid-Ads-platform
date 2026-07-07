@@ -1,34 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
-import { DATA_DIR } from "@/lib/data-dir";
+import {
+  addFeedback,
+  listFeedback,
+  type FeedbackItem,
+} from "@/lib/feedback-store";
 
-// Feedback from the on-page annotation widget. Stored as JSON on disk for
-// the framework stage — swap for a database (or forward to Slack/email)
-// before real launch. Note: Railway's filesystem is ephemeral, so stored
-// feedback survives only until the next deploy.
-
-const FILE = path.join(DATA_DIR, "feedback.json");
-
-interface FeedbackItem {
-  id: string;
-  note: string;
-  page: string;
-  email: string | null;
-  screenshot: string | null; // data URL (annotated screenshot)
-  userAgent: string;
-  createdAt: string;
-}
-
-async function readAll(): Promise<FeedbackItem[]> {
-  try {
-    const raw = await fs.readFile(FILE, "utf8");
-    return JSON.parse(raw) as FeedbackItem[];
-  } catch {
-    return [];
-  }
-}
+// Feedback from the on-page annotation widget. Stored in Postgres on
+// Railway (JSON file locally) — see lib/feedback-store.ts.
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
@@ -37,7 +16,7 @@ export async function POST(req: NextRequest) {
   }
 
   const item: FeedbackItem = {
-    id: Math.random().toString(36).slice(2, 10),
+    id: Math.random().toString(36).slice(2, 10) + Date.now().toString(36),
     note: String(body.note).slice(0, 2000),
     page: String(body.page ?? "").slice(0, 500),
     email: body.email ? String(body.email).slice(0, 200) : null,
@@ -50,11 +29,7 @@ export async function POST(req: NextRequest) {
     createdAt: new Date().toISOString(),
   };
 
-  const all = await readAll();
-  all.unshift(item);
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(FILE, JSON.stringify(all, null, 2), "utf8");
-
+  await addFeedback(item);
   return NextResponse.json({ ok: true, id: item.id });
 }
 
@@ -71,5 +46,5 @@ export async function GET(req: NextRequest) {
   if (!isAdmin && !isSignedIn) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
-  return NextResponse.json(await readAll());
+  return NextResponse.json(await listFeedback());
 }
