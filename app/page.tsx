@@ -352,6 +352,125 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Showcase — mocked ad creatives until real campaign shots arrive.
+          TODO(showcase): swap mocks for real ads + add the filter-by-brand
+          chips once enough brands are live. */}
+      <section className="border-t border-gray-100">
+        <div className="mx-auto max-w-6xl px-6 py-28">
+          <Reveal>
+            <h2 className="mx-auto max-w-2xl text-center text-4xl font-semibold tracking-tight">
+              Our agents, putting themselves out there
+            </h2>
+            <p className="mx-auto mt-3 max-w-md text-center text-gray-500">
+              Every campaign is branded as the agent, not the group — here's
+              the kind of ad your patch will be seeing.
+            </p>
+          </Reveal>
+
+          <div className="mt-16 grid gap-x-10 gap-y-16 lg:grid-cols-2">
+            {/* Mock ad 1 — Property */}
+            <Reveal>
+              <div>
+                <div className="relative flex aspect-[4/5] flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-[#E31F36] to-[#8f1322] p-8 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-sm font-bold text-white">
+                      JR
+                    </div>
+                    <div className="leading-tight text-white">
+                      <p className="text-sm font-semibold">James Rowe</p>
+                      <p className="text-xs text-white/60">
+                        The Property Experts · Sponsored
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="max-w-xs text-4xl font-semibold leading-tight text-white">
+                      Thinking of selling this year?
+                    </p>
+                    <p className="mt-3 max-w-xs text-white/70">
+                      Find out what your home is really worth — free market
+                      appraisal, no obligation.
+                    </p>
+                    <span className="mt-6 inline-block rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-gray-900">
+                      Book my free appraisal
+                    </span>
+                  </div>
+                  <p className="text-right text-xs font-semibold uppercase tracking-[0.25em] text-white/50">
+                    The Property Experts
+                  </p>
+                </div>
+                <p className="mt-5 text-sm leading-relaxed text-gray-500">
+                  Personal-brand lead generation for estate agents — appraisal
+                  bookings straight from the agent's own feed.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {["Property", "Social Ads", "Lead Gen"].map((t) => (
+                    <span
+                      key={t}
+                      className="rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600"
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </Reveal>
+
+            {/* Mock ad 2 — Mortgage (offset for the staggered gallery feel) */}
+            <Reveal delay={120} className="lg:mt-24">
+              <div>
+                <div className="relative flex aspect-[4/3] flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-[#2B6193] to-[#173954] p-8 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-sm font-bold text-white">
+                      SK
+                    </div>
+                    <div className="leading-tight text-white">
+                      <p className="text-sm font-semibold">Sofia Khan</p>
+                      <p className="text-xs text-white/60">
+                        The Mortgage Experts · Sponsored
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="max-w-sm text-3xl font-semibold leading-tight text-white">
+                      Fixed rate ending soon?
+                    </p>
+                    <p className="mt-2 max-w-sm text-white/70">
+                      Beat the jump — book a free remortgage review this week.
+                    </p>
+                    <span className="mt-5 inline-block rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-gray-900">
+                      Book my review
+                    </span>
+                  </div>
+                  <p className="text-right text-xs font-semibold uppercase tracking-[0.25em] text-white/50">
+                    The Mortgage Experts
+                  </p>
+                </div>
+                <p className="mt-5 text-sm leading-relaxed text-gray-500">
+                  Remortgage appointment campaigns for advisers — timed to
+                  fixed-rate renewal windows in their area.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {["Mortgage", "Social Ads", "Appointments"].map((t) => (
+                    <span
+                      key={t}
+                      className="rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600"
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </Reveal>
+          </div>
+
+          <p className="mt-16 text-center text-sm text-gray-400">
+            Live campaign showcases landing soon — filter by brand arrives
+            with them.
+          </p>
+        </div>
+      </section>
+
       {/* Packages */}
       <section id="packages" className="border-t border-gray-100">
         <div className="mx-auto max-w-6xl px-6 py-28">
@@ -423,16 +542,102 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-gray-100">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-10 text-sm text-gray-400 sm:flex-row">
-          <span>© {new Date().getFullYear()} The Experts Group</span>
-          <div className="flex gap-6">
-            <Link href="/admin" className="hover:text-gray-600">
-              Admin
-            </Link>
-            <span>Privacy</span>
-            <span>Terms</span>
+      {/* Footer — black panel, big rounded corners, inset from the edges */}
+      <footer className="px-3 pb-3 pt-16">
+        <div className="rounded-[2.5rem] bg-gray-950 px-8 py-14 text-white sm:px-14">
+          <div className="mx-auto max-w-6xl">
+            {/* CTA row */}
+            <div className="flex flex-col items-start justify-between gap-8 border-b border-white/10 pb-12 lg:flex-row lg:items-center">
+              <h2 className="max-w-md text-3xl font-semibold tracking-tight sm:text-4xl">
+                Ready to be unmissable in your patch?
+              </h2>
+              <Link
+                href="/signup"
+                className="rounded-xl bg-white px-8 py-4 text-base font-semibold text-gray-900 transition hover:bg-gray-200"
+              >
+                Choose your package
+              </Link>
+            </div>
+
+            {/* Link columns */}
+            <div className="grid gap-10 pt-12 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/brand-logos/group-white.png"
+                  alt="The Experts Group"
+                  className="h-12 w-auto"
+                />
+                <p className="mt-4 max-w-xs text-sm text-white/50">
+                  Paid ads, built and run for Experts Group agents — tracked
+                  from first click to your CRM.
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-white/40">
+                  Portal
+                </p>
+                <ul className="mt-4 space-y-2.5 text-sm text-white/70">
+                  <li>
+                    <Link href="/login" className="hover:text-white">
+                      Sign in
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/signup" className="hover:text-white">
+                      Create your account
+                    </Link>
+                  </li>
+                  <li>
+                    <a href="#packages" className="hover:text-white">
+                      Packages
+                    </a>
+                  </li>
+                  <li>
+                    <Link href="/admin" className="hover:text-white">
+                      Admin
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-white/40">
+                  The group
+                </p>
+                <ul className="mt-4 space-y-2.5 text-sm text-white/70">
+                  {BRANDS.map((b) => (
+                    <li key={b.id}>{b.name}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-white/40">
+                  Contact
+                </p>
+                <ul className="mt-4 space-y-2.5 text-sm text-white/70">
+                  <li>
+                    <a
+                      href="mailto:info@theexpertsgroup.co.uk"
+                      className="hover:text-white"
+                    >
+                      info@theexpertsgroup.co.uk
+                    </a>
+                  </li>
+                  <li className="text-white/40">
+                    Spotted something? Use the pencil, bottom right.
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Legal row */}
+            <div className="mt-14 flex flex-col items-center justify-between gap-3 border-t border-white/10 pt-6 text-xs text-white/40 sm:flex-row">
+              <span>© {new Date().getFullYear()} The Experts Group</span>
+              <div className="flex gap-6">
+                <span>Privacy</span>
+                <span>Terms</span>
+              </div>
+            </div>
           </div>
         </div>
       </footer>
