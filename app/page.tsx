@@ -83,7 +83,7 @@ export default function LandingPage() {
             </p>
             {/* nowrap keeps "Our ad engine." on one line while the hidden
                 card expands on hover */}
-            <h1 className="mx-auto max-w-6xl text-6xl font-semibold tracking-[-0.055em] text-gray-900 sm:text-7xl lg:text-8xl">
+            <h1 className="mx-auto max-w-6xl text-6xl font-semibold leading-[0.95] tracking-[-0.06em] text-gray-900 sm:text-7xl lg:text-8xl">
               Your personal brand.
               <br />
               <span className="lg:whitespace-nowrap">
