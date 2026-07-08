@@ -107,6 +107,13 @@ CREATE TABLE IF NOT EXISTS referrals (
 CREATE INDEX IF NOT EXISTS referrals_from_idx ON referrals(from_user_id);
 CREATE INDEX IF NOT EXISTS referrals_to_idx ON referrals(to_brand_id);
 
+CREATE TABLE IF NOT EXISTS brand_meta (
+  brand_id      TEXT PRIMARY KEY,
+  ad_account_id TEXT,
+  page_id       TEXT,
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Columns added after first release (safe to re-run)
 ALTER TABLE users ADD COLUMN IF NOT EXISTS meta_campaign_id TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS location TEXT;

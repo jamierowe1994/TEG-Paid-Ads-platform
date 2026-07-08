@@ -61,6 +61,7 @@ interface MetaResult {
 interface MetaStatus {
   tokenSet: boolean;
   results: MetaResult[];
+  config: Record<string, { adAccountId: string | null; pageId: string | null }>;
 }
 
 type Tab = "overview" | "crm" | "performance" | "connections";
@@ -112,6 +113,22 @@ export default function AdminPage() {
     setLeadSummaries(await ls.json());
     setMeta(mt.ok ? await mt.json() : null);
     return true;
+  }
+
+  // Save a brand's Meta ad account (Option B — no redeploy) and refresh.
+  async function saveBrandMeta(brandId: string, adAccountId: string) {
+    await fetch("/api/admin/meta", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${password}`,
+      },
+      body: JSON.stringify({ brandId, adAccountId }),
+    });
+    const res = await fetch("/api/admin/meta", {
+      headers: { Authorization: `Bearer ${password}` },
+    });
+    if (res.ok) setMeta(await res.json());
   }
 
   // Merge an updated agent record back into the list (and the open drawer)
@@ -774,26 +791,29 @@ export default function AdminPage() {
               )}
             </section>
 
-            {/* Meta — one connection per brand */}
+            {/* Meta — connect each brand by pasting its ad account ID.
+                Shares the one System User token; saved to the DB, no
+                redeploy. */}
             <section>
               <h2 className="text-lg font-semibold">Meta Ads — per brand</h2>
               <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                Each business connects its own Facebook Page + Ad Account, so
-                any brand can be disconnected on its own without touching the
-                others. Stats and leads are then mapped per agent.
+                Paste each business's <strong>Ad Account ID</strong> to connect
+                it (add its Page + Ad account to the "Portal Server" system
+                user first). Saves instantly — no redeploy. Clear the box to
+                disconnect.
               </p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="mt-4 space-y-3">
                 {BRANDS.map((b) => {
-                  // A brand is connected once its ad account env var is set
-                  // and Meta returns a snapshot without error.
                   const res = meta?.results.find((r) => r.brandId === b.id);
                   const connected = !!res?.snapshot;
+                  const err = res?.error;
+                  const current = meta?.config?.[b.id]?.adAccountId ?? "";
                   return (
                     <div
                       key={b.id}
-                      className="flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-4"
+                      className="flex flex-wrap items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex min-w-[220px] flex-1 items-center gap-3">
                         <BrandMark
                           name={b.name}
                           accent={b.accent}
@@ -804,24 +824,36 @@ export default function AdminPage() {
                           <p className="text-sm font-medium">{b.name}</p>
                           <p className="flex items-center gap-1.5 text-xs text-gray-400">
                             <span
-                              className={`h-1.5 w-1.5 rounded-full ${connected ? "bg-green-500" : "bg-amber-400"}`}
+                              className={`h-1.5 w-1.5 rounded-full ${connected ? "bg-green-500" : err ? "bg-red-500" : "bg-amber-400"}`}
                             />
-                            {connected ? "Connected" : "Not connected"}
+                            {connected
+                              ? `Connected — ${res!.snapshot!.account.name}`
+                              : err
+                                ? err
+                                : "Not connected"}
                           </p>
                         </div>
                       </div>
-                      {/* TODO(meta): per-brand OAuth for the rest — each
-                          stores its own page ID, ad account ID and token. */}
+                      <input
+                        defaultValue={current}
+                        placeholder="Ad Account ID (act_…)"
+                        className="w-44 rounded-lg border border-gray-200 px-3 py-1.5 text-sm outline-none focus:border-gray-900"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter")
+                            saveBrandMeta(b.id, e.currentTarget.value);
+                        }}
+                        id={`meta-${b.id}`}
+                      />
                       <button
-                        disabled
-                        title={
-                          connected
-                            ? "Connected via System User token"
-                            : "Awaiting token"
-                        }
-                        className={`rounded-lg px-3.5 py-1.5 text-xs font-medium text-white ${connected ? "bg-green-600 opacity-100" : "bg-gray-900 opacity-40"}`}
+                        onClick={() => {
+                          const el = document.getElementById(
+                            `meta-${b.id}`
+                          ) as HTMLInputElement | null;
+                          saveBrandMeta(b.id, el?.value ?? "");
+                        }}
+                        className="rounded-lg bg-gray-900 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-gray-700"
                       >
-                        {connected ? "Connected" : "Connect"}
+                        Save
                       </button>
                     </div>
                   );

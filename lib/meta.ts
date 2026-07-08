@@ -1,6 +1,7 @@
 import "server-only";
 import crypto from "crypto";
 import { BRANDS } from "./brands";
+import { getBrandMetaMap, type BrandMeta } from "./brand-meta-store";
 
 // Meta Marketing API client, per brand. One shared System User token
 // (all brands live in the same Business Manager); each brand supplies its own
@@ -24,28 +25,32 @@ export function metaTokenSet(): boolean {
   return !!token();
 }
 
-// Raw ad account value from env for a brand (or undefined).
-function rawAccount(brandId: string): string | undefined {
-  const v = process.env[`META_AD_ACCOUNT_${brandId.toUpperCase()}`];
-  if (v) return v;
+// Raw ad account for a brand: DB config (set in admin) first, then env vars.
+// `map` can be passed in to avoid re-reading the DB in a loop.
+function rawAccount(
+  brandId: string,
+  map: Record<string, BrandMeta>
+): string | undefined {
+  const dbId = map[brandId]?.adAccountId;
+  if (dbId) return dbId;
+  const envId = process.env[`META_AD_ACCOUNT_${brandId.toUpperCase()}`];
+  if (envId) return envId;
   if (brandId === "recruitment") return process.env.TRE_AD_ACCOUNT_ID;
   return undefined;
 }
 
-function accountId(brandId: string): string | null {
-  const raw = rawAccount(brandId);
+async function accountId(brandId: string): Promise<string | null> {
+  const map = await getBrandMetaMap();
+  const raw = rawAccount(brandId, map);
   if (!raw) return null;
   return raw.startsWith("act_") ? raw : `act_${raw}`;
 }
 
-export function brandConfigured(brandId: string): boolean {
-  return !!token() && !!rawAccount(brandId);
-}
-
 // Which brands have an ad account wired up (and the token is present).
-export function configuredBrandIds(): string[] {
+export async function configuredBrandIds(): Promise<string[]> {
   if (!token()) return [];
-  return BRANDS.map((b) => b.id).filter((id) => !!rawAccount(id));
+  const map = await getBrandMetaMap();
+  return BRANDS.map((b) => b.id).filter((id) => !!rawAccount(id, map));
 }
 
 // Meta recommends signing server calls with appsecret_proof.
@@ -91,7 +96,7 @@ export async function getSnapshotFor(
   brandId: string,
   datePreset = "last_30d"
 ): Promise<Snapshot | null> {
-  const acc = accountId(brandId);
+  const acc = await accountId(brandId);
   if (!acc) return null;
 
   const account = (await graph(acc, {
@@ -138,14 +143,13 @@ export async function pingBrand(brandId: string): Promise<{
   account?: string;
   error?: string;
 }> {
-  if (!brandConfigured(brandId)) {
+  const acc = await accountId(brandId);
+  if (!token() || !acc) {
     return { brandId, configured: false, ok: false };
   }
   try {
-    const acc = (await graph(accountId(brandId)!, { fields: "name" })) as {
-      name: string;
-    };
-    return { brandId, configured: true, ok: true, account: acc.name };
+    const info = (await graph(acc, { fields: "name" })) as { name: string };
+    return { brandId, configured: true, ok: true, account: info.name };
   } catch (e) {
     return {
       brandId,
@@ -161,7 +165,7 @@ export async function pingAll(): Promise<{
   tokenSet: boolean;
   brands: Array<Awaited<ReturnType<typeof pingBrand>>>;
 }> {
-  const ids = configuredBrandIds();
+  const ids = await configuredBrandIds();
   const brands = await Promise.all(ids.map((id) => pingBrand(id)));
   return { tokenSet: metaTokenSet(), brands };
 }
