@@ -111,6 +111,18 @@ export async function createLead(userId: string, lead: Lead): Promise<void> {
   void notifyNewLead(userId, lead);
 }
 
+// Every lead across all agents (admin activity feed). Carries userId so the
+// caller can join brand/agent info.
+export async function listAllLeads(): Promise<(Lead & { userId: string })[]> {
+  if (hasDb()) {
+    const rows = await q<LeadRow>(
+      "SELECT * FROM leads ORDER BY received_at DESC"
+    );
+    return rows.map((r) => ({ ...fromRow(r), userId: r.user_id }));
+  }
+  return await readAllFile();
+}
+
 // List an agent's leads, newest first. Empty for a fresh account — real
 // leads arrive from accepted referrals and (later) the Meta webhook.
 export async function listLeadsForUser(userId: string): Promise<Lead[]> {

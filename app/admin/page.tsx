@@ -117,14 +117,52 @@ interface AtlasStatus {
   error?: string;
 }
 
-type Tab = "overview" | "crm" | "performance" | "connections";
+type Tab = "overview" | "activity" | "crm" | "performance" | "connections";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
+  { id: "activity", label: "Activity" },
   { id: "crm", label: "CRM" },
   { id: "performance", label: "Performance" },
   { id: "connections", label: "Connections" },
 ];
+
+interface ActivityEvent {
+  at: string;
+  type: "new_lead" | "converted" | "pushed" | "lost" | "signup";
+  agentName: string;
+  brandId: string;
+  leadName?: string;
+  source?: string;
+}
+interface AttentionItem {
+  kind: "unanswered" | "cold";
+  leadName: string;
+  agentName: string;
+  brandId: string;
+  ageMs: number;
+}
+interface ActivityData {
+  events: ActivityEvent[];
+  attention: AttentionItem[];
+}
+
+function ago(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const m = Math.round(ms / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
+}
+
+function agoDur(ms: number): string {
+  const h = Math.floor(ms / 3600000);
+  if (h < 24) return `${h}h`;
+  return `${Math.floor(h / 24)}d`;
+}
 
 export default function AdminPage() {
   const [password, setPassword] = useState("");
@@ -142,6 +180,7 @@ export default function AdminPage() {
   const [atlas, setAtlas] = useState<AtlasStatus | null>(null);
   const [metaPreset, setMetaPreset] = useState<string>("last_30d");
   const [drillBrand, setDrillBrand] = useState<string | null>(null);
+  const [activity, setActivity] = useState<ActivityData | null>(null);
   const [selected, setSelected] = useState<FeedbackItem | null>(null);
 
   // CRM view state
@@ -156,7 +195,7 @@ export default function AdminPage() {
 
   async function loadData(pass: string): Promise<boolean> {
     const headers = { Authorization: `Bearer ${pass}` };
-    const [fb, us, ev, ls, mt, li, at] = await Promise.all([
+    const [fb, us, ev, ls, mt, li, at, ac] = await Promise.all([
       fetch("/api/feedback", { headers }),
       fetch("/api/admin/users", { headers }),
       fetch("/api/track", { headers }),
@@ -164,6 +203,7 @@ export default function AdminPage() {
       fetch("/api/admin/meta", { headers }),
       fetch("/api/admin/linkedin", { headers }),
       fetch("/api/admin/atlas", { headers }),
+      fetch("/api/admin/activity", { headers }),
     ]);
     if (!fb.ok || !us.ok || !ev.ok || !ls.ok) return false;
     setFeedback(await fb.json());
@@ -173,6 +213,7 @@ export default function AdminPage() {
     setMeta(mt.ok ? await mt.json() : null);
     setLinkedin(li.ok ? await li.json() : null);
     setAtlas(at.ok ? await at.json() : null);
+    setActivity(ac.ok ? await ac.json() : null);
     return true;
   }
 
@@ -551,6 +592,105 @@ export default function AdminPage() {
                     No feedback yet. The widget on the bottom-right of every
                     page sends notes and annotated screenshots here.
                   </div>
+                )}
+              </div>
+            </section>
+          </>
+        )}
+
+        {/* ═══ ACTIVITY ═══ */}
+        {tab === "activity" && (
+          <>
+            {/* Attention needed — unanswered / cold leads */}
+            <section>
+              <h2 className="text-lg font-semibold">Attention needed</h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Leads going unanswered (&gt;1 day) or cold (no activity &gt;2
+                days) — the faster we're on these, the better they convert.
+              </p>
+              <div className="mt-4 space-y-2">
+                {(activity?.attention ?? []).slice(0, 20).map((a, i) => {
+                  const b = brandById(a.brandId);
+                  return (
+                    <div
+                      key={i}
+                      className={`flex items-center gap-3 rounded-2xl border p-3.5 ${
+                        a.kind === "unanswered"
+                          ? "border-red-200 bg-red-50"
+                          : "border-amber-200 bg-amber-50"
+                      }`}
+                    >
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                          a.kind === "unanswered"
+                            ? "bg-red-100 text-red-700"
+                            : "bg-amber-100 text-amber-700"
+                        }`}
+                      >
+                        {a.kind === "unanswered" ? "Unanswered" : "Going cold"}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">
+                          {a.leadName}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {b?.shortName ?? a.brandId} · {a.agentName}
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-sm font-semibold text-gray-700">
+                        {agoDur(a.ageMs)}
+                      </span>
+                    </div>
+                  );
+                })}
+                {(activity?.attention ?? []).length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-gray-200 bg-white py-10 text-center text-sm text-gray-400">
+                    Nothing needs chasing — every lead's been actioned. 🎉
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {/* Live activity feed */}
+            <section className="mt-10">
+              <h2 className="text-lg font-semibold">Live activity</h2>
+              <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-2">
+                {(activity?.events ?? []).map((e, i) => {
+                  const b = brandById(e.brandId);
+                  const meta = {
+                    new_lead: { dot: "#3B82F6", verb: "New lead" },
+                    converted: { dot: "#16A34A", verb: "Converted" },
+                    pushed: { dot: "#7C3AED", verb: "Pushed to CRM" },
+                    lost: { dot: "#9CA3AF", verb: "Marked lost" },
+                    signup: { dot: b?.accent ?? "#111827", verb: "Signed up" },
+                  }[e.type];
+                  return (
+                    <div
+                      key={i}
+                      className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-gray-50"
+                    >
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: meta.dot }}
+                      />
+                      <p className="min-w-0 flex-1 truncate text-sm text-gray-700">
+                        <span className="font-medium">{meta.verb}</span>
+                        {e.leadName ? ` — ${e.leadName}` : ""}
+                        <span className="text-gray-400">
+                          {" "}
+                          · {b?.shortName ?? e.brandId} · {e.agentName}
+                        </span>
+                      </p>
+                      <span className="shrink-0 text-xs text-gray-400">
+                        {ago(e.at)}
+                      </span>
+                    </div>
+                  );
+                })}
+                {(activity?.events ?? []).length === 0 && (
+                  <p className="py-10 text-center text-sm text-gray-400">
+                    No activity yet — it'll fill in as leads and signups arrive.
+                  </p>
                 )}
               </div>
             </section>
