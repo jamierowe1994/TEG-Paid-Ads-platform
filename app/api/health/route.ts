@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { hasDb, q } from "@/lib/db";
+import { pingMeta } from "@/lib/meta";
 
 // Deployment health check — visit /api/health on the live site to see which
 // store the app is actually using. If it says "file-fallback" in production,
@@ -42,6 +43,12 @@ export async function GET(req: NextRequest) {
       feedback: Number(feedback[0]?.n ?? 0),
       leads: Number(leads[0]?.n ?? 0),
     };
+  }
+
+  // /api/health?meta=1 runs a lightweight Meta connection check (no ad data,
+  // just whether the token + account work + the account name).
+  if (req.nextUrl.searchParams.has("meta")) {
+    body.meta = await pingMeta();
   }
 
   return NextResponse.json(body);

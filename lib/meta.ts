@@ -52,6 +52,30 @@ async function graph(
   return data;
 }
 
+// Lightweight connection check — confirms the token + account work without
+// returning any ad data (safe to expose on the health endpoint). Reports the
+// account name only so we can confirm it's the right account.
+export async function pingMeta(): Promise<{
+  configured: boolean;
+  ok: boolean;
+  account?: string;
+  error?: string;
+}> {
+  if (!metaConfigured()) return { configured: false, ok: false };
+  try {
+    const acc = (await graph(accountId(), { fields: "name" })) as {
+      name: string;
+    };
+    return { configured: true, ok: true, account: acc.name };
+  } catch (e) {
+    return {
+      configured: true,
+      ok: false,
+      error: e instanceof Error ? e.message : "Meta request failed",
+    };
+  }
+}
+
 export interface TreSnapshot {
   account: { name: string; status: number; currency: string };
   impressions: number;
