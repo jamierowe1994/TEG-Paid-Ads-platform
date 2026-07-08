@@ -118,8 +118,18 @@ export default function LandingPage() {
           and below: bold copy left, photo + infographic right, physics icons
           landing at the bottom */}
       <section id="built" className="px-4 py-20 sm:px-14 sm:py-28">
-        <Parallax mode="element" strength={-190} max={210}>
-        <PanelReveal className="glass-panel relative flex min-h-[64vh] flex-col overflow-hidden rounded-[2.5rem]">
+        {/* PanelReveal is a plain (untransformed) wrapper; the parallax
+            transform lives on the glass panel itself. This matters: a
+            transformed ANCESTOR establishes a backdrop root that blanks the
+            panel's backdrop-filter — so the frost must sit on the same element
+            that carries the transform, not a parent. */}
+        <PanelReveal>
+        <Parallax
+          mode="element"
+          strength={-190}
+          max={210}
+          className="glass-panel relative flex min-h-[64vh] flex-col overflow-hidden rounded-[2.5rem]"
+        >
           <div className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-10 px-8 py-12 sm:px-12 lg:grid-cols-2">
             <div className="p-words">
               <span className="inline-block rounded-full bg-[#E31F36] px-4 py-1.5 text-sm font-medium text-white">
@@ -159,8 +169,8 @@ export default function LandingPage() {
           <div className="h-32" />
           {/* The hero's icons fall in behind the pills and hit the bottom */}
           <PhysicsIcons />
-        </PanelReveal>
         </Parallax>
+        </PanelReveal>
       </section>
 
       {/* One group, seven businesses — moved out below the frosted panel.
