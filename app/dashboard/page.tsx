@@ -202,6 +202,41 @@ export default function DashboardOverview() {
             className="mt-4 rounded-xl border p-4"
             style={{ borderColor: `${brand.accent}44` }}
           >
+            {(user.campaignAssets ?? []).length > 0 && (
+              <div className="mb-4">
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">
+                  Your creatives
+                </p>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {(user.campaignAssets ?? []).map((a) =>
+                    a.type === "image" ? (
+                      <a key={a.id} href={a.url} target="_blank" rel="noreferrer">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={a.url}
+                          alt={a.caption ?? "Creative"}
+                          className="aspect-square w-full rounded-xl border border-gray-200 object-cover transition hover:opacity-90"
+                        />
+                        {a.caption && (
+                          <p className="mt-1 text-xs text-gray-500">{a.caption}</p>
+                        )}
+                      </a>
+                    ) : (
+                      <div key={a.id}>
+                        <video
+                          src={a.url}
+                          controls
+                          className="aspect-square w-full rounded-xl border border-gray-200 object-cover"
+                        />
+                        {a.caption && (
+                          <p className="mt-1 text-xs text-gray-500">{a.caption}</p>
+                        )}
+                      </div>
+                    )
+                  )}
+                </div>
+              </div>
+            )}
             {user.campaignApproved ? (
               <p className="text-sm font-medium text-green-700">
                 ✓ Approved — we're putting your campaign live. You'll get a

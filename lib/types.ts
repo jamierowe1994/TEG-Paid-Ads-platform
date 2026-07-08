@@ -6,6 +6,16 @@ export interface AdminNote {
   text: string;
 }
 
+// An ad creative the team produced, shown to the customer to review before
+// go-live. url is a data URL (uploaded image) or an external link (video etc.).
+export interface CampaignAsset {
+  id: string;
+  url: string;
+  type: "image" | "video";
+  caption?: string;
+  at: string;
+}
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -29,6 +39,7 @@ export interface UserProfile {
   // stage (last sign-off) and can leave feedback the team sees.
   campaignApproved?: boolean;
   campaignFeedback?: AdminNote[];
+  campaignAssets?: CampaignAsset[]; // creatives the team produced for review
 }
 
 // Lead funnel stages. Progressive: each stage reveals the next relevant

@@ -47,6 +47,9 @@ export async function PATCH(req: NextRequest) {
   if (typeof body?.onboardingStage === "string") {
     patch.onboardingStage = body.onboardingStage;
   }
+  if (Array.isArray(body?.campaignAssets)) {
+    patch.campaignAssets = body.campaignAssets;
+  }
   if (typeof body?.note === "string" && body.note.trim()) {
     patch.adminNotes = [
       ...(current.adminNotes ?? []),

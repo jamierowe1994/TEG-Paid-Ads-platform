@@ -36,6 +36,9 @@ export default function AgentProfile({
   const [saving, setSaving] = useState(false);
   const [noteText, setNoteText] = useState("");
   const [reset, setReset] = useState<string | null>(null);
+  const [assetUrl, setAssetUrl] = useState("");
+  const [assetType, setAssetType] = useState<"image" | "video">("image");
+  const [assetCaption, setAssetCaption] = useState("");
   const brand = brandById(agent.brandId);
   const pkg = packageById(agent.packageId);
   const rate =
@@ -61,6 +64,36 @@ export default function AgentProfile({
       return user as UserProfile;
     }
     return null;
+  }
+
+  async function addAsset(url: string, type: "image" | "video") {
+    const asset = {
+      id: Math.random().toString(36).slice(2, 10),
+      url,
+      type,
+      caption: assetCaption.trim() || undefined,
+      at: new Date().toISOString(),
+    };
+    await patch({ campaignAssets: [...(agent.campaignAssets ?? []), asset] });
+    setAssetUrl("");
+    setAssetCaption("");
+  }
+  function onUploadImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (file.size > 3_000_000) {
+      alert("Image too large — please keep uploads under 3MB (or paste a URL).");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => addAsset(String(reader.result), "image");
+    reader.readAsDataURL(file);
+  }
+  function removeAsset(id: string) {
+    patch({
+      campaignAssets: (agent.campaignAssets ?? []).filter((a) => a.id !== id),
+    });
   }
 
   async function resetPassword() {
@@ -159,6 +192,76 @@ export default function AgentProfile({
                 </button>
               );
             })}
+          </div>
+        </div>
+
+        {/* Ad creatives — uploaded here, shown in the customer's review panel */}
+        <div className="mt-4 rounded-2xl border border-gray-200 p-4">
+          <p className="text-sm font-semibold">Ad creatives</p>
+          <p className="mt-0.5 text-xs text-gray-400">
+            These appear in the customer's review panel to sign off before go-live.
+          </p>
+          {(agent.campaignAssets ?? []).length > 0 && (
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {(agent.campaignAssets ?? []).map((a) => (
+                <div key={a.id} className="group relative">
+                  {a.type === "image" ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={a.url}
+                      alt={a.caption ?? "Creative"}
+                      className="aspect-square w-full rounded-lg border border-gray-200 object-cover"
+                    />
+                  ) : (
+                    <div className="flex aspect-square w-full items-center justify-center rounded-lg border border-gray-200 bg-gray-900 text-xs font-medium text-white">
+                      ▶ Video
+                    </div>
+                  )}
+                  <button
+                    onClick={() => removeAsset(a.id)}
+                    className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-gray-900 text-xs text-white shadow"
+                    aria-label="Remove"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="mt-3 space-y-2">
+            <label className="flex cursor-pointer items-center justify-center rounded-lg border border-dashed border-gray-300 py-3 text-sm font-medium text-gray-500 hover:bg-gray-50">
+              Upload an image
+              <input type="file" accept="image/*" onChange={onUploadImage} className="hidden" />
+            </label>
+            <div className="flex gap-2">
+              <input
+                value={assetUrl}
+                onChange={(e) => setAssetUrl(e.target.value)}
+                placeholder="…or paste an image / video URL"
+                className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gray-900"
+              />
+              <select
+                value={assetType}
+                onChange={(e) => setAssetType(e.target.value as "image" | "video")}
+                className="rounded-lg border border-gray-200 px-2 text-sm outline-none focus:border-gray-900"
+              >
+                <option value="image">Image</option>
+                <option value="video">Video</option>
+              </select>
+            </div>
+            <input
+              value={assetCaption}
+              onChange={(e) => setAssetCaption(e.target.value)}
+              placeholder="Caption (optional)"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gray-900"
+            />
+            <button
+              onClick={() => assetUrl.trim() && addAsset(assetUrl.trim(), assetType)}
+              disabled={!assetUrl.trim() || saving}
+              className="w-full rounded-lg bg-gray-900 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+            >
+              Add creative from URL
+            </button>
           </div>
         </div>
 

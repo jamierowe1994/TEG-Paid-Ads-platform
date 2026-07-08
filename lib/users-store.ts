@@ -50,6 +50,7 @@ interface UserRow {
   admin_notes: unknown;
   campaign_approved: boolean | null;
   campaign_feedback: unknown;
+  campaign_assets: unknown;
 }
 
 function fromRow(row: UserRow): StoredUser {
@@ -79,6 +80,9 @@ function fromRow(row: UserRow): StoredUser {
     campaignFeedback: (Array.isArray(row.campaign_feedback)
       ? row.campaign_feedback
       : []) as StoredUser["campaignFeedback"],
+    campaignAssets: (Array.isArray(row.campaign_assets)
+      ? row.campaign_assets
+      : []) as StoredUser["campaignAssets"],
   };
 }
 
@@ -165,7 +169,8 @@ export async function updateUser(
          name = $2, mobile = $3, photo = $4, brand_id = $5, platforms = $6,
          goal = $7, package_id = $8, paid = $9, password_hash = $10,
          meta_campaign_id = $11, location = $12, onboarding_stage = $13,
-         admin_notes = $14, campaign_approved = $15, campaign_feedback = $16
+         admin_notes = $14, campaign_approved = $15, campaign_feedback = $16,
+         campaign_assets = $17
        WHERE id = $1`,
       [
         next.id,
@@ -184,6 +189,7 @@ export async function updateUser(
         JSON.stringify(next.adminNotes ?? []),
         next.campaignApproved ?? false,
         JSON.stringify(next.campaignFeedback ?? []),
+        JSON.stringify(next.campaignAssets ?? []),
       ]
     );
     return next;
