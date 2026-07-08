@@ -156,23 +156,25 @@ h5 {
     0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
-/* Brand pills (business names on the dark panel) — fill with the brand
-   colour on hover. */
-/* Brand pills are permanently filled with their own brand colour (with a
-   matching soft drop shadow so they stand off the glass), lifting on hover. */
+/* Brand pills (business names) — monochrome black-and-white by default, and
+   each one fills with its own brand colour only when you hover that pill. */
 .brand-pill {
-  background-color: var(--pill);
-  border-color: transparent;
-  color: #fff;
-  box-shadow: 0 5px 14px -5px color-mix(in srgb, var(--pill) 60%, transparent);
+  background-color: #fff;
+  border: 1px solid rgba(17, 24, 39, 0.14);
+  color: #111827;
+  box-shadow: 0 4px 12px -6px rgba(17, 24, 39, 0.18);
   transition:
     transform 0.25s ease,
     box-shadow 0.25s ease,
-    filter 0.25s ease;
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    color 0.25s ease;
 }
 .brand-pill:hover {
+  background-color: var(--pill);
+  border-color: transparent;
+  color: #fff;
   transform: translateY(-2px);
-  filter: brightness(1.08);
   box-shadow: 0 9px 20px -6px color-mix(in srgb, var(--pill) 65%, transparent);
 }
 
@@ -364,7 +366,12 @@ h5 {
    glass thickness into the edges/bottom, a hairline rim, and a heavy drop
    shadow so the whole box reads as bubbling off the page. No chromatic edge. */
 .glass-panel {
-  background: transparent;
+  /* Frosted glass: a faint milky veil + a real blur so the red contour dots
+     behind the box read as soft, frosted red (the light bending around the
+     content) while the inner shadows below still carve the glass depth. */
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(7px) saturate(1.05);
+  -webkit-backdrop-filter: blur(7px) saturate(1.05);
   box-shadow:
     inset 0 3px 2px rgba(255, 255, 255, 0.92),
     inset 0 16px 22px -12px rgba(17, 24, 39, 0.14),
