@@ -32,6 +32,54 @@ function toE164(mobile: string): string | null {
   return d.length >= 11 ? d : null;
 }
 
+// Health check for the admin/health endpoint: confirms the token is valid and
+// reports the number's registration + verification status (no message data).
+export async function whatsappStatus(): Promise<{
+  configured: boolean;
+  ok?: boolean;
+  number?: string;
+  name?: string;
+  verified?: boolean;
+  error?: string;
+}> {
+  if (!whatsappConfigured()) return { configured: false };
+  try {
+    const res = await fetch(
+      `${GRAPH}/${process.env.WHATSAPP_PHONE_ID}?fields=display_phone_number,verified_name,code_verification_status`,
+      {
+        headers: { Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}` },
+        cache: "no-store",
+      }
+    );
+    const data = (await res.json()) as {
+      display_phone_number?: string;
+      verified_name?: string;
+      code_verification_status?: string;
+      error?: { message?: string };
+    };
+    if (!res.ok) {
+      return {
+        configured: true,
+        ok: false,
+        error: data?.error?.message ?? `HTTP ${res.status}`,
+      };
+    }
+    return {
+      configured: true,
+      ok: true,
+      number: data.display_phone_number,
+      name: data.verified_name,
+      verified: data.code_verification_status === "VERIFIED",
+    };
+  } catch (e) {
+    return {
+      configured: true,
+      ok: false,
+      error: e instanceof Error ? e.message : "WhatsApp unreachable",
+    };
+  }
+}
+
 // Fire a "new lead" alert. Best-effort: never throws, so it can't break lead
 // creation. First body param is the agent's name, second is the lead's name.
 export async function sendNewLeadAlert(opts: {

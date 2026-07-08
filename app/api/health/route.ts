@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { hasDb, q } from "@/lib/db";
 import { pingAll } from "@/lib/meta";
 import { linkedinStatus } from "@/lib/linkedin";
+import { whatsappStatus } from "@/lib/whatsapp";
 
 // Deployment health check — visit /api/health on the live site to see which
 // store the app is actually using. If it says "file-fallback" in production,
@@ -56,6 +57,11 @@ export async function GET(req: NextRequest) {
   // (configured/connected/expiry only — no ad data).
   if (req.nextUrl.searchParams.has("linkedin")) {
     body.linkedin = await linkedinStatus();
+  }
+
+  // /api/health?whatsapp=1 confirms the token works + the number's status.
+  if (req.nextUrl.searchParams.has("whatsapp")) {
+    body.whatsapp = await whatsappStatus();
   }
 
   return NextResponse.json(body);
