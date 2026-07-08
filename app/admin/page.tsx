@@ -64,6 +64,22 @@ interface MetaStatus {
   config: Record<string, { adAccountId: string | null; pageId: string | null }>;
 }
 
+interface LinkedInSnap {
+  brandId: string;
+  impressions: number;
+  clicks: number;
+  spend: number;
+  leads: number;
+  costPerLead: number | null;
+}
+interface LinkedInStatus {
+  configured: boolean;
+  connected: boolean;
+  expiresAt: string | null;
+  results: Array<{ brandId: string; snapshot?: LinkedInSnap; error?: string }>;
+  config: Record<string, string | null>;
+}
+
 type Tab = "overview" | "crm" | "performance" | "connections";
 
 const TABS: { id: Tab; label: string }[] = [
@@ -85,6 +101,7 @@ export default function AdminPage() {
   const [starts, setStarts] = useState<SignupEvent[]>([]);
   const [leadSummaries, setLeadSummaries] = useState<LeadSummary[]>([]);
   const [meta, setMeta] = useState<MetaStatus | null>(null);
+  const [linkedin, setLinkedin] = useState<LinkedInStatus | null>(null);
   const [selected, setSelected] = useState<FeedbackItem | null>(null);
 
   // CRM view state
@@ -99,12 +116,13 @@ export default function AdminPage() {
 
   async function loadData(pass: string): Promise<boolean> {
     const headers = { Authorization: `Bearer ${pass}` };
-    const [fb, us, ev, ls, mt] = await Promise.all([
+    const [fb, us, ev, ls, mt, li] = await Promise.all([
       fetch("/api/feedback", { headers }),
       fetch("/api/admin/users", { headers }),
       fetch("/api/track", { headers }),
       fetch("/api/admin/leads-summary", { headers }),
       fetch("/api/admin/meta", { headers }),
+      fetch("/api/admin/linkedin", { headers }),
     ]);
     if (!fb.ok || !us.ok || !ev.ok || !ls.ok) return false;
     setFeedback(await fb.json());
@@ -112,6 +130,7 @@ export default function AdminPage() {
     setStarts(await ev.json());
     setLeadSummaries(await ls.json());
     setMeta(mt.ok ? await mt.json() : null);
+    setLinkedin(li.ok ? await li.json() : null);
     return true;
   }
 
@@ -129,6 +148,35 @@ export default function AdminPage() {
       headers: { Authorization: `Bearer ${password}` },
     });
     if (res.ok) setMeta(await res.json());
+  }
+
+  // Start the LinkedIn OAuth connect (opens LinkedIn's login).
+  async function connectLinkedIn() {
+    const res = await fetch("/api/admin/linkedin", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${password}`,
+      },
+      body: JSON.stringify({ action: "connectUrl" }),
+    });
+    const data = await res.json();
+    if (data.url) window.location.href = data.url;
+  }
+
+  async function saveBrandLinkedIn(brandId: string, adAccount: string) {
+    await fetch("/api/admin/linkedin", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${password}`,
+      },
+      body: JSON.stringify({ brandId, adAccount }),
+    });
+    const res = await fetch("/api/admin/linkedin", {
+      headers: { Authorization: `Bearer ${password}` },
+    });
+    if (res.ok) setLinkedin(await res.json());
   }
 
   // Merge an updated agent record back into the list (and the open drawer)
@@ -859,6 +907,111 @@ export default function AdminPage() {
                   );
                 })}
               </div>
+            </section>
+
+            {/* LinkedIn Ads */}
+            <section className="mt-10">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold">LinkedIn Ads</h2>
+                {linkedin && (
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${linkedin.connected ? "bg-green-500" : linkedin.configured ? "bg-amber-400" : "bg-gray-300"}`}
+                      />
+                      {linkedin.connected
+                        ? "Connected"
+                        : linkedin.configured
+                          ? "Not connected"
+                          : "App keys not set"}
+                    </span>
+                    {linkedin.configured && (
+                      <button
+                        onClick={connectLinkedIn}
+                        className="rounded-lg bg-[#0A66C2] px-3.5 py-1.5 text-xs font-medium text-white hover:opacity-90"
+                      >
+                        {linkedin.connected ? "Reconnect" : "Connect LinkedIn"}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+              {linkedin && !linkedin.configured ? (
+                <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-700">
+                  <p className="font-medium">App keys not set.</p>
+                  <p className="mt-1">
+                    Add <code>LINKEDIN_CLIENT_ID</code> and{" "}
+                    <code>LINKEDIN_CLIENT_SECRET</code> (from the LinkedIn app →
+                    Auth tab) in Railway, and register the redirect URL{" "}
+                    <code>{"{APP_URL}"}/api/linkedin/callback</code>. Then hit
+                    Connect.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                    Connect once with LinkedIn, then paste each brand's{" "}
+                    <strong>Sponsored Account ID</strong> (from Campaign
+                    Manager). Token auto-refreshes.
+                  </p>
+                  <div className="mt-4 space-y-3">
+                    {BRANDS.map((b) => {
+                      const res = linkedin?.results.find(
+                        (r) => r.brandId === b.id
+                      );
+                      const connected = !!res?.snapshot;
+                      const err = res?.error;
+                      const current = linkedin?.config?.[b.id] ?? "";
+                      const s = res?.snapshot;
+                      return (
+                        <div
+                          key={b.id}
+                          className="flex flex-wrap items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4"
+                        >
+                          <div className="flex min-w-[220px] flex-1 items-center gap-3">
+                            <BrandMark
+                              name={b.name}
+                              accent={b.accent}
+                              logo={b.logo}
+                              size={30}
+                            />
+                            <div>
+                              <p className="text-sm font-medium">{b.name}</p>
+                              <p className="flex items-center gap-1.5 text-xs text-gray-400">
+                                <span
+                                  className={`h-1.5 w-1.5 rounded-full ${connected ? "bg-green-500" : err ? "bg-red-500" : "bg-amber-400"}`}
+                                />
+                                {connected && s
+                                  ? `£${s.spend.toLocaleString("en-GB", { maximumFractionDigits: 0 })} · ${s.clicks} clicks · ${s.leads} leads (30d)`
+                                  : err
+                                    ? err
+                                    : "No account set"}
+                              </p>
+                            </div>
+                          </div>
+                          <input
+                            defaultValue={current ?? ""}
+                            placeholder="Sponsored Account ID"
+                            className="w-44 rounded-lg border border-gray-200 px-3 py-1.5 text-sm outline-none focus:border-gray-900"
+                            id={`li-${b.id}`}
+                          />
+                          <button
+                            onClick={() => {
+                              const el = document.getElementById(
+                                `li-${b.id}`
+                              ) as HTMLInputElement | null;
+                              saveBrandLinkedIn(b.id, el?.value ?? "");
+                            }}
+                            className="rounded-lg bg-gray-900 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-gray-700"
+                          >
+                            Save
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </section>
 
             {/* Other systems */}

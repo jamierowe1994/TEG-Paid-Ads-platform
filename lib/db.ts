@@ -113,6 +113,16 @@ CREATE TABLE IF NOT EXISTS brand_meta (
   page_id       TEXT,
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE brand_meta ADD COLUMN IF NOT EXISTS linkedin_ad_account TEXT;
+
+-- Single-row store for the LinkedIn OAuth token (one app/token for the group).
+CREATE TABLE IF NOT EXISTS linkedin_token (
+  id            INT PRIMARY KEY DEFAULT 1,
+  access_token  TEXT,
+  refresh_token TEXT,
+  expires_at    TIMESTAMPTZ,
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
 -- Columns added after first release (safe to re-run)
 ALTER TABLE users ADD COLUMN IF NOT EXISTS meta_campaign_id TEXT;
