@@ -240,6 +240,7 @@ export async function actOnReferral(
 export async function fetchNotifications(): Promise<{
   newLeads: number;
   pendingReferrals: number;
+  stage?: string;
 }> {
   try {
     const res = await fetch("/api/notifications", { cache: "no-store" });
@@ -247,5 +248,40 @@ export async function fetchNotifications(): Promise<{
     return await res.json();
   } catch {
     return { newLeads: 0, pendingReferrals: 0 };
+  }
+}
+
+// Customer campaign sign-off + feedback (Phase 2 approval loop).
+export async function approveCampaign(): Promise<UserProfile | null> {
+  try {
+    const res = await fetch("/api/campaign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "approve" }),
+    });
+    if (!res.ok) return null;
+    const { user } = await res.json();
+    if (user) saveUser(user);
+    return user ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function sendCampaignFeedback(
+  text: string
+): Promise<UserProfile | null> {
+  try {
+    const res = await fetch("/api/campaign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "feedback", text }),
+    });
+    if (!res.ok) return null;
+    const { user } = await res.json();
+    if (user) saveUser(user);
+    return user ?? null;
+  } catch {
+    return null;
   }
 }

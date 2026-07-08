@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getUser, fetchLeads } from "@/lib/session";
+import {
+  getUser,
+  fetchLeads,
+  approveCampaign,
+  sendCampaignFeedback,
+} from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
 import { packageById } from "@/lib/packages";
 import { ONBOARDING_STAGES, stageIndex } from "@/lib/onboarding";
@@ -15,6 +20,28 @@ export default function DashboardOverview() {
   const [leads, setLeads] = useState<Lead[]>([]);
   // Flips true just after mount so the progress bar animates up from empty.
   const [fillReady, setFillReady] = useState(false);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [reviewStatus, setReviewStatus] = useState("");
+  const [approving, setApproving] = useState(false);
+
+  async function approve() {
+    if (approving) return;
+    setApproving(true);
+    const u = await approveCampaign();
+    setApproving(false);
+    if (u) setUser(u);
+  }
+  async function submitFeedback() {
+    const text = feedbackText.trim();
+    if (!text) return;
+    const u = await sendCampaignFeedback(text);
+    if (u) {
+      setUser(u);
+      setFeedbackText("");
+      setReviewStatus("Sent to the team ✓");
+      setTimeout(() => setReviewStatus(""), 3000);
+    }
+  }
 
   useEffect(() => {
     const u = getUser();
@@ -167,6 +194,59 @@ export default function DashboardOverview() {
             <span className="font-medium text-gray-700">“{user.goal}”</span>.
             You'll see everything here as it's ready for review.
           </p>
+        )}
+
+        {/* Review & approve — the customer's final sign-off */}
+        {user.onboardingStage === "review" && (
+          <div
+            className="mt-4 rounded-xl border p-4"
+            style={{ borderColor: `${brand.accent}44` }}
+          >
+            {user.campaignApproved ? (
+              <p className="text-sm font-medium text-green-700">
+                ✓ Approved — we're putting your campaign live. You'll get a
+                nudge here the moment it's up.
+              </p>
+            ) : (
+              <>
+                <p className="text-sm font-semibold text-gray-900">
+                  Your creatives are ready to review
+                </p>
+                <p className="mt-1 text-sm text-gray-500">
+                  Happy with everything? Give it the final sign-off. Spotted
+                  something — a typo, a colour, the wrong brand — pop it below
+                  and we'll fix it before it goes live.
+                </p>
+                <textarea
+                  value={feedbackText}
+                  onChange={(e) => setFeedbackText(e.target.value)}
+                  rows={2}
+                  placeholder="Any changes before we go live? (optional)"
+                  className="mt-3 w-full rounded-xl border border-gray-200 p-3 text-sm outline-none focus:border-gray-900"
+                />
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={approve}
+                    disabled={approving}
+                    className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+                    style={{ backgroundColor: brand.accent }}
+                  >
+                    {approving ? "Approving…" : "Approve & go live"}
+                  </button>
+                  <button
+                    onClick={submitFeedback}
+                    disabled={!feedbackText.trim()}
+                    className="rounded-xl border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Send feedback
+                  </button>
+                  {reviewStatus && (
+                    <span className="text-xs text-gray-500">{reviewStatus}</span>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         )}
       </section>
 

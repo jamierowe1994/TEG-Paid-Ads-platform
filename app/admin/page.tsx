@@ -447,6 +447,42 @@ export default function AdminPage() {
         {/* ═══ OVERVIEW ═══ */}
         {tab === "overview" && (
           <>
+            {(() => {
+              const awaitingLive = users.filter(
+                (u) => u.onboardingStage === "review" && u.campaignApproved
+              );
+              const awaitingApproval = users.filter(
+                (u) => u.onboardingStage === "review" && !u.campaignApproved
+              );
+              if (awaitingLive.length === 0 && awaitingApproval.length === 0) {
+                return null;
+              }
+              return (
+                <div className="mb-6 space-y-2">
+                  {awaitingLive.length > 0 && (
+                    <div className="rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+                      ✅ <strong>{awaitingLive.length}</strong> customer
+                      {awaitingLive.length === 1 ? " has" : "s have"} approved —
+                      ready to set live:{" "}
+                      <span className="font-medium">
+                        {awaitingLive.map((u) => u.name).join(", ")}
+                      </span>
+                      . Open their record → move to <em>Ads live</em>.
+                    </div>
+                  )}
+                  {awaitingApproval.length > 0 && (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+                      ⏳ <strong>{awaitingApproval.length}</strong> awaiting
+                      customer approval:{" "}
+                      <span className="font-medium">
+                        {awaitingApproval.map((u) => u.name).join(", ")}
+                      </span>
+                      .
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {BRANDS.map((b) => {
                 const count = users.filter((u) => u.brandId === b.id).length;

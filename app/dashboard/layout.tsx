@@ -8,6 +8,13 @@ import { brandById, type Brand } from "@/lib/brands";
 import type { UserProfile } from "@/lib/types";
 import BrandMark from "@/components/BrandMark";
 
+// Toast copy when the admin advances a customer's campaign stage.
+const STAGE_TOAST: Record<string, string> = {
+  creatives: "We've started building your ad creatives 🎨",
+  review: "Your creative designs are ready — take a look and approve 👀",
+  live: "🎉 Your ads are live!",
+};
+
 const NAV = [
   { href: "/dashboard", label: "Overview", icon: "M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10" },
   { href: "/dashboard/leads", label: "Leads", icon: "M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4z" },
@@ -28,6 +35,7 @@ export default function DashboardLayout({
   const [brand, setBrand] = useState<Brand | null>(null);
   const [checked, setChecked] = useState(false);
   const [notifs, setNotifs] = useState({ newLeads: 0, pendingReferrals: 0 });
+  const [toast, setToast] = useState("");
 
   useEffect(() => {
     // Validate the session against the server (httpOnly cookie), not just the
@@ -43,12 +51,25 @@ export default function DashboardLayout({
     });
   }, [router]);
 
-  // Notification dots — refresh on navigation and on a light interval so new
-  // leads / referrals surface without a manual reload.
+  // Notification dots + campaign-stage toast — refresh on navigation and on a
+  // light interval. When the admin advances the customer's stage, we detect
+  // the change against the last-seen stage and pop a toast.
   useEffect(() => {
     if (!checked) return;
-    fetchNotifications().then(setNotifs);
-    const t = setInterval(() => fetchNotifications().then(setNotifs), 30000);
+    function handle(n: Awaited<ReturnType<typeof fetchNotifications>>) {
+      setNotifs(n);
+      if (n.stage) {
+        const seen = localStorage.getItem("teg_seen_stage");
+        if (seen && seen !== n.stage && STAGE_TOAST[n.stage]) {
+          setToast(STAGE_TOAST[n.stage]);
+          setTimeout(() => setToast(""), 7000);
+          refreshUser().then((u) => u && setUser(u));
+        }
+        localStorage.setItem("teg_seen_stage", n.stage);
+      }
+    }
+    fetchNotifications().then(handle);
+    const t = setInterval(() => fetchNotifications().then(handle), 30000);
     return () => clearInterval(t);
   }, [checked, pathname]);
 
@@ -161,6 +182,13 @@ export default function DashboardLayout({
 
       {/* Main */}
       <main className="ml-[264px] flex-1 px-10 py-10">{children}</main>
+
+      {/* Campaign-stage toast — bottom-right */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-xs animate-[fade-up_0.3s_ease] rounded-2xl bg-gray-900 px-5 py-4 text-sm font-medium text-white shadow-xl">
+          {toast}
+        </div>
+      )}
     </div>
   );
 }

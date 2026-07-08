@@ -25,6 +25,10 @@ export interface UserProfile {
   location?: string | null; // the agent's town / patch
   onboardingStage?: OnboardingStage;
   adminNotes?: AdminNote[]; // internal — stripped before reaching the agent
+  // Two-way campaign approval (Phase 2). The customer approves at the review
+  // stage (last sign-off) and can leave feedback the team sees.
+  campaignApproved?: boolean;
+  campaignFeedback?: AdminNote[];
 }
 
 // Lead funnel stages. Progressive: each stage reveals the next relevant

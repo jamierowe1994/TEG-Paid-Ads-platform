@@ -48,6 +48,8 @@ interface UserRow {
   location: string | null;
   onboarding_stage: string | null;
   admin_notes: unknown;
+  campaign_approved: boolean | null;
+  campaign_feedback: unknown;
 }
 
 function fromRow(row: UserRow): StoredUser {
@@ -73,6 +75,10 @@ function fromRow(row: UserRow): StoredUser {
     adminNotes: (Array.isArray(row.admin_notes)
       ? row.admin_notes
       : []) as StoredUser["adminNotes"],
+    campaignApproved: !!row.campaign_approved,
+    campaignFeedback: (Array.isArray(row.campaign_feedback)
+      ? row.campaign_feedback
+      : []) as StoredUser["campaignFeedback"],
   };
 }
 
@@ -159,7 +165,7 @@ export async function updateUser(
          name = $2, mobile = $3, photo = $4, brand_id = $5, platforms = $6,
          goal = $7, package_id = $8, paid = $9, password_hash = $10,
          meta_campaign_id = $11, location = $12, onboarding_stage = $13,
-         admin_notes = $14
+         admin_notes = $14, campaign_approved = $15, campaign_feedback = $16
        WHERE id = $1`,
       [
         next.id,
@@ -176,6 +182,8 @@ export async function updateUser(
         next.location ?? null,
         next.onboardingStage ?? "signed_up",
         JSON.stringify(next.adminNotes ?? []),
+        next.campaignApproved ?? false,
+        JSON.stringify(next.campaignFeedback ?? []),
       ]
     );
     return next;

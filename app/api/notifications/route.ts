@@ -16,5 +16,9 @@ export async function GET(req: NextRequest) {
     countNewLeads(user.id),
     countPendingForBrand(user.brandId, user.id),
   ]);
-  return NextResponse.json({ newLeads, pendingReferrals });
+  return NextResponse.json({
+    newLeads,
+    pendingReferrals,
+    stage: user.onboardingStage ?? "signed_up",
+  });
 }

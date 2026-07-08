@@ -162,6 +162,45 @@ export default function AgentProfile({
           </div>
         </div>
 
+        {/* Customer sign-off — their approval + any feedback */}
+        {(agent.onboardingStage === "review" ||
+          (agent.campaignFeedback ?? []).length > 0) && (
+          <div
+            className="mt-4 rounded-2xl border p-4"
+            style={{
+              borderColor: agent.campaignApproved ? "#86efac" : "#e5e7eb",
+              backgroundColor: agent.campaignApproved ? "#f0fdf4" : undefined,
+            }}
+          >
+            <p className="text-sm font-semibold">Customer sign-off</p>
+            {agent.onboardingStage === "review" &&
+              (agent.campaignApproved ? (
+                <p className="mt-1 text-sm font-medium text-green-700">
+                  ✅ Approved — you're clear to set them live.
+                </p>
+              ) : (
+                <p className="mt-1 text-sm font-medium text-amber-600">
+                  ⏳ Awaiting customer approval.
+                </p>
+              ))}
+            {(agent.campaignFeedback ?? []).length > 0 && (
+              <ul className="mt-3 space-y-2">
+                {[...(agent.campaignFeedback ?? [])].reverse().map((f, i) => (
+                  <li
+                    key={i}
+                    className="rounded-lg bg-white/70 p-3 text-sm text-gray-700"
+                  >
+                    “{f.text}”
+                    <span className="mt-1 block text-xs text-gray-400">
+                      {new Date(f.at).toLocaleString("en-GB")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
         {/* Key facts */}
         <div className="mt-6 grid grid-cols-2 gap-3">
           <Fact label="Signed up">
