@@ -89,6 +89,33 @@ export interface Snapshot {
   leads: number;
   costPerLead: number | null;
   datePreset: string;
+  // Every lead-ish action Meta returned, so the admin can see exactly which
+  // metric we count and reconcile it against Ads Manager. Temporary aid while
+  // we lock the right figure in.
+  leadBreakdown: { type: string; value: number }[];
+}
+
+// Meta reports several OVERLAPPING lead action types for the same leads
+// (e.g. `lead`, `onsite_conversion.lead_grouped`, `leadgen.other`,
+// `offsite_conversion.fb_pixel_lead`). Summing them multi-counts every lead —
+// which is why the total came out ~5–6× too high. Count the single canonical
+// `lead` action (what Ads Manager's Leads column shows), falling back through
+// the grouped on-Meta lead-form action and then pixel leads.
+const LEAD_ACTION_PRIORITY = [
+  "lead",
+  "onsite_conversion.lead_grouped",
+  "leadgen.other",
+  "offsite_conversion.fb_pixel_lead",
+];
+
+function countLeads(
+  actions: Array<{ action_type: string; value: string }>
+): number {
+  for (const type of LEAD_ACTION_PRIORITY) {
+    const hit = actions.find((a) => a.action_type === type);
+    if (hit) return Number(hit.value ?? 0);
+  }
+  return 0;
 }
 
 // Live stats for one brand's ad account. Returns null if not configured.
@@ -111,9 +138,11 @@ export async function getSnapshotFor(
   const row = insights.data?.[0] ?? {};
   const actions =
     (row.actions as Array<{ action_type: string; value: string }>) ?? [];
-  const leads = actions
+  const leads = countLeads(actions);
+  const leadBreakdown = actions
     .filter((a) => /lead/i.test(a.action_type))
-    .reduce((sum, a) => sum + Number(a.value ?? 0), 0);
+    .map((a) => ({ type: a.action_type, value: Number(a.value ?? 0) }))
+    .sort((a, b) => b.value - a.value);
   const spend = Number(row.spend ?? 0);
 
   return {
@@ -131,6 +160,7 @@ export async function getSnapshotFor(
     leads,
     costPerLead: leads > 0 ? spend / leads : null,
     datePreset,
+    leadBreakdown,
   };
 }
 

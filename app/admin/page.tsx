@@ -52,6 +52,7 @@ interface MetaSnapshot {
   leads: number;
   costPerLead: number | null;
   datePreset: string;
+  leadBreakdown?: { type: string; value: number }[];
 }
 interface MetaResult {
   brandId: string;
@@ -842,6 +843,35 @@ export default function AdminPage() {
                             </div>
                           ))}
                         </div>
+                        {s.leadBreakdown && s.leadBreakdown.length > 0 && (
+                          <details className="mt-3 text-xs">
+                            <summary className="cursor-pointer text-gray-400 hover:text-gray-600">
+                              Leads breakdown (reconcile vs Ads Manager)
+                            </summary>
+                            <div className="mt-2 space-y-1 rounded-xl bg-gray-50 p-3">
+                              <p className="text-gray-500">
+                                We count the{" "}
+                                <code className="rounded bg-white px-1">lead</code>{" "}
+                                action (Ads Manager&apos;s Leads column). Meta also
+                                reports overlapping types for the same leads — do
+                                <strong> not</strong> add these up:
+                              </p>
+                              {s.leadBreakdown.map((lb) => (
+                                <div
+                                  key={lb.type}
+                                  className="flex justify-between font-mono text-gray-600"
+                                >
+                                  <span>{lb.type}</span>
+                                  <span>{lb.value.toLocaleString("en-GB")}</span>
+                                </div>
+                              ))}
+                              <div className="mt-1 flex justify-between border-t border-gray-200 pt-1 font-medium text-gray-900">
+                                <span>Counted total</span>
+                                <span>{s.leads.toLocaleString("en-GB")}</span>
+                              </div>
+                            </div>
+                          </details>
+                        )}
                       </div>
                     );
                   })}
