@@ -25,6 +25,13 @@ export interface Brand {
   conversionVerb: string; // button text, e.g. "Book Market Appraisal"
   audience: string; // who the agents are
   logo: string; // /brand-logos/<id>.png — falls back to a letter mark
+  // Referrals advertising: what an agent earns for referring a lead into this
+  // business, how that fee is worked out, and the sales pitch shown on the
+  // referrals tiles / preview so people know exactly who to send over.
+  referralFee: number; // headline average fee, in £
+  referralFeeNote: string; // the small print on how the fee is calculated
+  referralPitch: string; // one-line hook on the tile
+  referralAbout: string; // couple of sentences for the preview modal
 }
 
 // The parent group brand. Used on the marketing/pre-login pages (landing,
@@ -50,6 +57,11 @@ export const BRANDS: Brand[] = [
     conversionVerb: "Book Market Appraisal",
     audience: "Estate agents",
     logo: "/brand-logos/TPE - Icon.png",
+    referralFee: 850,
+    referralFeeNote: "0.25% of the sale price · average sale £341k",
+    referralPitch: "Know someone thinking of selling? Send them our way.",
+    referralAbout:
+      "Our estate agents win the instruction and take the sale all the way to completion. Refer any homeowner weighing up a move and you'll earn on every one that sells.",
   },
   {
     id: "lettings",
@@ -63,6 +75,11 @@ export const BRANDS: Brand[] = [
     conversionVerb: "Book Market Appraisal",
     audience: "Lettings agents",
     logo: "/brand-logos/TLE - Icon.png",
+    referralFee: 150,
+    referralFeeNote: "25% of the setup fee · average setup £600",
+    referralPitch: "Landlords with a property to let — we'll get it tenanted.",
+    referralAbout:
+      "We take landlords from empty property to signed tenancy and ongoing management. Refer any landlord and you earn a share of the setup fee once they're on board.",
   },
   {
     id: "mortgage",
@@ -76,6 +93,11 @@ export const BRANDS: Brand[] = [
     conversionVerb: "Book Appointment",
     audience: "Mortgage advisers",
     logo: "/brand-logos/TMGE - Icon.png",
+    referralFee: 500,
+    referralFeeNote: "Average per completed mortgage (£400–£600)",
+    referralPitch: "Anyone buying, moving or remortgaging? We sort the finance.",
+    referralAbout:
+      "Our advisers handle the whole mortgage — buying, moving home or remortgaging — start to completion. Refer anyone who needs finance and you earn once their mortgage completes.",
   },
   {
     id: "recruitment",
@@ -89,6 +111,11 @@ export const BRANDS: Brand[] = [
     conversionVerb: "Book Appointment",
     audience: "Recruiters",
     logo: "/brand-logos/TRE - Icon.png",
+    referralFee: 600,
+    referralFeeNote: "£600 per successful placement",
+    referralPitch: "Businesses hiring, or great people looking — we place them.",
+    referralAbout:
+      "We recruit across the board — refer a business that's hiring or a strong candidate on the move and we take it from first call to placement. You earn £600 on every successful placement.",
   },
   {
     id: "commercial",
@@ -102,6 +129,11 @@ export const BRANDS: Brand[] = [
     conversionVerb: "Book Appointment",
     audience: "Commercial property agents",
     logo: "/brand-logos/TCPE - Icon.png",
+    referralFee: 1750,
+    referralFeeNote: "£350 hands-off · up to £1,750 with viewings & client care",
+    referralPitch: "Offices, retail, industrial units — commercial, handled.",
+    referralAbout:
+      "We handle commercial property — offices, retail and industrial units, sales and lettings. Refer any business or landlord with a commercial requirement; the more you stay involved, the bigger your fee.",
   },
   {
     id: "fineandcountry",
@@ -116,6 +148,11 @@ export const BRANDS: Brand[] = [
     conversionVerb: "Book Market Appraisal",
     audience: "Premium estate agents",
     logo: "/brand-logos/F&C - Icon.png",
+    referralFee: 2500,
+    referralFeeNote: "0.25% of the fee · 50/50 split with the business",
+    referralPitch: "Premium and prestige homes deserve the Fine & Country touch.",
+    referralAbout:
+      "Fine & Country markets premium and prestige homes with a global reach and a bespoke service. Refer higher-value homeowners here — the fees are some of the biggest in the group.",
   },
   {
     id: "auction",
@@ -130,6 +167,11 @@ export const BRANDS: Brand[] = [
     conversionVerb: "Book Valuation",
     audience: "Auction valuers",
     logo: "/brand-logos/TAC - Icon.png",
+    referralFee: 7000,
+    referralFeeNote: "£2,800–£7,000 · 50% on a 70/30 split",
+    referralPitch: "Need a fast, certain sale? Auction is the route — and it pays.",
+    referralAbout:
+      "Auction gives sellers a fast, certain sale — ideal for probate, tenanted stock, land or anything needing a quick exit. Refer them here and you're in line for the biggest fees in the group.",
   },
 ];
 
