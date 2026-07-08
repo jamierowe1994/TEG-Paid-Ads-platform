@@ -130,6 +130,8 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS location TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_stage TEXT DEFAULT 'signed_up';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_notes JSONB DEFAULT '[]';
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS referral_id TEXT;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS notes JSONB NOT NULL DEFAULT '[]';
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS appointment_at TIMESTAMPTZ;
 `;
 
 async function ensureSchema(): Promise<void> {

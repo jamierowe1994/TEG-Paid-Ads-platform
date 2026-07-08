@@ -57,6 +57,10 @@ export interface Lead {
   // falls back to `note` when interestedIn is absent.
   adName?: string | null; // the ad/campaign the lead came from
   interestedIn?: string | null; // what the lead enquired about
+  // Agent-added notes (from the Call → Add notes panel).
+  notes?: { at: string; text: string }[];
+  // When an appointment/call is booked (ISO). null once cancelled.
+  appointmentAt?: string | null;
 }
 
 // Referral lifecycle:

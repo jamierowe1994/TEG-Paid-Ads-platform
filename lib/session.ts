@@ -167,6 +167,32 @@ export async function pushLeadToCrm(leadId: string): Promise<{
   }
 }
 
+// Per-lead modal actions (note / book / cancel booking). Each returns the
+// updated lead, or null on failure.
+async function leadAction(body: Record<string, unknown>): Promise<Lead | null> {
+  try {
+    const res = await fetch("/api/leads/action", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as Lead;
+  } catch {
+    return null;
+  }
+}
+
+export function addLeadNote(leadId: string, text: string) {
+  return leadAction({ leadId, action: "note", text });
+}
+export function bookLeadAppointment(leadId: string, at: string) {
+  return leadAction({ leadId, action: "book", at });
+}
+export function cancelLeadAppointment(leadId: string) {
+  return leadAction({ leadId, action: "cancelBooking" });
+}
+
 // ── Referrals (server-side, Postgres on Railway) ─────────────────────────
 export async function fetchReferrals(): Promise<Referral[]> {
   try {

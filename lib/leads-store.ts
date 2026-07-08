@@ -27,6 +27,8 @@ interface LeadRow {
   received_at: string | Date;
   history: unknown;
   referral_id: string | null;
+  notes: unknown;
+  appointment_at: string | Date | null;
 }
 
 function fromRow(row: LeadRow): Lead {
@@ -41,6 +43,10 @@ function fromRow(row: LeadRow): Lead {
     receivedAt: new Date(row.received_at).toISOString(),
     history: (Array.isArray(row.history) ? row.history : []) as Lead["history"],
     referralId: row.referral_id ?? null,
+    notes: (Array.isArray(row.notes) ? row.notes : []) as Lead["notes"],
+    appointmentAt: row.appointment_at
+      ? new Date(row.appointment_at).toISOString()
+      : null,
   };
 }
 
@@ -138,6 +144,101 @@ export async function getLead(
   const found = all.find((l) => l.id === leadId && l.userId === userId);
   if (!found) return undefined;
   const { userId: _omit, ...lead } = found;
+  return lead;
+}
+
+// Append an agent note to a lead (from the Call → Add notes panel).
+export async function addLeadNote(
+  userId: string,
+  leadId: string,
+  text: string
+): Promise<Lead | undefined> {
+  const trimmed = text.trim();
+  if (!trimmed) return getLead(userId, leadId);
+  const entry = { at: new Date().toISOString(), text: trimmed };
+  if (hasDb()) {
+    const rows = await q<LeadRow>(
+      `UPDATE leads SET notes = COALESCE(notes,'[]'::jsonb) || $3::jsonb
+         WHERE id = $2 AND user_id = $1 RETURNING *`,
+      [userId, leadId, JSON.stringify([entry])]
+    );
+    return rows[0] ? fromRow(rows[0]) : undefined;
+  }
+  const all = await readAllFile();
+  const idx = all.findIndex((l) => l.id === leadId && l.userId === userId);
+  if (idx === -1) return undefined;
+  all[idx] = { ...all[idx], notes: [...(all[idx].notes ?? []), entry] };
+  await writeAllFile(all);
+  const { userId: _omit, ...lead } = all[idx];
+  return lead;
+}
+
+// Book (or rearrange) an appointment: store the date and mark the lead as
+// converted (unless it's already been pushed to the CRM).
+export async function bookAppointment(
+  userId: string,
+  leadId: string,
+  at: string
+): Promise<Lead | undefined> {
+  const iso = new Date(at).toISOString();
+  const existing = await getLead(userId, leadId);
+  if (!existing) return undefined;
+  const firstBook = existing.stage !== "converted" && existing.stage !== "pushed";
+  const append = firstBook
+    ? [{ stage: "converted", at: new Date().toISOString() }]
+    : [];
+  if (hasDb()) {
+    const rows = await q<LeadRow>(
+      `UPDATE leads
+          SET appointment_at = $3,
+              stage = CASE WHEN stage = 'pushed' THEN 'pushed' ELSE 'converted' END,
+              history = history || $4::jsonb
+        WHERE id = $2 AND user_id = $1 RETURNING *`,
+      [userId, leadId, iso, JSON.stringify(append)]
+    );
+    return rows[0] ? fromRow(rows[0]) : undefined;
+  }
+  const all = await readAllFile();
+  const idx = all.findIndex((l) => l.id === leadId && l.userId === userId);
+  if (idx === -1) return undefined;
+  const cur = all[idx];
+  all[idx] = {
+    ...cur,
+    appointmentAt: iso,
+    stage: cur.stage === "pushed" ? "pushed" : "converted",
+    history: [...cur.history, ...(append as Lead["history"])],
+  };
+  await writeAllFile(all);
+  const { userId: _omit, ...lead } = all[idx];
+  return lead;
+}
+
+// Cancel a booking — clears the date and drops the lead back into the funnel.
+export async function cancelAppointment(
+  userId: string,
+  leadId: string
+): Promise<Lead | undefined> {
+  const entry = { stage: "attempt1" as LeadStage, at: new Date().toISOString() };
+  if (hasDb()) {
+    const rows = await q<LeadRow>(
+      `UPDATE leads SET appointment_at = NULL, stage = 'attempt1',
+              history = history || $3::jsonb
+        WHERE id = $2 AND user_id = $1 RETURNING *`,
+      [userId, leadId, JSON.stringify([entry])]
+    );
+    return rows[0] ? fromRow(rows[0]) : undefined;
+  }
+  const all = await readAllFile();
+  const idx = all.findIndex((l) => l.id === leadId && l.userId === userId);
+  if (idx === -1) return undefined;
+  all[idx] = {
+    ...all[idx],
+    appointmentAt: null,
+    stage: "attempt1",
+    history: [...all[idx].history, entry],
+  };
+  await writeAllFile(all);
+  const { userId: _omit, ...lead } = all[idx];
   return lead;
 }
 

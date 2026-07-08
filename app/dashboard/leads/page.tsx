@@ -6,6 +6,9 @@ import {
   fetchLeads,
   moveLeadStage,
   pushLeadToCrm,
+  addLeadNote,
+  bookLeadAppointment,
+  cancelLeadAppointment,
 } from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
 import { packageById } from "@/lib/packages";
@@ -199,6 +202,33 @@ export default function LeadsPage() {
     showToast(`${lead.name} pushed to Atlas ✓${extra}`);
   }
 
+  function applyLead(updated: Lead | null, okMsg?: string, failMsg?: string) {
+    if (updated) {
+      setLeads((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
+      if (okMsg) showToast(okMsg);
+    } else if (failMsg) {
+      showToast(failMsg);
+    }
+  }
+
+  async function addNote(leadId: string, text: string) {
+    applyLead(await addLeadNote(leadId, text), undefined, "Couldn't save note");
+  }
+  async function book(leadId: string, at: string) {
+    applyLead(
+      await bookLeadAppointment(leadId, at),
+      "Appointment booked ✓",
+      "Couldn't book — please try again"
+    );
+  }
+  async function cancelBooking(leadId: string) {
+    applyLead(
+      await cancelLeadAppointment(leadId),
+      "Booking cancelled",
+      "Couldn't cancel — please try again"
+    );
+  }
+
   if (!brand) return null;
 
   const open = openId ? leads.find((l) => l.id === openId) ?? null : null;
@@ -362,6 +392,9 @@ export default function LeadsPage() {
           onClose={() => setOpenId(null)}
           onStage={(s) => update(open.id, s)}
           onPush={() => pushToCrm(open)}
+          onAddNote={(text) => addNote(open.id, text)}
+          onBook={(at) => book(open.id, at)}
+          onCancelBooking={() => cancelBooking(open.id)}
         />
       )}
 
@@ -375,6 +408,17 @@ export default function LeadsPage() {
   );
 }
 
+// Format a booked appointment date nicely.
+function apptLabel(iso: string): string {
+  return new Date(iso).toLocaleString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 // ── Lead detail modal ───────────────────────────────────────────────────
 function LeadModal({
   lead,
@@ -383,6 +427,9 @@ function LeadModal({
   onClose,
   onStage,
   onPush,
+  onAddNote,
+  onBook,
+  onCancelBooking,
 }: {
   lead: Lead;
   brand: Brand;
@@ -390,14 +437,29 @@ function LeadModal({
   onClose: () => void;
   onStage: (stage: LeadStage) => void;
   onPush: () => void;
+  onAddNote: (text: string) => Promise<void>;
+  onBook: (at: string) => Promise<void>;
+  onCancelBooking: () => Promise<void>;
 }) {
   const [showTimeline, setShowTimeline] = useState(false);
+  const [panel, setPanel] = useState<null | "call" | "email">(null);
+  const [callTab, setCallTab] = useState<"notes" | "schedule">("notes");
+  const [noteText, setNoteText] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+  const [bookDate, setBookDate] = useState("");
+  const [booking, setBooking] = useState(false);
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
+  const [emailToast, setEmailToast] = useState("");
 
+  const firstName = lead.name.split(" ")[0] || "there";
   const events = [
     { label: "Lead received", at: lead.receivedAt },
     ...lead.history.map((h) => ({ label: stageLabel(h.stage, brand), at: h.at })),
   ];
   const latest = events[events.length - 1];
+  const notes = lead.notes ?? [];
+  const booked = !!lead.appointmentAt;
 
   const canWork = !["pushed", "lost"].includes(lead.stage);
   const attemptNext: Partial<Record<LeadStage, LeadStage>> = {
@@ -405,6 +467,46 @@ function LeadModal({
     attempt1: "attempt2",
     attempt2: "attempt3",
   };
+
+  const EMAIL_TEMPLATES = [
+    {
+      name: "First touch",
+      subject: "Following up on your enquiry",
+      body: `Hi ${firstName},\n\nThanks for getting in touch — I'd love to help. When's a good time for a quick chat this week?\n\nBest,`,
+    },
+    {
+      name: "Chasing a reply",
+      subject: "Still happy to help",
+      body: `Hi ${firstName},\n\nJust circling back on my last message — I'm around if you have any questions. Would a quick call suit?\n\nBest,`,
+    },
+    {
+      name: "Confirm appointment",
+      subject: "Your appointment is booked",
+      body: `Hi ${firstName},\n\nGreat news — you're booked in${
+        lead.appointmentAt ? ` for ${apptLabel(lead.appointmentAt)}` : ""
+      }. I'll be in touch to confirm the details. Looking forward to it!\n\nBest,`,
+    },
+  ];
+
+  function togglePanel(which: "call" | "email") {
+    setPanel((p) => (p === which ? null : which));
+  }
+
+  async function saveNote() {
+    if (!noteText.trim() || savingNote) return;
+    setSavingNote(true);
+    await onAddNote(noteText.trim());
+    setSavingNote(false);
+    setNoteText("");
+  }
+
+  async function confirmBooking() {
+    if (!bookDate || booking) return;
+    setBooking(true);
+    await onBook(bookDate);
+    setBooking(false);
+    setBookDate("");
+  }
 
   return (
     <div
@@ -446,27 +548,175 @@ function LeadModal({
           <p className="mt-1 text-sm text-gray-800">{whatFor(lead)}</p>
         </div>
 
-        {/* Contact — one tap to call or email */}
+        {/* Contact — Call / Email toggle their own panels */}
         <div className="mt-3 grid grid-cols-2 gap-3">
-          <a
-            href={`tel:${lead.phone}`}
-            className="flex items-center justify-center gap-2 rounded-2xl border border-gray-200 shadow-sm py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          <button
+            onClick={() => togglePanel("call")}
+            className={`flex items-center justify-center gap-2 rounded-2xl border py-3 text-sm font-medium transition ${
+              panel === "call"
+                ? "border-gray-900 bg-gray-900 text-white"
+                : "border-gray-200 text-gray-700 shadow-sm hover:bg-gray-50"
+            }`}
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7">
               <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
             </svg>
             Call
-          </a>
-          <a
-            href={`mailto:${lead.email}`}
-            className="flex items-center justify-center gap-2 rounded-2xl border border-gray-200 shadow-sm py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          </button>
+          <button
+            onClick={() => togglePanel("email")}
+            className={`flex items-center justify-center gap-2 rounded-2xl border py-3 text-sm font-medium transition ${
+              panel === "email"
+                ? "border-gray-900 bg-gray-900 text-white"
+                : "border-gray-200 text-gray-700 shadow-sm hover:bg-gray-50"
+            }`}
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7">
               <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
             </svg>
             Email
-          </a>
+          </button>
         </div>
+
+        {/* Call panel — sweeps open with Notes / Schedule tabs */}
+        <Expand open={panel === "call"}>
+          <div className="mt-3 rounded-2xl border border-gray-200 p-4">
+            <a
+              href={`tel:${lead.phone}`}
+              className="inline-flex items-center gap-1.5 text-sm font-medium"
+              style={{ color: brand.accent }}
+            >
+              📞 {lead.phone}
+            </a>
+            <div className="mt-3 flex gap-1 rounded-xl bg-gray-100 p-1 text-sm">
+              {(["notes", "schedule"] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setCallTab(t)}
+                  className={`flex-1 rounded-lg py-1.5 font-medium capitalize transition ${
+                    callTab === t ? "bg-white shadow-sm" : "text-gray-500"
+                  }`}
+                >
+                  {t === "notes" ? "Add notes" : "Schedule a call"}
+                </button>
+              ))}
+            </div>
+
+            {callTab === "notes" ? (
+              <div className="mt-3">
+                {notes.length > 0 && (
+                  <ul className="mb-3 space-y-2">
+                    {[...notes].reverse().map((n, i) => (
+                      <li key={i} className="rounded-xl bg-gray-50 p-3 text-sm text-gray-700">
+                        {n.text}
+                        <span className="mt-1 block text-[11px] text-gray-400">
+                          {fullDate(n.at)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <textarea
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                  rows={3}
+                  placeholder="Log a call, jot a reminder…"
+                  className="w-full rounded-xl border border-gray-200 p-3 text-sm outline-none focus:border-gray-900"
+                />
+                <BigBtn
+                  primary
+                  accent={brand.accent}
+                  disabled={!noteText.trim() || savingNote}
+                  onClick={saveNote}
+                >
+                  {savingNote ? "Saving…" : "Save note"}
+                </BigBtn>
+              </div>
+            ) : (
+              <div className="mt-3">
+                {booked && (
+                  <p className="mb-3 rounded-xl bg-green-50 p-3 text-sm font-medium text-green-700">
+                    📅 Booked for {apptLabel(lead.appointmentAt!)}
+                  </p>
+                )}
+                <input
+                  type="datetime-local"
+                  value={bookDate}
+                  onChange={(e) => setBookDate(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 p-3 text-sm outline-none focus:border-gray-900"
+                />
+                <BigBtn
+                  primary
+                  accent={brand.accent}
+                  disabled={!bookDate || booking}
+                  onClick={confirmBooking}
+                >
+                  {booking ? "Saving…" : booked ? "Rearrange" : "Book it in"}
+                </BigBtn>
+                {booked && (
+                  <button
+                    onClick={onCancelBooking}
+                    className="mt-2 w-full rounded-2xl py-2.5 text-sm font-medium text-gray-400 hover:bg-gray-50 hover:text-gray-600"
+                  >
+                    Cancel booking
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </Expand>
+
+        {/* Email panel — compose or pick a template */}
+        <Expand open={panel === "email"}>
+          <div className="mt-3 rounded-2xl border border-gray-200 p-4">
+            <p className="text-sm font-medium text-gray-700">
+              ✉ <span className="text-gray-500">{lead.email}</span>
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {EMAIL_TEMPLATES.map((t) => (
+                <button
+                  key={t.name}
+                  onClick={() => {
+                    setEmailSubject(t.subject);
+                    setEmailBody(t.body);
+                  }}
+                  className="rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
+                >
+                  {t.name}
+                </button>
+              ))}
+            </div>
+            <input
+              value={emailSubject}
+              onChange={(e) => setEmailSubject(e.target.value)}
+              placeholder="Subject"
+              className="mt-3 w-full rounded-xl border border-gray-200 p-3 text-sm outline-none focus:border-gray-900"
+            />
+            <textarea
+              value={emailBody}
+              onChange={(e) => setEmailBody(e.target.value)}
+              rows={6}
+              placeholder="Write your email, or pick a template above…"
+              className="mt-2 w-full rounded-xl border border-gray-200 p-3 text-sm outline-none focus:border-gray-900"
+            />
+            <BigBtn
+              primary
+              accent={brand.accent}
+              disabled={!emailSubject.trim() || !emailBody.trim()}
+              onClick={() => {
+                setEmailToast(
+                  "Draft ready ✓ — sending from the portal switches on with Azure email."
+                );
+                setTimeout(() => setEmailToast(""), 4000);
+              }}
+            >
+              Send email
+            </BigBtn>
+            {emailToast && (
+              <p className="mt-2 text-center text-xs text-gray-500">{emailToast}</p>
+            )}
+          </div>
+        </Expand>
 
         {/* Timeline — latest only, expandable */}
         <div className="mt-4 rounded-2xl border border-gray-200 shadow-sm p-4">
@@ -528,23 +778,46 @@ function LeadModal({
               </BigBtn>
             )}
 
-            {/* Book the appointment (the win) — available while still working */}
+            {/* Book the appointment — opens the schedule tab to pick a date */}
             {canWork && lead.stage !== "converted" && (
-              <BigBtn primary accent={brand.accent} onClick={() => onStage("converted")}>
+              <BigBtn
+                primary
+                accent={brand.accent}
+                onClick={() => {
+                  setPanel("call");
+                  setCallTab("schedule");
+                }}
+              >
                 {brand.conversionVerb}
               </BigBtn>
             )}
 
-            {/* Appointment booked → push to CRM */}
+            {/* Booked → summary + push, with manage (rearrange/cancel) */}
             {lead.stage === "converted" && (
-              <BigBtn primary accent={brand.accent} disabled={pushing} onClick={onPush}>
-                {pushing ? "Pushing…" : `Push to ${brand.crmName}`}
-              </BigBtn>
+              <>
+                {booked && (
+                  <p className="rounded-2xl bg-green-50 py-3 text-center text-sm font-medium text-green-700">
+                    📅 Booked for {apptLabel(lead.appointmentAt!)}
+                  </p>
+                )}
+                <BigBtn primary accent={brand.accent} disabled={pushing} onClick={onPush}>
+                  {pushing ? "Pushing…" : `Push to ${brand.crmName}`}
+                </BigBtn>
+                <BigBtn
+                  onClick={() => {
+                    setPanel("call");
+                    setCallTab("schedule");
+                  }}
+                >
+                  {booked ? "Rearrange or cancel" : "Set a date"}
+                </BigBtn>
+              </>
             )}
 
             {lead.stage === "pushed" && (
               <p className="rounded-2xl bg-green-50 py-3 text-center text-sm font-medium text-green-700">
                 ✓ In {brand.crmName}
+                {booked ? ` · ${apptLabel(lead.appointmentAt!)}` : ""}
               </p>
             )}
 
@@ -563,6 +836,19 @@ function LeadModal({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Sweeping expand/collapse — grid-rows 0fr→1fr animates auto height.
+function Expand({ open, children }: { open: boolean; children: ReactNode }) {
+  return (
+    <div
+      className={`grid transition-all duration-300 ease-out ${
+        open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+      }`}
+    >
+      <div className="overflow-hidden">{children}</div>
     </div>
   );
 }
