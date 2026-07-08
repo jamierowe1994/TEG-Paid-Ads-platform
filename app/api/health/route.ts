@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { hasDb, q } from "@/lib/db";
 import { pingAll } from "@/lib/meta";
+import { linkedinStatus } from "@/lib/linkedin";
 
 // Deployment health check — visit /api/health on the live site to see which
 // store the app is actually using. If it says "file-fallback" in production,
@@ -49,6 +50,12 @@ export async function GET(req: NextRequest) {
   // just whether the token + account work + the account name).
   if (req.nextUrl.searchParams.has("meta")) {
     body.meta = await pingAll();
+  }
+
+  // /api/health?linkedin=1 reports whether a LinkedIn token is stored + valid
+  // (configured/connected/expiry only — no ad data).
+  if (req.nextUrl.searchParams.has("linkedin")) {
+    body.linkedin = await linkedinStatus();
   }
 
   return NextResponse.json(body);
