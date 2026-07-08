@@ -104,6 +104,30 @@ securely — **not in normal chat**:
 - The per-brand **Connect** buttons in Admin → Connections become real, so
   the other brands slot in the same way as they come online.
 
+## Adding the other brands (later today)
+
+The code is per-brand and shares the ONE System User token. For each new
+brand you only do two things:
+
+1. In **Business settings → Users → System users → Portal Server → Add
+   assets**, add that brand's **Page** and **Ad account** (same as TRE).
+2. In Railway, add its ad-account variable named
+   **`META_AD_ACCOUNT_<BRAND>`** (and optionally `META_PAGE_<BRAND>`), where
+   `<BRAND>` is the brand id in capitals:
+
+   | Brand | Variable |
+   |-------|----------|
+   | The Property Experts | `META_AD_ACCOUNT_PROPERTY` |
+   | The Lettings Experts | `META_AD_ACCOUNT_LETTINGS` |
+   | The Mortgage Experts | `META_AD_ACCOUNT_MORTGAGE` |
+   | The Recruitment Experts | `META_AD_ACCOUNT_RECRUITMENT` (or the existing `TRE_AD_ACCOUNT_ID`) |
+   | The Commercial Property Experts | `META_AD_ACCOUNT_COMMERCIAL` |
+   | Fine & Country | `META_AD_ACCOUNT_FINEANDCOUNTRY` |
+   | The Auction Company | `META_AD_ACCOUNT_AUCTION` |
+
+   Redeploy and that brand appears live in Admin → Connections. No new app,
+   no new token. Just send me the ad-account IDs and I'll confirm each one.
+
 ## Notes / gotchas
 
 - **Business verification**: not needed for reading TRE's own stats. It *is*

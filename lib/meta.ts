@@ -1,15 +1,18 @@
 import "server-only";
 import crypto from "crypto";
+import { BRANDS } from "./brands";
 
-// Meta Marketing API client. Reads TRE's ad-account stats using the System
-// User token. Configured entirely via env vars (set in Railway), so nothing
-// secret ever reaches the client:
-//   META_SYSTEM_TOKEN   — the never-expiring System User token
-//   META_APP_SECRET     — used to sign requests (appsecret_proof)
-//   TRE_AD_ACCOUNT_ID   — TRE's ad account (with or without the act_ prefix)
-//   TRE_PAGE_ID         — TRE's page (used for the leads webhook later)
+// Meta Marketing API client, per brand. One shared System User token
+// (all brands live in the same Business Manager); each brand supplies its own
+// ad account via env var:
+//   META_SYSTEM_TOKEN            — the never-expiring System User token
+//   META_APP_SECRET             — signs requests (appsecret_proof)
+//   META_AD_ACCOUNT_<BRAND>     — that brand's ad account (act_… or the number)
+//   META_PAGE_<BRAND>           — that brand's page (for the leads webhook)
+// <BRAND> is the brand id uppercased: PROPERTY, LETTINGS, MORTGAGE,
+// RECRUITMENT, COMMERCIAL, FINEANDCOUNTRY, AUCTION.
 //
-// The other brands slot in the same way once their tokens/accounts land.
+// Back-compat: recruitment also reads TRE_AD_ACCOUNT_ID / TRE_PAGE_ID.
 
 const GRAPH = "https://graph.facebook.com/v21.0";
 
@@ -17,17 +20,35 @@ function token(): string {
   return process.env.META_SYSTEM_TOKEN ?? "";
 }
 
-function accountId(): string {
-  const id = process.env.TRE_AD_ACCOUNT_ID ?? "";
-  return id.startsWith("act_") ? id : `act_${id}`;
+export function metaTokenSet(): boolean {
+  return !!token();
 }
 
-export function metaConfigured(): boolean {
-  return !!(token() && process.env.TRE_AD_ACCOUNT_ID);
+// Raw ad account value from env for a brand (or undefined).
+function rawAccount(brandId: string): string | undefined {
+  const v = process.env[`META_AD_ACCOUNT_${brandId.toUpperCase()}`];
+  if (v) return v;
+  if (brandId === "recruitment") return process.env.TRE_AD_ACCOUNT_ID;
+  return undefined;
 }
 
-// Meta recommends signing server calls with appsecret_proof (HMAC of the
-// token with the app secret). Included when the secret is set.
+function accountId(brandId: string): string | null {
+  const raw = rawAccount(brandId);
+  if (!raw) return null;
+  return raw.startsWith("act_") ? raw : `act_${raw}`;
+}
+
+export function brandConfigured(brandId: string): boolean {
+  return !!token() && !!rawAccount(brandId);
+}
+
+// Which brands have an ad account wired up (and the token is present).
+export function configuredBrandIds(): string[] {
+  if (!token()) return [];
+  return BRANDS.map((b) => b.id).filter((id) => !!rawAccount(id));
+}
+
+// Meta recommends signing server calls with appsecret_proof.
 function appSecretProof(): string | undefined {
   const secret = process.env.META_APP_SECRET;
   if (!secret) return undefined;
@@ -52,31 +73,8 @@ async function graph(
   return data;
 }
 
-// Lightweight connection check — confirms the token + account work without
-// returning any ad data (safe to expose on the health endpoint). Reports the
-// account name only so we can confirm it's the right account.
-export async function pingMeta(): Promise<{
-  configured: boolean;
-  ok: boolean;
-  account?: string;
-  error?: string;
-}> {
-  if (!metaConfigured()) return { configured: false, ok: false };
-  try {
-    const acc = (await graph(accountId(), { fields: "name" })) as {
-      name: string;
-    };
-    return { configured: true, ok: true, account: acc.name };
-  } catch (e) {
-    return {
-      configured: true,
-      ok: false,
-      error: e instanceof Error ? e.message : "Meta request failed",
-    };
-  }
-}
-
-export interface TreSnapshot {
+export interface Snapshot {
+  brandId: string;
   account: { name: string; status: number; currency: string };
   impressions: number;
   clicks: number;
@@ -88,28 +86,33 @@ export interface TreSnapshot {
   datePreset: string;
 }
 
-// Live stats for TRE's ad account. `datePreset` e.g. last_7d, last_30d, today.
-export async function getTreSnapshot(
+// Live stats for one brand's ad account. Returns null if not configured.
+export async function getSnapshotFor(
+  brandId: string,
   datePreset = "last_30d"
-): Promise<TreSnapshot> {
-  const account = (await graph(accountId(), {
+): Promise<Snapshot | null> {
+  const acc = accountId(brandId);
+  if (!acc) return null;
+
+  const account = (await graph(acc, {
     fields: "name,account_status,currency",
   })) as { name: string; account_status: number; currency: string };
 
-  const insights = (await graph(`${accountId()}/insights`, {
+  const insights = (await graph(`${acc}/insights`, {
     fields: "impressions,clicks,spend,cpc,ctr,actions",
     date_preset: datePreset,
   })) as { data?: Array<Record<string, unknown>> };
 
   const row = insights.data?.[0] ?? {};
-  const actions = (row.actions as Array<{ action_type: string; value: string }>) ?? [];
-  // Lead-form submissions come through as "leadgen"/"…lead" action types.
+  const actions =
+    (row.actions as Array<{ action_type: string; value: string }>) ?? [];
   const leads = actions
     .filter((a) => /lead/i.test(a.action_type))
     .reduce((sum, a) => sum + Number(a.value ?? 0), 0);
   const spend = Number(row.spend ?? 0);
 
   return {
+    brandId,
     account: {
       name: account.name,
       status: account.account_status,
@@ -124,4 +127,41 @@ export async function getTreSnapshot(
     costPerLead: leads > 0 ? spend / leads : null,
     datePreset,
   };
+}
+
+// Lightweight connection check for one brand (no ad data — just that the
+// token + account work, plus the account name).
+export async function pingBrand(brandId: string): Promise<{
+  brandId: string;
+  configured: boolean;
+  ok: boolean;
+  account?: string;
+  error?: string;
+}> {
+  if (!brandConfigured(brandId)) {
+    return { brandId, configured: false, ok: false };
+  }
+  try {
+    const acc = (await graph(accountId(brandId)!, { fields: "name" })) as {
+      name: string;
+    };
+    return { brandId, configured: true, ok: true, account: acc.name };
+  } catch (e) {
+    return {
+      brandId,
+      configured: true,
+      ok: false,
+      error: e instanceof Error ? e.message : "Meta request failed",
+    };
+  }
+}
+
+// Ping every configured brand (used by the health endpoint).
+export async function pingAll(): Promise<{
+  tokenSet: boolean;
+  brands: Array<Awaited<ReturnType<typeof pingBrand>>>;
+}> {
+  const ids = configuredBrandIds();
+  const brands = await Promise.all(ids.map((id) => pingBrand(id)));
+  return { tokenSet: metaTokenSet(), brands };
 }

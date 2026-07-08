@@ -41,20 +41,26 @@ interface LeadSummary {
   converted: number;
 }
 
-interface MetaStatus {
-  configured: boolean;
+interface MetaSnapshot {
+  brandId: string;
+  account: { name: string; status: number; currency: string };
+  impressions: number;
+  clicks: number;
+  spend: number;
+  ctr: number;
+  cpc: number;
+  leads: number;
+  costPerLead: number | null;
+  datePreset: string;
+}
+interface MetaResult {
+  brandId: string;
+  snapshot?: MetaSnapshot;
   error?: string;
-  snapshot?: {
-    account: { name: string; status: number; currency: string };
-    impressions: number;
-    clicks: number;
-    spend: number;
-    ctr: number;
-    cpc: number;
-    leads: number;
-    costPerLead: number | null;
-    datePreset: string;
-  };
+}
+interface MetaStatus {
+  tokenSet: boolean;
+  results: MetaResult[];
 }
 
 type Tab = "overview" | "crm" | "performance" | "connections";
@@ -671,73 +677,101 @@ export default function AdminPage() {
         {/* ═══ CONNECTIONS ═══ */}
         {tab === "connections" && (
           <>
-            {/* Live Meta connection status (TRE first) */}
+            {/* Live Meta stats — one card per connected brand */}
             <section className="mb-10">
-              <h2 className="text-lg font-semibold">Meta connection</h2>
-              {!meta || !meta.configured ? (
+              <h2 className="text-lg font-semibold">Meta connection (live)</h2>
+              {!meta || meta.results.length === 0 ? (
                 <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-700">
-                  <p className="font-medium">Not connected yet.</p>
+                  <p className="font-medium">No brands connected yet.</p>
                   <p className="mt-1">
                     Add <code>META_SYSTEM_TOKEN</code>,{" "}
-                    <code>META_APP_SECRET</code>, <code>TRE_AD_ACCOUNT_ID</code>{" "}
-                    (and <code>TRE_PAGE_ID</code>) in Railway, then redeploy.
-                    This panel goes live once they're set.
+                    <code>META_APP_SECRET</code> and a{" "}
+                    <code>META_AD_ACCOUNT_&lt;BRAND&gt;</code> in Railway
+                    (e.g. <code>META_AD_ACCOUNT_RECRUITMENT</code>), then
+                    redeploy. Each brand appears here as its account is added.
                   </p>
                 </div>
-              ) : meta.error ? (
-                <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
-                  <p className="font-medium">
-                    Connected, but Meta returned an error:
-                  </p>
-                  <p className="mt-1 font-mono text-xs">{meta.error}</p>
-                </div>
-              ) : meta.snapshot ? (
-                <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-5">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
-                    <span className="text-sm font-medium">
-                      Live — {meta.snapshot.account.name}
-                    </span>
-                    <span className="text-xs text-gray-400">
-                      last 30 days
-                    </span>
-                  </div>
-                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
-                    {[
-                      {
-                        label: "Spend",
-                        value: `£${meta.snapshot.spend.toLocaleString("en-GB", { maximumFractionDigits: 0 })}`,
-                      },
-                      {
-                        label: "Impressions",
-                        value: meta.snapshot.impressions.toLocaleString("en-GB"),
-                      },
-                      {
-                        label: "Clicks",
-                        value: meta.snapshot.clicks.toLocaleString("en-GB"),
-                      },
-                      { label: "Leads", value: String(meta.snapshot.leads) },
-                      {
-                        label: "Cost / lead",
-                        value:
-                          meta.snapshot.costPerLead === null
-                            ? "—"
-                            : `£${meta.snapshot.costPerLead.toFixed(2)}`,
-                      },
-                    ].map((s) => (
+              ) : (
+                <div className="mt-4 space-y-4">
+                  {meta.results.map((r) => {
+                    const b = brandById(r.brandId);
+                    if (r.error) {
+                      return (
+                        <div
+                          key={r.brandId}
+                          className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+                        >
+                          <p className="font-medium">
+                            {b?.name ?? r.brandId} — Meta error
+                          </p>
+                          <p className="mt-1 font-mono text-xs">{r.error}</p>
+                        </div>
+                      );
+                    }
+                    const s = r.snapshot!;
+                    return (
                       <div
-                        key={s.label}
-                        className="rounded-xl border border-gray-100 p-3"
+                        key={r.brandId}
+                        className="rounded-2xl border border-gray-200 bg-white p-5"
                       >
-                        <p className="text-xs text-gray-400">{s.label}</p>
-                        <p className="mt-0.5 text-lg font-semibold">
-                          {s.value}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
+                          <span
+                            className="inline-flex items-center gap-1.5 text-sm font-medium"
+                          >
+                            {b && (
+                              <span
+                                className="h-2 w-2 rounded-full"
+                                style={{ backgroundColor: b.accent }}
+                              />
+                            )}
+                            {b?.name ?? r.brandId}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            {s.account.name} · last 30 days
+                          </span>
+                        </div>
+                        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
+                          {[
+                            {
+                              label: "Spend",
+                              value: `£${s.spend.toLocaleString("en-GB", { maximumFractionDigits: 0 })}`,
+                            },
+                            {
+                              label: "Impressions",
+                              value: s.impressions.toLocaleString("en-GB"),
+                            },
+                            {
+                              label: "Clicks",
+                              value: s.clicks.toLocaleString("en-GB"),
+                            },
+                            { label: "Leads", value: String(s.leads) },
+                            {
+                              label: "Cost / lead",
+                              value:
+                                s.costPerLead === null
+                                  ? "—"
+                                  : `£${s.costPerLead.toFixed(2)}`,
+                            },
+                          ].map((stat) => (
+                            <div
+                              key={stat.label}
+                              className="rounded-xl border border-gray-100 p-3"
+                            >
+                              <p className="text-xs text-gray-400">
+                                {stat.label}
+                              </p>
+                              <p className="mt-0.5 text-lg font-semibold">
+                                {stat.value}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
-              ) : null}
+              )}
             </section>
 
             {/* Meta — one connection per brand */}
@@ -750,12 +784,10 @@ export default function AdminPage() {
               </p>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {BRANDS.map((b) => {
-                  // TRE is connected via the System User token in env; the
-                  // rest slot in the same way as their tokens land.
-                  const connected =
-                    b.id === "recruitment" &&
-                    !!meta?.configured &&
-                    !meta?.error;
+                  // A brand is connected once its ad account env var is set
+                  // and Meta returns a snapshot without error.
+                  const res = meta?.results.find((r) => r.brandId === b.id);
+                  const connected = !!res?.snapshot;
                   return (
                     <div
                       key={b.id}

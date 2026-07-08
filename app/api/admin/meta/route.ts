@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { metaConfigured, getTreSnapshot } from "@/lib/meta";
+import { configuredBrandIds, getSnapshotFor, metaTokenSet } from "@/lib/meta";
+import type { Snapshot } from "@/lib/meta";
 
-// Admin-only: live Meta status + TRE's ad-account stats. Returns
-// { configured: false } until the env vars are set; once they are, returns
-// the live snapshot (or an error message if the token/account is rejected).
+// Admin-only: live Meta stats for every configured brand. Returns
+// { tokenSet, results: [{ brandId, snapshot } | { brandId, error }] }.
+// results is empty until at least one brand's ad account env var is set.
 export async function GET(req: NextRequest) {
   const auth = req.headers.get("authorization") ?? "";
   const password = process.env.ADMIN_PASSWORD ?? "experts-admin";
@@ -11,16 +12,21 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
 
-  if (!metaConfigured()) {
-    return NextResponse.json({ configured: false });
-  }
-  try {
-    const snapshot = await getTreSnapshot("last_30d");
-    return NextResponse.json({ configured: true, snapshot });
-  } catch (e) {
-    return NextResponse.json({
-      configured: true,
-      error: e instanceof Error ? e.message : "Meta request failed",
-    });
-  }
+  const ids = configuredBrandIds();
+  const results: Array<{ brandId: string; snapshot?: Snapshot; error?: string }> =
+    await Promise.all(
+      ids.map(async (brandId) => {
+        try {
+          const snapshot = await getSnapshotFor(brandId, "last_30d");
+          return snapshot ? { brandId, snapshot } : { brandId, error: "No data" };
+        } catch (e) {
+          return {
+            brandId,
+            error: e instanceof Error ? e.message : "Meta request failed",
+          };
+        }
+      })
+    );
+
+  return NextResponse.json({ tokenSet: metaTokenSet(), results });
 }
