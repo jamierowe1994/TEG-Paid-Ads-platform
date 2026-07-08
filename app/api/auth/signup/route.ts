@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
   res.cookies.set(
     SESSION_COOKIE,
     createSessionToken(user.id),
-    sessionCookieOptions
+    sessionCookieOptions()
   );
   return res;
 }

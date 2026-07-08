@@ -12,6 +12,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(true);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -27,7 +28,7 @@ export default function LoginPage() {
     }
     setBusy(true);
     setError("");
-    const { error } = await logIn(trimmed, password);
+    const { error } = await logIn(trimmed, password, remember);
     setBusy(false);
     if (error) {
       setError(error);
@@ -72,6 +73,15 @@ export default function LoginPage() {
             onEnter={signIn}
           />
         </div>
+        <label className="mt-4 flex cursor-pointer select-none items-center gap-2.5 text-sm text-gray-600">
+          <input
+            type="checkbox"
+            checked={remember}
+            onChange={(e) => setRemember(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 accent-gray-900"
+          />
+          Keep me signed in for a month
+        </label>
         {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
         <button
           onClick={signIn}

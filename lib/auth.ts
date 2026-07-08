@@ -50,10 +50,15 @@ export function verifySessionToken(token: string | undefined): string | null {
   return userId;
 }
 
-export const sessionCookieOptions = {
-  httpOnly: true,
-  sameSite: "lax" as const,
-  secure: process.env.NODE_ENV === "production",
-  path: "/",
-  maxAge: SESSION_DAYS * 24 * 60 * 60,
-};
+// "Remember me" on → a persistent cookie that survives browser restarts for a
+// month. Off → a session cookie with no maxAge, cleared when the browser
+// closes (so shared/public machines don't stay signed in).
+export function sessionCookieOptions(remember = true) {
+  return {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    ...(remember ? { maxAge: SESSION_DAYS * 24 * 60 * 60 } : {}),
+  };
+}

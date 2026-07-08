@@ -22,11 +22,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const remember = body?.remember !== false; // default on
   const res = NextResponse.json({ user: toPublic(user) });
   res.cookies.set(
     SESSION_COOKIE,
     createSessionToken(user.id),
-    sessionCookieOptions
+    sessionCookieOptions(remember)
   );
   return res;
 }

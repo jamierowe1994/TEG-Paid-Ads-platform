@@ -78,12 +78,13 @@ export async function signUp(payload: {
 
 export async function logIn(
   email: string,
-  password: string
+  password: string,
+  remember = true
 ): Promise<{ user?: UserProfile; error?: string }> {
   const res = await fetch("/api/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, remember }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) return { error: data.error ?? "Something went wrong" };
