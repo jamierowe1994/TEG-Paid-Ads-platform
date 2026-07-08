@@ -11,7 +11,8 @@ import { BRANDS } from "./brands";
 
 const OAUTH = "https://www.linkedin.com/oauth/v2";
 const API = "https://api.linkedin.com/rest";
-const VERSION = "202409"; // LinkedIn-Version header (YYYYMM)
+const VERSION = "202605"; // LinkedIn-Version header (YYYYMM) — versions sunset
+// after ~12 months, so keep this within a year of today (202409 was expired).
 const SCOPES = ["r_ads", "r_ads_reporting"];
 
 function appUrl(): string {
