@@ -164,6 +164,64 @@ export async function getSnapshotFor(
   };
 }
 
+// Date ranges offered in the admin. Meta's presets exclude "today", matching
+// Ads Manager's own windows.
+export const META_DATE_PRESETS = [
+  { id: "last_7d", label: "7 days" },
+  { id: "last_14d", label: "14 days" },
+  { id: "last_30d", label: "30 days" },
+  { id: "last_90d", label: "90 days" },
+] as const;
+
+const VALID_PRESETS = new Set(META_DATE_PRESETS.map((p) => p.id));
+
+export function sanitizePreset(p: string | null | undefined): string {
+  return p && VALID_PRESETS.has(p as never) ? p : "last_30d";
+}
+
+export interface AdRow {
+  adName: string;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  leads: number;
+  cpl: number | null;
+}
+
+// Per-ad performance for one brand, best-performing first (most leads, then
+// lowest cost-per-lead). Drives the drill-down's "what's working" table.
+export async function getBrandAdsFor(
+  brandId: string,
+  datePreset = "last_30d"
+): Promise<AdRow[] | null> {
+  const acc = await accountId(brandId);
+  if (!acc) return null;
+  const data = (await graph(`${acc}/insights`, {
+    level: "ad",
+    fields: "ad_name,spend,impressions,clicks,actions",
+    date_preset: datePreset,
+    limit: "500",
+  })) as { data?: Array<Record<string, unknown>> };
+  const rows: AdRow[] = (data.data ?? []).map((r) => {
+    const actions =
+      (r.actions as Array<{ action_type: string; value: string }>) ?? [];
+    const leads = countLeads(actions);
+    const spend = Number(r.spend ?? 0);
+    return {
+      adName: String(r.ad_name ?? "Unnamed ad"),
+      spend,
+      impressions: Number(r.impressions ?? 0),
+      clicks: Number(r.clicks ?? 0),
+      leads,
+      cpl: leads > 0 ? spend / leads : null,
+    };
+  });
+  rows.sort(
+    (a, b) => b.leads - a.leads || (a.cpl ?? Infinity) - (b.cpl ?? Infinity)
+  );
+  return rows;
+}
+
 // Lightweight connection check for one brand (no ad data — just that the
 // token + account work, plus the account name).
 export async function pingBrand(brandId: string): Promise<{

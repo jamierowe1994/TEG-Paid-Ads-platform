@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { BRANDS, brandById } from "@/lib/brands";
+import { BRANDS, brandById, type Brand } from "@/lib/brands";
 import { packageById, PACKAGES } from "@/lib/packages";
 import { stageLabel } from "@/lib/onboarding";
 import BrandMark from "@/components/BrandMark";
@@ -39,7 +39,36 @@ interface LeadSummary {
   userId: string;
   total: number;
   converted: number;
+  speedMs: number | null;
+  speedSamples: number;
 }
+
+interface AdRow {
+  adName: string;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  leads: number;
+  cpl: number | null;
+}
+
+// Human-friendly duration (mirrors the customer leads page).
+function fmtDuration(ms: number): string {
+  const mins = Math.round(ms / 60000);
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h < 24) return m ? `${h}h ${m}m` : `${h}h`;
+  const d = Math.floor(h / 24);
+  return `${d}d ${h % 24}h`;
+}
+
+const DATE_PRESETS = [
+  { id: "last_7d", label: "7 days" },
+  { id: "last_14d", label: "14 days" },
+  { id: "last_30d", label: "30 days" },
+  { id: "last_90d", label: "90 days" },
+] as const;
 
 interface MetaSnapshot {
   brandId: string;
@@ -111,6 +140,8 @@ export default function AdminPage() {
   const [meta, setMeta] = useState<MetaStatus | null>(null);
   const [linkedin, setLinkedin] = useState<LinkedInStatus | null>(null);
   const [atlas, setAtlas] = useState<AtlasStatus | null>(null);
+  const [metaPreset, setMetaPreset] = useState<string>("last_30d");
+  const [drillBrand, setDrillBrand] = useState<string | null>(null);
   const [selected, setSelected] = useState<FeedbackItem | null>(null);
 
   // CRM view state
@@ -156,6 +187,15 @@ export default function AdminPage() {
       body: JSON.stringify({ brandId, adAccountId }),
     });
     const res = await fetch("/api/admin/meta", {
+      headers: { Authorization: `Bearer ${password}` },
+    });
+    if (res.ok) setMeta(await res.json());
+  }
+
+  // Re-pull Meta stats for a different date range (Performance tab + drill-down).
+  async function refetchMeta(preset: string) {
+    setMetaPreset(preset);
+    const res = await fetch(`/api/admin/meta?preset=${preset}`, {
       headers: { Authorization: `Bearer ${password}` },
     });
     if (res.ok) setMeta(await res.json());
@@ -275,6 +315,16 @@ export default function AdminPage() {
         converted += s?.converted ?? 0;
         estSpend += packageById(u.packageId)?.adSpend ?? 0;
       }
+      // Weighted avg speed-to-lead across this brand's agents.
+      let speedSum = 0;
+      let speedN = 0;
+      for (const u of agents) {
+        const s = byUser.get(u.id);
+        if (s?.speedMs != null && s.speedSamples > 0) {
+          speedSum += s.speedMs * s.speedSamples;
+          speedN += s.speedSamples;
+        }
+      }
       const snap = meta?.results.find((r) => r.brandId === b.id)?.snapshot;
       const live = !!snap;
       const spend = live ? snap!.spend : estSpend;
@@ -291,6 +341,7 @@ export default function AdminPage() {
         rate: portalLeads > 0 ? converted / portalLeads : null,
         cpl: leads > 0 ? spend / leads : null,
         spendPerConversion: converted > 0 ? spend / converted : null,
+        speedMs: speedN > 0 ? speedSum / speedN : null,
       };
     });
   }, [users, leadSummaries, meta]);
@@ -664,31 +715,44 @@ export default function AdminPage() {
         {/* ═══ PERFORMANCE ═══ */}
         {tab === "performance" && (
           <>
-            {(() => {
-              const liveCount = brandStats.filter((s) => s.live).length;
-              return (
-                <div className="rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-                  <strong>{liveCount}</strong> of {brandStats.length} brands are
-                  pulling <strong>live spend &amp; leads from Meta</strong> (last
-                  30 days). Unconnected brands fall back to the package ad-spend
-                  estimate. Conversion is the portal funnel (appointments ÷ leads
-                  worked) and fills in as agents use it.
-                </div>
-              );
-            })()}
+            {/* Date-range control — re-pulls Meta for the whole tab */}
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+                <strong>{brandStats.filter((s) => s.live).length}</strong> of{" "}
+                {brandStats.length} brands pulling{" "}
+                <strong>live spend &amp; leads from Meta</strong>. Click a brand
+                to drill in. Conversion &amp; speed-to-lead come from the portal
+                funnel.
+              </div>
+              <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-1">
+                {DATE_PRESETS.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => refetchMeta(p.id)}
+                    className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                      metaPreset === p.id
+                        ? "bg-gray-900 text-white"
+                        : "text-gray-500 hover:bg-gray-50"
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             {/* Group totals across the connected brands */}
-            <section className="mt-8 grid gap-4 sm:grid-cols-4">
+            <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
               <AdminStat
-                label="Total spend (30d, live)"
+                label="Total spend (live)"
                 value={`£${brandStats
                   .filter((s) => s.live)
                   .reduce((t, s) => t + s.spend, 0)
                   .toLocaleString("en-GB", { maximumFractionDigits: 0 })}`}
-                note="Across Meta-connected brands"
+                note={DATE_PRESETS.find((p) => p.id === metaPreset)?.label}
               />
               <AdminStat
-                label="Total leads (30d, live)"
+                label="Total leads (live)"
                 value={brandStats
                   .filter((s) => s.live)
                   .reduce((t, s) => t + s.leads, 0)
@@ -702,6 +766,24 @@ export default function AdminPage() {
                   const leads = live.reduce((t, s) => t + s.leads, 0);
                   return leads > 0 ? `£${(spend / leads).toFixed(2)}` : "—";
                 })()}
+              />
+              <AdminStat
+                label="Avg speed to lead"
+                value={(() => {
+                  const s = brandStats.filter((b) => b.speedMs != null);
+                  if (s.length === 0) return "—";
+                  // Sample-weighted group average.
+                  const summaries = leadSummaries.filter(
+                    (ls) => ls.speedMs != null && ls.speedSamples > 0
+                  );
+                  const sum = summaries.reduce(
+                    (t, ls) => t + (ls.speedMs as number) * ls.speedSamples,
+                    0
+                  );
+                  const n = summaries.reduce((t, ls) => t + ls.speedSamples, 0);
+                  return n > 0 ? fmtDuration(sum / n) : "—";
+                })()}
+                note="Group avg, lower is better"
               />
               <AdminStat
                 label="Agents signed up"
@@ -718,16 +800,22 @@ export default function AdminPage() {
                     <tr>
                       <th className="px-5 py-3 font-medium">Brand</th>
                       <th className="px-5 py-3 font-medium">Agents</th>
-                      <th className="px-5 py-3 font-medium">Spend (30d)</th>
+                      <th className="px-5 py-3 font-medium">Spend</th>
                       <th className="px-5 py-3 font-medium">Leads</th>
                       <th className="px-5 py-3 font-medium">Clicks</th>
                       <th className="px-5 py-3 font-medium">Cost / lead</th>
                       <th className="px-5 py-3 font-medium">Conversion</th>
+                      <th className="px-5 py-3 font-medium">Speed</th>
+                      <th className="px-5 py-3"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {brandStats.map((s) => (
-                      <tr key={s.brand.id}>
+                      <tr
+                        key={s.brand.id}
+                        onClick={s.live ? () => setDrillBrand(s.brand.id) : undefined}
+                        className={s.live ? "cursor-pointer hover:bg-gray-50" : ""}
+                      >
                         <td className="px-5 py-3">
                           <span className="inline-flex items-center gap-2 font-medium">
                             <BrandMark
@@ -778,6 +866,16 @@ export default function AdminPage() {
                             <span className="text-gray-300">—</span>
                           )}
                         </td>
+                        <td className="px-5 py-3">
+                          {s.speedMs !== null ? (
+                            fmtDuration(s.speedMs)
+                          ) : (
+                            <span className="text-gray-300">—</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3 text-right text-gray-300">
+                          {s.live && "→"}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -797,8 +895,8 @@ export default function AdminPage() {
               />
               <AdminStat
                 label="Best performing ads"
-                value="—"
-                note="Ranked by cost per lead, per campaign"
+                value="Per brand"
+                note="Click a brand row above to see its top ads"
               />
               <AdminStat
                 label="Cross-group referral conversions"
@@ -1233,7 +1331,209 @@ export default function AdminPage() {
           onUpdated={applyAgentUpdate}
         />
       )}
+
+      {/* Per-brand drill-down */}
+      {drillBrand &&
+        (() => {
+          const s = brandStats.find((x) => x.brand.id === drillBrand);
+          if (!s) return null;
+          return (
+            <BrandDrillDown
+              brand={s.brand}
+              agents={s.agents}
+              conversionRate={s.rate}
+              speedMs={s.speedMs}
+              adminPassword={password}
+              initialPreset={metaPreset}
+              onClose={() => setDrillBrand(null)}
+            />
+          );
+        })()}
     </main>
+  );
+}
+
+// Per-brand drill-down: live Meta stats + best-performing ads for a chosen
+// date range, plus the portal's agents / conversion / speed-to-lead.
+function BrandDrillDown({
+  brand,
+  agents,
+  conversionRate,
+  speedMs,
+  adminPassword,
+  initialPreset,
+  onClose,
+}: {
+  brand: Brand;
+  agents: number;
+  conversionRate: number | null;
+  speedMs: number | null;
+  adminPassword: string;
+  initialPreset: string;
+  onClose: () => void;
+}) {
+  const [preset, setPreset] = useState(initialPreset);
+  const [data, setData] = useState<{ snapshot: MetaSnapshot; ads: AdRow[] } | null>(
+    null
+  );
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError("");
+    fetch(`/api/admin/meta/brand?brand=${brand.id}&preset=${preset}`, {
+      headers: { Authorization: `Bearer ${adminPassword}` },
+    })
+      .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
+      .then(({ ok, j }) => {
+        if (cancelled) return;
+        if (!ok) {
+          setError(j.error ?? "Failed to load");
+          setData(null);
+        } else {
+          setData(j);
+        }
+      })
+      .catch(() => !cancelled && setError("Network error"))
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [brand.id, preset, adminPassword]);
+
+  const snap = data?.snapshot;
+  const ads = data?.ads ?? [];
+  const stats = snap
+    ? [
+        {
+          label: "Spend",
+          value: `£${snap.spend.toLocaleString("en-GB", { maximumFractionDigits: 0 })}`,
+        },
+        { label: "Leads", value: String(snap.leads) },
+        {
+          label: "Cost / lead",
+          value: snap.costPerLead === null ? "—" : `£${snap.costPerLead.toFixed(2)}`,
+        },
+        { label: "Clicks", value: snap.clicks.toLocaleString("en-GB") },
+        { label: "Impressions", value: snap.impressions.toLocaleString("en-GB") },
+        { label: "Agents", value: String(agents) },
+        {
+          label: "Conversion",
+          value: conversionRate === null ? "—" : `${Math.round(conversionRate * 100)}%`,
+        },
+        {
+          label: "Speed to lead",
+          value: speedMs === null ? "—" : fmtDuration(speedMs),
+        },
+      ]
+    : [];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-gray-900/50 p-6"
+      onClick={onClose}
+    >
+      <div
+        className="my-auto w-full max-w-3xl rounded-3xl bg-white p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <BrandMark name={brand.name} accent={brand.accent} logo={brand.logo} size={34} />
+            <div>
+              <h2 className="text-lg font-semibold">{brand.name}</h2>
+              <p className="text-xs text-gray-400">Live from Meta · portal funnel</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            aria-label="Close"
+          >
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Date range */}
+        <div className="mt-4 flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-1">
+          {DATE_PRESETS.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => setPreset(p.id)}
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                preset === p.id ? "bg-gray-900 text-white" : "text-gray-500 hover:bg-gray-50"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        {error ? (
+          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            {error}
+          </div>
+        ) : loading ? (
+          <div className="mt-6 py-10 text-center text-sm text-gray-400">Loading…</div>
+        ) : (
+          <>
+            {/* Stats */}
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {stats.map((st) => (
+                <div key={st.label} className="rounded-xl border border-gray-100 p-3">
+                  <p className="text-xs text-gray-400">{st.label}</p>
+                  <p className="mt-0.5 text-lg font-semibold">{st.value}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Best-performing ads */}
+            <h3 className="mt-6 text-sm font-semibold">What&apos;s working — top ads</h3>
+            {ads.length === 0 ? (
+              <p className="mt-2 text-sm text-gray-400">
+                No ad-level data for this range.
+              </p>
+            ) : (
+              <div className="mt-2 overflow-x-auto rounded-2xl border border-gray-200">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-400">
+                    <tr>
+                      <th className="px-4 py-2.5 font-medium">Ad</th>
+                      <th className="px-4 py-2.5 font-medium">Leads</th>
+                      <th className="px-4 py-2.5 font-medium">Spend</th>
+                      <th className="px-4 py-2.5 font-medium">Cost / lead</th>
+                      <th className="px-4 py-2.5 font-medium">Clicks</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {ads.slice(0, 15).map((a, i) => (
+                      <tr key={i}>
+                        <td className="max-w-[240px] truncate px-4 py-2.5 font-medium">
+                          {a.adName}
+                        </td>
+                        <td className="px-4 py-2.5">{a.leads}</td>
+                        <td className="px-4 py-2.5">
+                          £{a.spend.toLocaleString("en-GB", { maximumFractionDigits: 0 })}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          {a.cpl === null ? "—" : `£${a.cpl.toFixed(2)}`}
+                        </td>
+                        <td className="px-4 py-2.5">{a.clicks.toLocaleString("en-GB")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 

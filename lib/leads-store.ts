@@ -166,38 +166,76 @@ export async function updateLeadStage(
   return lead;
 }
 
-// Admin aggregate: per-user lead counts for the Performance tab.
+// Admin aggregate: per-user lead counts + speed-to-lead for the Performance
+// tab. speedMs is the avg time from a lead landing to its first contact
+// attempt (any stage past "new"); speedSamples is how many leads that's from,
+// so brands can be averaged correctly.
 export interface UserLeadSummary {
   userId: string;
   total: number;
   converted: number; // converted + pushed
+  speedMs: number | null;
+  speedSamples: number;
+}
+
+// First contact attempt = first history entry whose stage isn't "new".
+function firstActionDelta(
+  receivedAt: string | Date,
+  history: unknown
+): number | null {
+  const hist = Array.isArray(history)
+    ? (history as { stage: string; at: string }[])
+    : [];
+  const first = hist.find((h) => h.stage !== "new");
+  if (!first) return null;
+  const delta =
+    new Date(first.at).getTime() - new Date(receivedAt).getTime();
+  return delta >= 0 ? delta : null;
 }
 
 export async function summariseLeadsByUser(): Promise<UserLeadSummary[]> {
+  type Row = {
+    user_id: string;
+    stage: string;
+    received_at: string | Date;
+    history: unknown;
+  };
+  let rows: Row[];
   if (hasDb()) {
-    const rows = await q<{ user_id: string; total: string; converted: string }>(
-      `SELECT user_id,
-              COUNT(*)::text AS total,
-              COUNT(*) FILTER (WHERE stage IN ('converted','pushed'))::text AS converted
-         FROM leads GROUP BY user_id`
+    rows = await q<Row>(
+      "SELECT user_id, stage, received_at, history FROM leads"
     );
-    return rows.map((r) => ({
-      userId: r.user_id,
-      total: Number(r.total),
-      converted: Number(r.converted),
+  } else {
+    rows = (await readAllFile()).map((l) => ({
+      user_id: l.userId,
+      stage: l.stage,
+      received_at: l.receivedAt,
+      history: l.history,
     }));
   }
-  const all = await readAllFile();
-  const byUser = new Map<string, UserLeadSummary>();
-  for (const lead of all) {
-    const s = byUser.get(lead.userId) ?? {
-      userId: lead.userId,
-      total: 0,
-      converted: 0,
-    };
+
+  const acc = new Map<
+    string,
+    { total: number; converted: number; speedSum: number; speedN: number }
+  >();
+  for (const r of rows) {
+    const s =
+      acc.get(r.user_id) ??
+      { total: 0, converted: 0, speedSum: 0, speedN: 0 };
     s.total++;
-    if (lead.stage === "converted" || lead.stage === "pushed") s.converted++;
-    byUser.set(lead.userId, s);
+    if (r.stage === "converted" || r.stage === "pushed") s.converted++;
+    const delta = firstActionDelta(r.received_at, r.history);
+    if (delta !== null) {
+      s.speedSum += delta;
+      s.speedN++;
+    }
+    acc.set(r.user_id, s);
   }
-  return [...byUser.values()];
+  return [...acc.entries()].map(([userId, s]) => ({
+    userId,
+    total: s.total,
+    converted: s.converted,
+    speedMs: s.speedN > 0 ? s.speedSum / s.speedN : null,
+    speedSamples: s.speedN,
+  }));
 }

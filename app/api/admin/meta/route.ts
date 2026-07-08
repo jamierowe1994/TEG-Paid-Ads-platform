@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { configuredBrandIds, getSnapshotFor, metaTokenSet } from "@/lib/meta";
+import {
+  configuredBrandIds,
+  getSnapshotFor,
+  metaTokenSet,
+  sanitizePreset,
+} from "@/lib/meta";
 import type { Snapshot } from "@/lib/meta";
 import { getBrandMetaMap, setBrandMeta } from "@/lib/brand-meta-store";
 
@@ -16,6 +21,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
 
+  const preset = sanitizePreset(req.nextUrl.searchParams.get("preset"));
   const [ids, config] = await Promise.all([
     configuredBrandIds(),
     getBrandMetaMap(),
@@ -24,7 +30,7 @@ export async function GET(req: NextRequest) {
     await Promise.all(
       ids.map(async (brandId) => {
         try {
-          const snapshot = await getSnapshotFor(brandId, "last_30d");
+          const snapshot = await getSnapshotFor(brandId, preset);
           return snapshot ? { brandId, snapshot } : { brandId, error: "No data" };
         } catch (e) {
           return {
