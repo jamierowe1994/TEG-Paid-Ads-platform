@@ -41,6 +41,22 @@ interface LeadSummary {
   converted: number;
 }
 
+interface MetaStatus {
+  configured: boolean;
+  error?: string;
+  snapshot?: {
+    account: { name: string; status: number; currency: string };
+    impressions: number;
+    clicks: number;
+    spend: number;
+    ctr: number;
+    cpc: number;
+    leads: number;
+    costPerLead: number | null;
+    datePreset: string;
+  };
+}
+
 type Tab = "overview" | "crm" | "performance" | "connections";
 
 const TABS: { id: Tab; label: string }[] = [
@@ -61,6 +77,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [starts, setStarts] = useState<SignupEvent[]>([]);
   const [leadSummaries, setLeadSummaries] = useState<LeadSummary[]>([]);
+  const [meta, setMeta] = useState<MetaStatus | null>(null);
   const [selected, setSelected] = useState<FeedbackItem | null>(null);
 
   // CRM view state
@@ -75,17 +92,19 @@ export default function AdminPage() {
 
   async function loadData(pass: string): Promise<boolean> {
     const headers = { Authorization: `Bearer ${pass}` };
-    const [fb, us, ev, ls] = await Promise.all([
+    const [fb, us, ev, ls, mt] = await Promise.all([
       fetch("/api/feedback", { headers }),
       fetch("/api/admin/users", { headers }),
       fetch("/api/track", { headers }),
       fetch("/api/admin/leads-summary", { headers }),
+      fetch("/api/admin/meta", { headers }),
     ]);
     if (!fb.ok || !us.ok || !ev.ok || !ls.ok) return false;
     setFeedback(await fb.json());
     setUsers(await us.json());
     setStarts(await ev.json());
     setLeadSummaries(await ls.json());
+    setMeta(mt.ok ? await mt.json() : null);
     return true;
   }
 
@@ -652,6 +671,75 @@ export default function AdminPage() {
         {/* ═══ CONNECTIONS ═══ */}
         {tab === "connections" && (
           <>
+            {/* Live Meta connection status (TRE first) */}
+            <section className="mb-10">
+              <h2 className="text-lg font-semibold">Meta connection</h2>
+              {!meta || !meta.configured ? (
+                <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-700">
+                  <p className="font-medium">Not connected yet.</p>
+                  <p className="mt-1">
+                    Add <code>META_SYSTEM_TOKEN</code>,{" "}
+                    <code>META_APP_SECRET</code>, <code>TRE_AD_ACCOUNT_ID</code>{" "}
+                    (and <code>TRE_PAGE_ID</code>) in Railway, then redeploy.
+                    This panel goes live once they're set.
+                  </p>
+                </div>
+              ) : meta.error ? (
+                <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
+                  <p className="font-medium">
+                    Connected, but Meta returned an error:
+                  </p>
+                  <p className="mt-1 font-mono text-xs">{meta.error}</p>
+                </div>
+              ) : meta.snapshot ? (
+                <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-5">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
+                    <span className="text-sm font-medium">
+                      Live — {meta.snapshot.account.name}
+                    </span>
+                    <span className="text-xs text-gray-400">
+                      last 30 days
+                    </span>
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
+                    {[
+                      {
+                        label: "Spend",
+                        value: `£${meta.snapshot.spend.toLocaleString("en-GB", { maximumFractionDigits: 0 })}`,
+                      },
+                      {
+                        label: "Impressions",
+                        value: meta.snapshot.impressions.toLocaleString("en-GB"),
+                      },
+                      {
+                        label: "Clicks",
+                        value: meta.snapshot.clicks.toLocaleString("en-GB"),
+                      },
+                      { label: "Leads", value: String(meta.snapshot.leads) },
+                      {
+                        label: "Cost / lead",
+                        value:
+                          meta.snapshot.costPerLead === null
+                            ? "—"
+                            : `£${meta.snapshot.costPerLead.toFixed(2)}`,
+                      },
+                    ].map((s) => (
+                      <div
+                        key={s.label}
+                        className="rounded-xl border border-gray-100 p-3"
+                      >
+                        <p className="text-xs text-gray-400">{s.label}</p>
+                        <p className="mt-0.5 text-lg font-semibold">
+                          {s.value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </section>
+
             {/* Meta — one connection per brand */}
             <section>
               <h2 className="text-lg font-semibold">Meta Ads — per brand</h2>
@@ -661,37 +749,51 @@ export default function AdminPage() {
                 others. Stats and leads are then mapped per agent.
               </p>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {BRANDS.map((b) => (
-                  <div
-                    key={b.id}
-                    className="flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-4"
-                  >
-                    <div className="flex items-center gap-3">
-                      <BrandMark
-                        name={b.name}
-                        accent={b.accent}
-                        logo={b.logo}
-                        size={30}
-                      />
-                      <div>
-                        <p className="text-sm font-medium">{b.name}</p>
-                        <p className="flex items-center gap-1.5 text-xs text-gray-400">
-                          <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                          Not connected
-                        </p>
-                      </div>
-                    </div>
-                    {/* TODO(meta): per-brand OAuth — each stores its own
-                        page ID, ad account ID and access token. */}
-                    <button
-                      disabled
-                      title="Awaiting Meta app setup"
-                      className="rounded-lg bg-gray-900 px-3.5 py-1.5 text-xs font-medium text-white opacity-40"
+                {BRANDS.map((b) => {
+                  // TRE is connected via the System User token in env; the
+                  // rest slot in the same way as their tokens land.
+                  const connected =
+                    b.id === "recruitment" &&
+                    !!meta?.configured &&
+                    !meta?.error;
+                  return (
+                    <div
+                      key={b.id}
+                      className="flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-4"
                     >
-                      Connect
-                    </button>
-                  </div>
-                ))}
+                      <div className="flex items-center gap-3">
+                        <BrandMark
+                          name={b.name}
+                          accent={b.accent}
+                          logo={b.logo}
+                          size={30}
+                        />
+                        <div>
+                          <p className="text-sm font-medium">{b.name}</p>
+                          <p className="flex items-center gap-1.5 text-xs text-gray-400">
+                            <span
+                              className={`h-1.5 w-1.5 rounded-full ${connected ? "bg-green-500" : "bg-amber-400"}`}
+                            />
+                            {connected ? "Connected" : "Not connected"}
+                          </p>
+                        </div>
+                      </div>
+                      {/* TODO(meta): per-brand OAuth for the rest — each
+                          stores its own page ID, ad account ID and token. */}
+                      <button
+                        disabled
+                        title={
+                          connected
+                            ? "Connected via System User token"
+                            : "Awaiting token"
+                        }
+                        className={`rounded-lg px-3.5 py-1.5 text-xs font-medium text-white ${connected ? "bg-green-600 opacity-100" : "bg-gray-900 opacity-40"}`}
+                      >
+                        {connected ? "Connected" : "Connect"}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </section>
 
