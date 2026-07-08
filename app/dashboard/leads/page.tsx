@@ -90,10 +90,10 @@ function avgSpeedToLead(leads: Lead[]): number | null {
   return samples.reduce((a, b) => a + b, 0) / samples.length;
 }
 
-// Drop a GIF URL in (e.g. a Giphy media link) to replace the animated emoji
-// on the mark-as-lost screens — leave blank to use the emoji fallback.
-const LOST_GIF = "";
-const FUNNEL_GIF = "";
+// GIFs for the mark-as-lost screens (in public/images). Leave blank to fall
+// back to the animated emoji.
+const LOST_GIF = "/images/Sad%20Michael%20Scott%20GIF.gif";
+const FUNNEL_GIF = "/images/Leonardo%20Dicaprio%20Kinda%20GIF.gif";
 
 function GifCard({
   src,
