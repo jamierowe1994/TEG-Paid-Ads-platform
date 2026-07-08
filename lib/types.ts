@@ -53,6 +53,10 @@ export interface Lead {
   receivedAt: string;
   history: { stage: LeadStage; at: string }[];
   referralId?: string | null; // set when the lead came from a referral
+  // Populated later by the Meta lead webhook; optional until then. The UI
+  // falls back to `note` when interestedIn is absent.
+  adName?: string | null; // the ad/campaign the lead came from
+  interestedIn?: string | null; // what the lead enquired about
 }
 
 // Referral lifecycle:
