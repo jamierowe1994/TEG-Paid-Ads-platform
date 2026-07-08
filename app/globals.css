@@ -369,9 +369,9 @@ h5 {
   /* Frosted glass: a faint milky veil + a real blur so the red contour dots
      behind the box read as soft, frosted red (the light bending around the
      content) while the inner shadows below still carve the glass depth. */
-  background: rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(7px) saturate(1.05);
-  -webkit-backdrop-filter: blur(7px) saturate(1.05);
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(9px) saturate(1.05);
+  -webkit-backdrop-filter: blur(9px) saturate(1.05);
   box-shadow:
     inset 0 3px 2px rgba(255, 255, 255, 0.92),
     inset 0 16px 22px -12px rgba(17, 24, 39, 0.14),
