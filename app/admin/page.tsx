@@ -80,6 +80,13 @@ interface LinkedInStatus {
   config: Record<string, string | null>;
 }
 
+interface AtlasStatus {
+  configured: boolean;
+  ok: boolean;
+  users?: number;
+  error?: string;
+}
+
 type Tab = "overview" | "crm" | "performance" | "connections";
 
 const TABS: { id: Tab; label: string }[] = [
@@ -102,6 +109,7 @@ export default function AdminPage() {
   const [leadSummaries, setLeadSummaries] = useState<LeadSummary[]>([]);
   const [meta, setMeta] = useState<MetaStatus | null>(null);
   const [linkedin, setLinkedin] = useState<LinkedInStatus | null>(null);
+  const [atlas, setAtlas] = useState<AtlasStatus | null>(null);
   const [selected, setSelected] = useState<FeedbackItem | null>(null);
 
   // CRM view state
@@ -116,13 +124,14 @@ export default function AdminPage() {
 
   async function loadData(pass: string): Promise<boolean> {
     const headers = { Authorization: `Bearer ${pass}` };
-    const [fb, us, ev, ls, mt, li] = await Promise.all([
+    const [fb, us, ev, ls, mt, li, at] = await Promise.all([
       fetch("/api/feedback", { headers }),
       fetch("/api/admin/users", { headers }),
       fetch("/api/track", { headers }),
       fetch("/api/admin/leads-summary", { headers }),
       fetch("/api/admin/meta", { headers }),
       fetch("/api/admin/linkedin", { headers }),
+      fetch("/api/admin/atlas", { headers }),
     ]);
     if (!fb.ok || !us.ok || !ev.ok || !ls.ok) return false;
     setFeedback(await fb.json());
@@ -131,6 +140,7 @@ export default function AdminPage() {
     setLeadSummaries(await ls.json());
     setMeta(mt.ok ? await mt.json() : null);
     setLinkedin(li.ok ? await li.json() : null);
+    setAtlas(at.ok ? await at.json() : null);
     return true;
   }
 
@@ -1014,15 +1024,58 @@ export default function AdminPage() {
               )}
             </section>
 
+            {/* Atlas CRM (The Recruitment Experts) */}
+            <section className="mt-10">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold">Atlas CRM</h2>
+                {atlas && (
+                  <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${atlas.ok ? "bg-green-500" : atlas.configured ? "bg-red-500" : "bg-gray-300"}`}
+                    />
+                    {atlas.ok
+                      ? "Connected"
+                      : atlas.configured
+                        ? "Key set — connection failed"
+                        : "Key not set"}
+                  </span>
+                )}
+              </div>
+              <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-5">
+                <div className="flex items-center gap-3">
+                  <BrandMark
+                    name="The Recruitment Experts"
+                    accent="#111827"
+                    logo={null}
+                    size={30}
+                  />
+                  <div>
+                    <p className="text-sm font-medium">The Recruitment Experts</p>
+                    <p className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-400">
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${atlas?.ok ? "bg-green-500" : atlas?.configured ? "bg-red-500" : "bg-amber-400"}`}
+                      />
+                      {atlas?.ok
+                        ? `Connected${typeof atlas.users === "number" ? ` — ${atlas.users} Atlas ${atlas.users === 1 ? "user" : "users"}` : ""}`
+                        : atlas?.configured
+                          ? atlas.error ?? "Connection failed"
+                          : "Add ATLAS_API_KEY in Railway"}
+                    </p>
+                  </div>
+                </div>
+                <p className="mt-3 max-w-2xl text-xs text-gray-500">
+                  Recruiters push a converted lead into Atlas from their Leads
+                  funnel — the person is created with their note attached, in the
+                  recruiter&apos;s own name. Nothing to configure per brand.
+                </p>
+              </div>
+            </section>
+
             {/* Other systems */}
             <section className="mt-10">
               <h2 className="text-lg font-semibold">Systems</h2>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {[
-                  {
-                    name: "Atlas",
-                    desc: "Recruitment CRM — push converted recruitment leads",
-                  },
                   {
                     name: "REP",
                     desc: "Property/Lettings CRM — push converted MAs",

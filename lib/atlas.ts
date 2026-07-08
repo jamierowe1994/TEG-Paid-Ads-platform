@@ -78,6 +78,31 @@ export interface AtlasPushResult {
   attributedTo: string; // the email the push was recorded under
 }
 
+// Health check for the admin Connections tab. Lists the agency's active
+// users — a cheap read that proves the API key is valid and Atlas is
+// reachable. The user count also confirms which recruiters exist in Atlas
+// (they're the ones a push can be attributed to by their own email).
+export async function atlasPing(): Promise<{
+  configured: boolean;
+  ok: boolean;
+  users?: number;
+  error?: string;
+}> {
+  if (!atlasConfigured()) return { configured: false, ok: false };
+  try {
+    const res = await atlas("/api/v1/users", "GET");
+    if (!res.ok) return { configured: true, ok: false, error: atlasError(res) };
+    const arr = Array.isArray(res.data?.data) ? (res.data.data as unknown[]) : [];
+    return { configured: true, ok: true, users: arr.length };
+  } catch (e) {
+    return {
+      configured: true,
+      ok: false,
+      error: e instanceof Error ? e.message : "Atlas unreachable",
+    };
+  }
+}
+
 // Push one lead into Atlas: create the person, then attach its note.
 export async function pushLeadToAtlas(
   lead: Lead,
