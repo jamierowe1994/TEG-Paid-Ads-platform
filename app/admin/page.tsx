@@ -258,33 +258,42 @@ export default function AdminPage() {
     return starts.filter((s) => !doneEmails.has(s.email));
   }, [users, starts]);
 
-  // Per-brand roll-up: agents, spend, leads, conversions (leads are demo
-  // seeds until Meta is live, but the plumbing is real).
+  // Per-brand roll-up. Spend + leads come LIVE from Meta for any connected
+  // brand (last 30 days); otherwise we fall back to the package ad-spend
+  // estimate. Agents are real user counts; conversion is the portal funnel
+  // (appointments booked ÷ leads worked), which grows as agents use it.
   const brandStats = useMemo(() => {
     const byUser = new Map(leadSummaries.map((s) => [s.userId, s]));
     return BRANDS.map((b) => {
       const agents = users.filter((u) => u.brandId === b.id);
-      let total = 0;
+      let portalLeads = 0;
       let converted = 0;
-      let spend = 0;
+      let estSpend = 0;
       for (const u of agents) {
         const s = byUser.get(u.id);
-        total += s?.total ?? 0;
+        portalLeads += s?.total ?? 0;
         converted += s?.converted ?? 0;
-        spend += packageById(u.packageId)?.adSpend ?? 0;
+        estSpend += packageById(u.packageId)?.adSpend ?? 0;
       }
+      const snap = meta?.results.find((r) => r.brandId === b.id)?.snapshot;
+      const live = !!snap;
+      const spend = live ? snap!.spend : estSpend;
+      const leads = live ? snap!.leads : portalLeads;
+      const clicks = live ? snap!.clicks : null;
       return {
         brand: b,
+        live,
         agents: agents.length,
         spend,
-        total,
+        leads,
+        clicks,
         converted,
-        rate: total > 0 ? converted / total : null,
-        cpl: total > 0 ? spend / total : null,
+        rate: portalLeads > 0 ? converted / portalLeads : null,
+        cpl: leads > 0 ? spend / leads : null,
         spendPerConversion: converted > 0 ? spend / converted : null,
       };
     });
-  }, [users, leadSummaries]);
+  }, [users, leadSummaries, meta]);
 
   const bestBrand = useMemo(() => {
     const withData = brandStats.filter((s) => s.rate !== null);
@@ -655,11 +664,51 @@ export default function AdminPage() {
         {/* ═══ PERFORMANCE ═══ */}
         {tab === "performance" && (
           <>
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
-              Spend is real (from packages) and the lead/conversion plumbing
-              is live — but leads are demo-seeded until Meta connects, so
-              treat the rates below as placeholders for now.
-            </div>
+            {(() => {
+              const liveCount = brandStats.filter((s) => s.live).length;
+              return (
+                <div className="rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+                  <strong>{liveCount}</strong> of {brandStats.length} brands are
+                  pulling <strong>live spend &amp; leads from Meta</strong> (last
+                  30 days). Unconnected brands fall back to the package ad-spend
+                  estimate. Conversion is the portal funnel (appointments ÷ leads
+                  worked) and fills in as agents use it.
+                </div>
+              );
+            })()}
+
+            {/* Group totals across the connected brands */}
+            <section className="mt-8 grid gap-4 sm:grid-cols-4">
+              <AdminStat
+                label="Total spend (30d, live)"
+                value={`£${brandStats
+                  .filter((s) => s.live)
+                  .reduce((t, s) => t + s.spend, 0)
+                  .toLocaleString("en-GB", { maximumFractionDigits: 0 })}`}
+                note="Across Meta-connected brands"
+              />
+              <AdminStat
+                label="Total leads (30d, live)"
+                value={brandStats
+                  .filter((s) => s.live)
+                  .reduce((t, s) => t + s.leads, 0)
+                  .toLocaleString("en-GB")}
+              />
+              <AdminStat
+                label="Blended cost / lead"
+                value={(() => {
+                  const live = brandStats.filter((s) => s.live);
+                  const spend = live.reduce((t, s) => t + s.spend, 0);
+                  const leads = live.reduce((t, s) => t + s.leads, 0);
+                  return leads > 0 ? `£${(spend / leads).toFixed(2)}` : "—";
+                })()}
+              />
+              <AdminStat
+                label="Agents signed up"
+                value={String(brandStats.reduce((t, s) => t + s.agents, 0))}
+                note="Across all brands"
+              />
+            </section>
 
             <section className="mt-8">
               <h2 className="text-lg font-semibold">Brand comparison</h2>
@@ -669,13 +718,11 @@ export default function AdminPage() {
                     <tr>
                       <th className="px-5 py-3 font-medium">Brand</th>
                       <th className="px-5 py-3 font-medium">Agents</th>
-                      <th className="px-5 py-3 font-medium">Ad spend / mo</th>
+                      <th className="px-5 py-3 font-medium">Spend (30d)</th>
                       <th className="px-5 py-3 font-medium">Leads</th>
+                      <th className="px-5 py-3 font-medium">Clicks</th>
                       <th className="px-5 py-3 font-medium">Cost / lead</th>
                       <th className="px-5 py-3 font-medium">Conversion</th>
-                      <th className="px-5 py-3 font-medium">
-                        Spend / conversion
-                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
@@ -691,12 +738,31 @@ export default function AdminPage() {
                               rounded="rounded-none"
                             />
                             {s.brand.shortName}
+                            <span
+                              className={`h-1.5 w-1.5 rounded-full ${s.live ? "bg-green-500" : "bg-gray-300"}`}
+                              title={s.live ? "Live from Meta" : "Not connected"}
+                            />
                           </span>
                         </td>
                         <td className="px-5 py-3">{s.agents}</td>
-                        <td className="px-5 py-3">£{s.spend}</td>
                         <td className="px-5 py-3">
-                          {s.total || <span className="text-gray-300">—</span>}
+                          £
+                          {s.spend.toLocaleString("en-GB", {
+                            maximumFractionDigits: 0,
+                          })}
+                          {!s.live && (
+                            <span className="ml-1 text-xs text-gray-300">est</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3">
+                          {s.leads || <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-5 py-3">
+                          {s.clicks !== null ? (
+                            s.clicks.toLocaleString("en-GB")
+                          ) : (
+                            <span className="text-gray-300">—</span>
+                          )}
                         </td>
                         <td className="px-5 py-3">
                           {s.cpl !== null ? (
@@ -708,13 +774,6 @@ export default function AdminPage() {
                         <td className="px-5 py-3">
                           {s.rate !== null ? (
                             `${Math.round(s.rate * 100)}%`
-                          ) : (
-                            <span className="text-gray-300">—</span>
-                          )}
-                        </td>
-                        <td className="px-5 py-3">
-                          {s.spendPerConversion !== null ? (
-                            `£${s.spendPerConversion.toFixed(2)}`
                           ) : (
                             <span className="text-gray-300">—</span>
                           )}
