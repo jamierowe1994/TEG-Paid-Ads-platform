@@ -41,10 +41,10 @@ export default function LandingPage() {
           <Link
             href="/"
             aria-label="The Experts Group"
-            className="flex items-center gap-3"
+            className="hashtag-logo flex items-center gap-3"
           >
             {/* Red chat-bubble with a white # and a little tail */}
-            <span className="relative flex h-12 w-12 items-center justify-center rounded-[1.1rem] bg-[#E31F36] shadow-sm sm:h-14 sm:w-14">
+            <span className="hashtag-bubble relative flex h-12 w-12 items-center justify-center rounded-[1.1rem] bg-[#E31F36] shadow-sm sm:h-14 sm:w-14">
               <span className="text-2xl font-extrabold leading-none text-white sm:text-3xl">
                 #
               </span>
@@ -67,9 +67,12 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* Hero — full screen, clean white, icons along the bottom */}
-      <section className="flex min-h-screen flex-col">
-        <Parallax className="flex flex-1 flex-col items-center justify-center px-6 pb-10 pt-24 text-center">
+      {/* Hero — full screen, clean white, icons along the bottom. The hero
+          block owns min-h-screen and self-centres, so the heading sits dead
+          centre of the viewport at any screen height (the icon strip adds
+          height below without shifting the centre). */}
+      <section className="flex flex-col">
+        <Parallax className="flex min-h-screen flex-col items-center justify-center px-6 py-24 text-center">
           <Reveal>
             <p className="mb-5 text-sm font-medium uppercase tracking-widest text-gray-400">
               Paid ads, done for you
@@ -386,19 +389,22 @@ export default function LandingPage() {
         </Parallax>
       </section>
 
-      {/* Statement piece — big, bold, centre stage */}
+      {/* Statement piece — right-aligned to the same max-w-6xl right edge as
+          the mock dashboard above it. */}
       <section className="px-6 py-32">
-        <Reveal>
-          <div className="mx-auto max-w-4xl text-center">
-            <blockquote className="text-4xl font-bold leading-[1.1] tracking-[-0.055em] text-gray-900 sm:text-5xl lg:text-6xl">
-              “The average person scrolls through their feed every single
-              day. Your next client is in that scroll.”
-            </blockquote>
-            <p className="mt-10 text-xl font-semibold tracking-[-0.02em] text-[#E31F36]">
-              #StopTheScroll
-            </p>
-          </div>
-        </Reveal>
+        <div className="mx-auto max-w-6xl">
+          <Reveal>
+            <div className="ml-auto max-w-4xl text-right">
+              <blockquote className="text-4xl font-bold leading-[1.1] tracking-[-0.055em] text-gray-900 sm:text-5xl lg:text-6xl">
+                “The average person scrolls through their feed every single
+                day. Your next client is in that scroll.”
+              </blockquote>
+              <p className="mt-10 text-xl font-semibold tracking-[-0.02em] text-[#E31F36]">
+                #StopTheScroll
+              </p>
+            </div>
+          </Reveal>
+        </div>
       </section>
 
       {/* Showcase — mocked ad creatives until real campaign shots arrive.

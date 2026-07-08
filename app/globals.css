@@ -171,6 +171,15 @@ h5 {
   color: #fff;
 }
 
+/* Hero wordmark bubble — squishes with a springy flex on hover of the logo. */
+.hashtag-bubble {
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-origin: center;
+}
+.hashtag-logo:hover .hashtag-bubble {
+  transform: scale(0.9, 0.82);
+}
+
 /* ── Panel reveal sequence — words fade, image expands, stat expands, each
    business pill floats up from the bottom, all staggered. Elements start
    hidden; the animations only run once the panel has `revealed`. */
