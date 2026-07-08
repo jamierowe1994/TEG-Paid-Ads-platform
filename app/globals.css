@@ -187,6 +187,18 @@ h5 {
   transform: scale(0.9, 0.82);
 }
 
+/* Mark-as-lost flow — each screen swipes in from the right. */
+@keyframes lost-slide {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* ── Panel reveal sequence — words fade, image expands, stat expands, each
    business pill floats up from the bottom, all staggered. Elements start
    hidden; the animations only run once the panel has `revealed`. */

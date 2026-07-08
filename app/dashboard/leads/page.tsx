@@ -90,6 +90,35 @@ function avgSpeedToLead(leads: Lead[]): number | null {
   return samples.reduce((a, b) => a + b, 0) / samples.length;
 }
 
+// Drop a GIF URL in (e.g. a Giphy media link) to replace the animated emoji
+// on the mark-as-lost screens — leave blank to use the emoji fallback.
+const LOST_GIF = "";
+const FUNNEL_GIF = "";
+
+function GifCard({
+  src,
+  emoji,
+  tint,
+}: {
+  src: string;
+  emoji: string;
+  tint: string;
+}) {
+  return (
+    <div
+      className="flex aspect-[16/10] w-full items-center justify-center overflow-hidden rounded-2xl"
+      style={{ background: tint }}
+    >
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="" className="h-full w-full object-cover" />
+      ) : (
+        <span className="animate-bounce text-7xl">{emoji}</span>
+      )}
+    </div>
+  );
+}
+
 type SortOrder = "newest" | "oldest" | "uncontacted";
 
 const SORTS: { id: SortOrder; label: string }[] = [
@@ -109,6 +138,7 @@ export default function LeadsPage() {
   const [toast, setToast] = useState("");
   const [pushing, setPushing] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [view, setView] = useState<"active" | "lost">("active");
 
   useEffect(() => {
     const u = getUser();
@@ -120,8 +150,18 @@ export default function LeadsPage() {
     fetchLeads().then(setLeads);
   }, []);
 
+  const lostCount = useMemo(
+    () => leads.filter((l) => l.stage === "lost").length,
+    [leads]
+  );
+
   const visible = useMemo(() => {
-    const base = newOnly ? leads.filter((l) => l.stage === "new") : leads;
+    const base =
+      view === "lost"
+        ? leads.filter((l) => l.stage === "lost")
+        : newOnly
+          ? leads.filter((l) => l.stage === "new")
+          : leads.filter((l) => l.stage !== "lost");
     const byNewest = (a: Lead, b: Lead) =>
       new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime();
     return [...base].sort((a, b) => {
@@ -132,7 +172,7 @@ export default function LeadsPage() {
       }
       return byNewest(a, b);
     });
-  }, [leads, newOnly, sort]);
+  }, [leads, newOnly, sort, view]);
 
   function showToast(msg: string, ms = 3500) {
     setToast(msg);
@@ -270,19 +310,42 @@ export default function LeadsPage() {
         />
       </div>
 
+      {/* Active / Lost deals tabs */}
+      <div className="mt-8 flex items-center gap-1 border-b border-gray-100">
+        {(["active", "lost"] as const).map((v) => (
+          <button
+            key={v}
+            onClick={() => setView(v)}
+            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium capitalize transition ${
+              view === v
+                ? "border-gray-900 text-gray-900"
+                : "border-transparent text-gray-400 hover:text-gray-600"
+            }`}
+          >
+            {v === "active" ? "Active" : `Lost deals${lostCount ? ` (${lostCount})` : ""}`}
+          </button>
+        ))}
+      </div>
+
       {/* Controls: New-only pill + filter popout */}
-      <div className="mt-8 flex items-center justify-between gap-3">
-        <button
-          onClick={() => setNewOnly((v) => !v)}
-          className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
-            newOnly
-              ? "text-white"
-              : "border border-gray-200 text-gray-600 hover:bg-gray-50"
-          }`}
-          style={newOnly ? { backgroundColor: brand.accent } : undefined}
-        >
-          New only
-        </button>
+      <div className="mt-4 flex items-center justify-between gap-3">
+        {view === "active" ? (
+          <button
+            onClick={() => setNewOnly((v) => !v)}
+            className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
+              newOnly
+                ? "text-white"
+                : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+            }`}
+            style={newOnly ? { backgroundColor: brand.accent } : undefined}
+          >
+            New only
+          </button>
+        ) : (
+          <span className="text-sm text-gray-400">
+            Deals you marked lost. Reopen any from its card.
+          </span>
+        )}
 
         <div className="relative">
           <button
@@ -376,9 +439,11 @@ export default function LeadsPage() {
         })}
         {visible.length === 0 && (
           <div className="rounded-2xl border border-dashed border-gray-200 py-16 text-center text-sm text-gray-400">
-            {newOnly
-              ? "No new leads right now."
-              : "No leads yet — they'll drop in here automatically once your ads are live."}
+            {view === "lost"
+              ? "No lost deals — keep it that way. 💪"
+              : newOnly
+                ? "No new leads right now."
+                : "No leads yet — they'll drop in here automatically once your ads are live."}
           </div>
         )}
       </div>
@@ -442,6 +507,7 @@ function LeadModal({
   onCancelBooking: () => Promise<void>;
 }) {
   const [showTimeline, setShowTimeline] = useState(false);
+  const [lostStep, setLostStep] = useState<null | "ask" | "funnel" | "done">(null);
   const [panel, setPanel] = useState<null | "call" | "email">(null);
   const [callTab, setCallTab] = useState<"notes" | "schedule">("notes");
   const [noteText, setNoteText] = useState("");
@@ -514,7 +580,7 @@ function LeadModal({
       onClick={onClose}
     >
       <div
-        className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-white p-6 sm:rounded-3xl sm:p-7"
+        className="relative max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-white p-6 sm:rounded-3xl sm:p-7"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -824,8 +890,8 @@ function LeadModal({
             {/* Mark lost / reopen */}
             {canWork && (
               <button
-                onClick={() => onStage("lost")}
-                className="w-full rounded-2xl py-2.5 text-sm font-medium text-gray-400 hover:bg-gray-50 hover:text-gray-600"
+                onClick={() => setLostStep("ask")}
+                className="w-full rounded-2xl border border-transparent py-2.5 text-sm font-medium text-gray-400 transition hover:border-gray-300 hover:text-gray-600"
               >
                 Mark as lost
               </button>
@@ -835,6 +901,110 @@ function LeadModal({
             )}
           </div>
         </div>
+
+        {/* Mark-as-lost flow — swipes over the modal: sad → funnel → done */}
+        {lostStep && (
+          <div
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 p-4"
+            onClick={() => setLostStep(null)}
+          >
+            <div
+              className="relative w-full max-w-md rounded-3xl bg-white p-6 sm:p-7"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setLostStep(null)}
+                className="absolute right-5 top-5 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                aria-label="Cancel"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
+              <div
+                key={lostStep}
+                className="animate-[lost-slide_0.35s_cubic-bezier(0.22,1,0.36,1)]"
+              >
+              {lostStep === "ask" && (
+                <>
+                  <GifCard
+                    src={LOST_GIF}
+                    emoji="🥲"
+                    tint="linear-gradient(135deg,#fef2f2,#fee2e2)"
+                  />
+                  <h3 className="mt-5 text-center text-xl font-semibold">
+                    One that got away?
+                  </h3>
+                  <p className="mt-2 text-center text-sm text-gray-500">
+                    Don't close the door just yet — want to keep {firstName}{" "}
+                    warm with our marketing follow-ups?
+                  </p>
+                  <p className="mt-4 text-center text-sm font-medium text-gray-800">
+                    Add {firstName} to a marketing funnel?
+                  </p>
+                  <div className="mt-4 space-y-2">
+                    <BigBtn
+                      primary
+                      accent={brand.accent}
+                      onClick={() => setLostStep("funnel")}
+                    >
+                      Yes, add to marketing funnel
+                    </BigBtn>
+                    <button
+                      onClick={() => {
+                        onStage("lost");
+                        onClose();
+                      }}
+                      className="w-full rounded-2xl py-2.5 text-sm font-medium text-gray-400 hover:text-gray-600"
+                    >
+                      No, just mark it lost
+                    </button>
+                  </div>
+                </>
+              )}
+              {lostStep === "funnel" && (
+                <>
+                  <GifCard
+                    src={FUNNEL_GIF}
+                    emoji="🙌"
+                    tint="linear-gradient(135deg,#f0fdf4,#dcfce7)"
+                  />
+                  <h3 className="mt-5 text-center text-xl font-semibold">
+                    Not lost — just nurtured
+                  </h3>
+                  <p className="mt-2 text-center text-sm text-gray-500">
+                    {firstName} will get our marketing sequence and could come
+                    back around when the timing's right.
+                  </p>
+                  <div className="mt-5">
+                    <BigBtn
+                      primary
+                      accent={brand.accent}
+                      onClick={() => {
+                        onStage("nurture");
+                        setLostStep("done");
+                        setTimeout(onClose, 1600);
+                      }}
+                    >
+                      Add them ✓
+                    </BigBtn>
+                  </div>
+                </>
+              )}
+              {lostStep === "done" && (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="flex h-16 w-16 animate-[lost-slide_0.4s_ease] items-center justify-center rounded-full bg-green-100 text-3xl text-green-600">
+                    ✓
+                  </div>
+                  <p className="mt-4 text-center font-medium">
+                    Added to your mailing list
+                  </p>
+                </div>
+              )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
