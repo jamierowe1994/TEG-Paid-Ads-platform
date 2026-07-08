@@ -11,7 +11,7 @@ import PanelReveal from "@/components/PanelReveal";
 import BackgroundTexture from "@/components/BackgroundTexture";
 import Parallax from "@/components/Parallax";
 import SmoothScroll from "@/components/SmoothScroll";
-import ContourTint from "@/components/ContourTint";
+import ContourClip from "@/components/ContourClip";
 import ScrollFillText from "@/components/ScrollFillText";
 
 export default function LandingPage() {
@@ -20,8 +20,8 @@ export default function LandingPage() {
   return (
     <main className="relative min-h-screen overflow-x-clip">
       <SmoothScroll />
-      {/* Reddens the background circles as the glass panel passes centre */}
-      <ContourTint targetId="built" />
+      {/* Reveals the red contour copy only within the frosted panel's rect */}
+      <ContourClip targetId="built" />
       {/* Subtle background — soft brand-tinted glows + a faint contour
           texture, showing through the transparent (white) sections while the
           charcoal panel and footer sit on top of it. */}
@@ -38,6 +38,8 @@ export default function LandingPage() {
       />
       {/* Topographic contour texture across all white sections */}
       <BackgroundTexture />
+      {/* Red copy of the same texture, revealed only under the frosted panel */}
+      <BackgroundTexture tint />
 
       {/* Nav — hashtag wordmark + a big Sign in */}
       <header className="absolute inset-x-0 top-0 z-40">
@@ -152,32 +154,6 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* One group, seven businesses — inside the panel. Sits above the
-              physics layer, so falling icons pass behind the pills and land
-              at the bottom of the box. Each pill floats up on reveal and
-              fills with its brand colour on hover. */}
-          <div className="relative z-10 mx-auto w-full max-w-5xl px-8 pb-4">
-            <p className="p-words text-center text-xs font-medium uppercase tracking-widest text-gray-900">
-              One group, seven businesses
-            </p>
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-              {BRANDS.map((b, i) => (
-                <span
-                  key={b.id}
-                  className="brand-pill p-pill rounded-full px-4 py-2 text-sm font-medium text-white"
-                  style={
-                    {
-                      "--pill": b.accent,
-                      animationDelay: `${1.5 + i * 0.16}s`,
-                    } as React.CSSProperties
-                  }
-                >
-                  {b.name}
-                </span>
-              ))}
-            </div>
-          </div>
-
           {/* Landing zone so settled icons don't sit on the content — extra
               room lets them fall lower */}
           <div className="h-32" />
@@ -185,6 +161,28 @@ export default function LandingPage() {
           <PhysicsIcons />
         </PanelReveal>
         </Parallax>
+      </section>
+
+      {/* One group, seven businesses — moved out below the frosted panel.
+          Monochrome black-and-white pills that fill with their own brand
+          colour only when you hover that individual pill. */}
+      <section className="px-6 pb-10">
+        <Reveal>
+          <p className="text-center text-xs font-medium uppercase tracking-widest text-gray-900">
+            One group, seven businesses
+          </p>
+          <div className="mx-auto mt-5 flex max-w-5xl flex-wrap items-center justify-center gap-3">
+            {BRANDS.map((b) => (
+              <span
+                key={b.id}
+                className="brand-pill rounded-full px-4 py-2 text-sm font-medium"
+                style={{ "--pill": b.accent } as React.CSSProperties}
+              >
+                {b.name}
+              </span>
+            ))}
+          </div>
+        </Reveal>
       </section>
 
       {/* How it works — steps left, mock dashboard right */}

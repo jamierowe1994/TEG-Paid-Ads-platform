@@ -79,11 +79,23 @@ const ISLANDS: Island[] = (() => {
   return out;
 })();
 
-export default function BackgroundTexture() {
+export default function BackgroundTexture({
+  tint = false,
+}: {
+  tint?: boolean;
+}) {
+  // `tint` renders an identical, perfectly-aligned RED copy of the contour
+  // texture. It's revealed only within the "Built for agents" panel's
+  // on-screen rectangle (see <ContourClip>), so the grey lines under the
+  // frosted box appear red while everything outside — and the parts of a
+  // line cut off by the box edge — stays grey.
   return (
     <div
       aria-hidden
+      id={tint ? "contour-tint-layer" : undefined}
       className="pointer-events-none fixed inset-0 -z-10 opacity-80"
+      // Start fully clipped; ContourClip opens it to the panel rect on scroll.
+      style={tint ? { clipPath: "inset(100%)" } : undefined}
     >
       <svg
         className="h-full w-full"
@@ -94,7 +106,7 @@ export default function BackgroundTexture() {
         <g
           vectorEffect="non-scaling-stroke"
           style={{
-            stroke: "var(--contour, #d9dce2)",
+            stroke: tint ? "#E31F36" : "var(--contour, #d9dce2)",
             transition: "stroke 0.25s linear",
           }}
         >
