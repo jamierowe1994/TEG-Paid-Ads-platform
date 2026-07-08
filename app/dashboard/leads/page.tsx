@@ -72,6 +72,32 @@ function fullDate(iso: string): string {
   });
 }
 
+// Human-friendly duration for speed-to-lead (e.g. "42m", "3h 10m", "1d 4h").
+function fmtDuration(ms: number): string {
+  const mins = Math.round(ms / 60000);
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h < 24) return m ? `${h}h ${m}m` : `${h}h`;
+  const d = Math.floor(h / 24);
+  return `${d}d ${h % 24}h`;
+}
+
+// Average time from a lead landing to its first contact attempt (any action
+// past "new"). Leads not yet actioned are excluded. Lower is better.
+function avgSpeedToLead(leads: Lead[]): number | null {
+  const samples = leads
+    .map((l) => {
+      const first = l.history.find((h) => h.stage !== "new");
+      return first
+        ? new Date(first.at).getTime() - new Date(l.receivedAt).getTime()
+        : null;
+    })
+    .filter((v): v is number => v !== null && v >= 0);
+  if (samples.length === 0) return null;
+  return samples.reduce((a, b) => a + b, 0) / samples.length;
+}
+
 type SortOrder = "newest" | "oldest" | "uncontacted";
 
 const SORTS: { id: SortOrder; label: string }[] = [
@@ -195,6 +221,7 @@ export default function LeadsPage() {
   ).length;
   const conversionRate =
     total > 0 ? Math.round((appointments / total) * 100) : 0;
+  const speed = avgSpeedToLead(leads);
 
   return (
     <div className="w-full">
@@ -204,7 +231,7 @@ export default function LeadsPage() {
       </p>
 
       {/* Headline stats */}
-      <div className="mt-8 grid gap-4 sm:grid-cols-4">
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Stat label="Total leads" value={String(total)} />
         <Stat
           label="Cost this month"
@@ -217,6 +244,11 @@ export default function LeadsPage() {
           accent={brand.accent}
         />
         <Stat label="Conversion rate" value={`${conversionRate}%`} />
+        <Stat
+          label="Speed to lead"
+          value={speed === null ? "—" : fmtDuration(speed)}
+          note="Avg time to first contact"
+        />
       </div>
 
       {/* Controls: New-only pill + filter popout */}
@@ -290,7 +322,7 @@ export default function LeadsPage() {
             <button
               key={lead.id}
               onClick={() => setOpenId(lead.id)}
-              className="flex w-full items-center gap-4 rounded-2xl border border-gray-200 bg-white p-4 text-left transition hover:border-gray-300 hover:shadow-sm"
+              className="flex w-full items-center gap-4 rounded-2xl border border-gray-200 shadow-sm bg-white p-4 text-left transition hover:border-gray-300 hover:shadow-sm"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
@@ -431,7 +463,7 @@ function LeadModal({
         <div className="mt-3 grid grid-cols-2 gap-3">
           <a
             href={`tel:${lead.phone}`}
-            className="flex items-center justify-center gap-2 rounded-2xl border border-gray-200 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="flex items-center justify-center gap-2 rounded-2xl border border-gray-200 shadow-sm py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7">
               <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
@@ -440,7 +472,7 @@ function LeadModal({
           </a>
           <a
             href={`mailto:${lead.email}`}
-            className="flex items-center justify-center gap-2 rounded-2xl border border-gray-200 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="flex items-center justify-center gap-2 rounded-2xl border border-gray-200 shadow-sm py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.7">
               <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
@@ -450,7 +482,7 @@ function LeadModal({
         </div>
 
         {/* Timeline — latest only, expandable */}
-        <div className="mt-4 rounded-2xl border border-gray-200 p-4">
+        <div className="mt-4 rounded-2xl border border-gray-200 shadow-sm p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
@@ -589,7 +621,7 @@ function Stat({
   accent?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-gray-200 p-5">
+    <div className="rounded-2xl border border-gray-200 shadow-sm p-5">
       <p className="text-sm text-gray-500">{label}</p>
       <p
         className="mt-2 text-3xl font-semibold tracking-tight"

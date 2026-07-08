@@ -180,7 +180,7 @@ export default function ReferralsPage() {
             <button
               key={r.id}
               onClick={() => setOpen(r)}
-              className="block w-full rounded-2xl border border-gray-200 p-6 text-left transition hover:border-gray-300 hover:shadow-sm"
+              className="block w-full rounded-2xl border border-gray-200 shadow-sm p-6 text-left transition hover:border-gray-300 hover:shadow-sm"
             >
               <div className="flex items-start justify-between gap-4">
                 <div>

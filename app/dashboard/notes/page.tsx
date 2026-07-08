@@ -70,7 +70,7 @@ export default function NotesPage() {
           {notes.map((n) => (
             <div
               key={n.id}
-              className="flex items-start justify-between gap-4 rounded-2xl border border-gray-200 p-5"
+              className="flex items-start justify-between gap-4 rounded-2xl border border-gray-200 shadow-sm p-5"
             >
               <div className="min-w-0">
                 <p className="text-sm text-gray-800">{n.note}</p>

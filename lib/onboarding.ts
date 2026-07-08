@@ -2,9 +2,10 @@
 // agent along these in the CRM, and the agent sees the same progress on their
 // dashboard. "paused" sits off the main track.
 
+// No onboarding call — agents are existing staff, so we already hold their
+// details and go straight from signup into creative production.
 export const ONBOARDING_STAGES = [
   { id: "signed_up", label: "Signed up" },
-  { id: "onboarding", label: "Onboarding call" },
   { id: "creatives", label: "Creatives in production" },
   { id: "review", label: "Campaign review" },
   { id: "live", label: "Ads live" },

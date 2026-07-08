@@ -70,7 +70,7 @@ export default function GrowPage() {
       </p>
 
       {/* Current cap */}
-      <section className="mt-8 rounded-2xl border border-gray-200 p-6">
+      <section className="mt-8 rounded-2xl border border-gray-200 shadow-sm p-6">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-gray-500">Your monthly ad-spend cap</p>
@@ -100,7 +100,7 @@ export default function GrowPage() {
       </section>
 
       {/* Model higher spend */}
-      <section className="mt-6 rounded-2xl border border-gray-200 p-6">
+      <section className="mt-6 rounded-2xl border border-gray-200 shadow-sm p-6">
         <h2 className="font-semibold">What could more spend bring in?</h2>
         <p className="mt-1 text-sm text-gray-500">
           Drag to model a higher monthly ad spend.

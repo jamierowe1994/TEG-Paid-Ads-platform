@@ -48,7 +48,7 @@ export default function ProfilePage() {
     <div className="mx-auto max-w-2xl">
       <h1 className="text-3xl font-semibold tracking-tight">Profile</h1>
 
-      <section className="mt-8 rounded-2xl border border-gray-200 p-6">
+      <section className="mt-8 rounded-2xl border border-gray-200 shadow-sm p-6">
         <div className="flex items-center gap-5">
           <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-gray-100 text-2xl font-semibold text-gray-500">
             {user.photo ? (
@@ -120,7 +120,7 @@ export default function ProfilePage() {
         </div>
       </section>
 
-      <section className="mt-6 rounded-2xl border border-gray-200 p-6">
+      <section className="mt-6 rounded-2xl border border-gray-200 shadow-sm p-6">
         <h2 className="font-semibold">Subscription</h2>
         <div className="mt-4 flex items-center justify-between rounded-xl bg-gray-50 p-4">
           <div>

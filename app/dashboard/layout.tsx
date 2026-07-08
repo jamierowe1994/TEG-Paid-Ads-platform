@@ -74,8 +74,8 @@ export default function DashboardLayout({
         } as React.CSSProperties
       }
     >
-      {/* Sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 flex w-60 flex-col border-r border-gray-100 bg-gray-50/40">
+      {/* Sidebar — floated slightly off the screen with a discreet shadow */}
+      <aside className="fixed inset-y-3 left-3 z-30 flex w-60 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-gray-50/60 shadow-[0_4px_20px_-6px_rgba(0,0,0,0.08)]">
         <div className="flex items-center gap-2.5 px-5 py-5">
           <BrandMark
             name={brand.name}
@@ -160,7 +160,7 @@ export default function DashboardLayout({
       </aside>
 
       {/* Main */}
-      <main className="ml-60 flex-1 px-10 py-10">{children}</main>
+      <main className="ml-[264px] flex-1 px-10 py-10">{children}</main>
     </div>
   );
 }

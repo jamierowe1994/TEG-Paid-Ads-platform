@@ -57,7 +57,7 @@ export default function DashboardOverview() {
       </h1>
 
       {/* Campaign status */}
-      <section className="mt-10 rounded-2xl border border-gray-200 p-6">
+      <section className="mt-10 rounded-2xl border border-gray-200 shadow-sm p-6">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-semibold">Your campaign</h2>
@@ -146,7 +146,7 @@ export default function DashboardOverview() {
       {/* Stats */}
       <section className="mt-6 grid gap-4 sm:grid-cols-4">
         {stats.map((s) => (
-          <div key={s.label} className="rounded-2xl border border-gray-200 p-5">
+          <div key={s.label} className="rounded-2xl border border-gray-200 shadow-sm p-5">
             <p className="text-sm text-gray-500">{s.label}</p>
             <p className="mt-2 text-3xl font-semibold tracking-tight">
               {s.value}
@@ -157,7 +157,7 @@ export default function DashboardOverview() {
       </section>
 
       {/* Recent leads */}
-      <section className="mt-6 rounded-2xl border border-gray-200 p-6">
+      <section className="mt-6 rounded-2xl border border-gray-200 shadow-sm p-6">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold">Recent leads</h2>
           <Link
