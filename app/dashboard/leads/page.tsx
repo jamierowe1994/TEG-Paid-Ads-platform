@@ -9,6 +9,7 @@ import {
 } from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
 import { packageById } from "@/lib/packages";
+import SourceIcon from "@/components/SourceIcon";
 import type { Lead, LeadStage } from "@/lib/types";
 
 // Leads funnel — built to be usable by anyone. Compact clickable tiles,
@@ -37,18 +38,6 @@ function stageLabel(stage: LeadStage, brand: Brand): string {
       return `In ${brand.crmName}`;
     case "lost":
       return "Lost";
-  }
-}
-
-// Where the lead came from — a coloured badge so it's obvious at a glance.
-function sourceMeta(source: Lead["source"]): { label: string; className: string } {
-  switch (source) {
-    case "instagram":
-      return { label: "Instagram", className: "bg-pink-50 text-pink-600" };
-    case "facebook":
-      return { label: "Facebook", className: "bg-blue-50 text-blue-600" };
-    case "referral":
-      return { label: "Referral", className: "bg-amber-50 text-amber-700" };
   }
 }
 
@@ -317,7 +306,6 @@ export default function LeadsPage() {
       {/* Lead tiles */}
       <div className="mt-4 space-y-3">
         {visible.map((lead) => {
-          const src = sourceMeta(lead.source);
           return (
             <button
               key={lead.id}
@@ -326,12 +314,12 @@ export default function LeadsPage() {
             >
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
+                  <SourceIcon
+                    source={lead.source}
+                    size={16}
+                    className="shrink-0"
+                  />
                   <h3 className="truncate font-semibold">{lead.name}</h3>
-                  <span
-                    className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${src.className}`}
-                  >
-                    {src.label}
-                  </span>
                   {lead.adName && (
                     <span className="hidden truncate text-xs text-gray-400 sm:inline">
                       · {lead.adName}
@@ -404,7 +392,6 @@ function LeadModal({
   onPush: () => void;
 }) {
   const [showTimeline, setShowTimeline] = useState(false);
-  const src = sourceMeta(lead.source);
 
   const events = [
     { label: "Lead received", at: lead.receivedAt },
@@ -425,19 +412,19 @@ function LeadModal({
       onClick={onClose}
     >
       <div
-        className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-6 sm:rounded-3xl"
+        className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-white p-6 sm:rounded-3xl sm:p-7"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-xl font-semibold">{lead.name}</h2>
+            <div className="flex items-center gap-2">
+              <SourceIcon source={lead.source} size={20} />
+              <h2 className="text-xl font-semibold">{lead.name}</h2>
+            </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-gray-400">
-              <span className={`rounded-full px-2 py-0.5 font-medium ${src.className}`}>
-                {src.label}
-              </span>
-              {lead.adName && <span>· {lead.adName}</span>}
-              <span>· {shortDate(lead.receivedAt)}</span>
+              {lead.adName && <span>{lead.adName} · </span>}
+              <span>{shortDate(lead.receivedAt)}</span>
             </div>
           </div>
           <button

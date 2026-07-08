@@ -76,12 +76,12 @@ export default function DashboardLayout({
     >
       {/* Sidebar — floated slightly off the screen with a discreet shadow */}
       <aside className="fixed inset-y-3 left-3 z-30 flex w-60 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-gray-50/60 shadow-[0_4px_20px_-6px_rgba(0,0,0,0.08)]">
-        <div className="flex items-center gap-2.5 px-5 py-5">
+        <div className="flex items-center gap-2.5 px-5 pb-5 pt-8">
           <BrandMark
             name={brand.name}
             accent={brand.accent}
             logo={brand.logo}
-            size={32}
+            size={42}
           />
           <div className="leading-tight">
             <p className="text-sm font-semibold">{brand.name}</p>
@@ -89,7 +89,7 @@ export default function DashboardLayout({
           </div>
         </div>
 
-        <nav className="mt-4 flex-1 space-y-0.5 px-3">
+        <nav className="mt-8 flex-1 space-y-0.5 px-3">
           {NAV.map((item) => {
             const active = pathname === item.href;
             return (
