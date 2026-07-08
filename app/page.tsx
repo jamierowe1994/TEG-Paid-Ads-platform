@@ -134,7 +134,7 @@ export default function LandingPage() {
               <div className="mt-8">
                 <Link
                   href="/signup"
-                  className="btn-group inline-block rounded-xl px-8 py-4 text-base font-semibold"
+                  className="btn-group inline-block rounded-xl px-8 py-4 text-base font-semibold shadow-[0_14px_30px_-8px_rgba(227,31,54,0.45)]"
                 >
                   Start your campaign
                 </Link>
@@ -145,7 +145,7 @@ export default function LandingPage() {
               <img
                 src="/images/paid-ads.jpg"
                 alt="An agent's next client, mid-scroll"
-                className="p-image aspect-[4/5] w-full rounded-3xl object-cover"
+                className="p-image aspect-[4/5] w-full rounded-3xl object-cover shadow-2xl"
               />
               {/* Infographic overlay — expands after the image, then counts */}
               <LeadsStat className="p-stat" startDelay={1500} />
@@ -157,14 +157,14 @@ export default function LandingPage() {
               at the bottom of the box. Each pill floats up on reveal and
               fills with its brand colour on hover. */}
           <div className="relative z-10 mx-auto w-full max-w-5xl px-8 pb-4">
-            <p className="p-words text-center text-xs font-medium uppercase tracking-widest text-gray-400">
+            <p className="p-words text-center text-xs font-medium uppercase tracking-widest text-gray-900">
               One group, seven businesses
             </p>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
               {BRANDS.map((b, i) => (
                 <span
                   key={b.id}
-                  className="brand-pill p-pill rounded-full border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600"
+                  className="brand-pill p-pill rounded-full px-4 py-2 text-sm font-medium text-white"
                   style={
                     {
                       "--pill": b.accent,

@@ -158,17 +158,22 @@ h5 {
 
 /* Brand pills (business names on the dark panel) — fill with the brand
    colour on hover. */
+/* Brand pills are permanently filled with their own brand colour (with a
+   matching soft drop shadow so they stand off the glass), lifting on hover. */
 .brand-pill {
+  background-color: var(--pill);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 5px 14px -5px color-mix(in srgb, var(--pill) 60%, transparent);
   transition:
-    background-color 0.25s ease,
-    border-color 0.25s ease,
-    color 0.25s ease,
-    transform 0.25s ease;
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    filter 0.25s ease;
 }
 .brand-pill:hover {
-  background-color: var(--pill);
-  border-color: var(--pill);
-  color: #fff;
+  transform: translateY(-2px);
+  filter: brightness(1.08);
+  box-shadow: 0 9px 20px -6px color-mix(in srgb, var(--pill) 65%, transparent);
 }
 
 /* Hero wordmark bubble — squishes with a springy flex on hover of the logo. */
