@@ -293,7 +293,10 @@ export default function PhysicsIcons() {
       return;
     }
 
-    // One-time: fire on first sight, then stop observing.
+    // One-time: fire when the panel has risen to almost mid-screen (not the
+    // moment it peeks in), so the hero icons stay held in frame longer before
+    // they drop. The -45% bottom margin pulls the trigger line up to ~55% of
+    // the viewport, so the fall starts as the panel nears the middle.
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
@@ -304,7 +307,7 @@ export default function PhysicsIcons() {
           }
         }
       },
-      { threshold: 0.25 }
+      { threshold: 0, rootMargin: "0px 0px -45% 0px" }
     );
     observer.observe(container);
     return () => {

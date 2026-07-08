@@ -78,7 +78,7 @@ export default function LandingPage() {
           centre of the viewport at any screen height (the icon strip adds
           height below without shifting the centre). */}
       <section className="flex flex-col">
-        <Parallax className="flex min-h-screen flex-col items-center justify-center px-6 py-24 text-center">
+        <Parallax speed={0.46} max={360} className="flex min-h-screen flex-col items-center justify-center px-6 py-24 text-center">
           <Reveal>
             <p className="mb-5 text-sm font-medium uppercase tracking-widest text-gray-400">
               Paid ads, done for you
@@ -118,7 +118,7 @@ export default function LandingPage() {
           and below: bold copy left, photo + infographic right, physics icons
           landing at the bottom */}
       <section id="built" className="px-4 py-20 sm:px-14 sm:py-28">
-        <Parallax mode="element" strength={-130} max={150}>
+        <Parallax mode="element" strength={-190} max={210}>
         <PanelReveal className="glass-panel relative flex min-h-[64vh] flex-col overflow-hidden rounded-[2.5rem]">
           <div className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-10 px-8 py-12 sm:px-12 lg:grid-cols-2">
             <div className="p-words">
