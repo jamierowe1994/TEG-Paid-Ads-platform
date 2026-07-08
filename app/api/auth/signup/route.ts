@@ -6,7 +6,7 @@ import {
   sessionCookieOptions,
 } from "@/lib/auth";
 import { findByEmail, createUser, toPublic } from "@/lib/users-store";
-import { brandForEmail, brandById } from "@/lib/brands";
+import { brandForEmail, brandById, isAllowedEmailDomain } from "@/lib/brands";
 import { packageById } from "@/lib/packages";
 import type { StoredUser } from "@/lib/users-store";
 
@@ -26,6 +26,17 @@ export async function POST(req: NextRequest) {
 
   if (!/^\S+@\S+\.\S+$/.test(email)) {
     return NextResponse.json({ error: "Invalid email" }, { status: 400 });
+  }
+  // Internal portal: only Experts Group brand (and head-office) domains may
+  // register. Anyone else is declined here.
+  if (!isAllowedEmailDomain(email)) {
+    return NextResponse.json(
+      {
+        error:
+          "This is an internal portal for The Experts Group. Please register with your company email address (e.g. yourname@therecruitmentexperts.co.uk). If you believe this is a mistake, contact your head office.",
+      },
+      { status: 403 }
+    );
   }
   if (password.length < 8) {
     return NextResponse.json(

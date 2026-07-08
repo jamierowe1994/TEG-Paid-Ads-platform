@@ -55,7 +55,7 @@ export const BRANDS: Brand[] = [
     id: "lettings",
     name: "The Lettings Experts",
     shortName: "Lettings",
-    domains: ["thelettingsexperts.co.uk", "lettingsexperts.co.uk"],
+    domains: ["thelettingexperts.co.uk", "lettingexperts.co.uk"],
     accent: "#E31F36", // red
     accentSoft: "#FEF2F2",
     crmName: "REP",
@@ -143,4 +143,18 @@ export function brandForEmail(email: string): Brand | undefined {
   const domain = email.split("@")[1]?.toLowerCase().trim();
   if (!domain) return undefined;
   return BRANDS.find((b) => b.domains.includes(domain));
+}
+
+// Head-office staff aren't tied to a single brand but still get portal access.
+export const HEAD_OFFICE_DOMAINS = ["theexpertsgroup.co.uk"];
+
+// Every email domain allowed to register: the seven brands plus head office.
+// The portal is internal, so signup is gated to exactly these domains.
+export function allowedEmailDomains(): string[] {
+  return [...BRANDS.flatMap((b) => b.domains), ...HEAD_OFFICE_DOMAINS];
+}
+
+export function isAllowedEmailDomain(email: string): boolean {
+  const domain = email.split("@")[1]?.toLowerCase().trim();
+  return !!domain && allowedEmailDomains().includes(domain);
 }
