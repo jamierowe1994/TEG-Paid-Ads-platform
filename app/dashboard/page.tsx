@@ -6,12 +6,15 @@ import { getUser, fetchLeads } from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
 import { packageById } from "@/lib/packages";
 import { ONBOARDING_STAGES, stageIndex } from "@/lib/onboarding";
+import Confetti from "@/components/Confetti";
 import type { UserProfile, Lead } from "@/lib/types";
 
 export default function DashboardOverview() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [brand, setBrand] = useState<Brand | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
+  // Flips true just after mount so the progress bar animates up from empty.
+  const [fillReady, setFillReady] = useState(false);
 
   useEffect(() => {
     const u = getUser();
@@ -19,6 +22,8 @@ export default function DashboardOverview() {
     setUser(u);
     setBrand(brandById(u.brandId) ?? null);
     fetchLeads().then(setLeads);
+    const t = setTimeout(() => setFillReady(true), 200);
+    return () => clearTimeout(t);
   }, []);
 
   if (!user || !brand) return null;
@@ -30,10 +35,11 @@ export default function DashboardOverview() {
 
   // Timeline driven by the admin-set onboarding stage.
   const curStage = stageIndex(user.onboardingStage);
+  const isLive = user.onboardingStage === "live";
   const campaignSteps = ONBOARDING_STAGES.map((s, i) => ({
     label: s.label,
-    done: i < curStage,
-    current: i === curStage && user.onboardingStage !== "paused",
+    done: i < curStage || isLive,
+    current: i === curStage && !isLive && user.onboardingStage !== "paused",
   }));
 
   const stats = [
@@ -56,8 +62,10 @@ export default function DashboardOverview() {
         Morning, {user.name.split(" ")[0]} 👋
       </h1>
 
-      {/* Campaign status */}
-      <section className="mt-10 rounded-2xl border border-gray-200 shadow-sm p-6">
+      {/* Campaign status — progress fills up as each stage completes, with a
+          confetti pop when the ads go live. */}
+      <section className="relative mt-10 overflow-hidden rounded-2xl border border-gray-200 p-6 shadow-sm">
+        <Confetti fire={isLive} />
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-semibold">Your campaign</h2>
@@ -80,25 +88,44 @@ export default function DashboardOverview() {
           </div>
           <span
             className="rounded-full px-3 py-1 text-xs font-medium"
-            style={{ backgroundColor: brand.accentSoft, color: brand.accent }}
+            style={
+              isLive
+                ? { backgroundColor: "#DCFCE7", color: "#15803D" }
+                : { backgroundColor: brand.accentSoft, color: brand.accent }
+            }
           >
             {user.onboardingStage === "paused"
               ? "Paused"
-              : user.onboardingStage === "live"
-                ? "Ads live"
+              : isLive
+                ? "🎉 Ads live"
                 : "In preparation"}
           </span>
         </div>
-        <div className="mt-8 flex items-center">
-          {campaignSteps.map((step, i) => (
-            <div key={step.label} className="flex flex-1 items-center last:flex-none">
-              <div className="flex flex-col items-center">
+
+        {/* Progress track + numbered nodes */}
+        <div className="relative mx-1 mt-10">
+          <div className="absolute inset-x-4 top-4 h-1.5 -translate-y-1/2 rounded-full bg-gray-100" />
+          <div
+            className="absolute left-4 top-4 h-1.5 -translate-y-1/2 rounded-full transition-[width] duration-[1100ms] ease-out"
+            style={{
+              width: fillReady
+                ? `calc((100% - 2rem) * ${
+                    (isLive ? ONBOARDING_STAGES.length - 1 : curStage) /
+                    (ONBOARDING_STAGES.length - 1)
+                  })`
+                : "0px",
+              backgroundColor: brand.accent,
+            }}
+          />
+          <div className="relative flex justify-between">
+            {campaignSteps.map((step, i) => (
+              <div key={step.label} className="flex flex-col items-center">
                 <div
-                  className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${
+                  className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-all duration-500 ${
                     step.done
-                      ? "text-white"
+                      ? "scale-100 text-white shadow-sm"
                       : step.current
-                        ? "border-2 bg-white"
+                        ? "animate-pulse border-2 bg-white"
                         : "border border-gray-200 bg-white text-gray-300"
                   }`}
                   style={
@@ -112,7 +139,7 @@ export default function DashboardOverview() {
                   {step.done ? "✓" : i + 1}
                 </div>
                 <span
-                  className={`mt-2 w-24 text-center text-xs ${
+                  className={`mt-2 max-w-[6rem] text-center text-xs ${
                     step.done || step.current
                       ? "font-medium text-gray-700"
                       : "text-gray-400"
@@ -121,26 +148,26 @@ export default function DashboardOverview() {
                   {step.label}
                 </span>
               </div>
-              {i < campaignSteps.length - 1 && (
-                <div
-                  className="mx-2 mb-6 h-px flex-1"
-                  style={{
-                    backgroundColor: step.done ? brand.accent : "#E5E7EB",
-                  }}
-                />
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-        <p className="mt-6 rounded-xl bg-gray-50 p-4 text-sm text-gray-500">
-          Our team is preparing your ad creatives for{" "}
-          <span className="font-medium text-gray-700">
-            {user.platforms.join(" and ")}
-          </span>{" "}
-          based on your goal:{" "}
-          <span className="font-medium text-gray-700">“{user.goal}”</span>.
-          You'll see everything here as it's ready for review.
-        </p>
+
+        {isLive ? (
+          <p className="mt-8 rounded-xl bg-green-50 p-4 text-sm font-medium text-green-800">
+            🎉 Your ads are live — leads will start dropping into your funnel.
+            Nice work getting here.
+          </p>
+        ) : (
+          <p className="mt-8 rounded-xl bg-gray-50 p-4 text-sm text-gray-500">
+            Our team is preparing your ad creatives for{" "}
+            <span className="font-medium text-gray-700">
+              {user.platforms.join(" and ")}
+            </span>{" "}
+            based on your goal:{" "}
+            <span className="font-medium text-gray-700">“{user.goal}”</span>.
+            You'll see everything here as it's ready for review.
+          </p>
+        )}
       </section>
 
       {/* Stats */}
