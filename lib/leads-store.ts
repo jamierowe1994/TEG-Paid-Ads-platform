@@ -101,6 +101,26 @@ export async function listLeadsForUser(userId: string): Promise<Lead[]> {
     .sort((a, b) => b.receivedAt.localeCompare(a.receivedAt));
 }
 
+// A single lead owned by userId (used by the Atlas push route). Returns
+// undefined if it doesn't exist or belongs to someone else.
+export async function getLead(
+  userId: string,
+  leadId: string
+): Promise<Lead | undefined> {
+  if (hasDb()) {
+    const rows = await q<LeadRow>(
+      "SELECT * FROM leads WHERE id = $2 AND user_id = $1",
+      [userId, leadId]
+    );
+    return rows[0] ? fromRow(rows[0]) : undefined;
+  }
+  const all = await readAllFile();
+  const found = all.find((l) => l.id === leadId && l.userId === userId);
+  if (!found) return undefined;
+  const { userId: _omit, ...lead } = found;
+  return lead;
+}
+
 // Count leads still at the "new" stage — drives the Leads nav dot.
 export async function countNewLeads(userId: string): Promise<number> {
   if (hasDb()) {

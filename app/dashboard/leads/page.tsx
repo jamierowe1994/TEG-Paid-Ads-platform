@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { getUser, fetchLeads, moveLeadStage } from "@/lib/session";
+import {
+  getUser,
+  fetchLeads,
+  moveLeadStage,
+  pushLeadToCrm,
+} from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
 import { packageById } from "@/lib/packages";
 import type { Lead, LeadStage } from "@/lib/types";
@@ -54,6 +59,7 @@ export default function LeadsPage() {
   const [filter, setFilter] = useState<"active" | "all">("active");
   const [sort, setSort] = useState<SortOrder>("newest");
   const [toast, setToast] = useState("");
+  const [pushing, setPushing] = useState<string | null>(null);
 
   useEffect(() => {
     const u = getUser();
@@ -98,13 +104,52 @@ export default function LeadsPage() {
     });
   }
 
-  function pushToCrm(lead: Lead) {
-    if (!brand) return;
-    // TODO(crm): call the brand's CRM API here (REP for property/lettings,
-    // Atlas for recruitment). For now we just mark the lead as pushed.
-    update(lead.id, "pushed");
-    setToast(`${lead.name} sent to ${brand.crmName} ✓ (integration pending)`);
-    setTimeout(() => setToast(""), 3500);
+  function showToast(msg: string, ms = 3500) {
+    setToast(msg);
+    setTimeout(() => setToast(""), ms);
+  }
+
+  async function pushToCrm(lead: Lead) {
+    if (!brand || pushing) return;
+
+    // The Recruitment Experts push live into Atlas. Other brands' CRMs (REP
+    // etc.) aren't wired yet — keep the existing "pending" stub for those.
+    if (brand.crmName !== "Atlas") {
+      update(lead.id, "pushed");
+      showToast(`${lead.name} sent to ${brand.crmName} ✓ (integration pending)`);
+      return;
+    }
+
+    setPushing(lead.id);
+    const res = await pushLeadToCrm(lead.id);
+    setPushing(null);
+
+    if (!res.ok) {
+      showToast(res.error ?? "Couldn't push to Atlas — please try again");
+      return;
+    }
+
+    // Server already marked it pushed; reflect that locally.
+    setLeads((prev) =>
+      prev.map((l) =>
+        l.id === lead.id
+          ? {
+              ...l,
+              stage: "pushed",
+              history: [
+                ...l.history,
+                { stage: "pushed" as LeadStage, at: new Date().toISOString() },
+              ],
+            }
+          : l
+      )
+    );
+    const extra = res.alreadyExisted
+      ? " (already in Atlas — note added)"
+      : res.noteAttached
+        ? " with notes"
+        : "";
+    showToast(`${lead.name} pushed to Atlas ✓${extra}`);
   }
 
   if (!brand) return null;
@@ -296,10 +341,13 @@ export default function LeadsPage() {
                 {lead.stage === "converted" && (
                   <button
                     onClick={() => pushToCrm(lead)}
-                    className="rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+                    disabled={pushing === lead.id}
+                    className="rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-60"
                     style={{ backgroundColor: brand.accent }}
                   >
-                    Push to {brand.crmName} →
+                    {pushing === lead.id
+                      ? "Pushing…"
+                      : `Push to ${brand.crmName} →`}
                   </button>
                 )}
 

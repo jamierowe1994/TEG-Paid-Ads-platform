@@ -144,6 +144,28 @@ export async function moveLeadStage(
   }
 }
 
+// Push a lead into the brand's CRM (Atlas for The Recruitment Experts).
+// Creates the person + attaches its note; the server marks the lead pushed.
+export async function pushLeadToCrm(leadId: string): Promise<{
+  ok: boolean;
+  error?: string;
+  alreadyExisted?: boolean;
+  noteAttached?: boolean;
+}> {
+  try {
+    const res = await fetch("/api/leads/push", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ leadId }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: data.error ?? "Push failed" };
+    return { ok: true, ...data };
+  } catch {
+    return { ok: false, error: "Network error — please try again" };
+  }
+}
+
 // ── Referrals (server-side, Postgres on Railway) ─────────────────────────
 export async function fetchReferrals(): Promise<Referral[]> {
   try {
