@@ -3,6 +3,8 @@ import { promises as fs } from "fs";
 import path from "path";
 import { DATA_DIR } from "./data-dir";
 import { hasDb, q } from "./db";
+import { findById } from "./users-store";
+import { sendNewLeadAlert } from "./whatsapp";
 import type { Lead, LeadStage } from "./types";
 
 // Leads, server-side — Postgres on Railway, JSON locally. Each lead belongs
@@ -59,6 +61,23 @@ async function writeAllFile(leads: OwnedLead[]): Promise<void> {
   await fs.writeFile(FILE, JSON.stringify(leads, null, 2), "utf8");
 }
 
+// Best-effort WhatsApp nudge to the agent when a lead lands. Never awaited by
+// createLead, and swallows its own errors, so it can't affect lead creation.
+async function notifyNewLead(userId: string, lead: Lead): Promise<void> {
+  try {
+    const user = await findById(userId);
+    if (user?.mobile) {
+      await sendNewLeadAlert({
+        toMobile: user.mobile,
+        agentName: user.name,
+        leadName: lead.name,
+      });
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 export async function createLead(userId: string, lead: Lead): Promise<void> {
   if (hasDb()) {
     await q(
@@ -78,11 +97,12 @@ export async function createLead(userId: string, lead: Lead): Promise<void> {
         lead.referralId ?? null,
       ]
     );
-    return;
+  } else {
+    const all = await readAllFile();
+    all.push({ ...lead, userId });
+    await writeAllFile(all);
   }
-  const all = await readAllFile();
-  all.push({ ...lead, userId });
-  await writeAllFile(all);
+  void notifyNewLead(userId, lead);
 }
 
 // List an agent's leads, newest first. Empty for a fresh account — real
