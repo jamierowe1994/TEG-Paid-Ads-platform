@@ -11,6 +11,8 @@ import PanelReveal from "@/components/PanelReveal";
 import BackgroundTexture from "@/components/BackgroundTexture";
 import Parallax from "@/components/Parallax";
 import SmoothScroll from "@/components/SmoothScroll";
+import ContourTint from "@/components/ContourTint";
+import ScrollFillText from "@/components/ScrollFillText";
 
 export default function LandingPage() {
   // No bg-white on <main> — the body provides the white base so the fixed
@@ -18,6 +20,8 @@ export default function LandingPage() {
   return (
     <main className="relative min-h-screen overflow-x-clip">
       <SmoothScroll />
+      {/* Reddens the background circles as the glass panel passes centre */}
+      <ContourTint targetId="built" />
       {/* Subtle background — soft brand-tinted glows + a faint contour
           texture, showing through the transparent (white) sections while the
           charcoal panel and footer sit on top of it. */}
@@ -111,18 +115,18 @@ export default function LandingPage() {
       {/* Second screen — charcoal rounded panel with breathing room above
           and below: bold copy left, photo + infographic right, physics icons
           landing at the bottom */}
-      <section className="px-3 py-20 sm:py-28">
+      <section id="built" className="px-4 py-20 sm:px-14 sm:py-28">
         <Parallax mode="element" strength={-130} max={150}>
-        <PanelReveal className="relative flex min-h-[64vh] flex-col overflow-hidden rounded-[2.5rem] bg-gradient-to-b from-[#3d3d3c] to-[#2a2a29]">
+        <PanelReveal className="glass-panel relative flex min-h-[64vh] flex-col overflow-hidden rounded-[2.5rem]">
           <div className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-10 px-8 py-12 sm:px-12 lg:grid-cols-2">
             <div className="p-words">
               <span className="inline-block rounded-full bg-[#E31F36] px-4 py-1.5 text-sm font-medium text-white">
                 Built for agents
               </span>
-              <h2 className="mt-5 max-w-lg text-4xl font-semibold leading-[1.05] tracking-tight text-white sm:text-5xl">
+              <h2 className="mt-5 max-w-lg text-4xl font-semibold leading-[1.05] tracking-tight text-gray-900 sm:text-5xl">
                 Paid ads that stop the scroll.
               </h2>
-              <p className="mt-5 max-w-md text-lg leading-relaxed text-white/75">
+              <p className="mt-5 max-w-md text-lg leading-relaxed text-gray-600">
                 Seven businesses, one engine. We run your campaigns on the
                 platforms that matter, branded as you — so your patch sees
                 your face, not a faceless portal.
@@ -130,7 +134,7 @@ export default function LandingPage() {
               <div className="mt-8">
                 <Link
                   href="/signup"
-                  className="btn-press inline-block rounded-xl bg-white px-8 py-4 text-base font-semibold text-gray-900 shadow-lg transition hover:bg-gray-100"
+                  className="btn-group inline-block rounded-xl px-8 py-4 text-base font-semibold"
                 >
                   Start your campaign
                 </Link>
@@ -153,14 +157,14 @@ export default function LandingPage() {
               at the bottom of the box. Each pill floats up on reveal and
               fills with its brand colour on hover. */}
           <div className="relative z-10 mx-auto w-full max-w-5xl px-8 pb-4">
-            <p className="p-words text-center text-xs font-medium uppercase tracking-widest text-white/50">
+            <p className="p-words text-center text-xs font-medium uppercase tracking-widest text-gray-400">
               One group, seven businesses
             </p>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
               {BRANDS.map((b, i) => (
                 <span
                   key={b.id}
-                  className="brand-pill p-pill rounded-full border border-white/25 px-4 py-2 text-sm font-medium text-white/90"
+                  className="brand-pill p-pill rounded-full border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600"
                   style={
                     {
                       "--pill": b.accent,
@@ -395,10 +399,10 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl">
           <Reveal>
             <div className="ml-auto max-w-4xl text-right">
-              <blockquote className="text-4xl font-bold leading-[1.1] tracking-[-0.055em] text-gray-900 sm:text-5xl lg:text-6xl">
-                “The average person scrolls through their feed every single
-                day. Your next client is in that scroll.”
-              </blockquote>
+              <ScrollFillText
+                text="“The average person scrolls through their feed every single day. Your next client is in that scroll.”"
+                className="text-4xl font-bold leading-[1.1] tracking-[-0.055em] text-gray-900 sm:text-5xl lg:text-6xl"
+              />
               <p className="mt-10 text-xl font-semibold tracking-[-0.02em] text-[#E31F36]">
                 #StopTheScroll
               </p>

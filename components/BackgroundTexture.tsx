@@ -91,7 +91,13 @@ export default function BackgroundTexture() {
         preserveAspectRatio="xMidYMid slice"
         fill="none"
       >
-        <g stroke="#d9dce2" vectorEffect="non-scaling-stroke">
+        <g
+          vectorEffect="non-scaling-stroke"
+          style={{
+            stroke: "var(--contour, #d9dce2)",
+            transition: "stroke 0.25s linear",
+          }}
+        >
           {ISLANDS.map((isl, i) => (
             <g key={i} transform={`translate(${isl.x} ${isl.y})`}>
               <g
