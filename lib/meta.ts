@@ -180,6 +180,79 @@ export async function getSnapshotFor(
   };
 }
 
+// Split a comma-separated campaign-ids string (how it's stored on the agent
+// profile — agents can run several campaigns at once) into clean ids.
+export function parseCampaignIds(raw: string | null | undefined): string[] {
+  return (raw ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+// Verify campaign ids against Meta — returns each one's real name + status so
+// the admin can SEE the link is right when they hit Save (a bad id comes back
+// as its error message instead).
+export async function getCampaignsInfo(
+  ids: string[]
+): Promise<Array<{ id: string; name?: string; status?: string; error?: string }>> {
+  return Promise.all(
+    ids.map(async (id) => {
+      try {
+        const c = (await graph(id, { fields: "name,effective_status" })) as {
+          name?: string;
+          effective_status?: string;
+        };
+        return { id, name: c.name, status: c.effective_status };
+      } catch (e) {
+        return { id, error: e instanceof Error ? e.message : "Meta error" };
+      }
+    })
+  );
+}
+
+export interface CampaignSnapshot {
+  impressions: number;
+  clicks: number;
+  spend: number;
+  leads: number;
+  datePreset: string;
+}
+
+// Per-AGENT stats: insights for just their campaign(s) within the brand's ad
+// account — this is what feeds the customer's own dashboard numbers.
+export async function getCampaignSnapshot(
+  brandId: string,
+  campaignIds: string[],
+  datePreset = "last_30d"
+): Promise<CampaignSnapshot | null> {
+  const acc = await accountId(brandId);
+  if (!acc || campaignIds.length === 0) return null;
+
+  const insights = (await graph(`${acc}/insights`, {
+    level: "campaign",
+    fields: "impressions,clicks,spend,actions",
+    date_preset: datePreset,
+    filtering: JSON.stringify([
+      { field: "campaign.id", operator: "IN", value: campaignIds },
+    ]),
+    limit: "100",
+  })) as { data?: Array<Record<string, unknown>> };
+
+  let impressions = 0;
+  let clicks = 0;
+  let spend = 0;
+  let leads = 0;
+  for (const row of insights.data ?? []) {
+    impressions += Number(row.impressions ?? 0);
+    clicks += Number(row.clicks ?? 0);
+    spend += Number(row.spend ?? 0);
+    leads += countLeads(
+      (row.actions as Array<{ action_type: string; value: string }>) ?? []
+    );
+  }
+  return { impressions, clicks, spend, leads, datePreset };
+}
+
 // Date ranges offered in the admin. Meta's presets exclude "today", matching
 // Ads Manager's own windows.
 export const META_DATE_PRESETS = [

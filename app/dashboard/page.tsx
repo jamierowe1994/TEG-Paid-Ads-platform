@@ -89,6 +89,14 @@ export default function DashboardOverview() {
   const [leadsLoaded, setLeadsLoaded] = useState(false);
   const [openLeadId, setOpenLeadId] = useState<string | null>(null);
   const [pushingId, setPushingId] = useState<string | null>(null);
+  // The agent's OWN live Meta figures (their tagged campaigns, last 30 days).
+  // Null until the admin tags a campaign id and the brand's Meta is connected.
+  const [myMeta, setMyMeta] = useState<{
+    impressions: number;
+    clicks: number;
+    spend: number;
+    leads: number;
+  } | null>(null);
 
   async function submitFeedback() {
     const text = feedbackText.trim();
@@ -175,6 +183,14 @@ export default function DashboardOverview() {
       setLeads(ls);
       setLeadsLoaded(true);
     });
+    // The agent's own live campaign figures, once the admin has tagged their
+    // Meta campaign id(s). Quietly stays null until then.
+    fetch("/api/my/meta", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.configured && d?.snapshot) setMyMeta(d.snapshot);
+      })
+      .catch(() => {});
   }, []);
 
   // Leads bucketed into the last 6 weeks (oldest left, this week right) — the
@@ -207,15 +223,18 @@ export default function DashboardOverview() {
   ).length;
   const untouched = leads.filter((l) => l.stage === "new");
 
-  // Ad spend running total. We don't yet have live per-agent Meta spend, so
-  // this paces the monthly cap by how far through the month we are — a clear
-  // estimate of the burn, not a claimed-exact figure (labelled as such).
+  // Ad spend running total. Real Meta spend for the agent's own campaign(s)
+  // when the admin has tagged them; otherwise paced against the monthly cap
+  // by day-of-month — an estimate, labelled as such.
   const now = new Date();
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const cap = pkg?.adSpend ?? 0;
-  const spentEst = Math.min(cap, Math.round((cap / daysInMonth) * now.getDate()));
-  const spendLeft = Math.max(0, cap - spentEst);
-  const spendPct = cap > 0 ? Math.min(100, Math.round((spentEst / cap) * 100)) : 0;
+  const spendIsLive = myMeta !== null;
+  const spent = spendIsLive
+    ? Math.round(myMeta.spend)
+    : Math.min(cap, Math.round((cap / daysInMonth) * now.getDate()));
+  const spendLeft = Math.max(0, cap - spent);
+  const spendPct = cap > 0 ? Math.min(100, Math.round((spent / cap) * 100)) : 0;
 
   const openLead = openLeadId
     ? leads.find((l) => l.id === openLeadId) ?? null
@@ -231,8 +250,14 @@ export default function DashboardOverview() {
   const doneCount = campaignSteps.filter((s) => s.done).length;
 
   const stats = [
-    { label: "Impressions", value: "—" },
-    { label: "Clicks", value: "—" },
+    {
+      label: "Impressions",
+      value: myMeta ? myMeta.impressions.toLocaleString("en-GB") : "—",
+    },
+    {
+      label: "Clicks",
+      value: myMeta ? myMeta.clicks.toLocaleString("en-GB") : "—",
+    },
     { label: "Leads", value: String(leads.length) },
     { label: "Converted", value: String(converted) },
   ];
@@ -675,8 +700,12 @@ export default function DashboardOverview() {
           <div className="flex h-full flex-col justify-between">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold">Ad spend</h2>
-              <span className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
-                Est. pace
+              <span
+                className={`text-[10px] font-medium uppercase tracking-wide ${
+                  spendIsLive ? "text-green-600" : "text-gray-400"
+                }`}
+              >
+                {spendIsLive ? "● Live" : "Est. pace"}
               </span>
             </div>
             <div>
@@ -684,10 +713,12 @@ export default function DashboardOverview() {
                 className="text-4xl font-semibold tracking-tight"
                 style={{ color: brand.accent }}
               >
-                £{spentEst}
+                £{spent}
               </p>
               <p className="mt-1 text-xs text-gray-500">
-                of £{cap} this month
+                {spendIsLive
+                  ? `of £${cap} · last 30 days`
+                  : `of £${cap} this month`}
               </p>
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/5">
                 <div

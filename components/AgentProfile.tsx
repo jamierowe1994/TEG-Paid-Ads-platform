@@ -50,6 +50,12 @@ export default function AgentProfile({
   const [addingLead, setAddingLead] = useState(false);
   const [addLeadResult, setAddLeadResult] = useState<string | null>(null);
   const [addLeadError, setAddLeadError] = useState<string | null>(null);
+  const [campaignsInput, setCampaignsInput] = useState(agent.metaCampaignId ?? "");
+  const [savingCampaigns, setSavingCampaigns] = useState(false);
+  const [campaignsChecked, setCampaignsChecked] = useState<
+    Array<{ id: string; name?: string; status?: string; error?: string }>
+  >([]);
+  const [campaignsError, setCampaignsError] = useState<string | null>(null);
   const brand = brandById(agent.brandId);
   const pkg = packageById(agent.packageId);
   const rate =
@@ -186,13 +192,50 @@ export default function AgentProfile({
     onLeadsImported?.();
   }
 
+  // Save the campaign id(s), then verify them against Meta itself — so "did
+  // it actually save AND point at a real campaign" is answered in one click.
+  async function saveCampaigns() {
+    setSavingCampaigns(true);
+    setCampaignsChecked([]);
+    setCampaignsError(null);
+    const saved = await patch({ metaCampaignId: campaignsInput });
+    if (!saved) {
+      setSavingCampaigns(false);
+      setCampaignsError("Couldn't save — please try again.");
+      return;
+    }
+    if (!campaignsInput.trim()) {
+      // Cleared the field — saved, nothing to verify.
+      setSavingCampaigns(false);
+      setCampaignsChecked([]);
+      return;
+    }
+    const res = await fetch("/api/admin/meta/campaign-check", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${adminPassword}`,
+      },
+      body: JSON.stringify({ campaignIds: campaignsInput }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setSavingCampaigns(false);
+    if (!res.ok) {
+      setCampaignsError(
+        `Saved, but couldn't verify with Meta: ${data.error ?? "try again"}`
+      );
+      return;
+    }
+    setCampaignsChecked(data.campaigns ?? []);
+  }
+
   return (
     <div
-      className="fixed inset-0 z-50 flex justify-end bg-gray-900/40 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 p-4 backdrop-blur-sm sm:p-8"
       onClick={onClose}
     >
       <div
-        className="h-full w-full max-w-lg overflow-y-auto bg-white p-6 shadow-2xl"
+        className="modal-pop max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl sm:p-8"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -223,6 +266,10 @@ export default function AgentProfile({
           </button>
         </div>
 
+        {/* Two columns on the big modal: pipeline/tools left, campaign +
+            detail right. Stacks back to one column on smaller screens. */}
+        <div className="mt-2 grid items-start gap-x-6 lg:grid-cols-2">
+        <div>
         {/* Onboarding stage — click to move */}
         <div className="mt-6 rounded-2xl border border-gray-200 p-5">
           <div className="flex items-center justify-between">
@@ -353,25 +400,65 @@ export default function AgentProfile({
             <p className="mt-2.5 text-sm text-red-600">{addLeadError}</p>
           )}
         </div>
+        </div>
 
+        <div>
         {/* Meta campaigns — the main thing once ads are LIVE. Supports several
             at once (comma-separated), since agents can run multiple campaigns. */}
         {agent.onboardingStage === "live" && (
-          <div className="mt-4 rounded-2xl border-2 border-gray-900 p-4">
+          <div className="mt-6 rounded-2xl border-2 border-gray-900 p-4">
             <p className="text-sm font-semibold">Meta campaigns</p>
             <p className="mt-0.5 text-xs text-gray-400">
               Tag the campaign ID(s) this agent's ads run under — comma-separate
-              if they have more than one.
+              if they have more than one. Save verifies them against Meta and
+              switches their dashboard to live figures.
             </p>
-            <input
-              defaultValue={agent.metaCampaignId ?? ""}
-              placeholder="e.g. 1201234567890, 1209876543210"
-              onBlur={(e) => {
-                if (e.target.value !== (agent.metaCampaignId ?? ""))
-                  patch({ metaCampaignId: e.target.value });
-              }}
-              className="mt-3 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gray-900"
-            />
+            <div className="mt-3 flex gap-2">
+              <input
+                value={campaignsInput}
+                onChange={(e) => setCampaignsInput(e.target.value)}
+                placeholder="e.g. 1201234567890, 1209876543210"
+                className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gray-900"
+              />
+              <button
+                onClick={saveCampaigns}
+                disabled={savingCampaigns}
+                className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+              >
+                {savingCampaigns ? "Checking…" : "Save"}
+              </button>
+            </div>
+            {campaignsChecked.length > 0 && (
+              <ul className="mt-3 space-y-1.5">
+                {campaignsChecked.map((c) => (
+                  <li
+                    key={c.id}
+                    className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
+                      c.error
+                        ? "bg-red-50 text-red-700"
+                        : "bg-green-50 text-green-800"
+                    }`}
+                  >
+                    {c.error ? (
+                      <>
+                        ✕ <span className="font-mono text-xs">{c.id}</span> —{" "}
+                        {c.error}
+                      </>
+                    ) : (
+                      <>
+                        ✓ <span className="font-medium">{c.name}</span>
+                        <span className="ml-auto text-xs opacity-70">
+                          {c.status}
+                        </span>
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {campaignsError && (
+              <p className="mt-2.5 text-sm text-red-600">{campaignsError}</p>
+            )}
           </div>
         )}
 
@@ -500,28 +587,7 @@ export default function AgentProfile({
             onSave={(v) => patch({ rexUserId: v })}
           />
         </div>
-
-        {/* Reset password */}
-        <div className="mt-6 rounded-2xl border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Password</p>
-              <p className="text-xs text-gray-400">
-                Issue a temporary password if they're locked out.
-              </p>
-            </div>
-            <button
-              onClick={resetPassword}
-              className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
-            >
-              Reset password
-            </button>
-          </div>
-          {reset && (
-            <div className="mt-3 rounded-lg bg-gray-50 p-3 text-center font-mono text-sm font-semibold">
-              {reset}
-            </div>
-          )}
+        </div>
         </div>
 
         {/* Notes */}
@@ -565,6 +631,30 @@ export default function AgentProfile({
               <li className="text-sm text-gray-400">No notes yet.</li>
             )}
           </ol>
+        </div>
+
+        {/* Reset password — deliberately last, and red: it's the one action
+            here you don't want hit by accident. */}
+        <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-red-700">Password</p>
+              <p className="text-xs text-red-400">
+                Issue a temporary password if they&apos;re locked out.
+              </p>
+            </div>
+            <button
+              onClick={resetPassword}
+              className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100"
+            >
+              Reset password
+            </button>
+          </div>
+          {reset && (
+            <div className="mt-3 rounded-lg bg-white p-3 text-center font-mono text-sm font-semibold">
+              {reset}
+            </div>
+          )}
         </div>
       </div>
     </div>
