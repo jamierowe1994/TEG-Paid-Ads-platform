@@ -169,6 +169,46 @@ export async function rexDescribeModel(
   return res.result;
 }
 
+// Direct API search for contacts by name — bypasses whatever the Rex web
+// UI's search box does under the hood, so we can confirm ground truth on
+// whether a pushed contact actually exists and what it actually contains.
+export async function rexSearchContactsByName(
+  name: string,
+  brandId: string
+): Promise<unknown> {
+  const accountId = rexAccountForBrand(brandId);
+  const res = await rexCall(
+    "Contacts/search",
+    {
+      criteria: [["contact.name_full", "~", name]],
+      limit: 10,
+      extra_fields: ["related.contact_names", "related.contact_emails", "related.contact_phones"],
+    },
+    accountId
+  );
+  if (!res.ok) throw new Error(res.error ?? "Rex search failed");
+  return res.result;
+}
+
+// Most recently created contacts (no name filter) — useful when a name
+// search comes back empty, to see what Rex actually has regardless of
+// whether our guess at the search field/operator was right.
+export async function rexRecentContacts(brandId: string): Promise<unknown> {
+  const accountId = rexAccountForBrand(brandId);
+  const res = await rexCall(
+    "Contacts/search",
+    {
+      criteria: [],
+      limit: 10,
+      order_by: [{ field: "system_ctime", direction: "desc" }],
+      extra_fields: ["related.contact_names", "related.contact_emails", "related.contact_phones"],
+    },
+    accountId
+  );
+  if (!res.ok) throw new Error(res.error ?? "Rex recent-contacts search failed");
+  return res.result;
+}
+
 // ── Contacts ──────────────────────────────────────────────────────────────
 
 // Split a full name into Rex's first/last. Rex contacts also expose a single

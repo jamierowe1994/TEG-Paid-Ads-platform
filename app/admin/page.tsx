@@ -293,6 +293,10 @@ export default function AdminPage() {
     Array<{ id: string; receivedAt: string; body: unknown }>
   >([]);
   const [rexWebhookLoading, setRexWebhookLoading] = useState(false);
+  const [rexSearchName, setRexSearchName] = useState("");
+  const [rexSearching, setRexSearching] = useState(false);
+  const [rexSearchResult, setRexSearchResult] = useState("");
+  const [rexSearchError, setRexSearchError] = useState("");
   const [metaPreset, setMetaPreset] = useState<string>("last_30d");
   const [drillBrand, setDrillBrand] = useState<string | null>(null);
   const [activity, setActivity] = useState<ActivityData | null>(null);
@@ -409,6 +413,30 @@ export default function AdminPage() {
     const data = await res.json().catch(() => ({}));
     setRexWebhookLoading(false);
     setRexWebhookEvents(data.events ?? []);
+  }
+
+  // Ground-truth search against Rex's own API — bypasses whatever the Rex
+  // web UI's search box does, to confirm whether a pushed contact actually
+  // exists. Blank name lists the most recently created contacts instead.
+  async function searchRexContacts() {
+    setRexSearching(true);
+    setRexSearchResult("");
+    setRexSearchError("");
+    const res = await fetch("/api/admin/rex/search", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${password}`,
+      },
+      body: JSON.stringify({ name: rexSearchName.trim(), brandId: "property" }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setRexSearching(false);
+    if (!res.ok || !data.ok) {
+      setRexSearchError(data.error ?? "Search failed");
+      return;
+    }
+    setRexSearchResult(JSON.stringify(data.result, null, 2));
   }
 
   // Save a brand's Meta ad account + page (Option B — no redeploy) and refresh.
@@ -1991,6 +2019,41 @@ export default function AdminPage() {
                     {rexDescribeResult}
                   </pre>
                 )}
+
+                {/* Search — ground truth for "did this contact actually land"
+                    without relying on Rex's own web UI search */}
+                <div className="mt-4 border-t border-gray-100 pt-4">
+                  <p className="text-sm font-semibold">Find a contact</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Searches Rex's API directly — bypasses whatever the Rex
+                    web UI's search box does, so we can confirm a pushed
+                    contact actually exists.
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <input
+                      value={rexSearchName}
+                      onChange={(e) => setRexSearchName(e.target.value)}
+                      placeholder="Name (blank = 10 most recent)"
+                      className="w-56 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs outline-none focus:border-gray-900"
+                      onKeyDown={(e) => e.key === "Enter" && searchRexContacts()}
+                    />
+                    <button
+                      onClick={searchRexContacts}
+                      disabled={rexSearching || !rex?.ok}
+                      className="rounded-lg border border-gray-200 px-3.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                    >
+                      {rexSearching ? "Searching…" : "Search"}
+                    </button>
+                  </div>
+                  {rexSearchError && (
+                    <p className="mt-3 text-sm text-red-600">{rexSearchError}</p>
+                  )}
+                  {rexSearchResult && (
+                    <pre className="mt-3 max-h-80 overflow-auto rounded-xl bg-gray-900 p-3.5 text-[11px] leading-relaxed text-green-300">
+                      {rexSearchResult}
+                    </pre>
+                  )}
+                </div>
 
                 {/* Webhook — tracks a lead's downstream progress inside Rex
                     (Appraisal booked, sale won, etc.) so referrals can mirror it */}
