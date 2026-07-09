@@ -7,13 +7,19 @@ import {
   fetchLeads,
   approveCampaign,
   sendCampaignFeedback,
+  moveLeadStage,
+  pushLeadToCrm,
+  addLeadNote,
+  bookLeadAppointment,
+  cancelLeadAppointment,
 } from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
 import { getPreviewBrandId, getPreviewAccent } from "@/lib/preview";
 import { packageById } from "@/lib/packages";
 import { ONBOARDING_STAGES, stageIndex } from "@/lib/onboarding";
 import Confetti from "@/components/Confetti";
-import type { UserProfile, Lead } from "@/lib/types";
+import { LeadModal } from "@/app/dashboard/leads/lead-modal";
+import type { UserProfile, Lead, LeadStage } from "@/lib/types";
 
 // A brief + typical timescale for each onboarding stage — shown when a step
 // is expanded on the sign-up tracker.
@@ -82,6 +88,8 @@ export default function DashboardOverview() {
   const [hoverLead, setHoverLead] = useState<string | null>(null);
   const [openWeek, setOpenWeek] = useState<number | null>(null);
   const [leadsLoaded, setLeadsLoaded] = useState(false);
+  const [openLeadId, setOpenLeadId] = useState<string | null>(null);
+  const [pushingId, setPushingId] = useState<string | null>(null);
 
   async function approve() {
     if (approving) return;
@@ -100,6 +108,60 @@ export default function DashboardOverview() {
       setReviewStatus("Sent to the team ✓");
       setTimeout(() => setReviewStatus(""), 3000);
     }
+  }
+
+  // Lead actions for the pop-out modal (mirrors the leads page, keeping the
+  // overview's own leads state in sync).
+  function overviewStage(leadId: string, stage: LeadStage) {
+    setLeads((prev) =>
+      prev.map((l) =>
+        l.id === leadId
+          ? {
+              ...l,
+              stage,
+              history: [...l.history, { stage, at: new Date().toISOString() }],
+            }
+          : l
+      )
+    );
+    moveLeadStage(leadId, stage);
+  }
+  async function overviewAddNote(leadId: string, text: string) {
+    const updated = await addLeadNote(leadId, text);
+    if (updated) setLeads((prev) => prev.map((l) => (l.id === leadId ? updated : l)));
+  }
+  async function overviewBook(leadId: string, at: string) {
+    const updated = await bookLeadAppointment(leadId, at);
+    if (updated) setLeads((prev) => prev.map((l) => (l.id === leadId ? updated : l)));
+  }
+  async function overviewCancel(leadId: string) {
+    const updated = await cancelLeadAppointment(leadId);
+    if (updated) setLeads((prev) => prev.map((l) => (l.id === leadId ? updated : l)));
+  }
+  async function overviewPush(lead: Lead) {
+    if (!brand) return;
+    if (brand.crmName !== "Atlas") {
+      overviewStage(lead.id, "pushed");
+      return;
+    }
+    setPushingId(lead.id);
+    const res = await pushLeadToCrm(lead.id);
+    setPushingId(null);
+    if (res.ok)
+      setLeads((prev) =>
+        prev.map((l) =>
+          l.id === lead.id
+            ? {
+                ...l,
+                stage: "pushed" as LeadStage,
+                history: [
+                  ...l.history,
+                  { stage: "pushed" as LeadStage, at: new Date().toISOString() },
+                ],
+              }
+            : l
+        )
+      );
   }
 
   useEffect(() => {
@@ -146,6 +208,9 @@ export default function DashboardOverview() {
   ).length;
   const untouched = leads.filter((l) => l.stage === "new");
   const convRate = leads.length ? Math.round((converted / leads.length) * 100) : 0;
+  const openLead = openLeadId
+    ? leads.find((l) => l.id === openLeadId) ?? null
+    : null;
 
   const curStage = stageIndex(user.onboardingStage);
   const isLive = user.onboardingStage === "live";
@@ -370,13 +435,13 @@ export default function DashboardOverview() {
               <p className="text-xs text-gray-500">leads to action</p>
               <div className="mt-auto space-y-1">
                 {untouched.slice(0, 2).map((l) => (
-                  <Link
+                  <button
                     key={l.id}
-                    href={`/dashboard/leads?lead=${l.id}`}
-                    className="block truncate text-xs font-medium text-gray-600 hover:text-gray-900"
+                    onClick={() => setOpenLeadId(l.id)}
+                    className="block truncate text-left text-xs font-medium text-gray-600 hover:text-gray-900"
                   >
                     {l.name}
-                  </Link>
+                  </button>
                 ))}
               </div>
             </div>
@@ -401,12 +466,12 @@ export default function DashboardOverview() {
                 const dim = hoverLead !== null && hoverLead !== lead.id;
                 const active = hoverLead === lead.id;
                 return (
-                  <Link
+                  <button
                     key={lead.id}
-                    href={`/dashboard/leads?lead=${lead.id}`}
+                    onClick={() => setOpenLeadId(lead.id)}
                     onMouseEnter={() => setHoverLead(lead.id)}
                     onMouseLeave={() => setHoverLead(null)}
-                    className={`-mx-2 block rounded-lg px-2 py-1 transition duration-200 ${
+                    className={`-mx-2 block w-full rounded-lg px-2 py-1 text-left transition duration-200 ${
                       dim ? "opacity-40 blur-[1.5px]" : "opacity-100 blur-0"
                     } ${active ? "scale-[1.04] bg-white/50" : ""}`}
                   >
@@ -416,7 +481,7 @@ export default function DashboardOverview() {
                         ? brand.conversionLabel
                         : `via ${lead.source}`}
                     </p>
-                  </Link>
+                  </button>
                 );
               })}
               {leads.length === 0 && (
@@ -682,13 +747,13 @@ export default function DashboardOverview() {
               ) : (
                 <div className="flex max-h-14 flex-wrap gap-1.5 overflow-y-auto">
                   {weeklyBuckets[openWeek].map((l) => (
-                    <Link
+                    <button
                       key={l.id}
-                      href={`/dashboard/leads?lead=${l.id}`}
+                      onClick={() => setOpenLeadId(l.id)}
                       className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-medium text-gray-700 transition hover:bg-white"
                     >
                       {l.name}
-                    </Link>
+                    </button>
                   ))}
                 </div>
               )}
@@ -696,6 +761,21 @@ export default function DashboardOverview() {
           )}
         </div>
       </section>
+
+      {/* Lead pop-out — same rich modal as the leads page, right here */}
+      {openLead && (
+        <LeadModal
+          lead={openLead}
+          brand={brand}
+          pushing={pushingId === openLead.id}
+          onClose={() => setOpenLeadId(null)}
+          onStage={(s) => overviewStage(openLead.id, s)}
+          onPush={() => overviewPush(openLead)}
+          onAddNote={(text) => overviewAddNote(openLead.id, text)}
+          onBook={(at) => overviewBook(openLead.id, at)}
+          onCancelBooking={() => overviewCancel(openLead.id)}
+        />
+      )}
     </div>
   );
 }

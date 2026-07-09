@@ -423,7 +423,6 @@ function ReferForm({
   const [leadPhone, setLeadPhone] = useState("");
   const [leadEmail, setLeadEmail] = useState("");
   const [note, setNote] = useState("");
-  const [feeAmount, setFeeAmount] = useState(String(toBrand.referralFee));
   const [dueDate, setDueDate] = useState("");
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
@@ -441,7 +440,8 @@ function ReferForm({
       leadPhone: leadPhone.trim(),
       leadEmail: leadEmail.trim(),
       note: note.trim(),
-      feeAmount: Number(feeAmount) || 0,
+      // The fee is fixed by the brand — agents can't set their own.
+      feeAmount: toBrand.referralFee,
       dueDate: dueDate || null,
     });
     setSending(false);
@@ -501,25 +501,14 @@ function ReferForm({
               />
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Referral fee (£)">
-              <input
-                type="number"
-                min={0}
-                className={inputCls}
-                value={feeAmount}
-                onChange={(e) => setFeeAmount(e.target.value)}
-              />
-            </Field>
-            <Field label="Expected close">
-              <input
-                type="date"
-                className={inputCls}
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-              />
-            </Field>
-          </div>
+          <Field label="Expected close (optional)">
+            <input
+              type="date"
+              className={inputCls}
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+            />
+          </Field>
           <Field label="Note (optional)">
             <textarea
               className={`${inputCls} resize-none`}
