@@ -14,10 +14,12 @@ import { ONBOARDING_STAGES, stageIndex } from "@/lib/onboarding";
 import Confetti from "@/components/Confetti";
 import type { UserProfile, Lead } from "@/lib/types";
 
-const CARD =
-  "rounded-2xl border border-gray-200/70 bg-white/70 backdrop-blur-xl shadow-sm";
+// A random property photo for the "Current ad" tile (falls back to a brand
+// gradient if it can't load).
+const AD_PHOTO =
+  "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=70";
 
-// Stat-tile icons (stroke SVGs) keyed by label.
+// Stat-row icons (stroke SVGs) keyed by label.
 const STAT_ICON: Record<string, string> = {
   Impressions: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z",
   Clicks: "M3 3l7 17 2.5-7.5L20 10z",
@@ -25,6 +27,18 @@ const STAT_ICON: Record<string, string> = {
     "M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4z",
   Converted: "M20 6L9 17l-5-5",
 };
+
+// Translucent "glaze" tile — barely see-through with a soft brand-colour fade
+// in the top-right so the page background reads through it.
+function glaze(accent: string) {
+  return {
+    className:
+      "relative overflow-hidden rounded-3xl border border-white/60 backdrop-blur-xl shadow-[0_12px_36px_-18px_rgba(0,0,0,0.22)]",
+    style: {
+      background: `linear-gradient(155deg, rgba(255,255,255,0.62), rgba(255,255,255,0.26)), radial-gradient(130% 110% at 100% 0%, ${accent}26, transparent 55%)`,
+    } as React.CSSProperties,
+  };
+}
 
 export default function DashboardOverview() {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -61,7 +75,6 @@ export default function DashboardOverview() {
     fetchLeads().then(setLeads);
   }, []);
 
-  // Leads bucketed into the last 6 weeks (oldest left, this week right).
   const weekly = useMemo(() => {
     const WEEKS = 6;
     const WEEK = 7 * 24 * 3600 * 1000;
@@ -74,8 +87,6 @@ export default function DashboardOverview() {
     return buckets;
   }, [leads]);
 
-  // Most-run ad (from lead sources) — stands in as "current ad" until Meta
-  // feeds per-agent ad data.
   const topAd = useMemo(() => {
     const counts = new Map<string, number>();
     for (const l of leads)
@@ -90,8 +101,8 @@ export default function DashboardOverview() {
     (l) => l.stage === "converted" || l.stage === "pushed"
   ).length;
   const untouched = leads.filter((l) => l.stage === "new");
+  const convRate = leads.length ? Math.round((converted / leads.length) * 100) : 0;
 
-  // Timeline driven by the admin-set onboarding stage.
   const curStage = stageIndex(user.onboardingStage);
   const isLive = user.onboardingStage === "live";
   const campaignSteps = ONBOARDING_STAGES.map((s, i) => ({
@@ -102,73 +113,64 @@ export default function DashboardOverview() {
   const doneCount = campaignSteps.filter((s) => s.done).length;
 
   const stats = [
-    { label: "Impressions", value: "—", note: "Live once ads launch" },
-    { label: "Clicks", value: "—", note: "Live once ads launch" },
-    { label: "Leads", value: String(leads.length), note: "All time" },
-    { label: "Converted", value: String(converted), note: brand.conversionLabel },
+    { label: "Impressions", value: "—" },
+    { label: "Clicks", value: "—" },
+    { label: "Leads", value: String(leads.length) },
+    { label: "Converted", value: String(converted) },
   ];
 
-  const isReview =
-    user.onboardingStage === "review" && !user.campaignApproved;
+  const isReview = user.onboardingStage === "review" && !user.campaignApproved;
   const maxWeek = Math.max(1, ...weekly);
+  const g = glaze(brand.accent);
 
   return (
     <div className="w-full">
-      {/* Greeting — left aligned */}
-      <p className="text-sm text-gray-400">
-        {new Date().toLocaleDateString("en-GB", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-        })}
-      </p>
-      <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-        Morning, {user.name.split(" ")[0]} 👋
-      </h1>
+      {/* Header: greeting left, stats stripped down and pushed right */}
+      <div className="flex flex-wrap items-end justify-between gap-6">
+        <div>
+          <p className="text-sm text-gray-400">
+            {new Date().toLocaleDateString("en-GB", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+            })}
+          </p>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight">
+            Morning, {user.name.split(" ")[0]} 👋
+          </h1>
+        </div>
 
-      {/* Stat tiles — icon left, big number, label under */}
-      <section className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {stats.map((s) => (
-          <div key={s.label} className={`${CARD} p-5`}>
-            <div className="flex items-center gap-3">
-              <span
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-                style={{ backgroundColor: brand.accentSoft }}
+        <div className="flex items-end gap-7 sm:gap-9">
+          {stats.map((s) => (
+            <div key={s.label} className="flex items-center gap-2.5">
+              <svg
+                className="h-5 w-5 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.8}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                viewBox="0 0 24 24"
+                style={{ color: brand.accent }}
               >
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.8}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  viewBox="0 0 24 24"
-                  style={{ color: brand.accent }}
-                >
-                  <path d={STAT_ICON[s.label]} />
-                  {s.label === "Impressions" && (
-                    <circle cx="12" cy="12" r="3" />
-                  )}
-                </svg>
-              </span>
+                <path d={STAT_ICON[s.label]} />
+                {s.label === "Impressions" && <circle cx="12" cy="12" r="3" />}
+              </svg>
               <div>
                 <p className="text-3xl font-semibold leading-none tracking-tight">
                   {s.value}
                 </p>
-                <p className="mt-1.5 text-xs font-medium text-gray-500">
-                  {s.label}
-                </p>
+                <p className="mt-1 text-xs text-gray-500">{s.label}</p>
               </div>
             </div>
-            <p className="mt-3 text-[11px] text-gray-400">{s.note}</p>
-          </div>
-        ))}
-      </section>
+          ))}
+        </div>
+      </div>
 
       {/* Review & approve — surfaced full-width only while awaiting sign-off */}
       {isReview && (
         <section
-          className="mt-4 rounded-2xl border-2 bg-white/70 p-6 backdrop-blur-xl"
+          className="mt-6 rounded-3xl border-2 bg-white/70 p-6 backdrop-blur-xl"
           style={{ borderColor: `${brand.accent}55` }}
         >
           {(user.campaignAssets ?? []).length > 0 && (
@@ -244,16 +246,116 @@ export default function DashboardOverview() {
         </section>
       )}
 
-      {/* Bento grid */}
-      <section className="mt-4 grid gap-4 lg:grid-cols-3">
-        {/* Campaign — onboarding task list (dark card) */}
-        <div className="relative overflow-hidden rounded-2xl bg-gray-900 p-6 text-white shadow-sm">
+      {/* Bento — square glaze tiles, Onboarding Tracker spans both rows */}
+      <section className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Current ad — photo, top-left */}
+        <div
+          className="relative aspect-square overflow-hidden rounded-3xl border border-white/60 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.22)]"
+          style={{
+            background: `linear-gradient(135deg, ${brand.accent}, ${brand.accent}aa)`,
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={AD_PHOTO}
+            alt="Current ad"
+            className="absolute inset-0 h-full w-full object-cover"
+            onError={(e) => (e.currentTarget.style.display = "none")}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 p-5 text-white">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-white/70">
+              Current ad
+            </p>
+            <p className="mt-1 truncate font-semibold">
+              {topAd ?? "In production"}
+            </p>
+            <p className="text-xs text-white/70">
+              £{pkg?.adSpend?.toLocaleString("en-GB")}/mo
+            </p>
+          </div>
+        </div>
+
+        {/* Leads uncontacted */}
+        <div className={`${g.className} aspect-square p-5`} style={g.style}>
+          <div className="flex h-full flex-col">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold">Uncontacted</h2>
+              <span
+                className="rounded-full px-2 py-0.5 text-[11px] font-semibold text-white"
+                style={{ backgroundColor: brand.accent }}
+              >
+                {untouched.length}
+              </span>
+            </div>
+            <p className="mt-3 text-5xl font-semibold tracking-tight">
+              {untouched.length}
+            </p>
+            <p className="text-xs text-gray-500">leads to action</p>
+            <div className="mt-auto space-y-1">
+              {untouched.slice(0, 2).map((l) => (
+                <Link
+                  key={l.id}
+                  href={`/dashboard/leads?lead=${l.id}`}
+                  className="block truncate text-xs font-medium text-gray-600 hover:text-gray-900"
+                >
+                  {l.name}
+                </Link>
+              ))}
+              {untouched.length === 0 && (
+                <p className="text-xs text-gray-400">All caught up 🎉</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Recent leads */}
+        <div className={`${g.className} aspect-square p-5`} style={g.style}>
+          <div className="flex h-full flex-col">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold">Recent leads</h2>
+              <Link
+                href="/dashboard/leads"
+                className="text-xs font-medium hover:underline"
+                style={{ color: brand.accent }}
+              >
+                All →
+              </Link>
+            </div>
+            <div className="mt-3 flex-1 space-y-2.5 overflow-hidden">
+              {leads.slice(0, 3).map((lead) => (
+                <Link
+                  key={lead.id}
+                  href={`/dashboard/leads?lead=${lead.id}`}
+                  className="block"
+                >
+                  <p className="truncate text-sm font-medium">{lead.name}</p>
+                  <p className="truncate text-[11px] capitalize text-gray-400">
+                    {lead.stage === "converted" || lead.stage === "pushed"
+                      ? brand.conversionLabel
+                      : `via ${lead.source}`}
+                  </p>
+                </Link>
+              ))}
+              {leads.length === 0 && (
+                <p className="text-xs text-gray-400">
+                  Leads appear here once ads are live.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Onboarding Tracker — dark, spans both rows on the right */}
+        <div
+          className="relative overflow-hidden rounded-3xl bg-gray-900 p-6 text-white shadow-[0_12px_36px_-18px_rgba(0,0,0,0.3)] lg:col-start-4 lg:row-span-2 lg:row-start-1"
+        >
           <Confetti fire={isLive} />
           <div className="flex items-start justify-between">
             <div>
-              <h2 className="font-semibold">Your campaign</h2>
+              <h2 className="font-semibold">Onboarding tracker</h2>
               <p className="mt-0.5 text-xs text-white/50">
-                {pkg?.name} package · £{pkg?.adSpend}/mo cap
+                {pkg?.name} package · £{pkg?.adSpend}/mo
               </p>
             </div>
             <span
@@ -261,7 +363,7 @@ export default function DashboardOverview() {
               style={
                 isLive
                   ? { backgroundColor: "#DCFCE7", color: "#15803D" }
-                  : { backgroundColor: `${brand.accent}`, color: "white" }
+                  : { backgroundColor: brand.accent, color: "white" }
               }
             >
               {isLive
@@ -272,16 +374,16 @@ export default function DashboardOverview() {
             </span>
           </div>
 
-          <ol className="mt-5 space-y-1.5">
+          <ol className="mt-6 space-y-2">
             {campaignSteps.map((step, i) => (
               <li
                 key={step.label}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ${
+                className={`flex items-center gap-3 rounded-xl px-3 py-3 ${
                   step.current ? "bg-white/10" : ""
                 }`}
               >
                 <span
-                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
                     step.done ? "text-white" : "text-white/50"
                   }`}
                   style={
@@ -310,7 +412,7 @@ export default function DashboardOverview() {
                     className="ml-auto text-[11px] font-medium"
                     style={{ color: brand.accent }}
                   >
-                    In progress
+                    Now
                   </span>
                 )}
               </li>
@@ -320,15 +422,37 @@ export default function DashboardOverview() {
           {!isLive && (
             <Link
               href="/dashboard/grow"
-              className="mt-4 inline-block text-xs font-medium text-white/60 hover:text-white"
+              className="mt-5 inline-block text-xs font-medium text-white/60 hover:text-white"
             >
               Increase your ad spend →
             </Link>
           )}
         </div>
 
-        {/* Leads per week — mini bar chart */}
-        <div className={`${CARD} p-6 lg:col-span-2`}>
+        {/* Conversion rate — extra metric, bottom-left */}
+        <div className={`${g.className} aspect-square p-5`} style={g.style}>
+          <div className="flex h-full flex-col justify-between">
+            <h2 className="text-sm font-semibold">Conversion rate</h2>
+            <div>
+              <p
+                className="text-5xl font-semibold tracking-tight"
+                style={{ color: brand.accent }}
+              >
+                {convRate}%
+              </p>
+              <p className="mt-1 text-xs text-gray-500">
+                {converted} of {leads.length} lead{leads.length === 1 ? "" : "s"}{" "}
+                {brand.conversionLabel.toLowerCase()}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Leads per week — wide, second row */}
+        <div
+          className={`${g.className} p-6 sm:col-span-2`}
+          style={g.style}
+        >
           <div className="flex items-center justify-between">
             <div>
               <h2 className="font-semibold">Leads per week</h2>
@@ -341,7 +465,7 @@ export default function DashboardOverview() {
               </span>
             </p>
           </div>
-          <div className="mt-6 flex h-40 gap-3">
+          <div className="mt-5 flex h-28 gap-3">
             {weekly.map((n, i) => {
               const last = i === weekly.length - 1;
               return (
@@ -351,18 +475,20 @@ export default function DashboardOverview() {
                 >
                   <div className="flex w-full flex-1 items-end">
                     <div
-                      className="group relative w-full rounded-lg transition-all"
+                      className="relative w-full rounded-lg transition-all"
                       style={{
                         height: `${Math.max(4, (n / maxWeek) * 100)}%`,
-                        backgroundColor: last ? brand.accent : brand.accentSoft,
+                        backgroundColor: last
+                          ? brand.accent
+                          : `${brand.accent}33`,
                       }}
                       title={`${n} lead${n === 1 ? "" : "s"}`}
                     >
                       <span
                         className={`absolute -top-5 left-1/2 -translate-x-1/2 text-[11px] font-semibold ${
                           n === 0 ? "hidden" : ""
-                        } ${last ? "" : "text-gray-500"}`}
-                        style={last ? { color: brand.accent } : undefined}
+                        }`}
+                        style={{ color: last ? brand.accent : "#9ca3af" }}
                       >
                         {n}
                       </span>
@@ -374,98 +500,6 @@ export default function DashboardOverview() {
                 </div>
               );
             })}
-          </div>
-        </div>
-
-        {/* Current ad + spend */}
-        <div className={`${CARD} p-6`}>
-          <h2 className="font-semibold">Current ad</h2>
-          <p className="mt-3 truncate text-sm font-medium text-gray-800">
-            {topAd ?? "In production"}
-          </p>
-          <p className="text-xs text-gray-400">
-            {topAd ? "Your best-running ad" : "Creatives being built"}
-          </p>
-          <div className="mt-5 rounded-xl bg-gray-50 p-4">
-            <p className="text-xs text-gray-400">Monthly ad spend</p>
-            <p className="mt-1 text-2xl font-semibold tracking-tight">
-              £{pkg?.adSpend?.toLocaleString("en-GB")}
-            </p>
-            <p className="mt-1 text-[11px] text-gray-400">
-              Live spend appears once Meta is linked
-            </p>
-          </div>
-        </div>
-
-        {/* Untouched / active clients */}
-        <div className={`${CARD} p-6`}>
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold">Untouched leads</h2>
-            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-              {untouched.length}
-            </span>
-          </div>
-          <div className="mt-4 space-y-2">
-            {untouched.slice(0, 4).map((l) => (
-              <Link
-                key={l.id}
-                href={`/dashboard/leads?lead=${l.id}`}
-                className="flex items-center justify-between rounded-xl px-3 py-2 transition hover:bg-gray-50"
-              >
-                <span className="truncate text-sm font-medium text-gray-800">
-                  {l.name}
-                </span>
-                <span className="ml-2 shrink-0 text-xs capitalize text-gray-400">
-                  {l.source}
-                </span>
-              </Link>
-            ))}
-            {untouched.length === 0 && (
-              <p className="py-6 text-center text-sm text-gray-400">
-                Every lead&apos;s been actioned. 🎉
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Recent leads */}
-        <div className={`${CARD} p-6`}>
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold">Recent leads</h2>
-            <Link
-              href="/dashboard/leads"
-              className="text-sm font-medium hover:underline"
-              style={{ color: brand.accent }}
-            >
-              View all →
-            </Link>
-          </div>
-          <div className="mt-4 divide-y divide-gray-100">
-            {leads.slice(0, 4).map((lead) => (
-              <Link
-                key={lead.id}
-                href={`/dashboard/leads?lead=${lead.id}`}
-                className="flex items-center justify-between py-2.5"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{lead.name}</p>
-                  <p className="text-xs text-gray-400">
-                    via {lead.source} ·{" "}
-                    {new Date(lead.receivedAt).toLocaleDateString("en-GB")}
-                  </p>
-                </div>
-                <span className="ml-2 shrink-0 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium capitalize text-gray-600">
-                  {lead.stage === "converted" || lead.stage === "pushed"
-                    ? brand.conversionLabel
-                    : lead.stage.replace("attempt", "Attempt ")}
-                </span>
-              </Link>
-            ))}
-            {leads.length === 0 && (
-              <p className="py-6 text-center text-sm text-gray-400">
-                Leads will appear here once your ads are live.
-              </p>
-            )}
           </div>
         </div>
       </section>
