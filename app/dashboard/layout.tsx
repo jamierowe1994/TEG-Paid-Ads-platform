@@ -17,7 +17,7 @@ import type { UserProfile, Lead, Referral } from "@/lib/types";
 // Toast copy when the admin advances a customer's campaign stage.
 const STAGE_TOAST: Record<string, string> = {
   creatives: "We've started building your ad creatives 🎨",
-  review: "Your creative designs are ready — take a look and approve 👀",
+  review: "Your creative designs are ready — take a look 👀",
   live: "🎉 Your ads are live!",
 };
 

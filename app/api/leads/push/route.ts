@@ -4,7 +4,7 @@ import { getLead, updateLeadStage, setLeadRexIds } from "@/lib/leads-store";
 import { syncReferralFromLead } from "@/lib/referrals-store";
 import { findById } from "@/lib/users-store";
 import { pushLeadToAtlas, atlasConfigured } from "@/lib/atlas";
-import { pushLeadToRex, rexConfigured } from "@/lib/rex";
+import { pushLeadToRex, rexConfigured, rexFindUserIdByEmail } from "@/lib/rex";
 
 // Brands whose CRM is Rex (rexsoftware.com) — the rest either use Atlas
 // (recruitment) or don't have a CRM push wired up yet.
@@ -78,8 +78,14 @@ export async function POST(req: NextRequest) {
       );
     }
     try {
+      // Who owns this in Rex: an explicit admin-set id wins, otherwise match
+      // the agent by email — the same address they sign into Rex with. Both
+      // missing → the push still goes through, just unowned.
+      const agentRexUserId =
+        user.rexUserId ??
+        (await rexFindUserIdByEmail(user.email, user.brandId));
       const result = await pushLeadToRex(lead, user.brandId, {
-        agentRexUserId: user.rexUserId ?? null,
+        agentRexUserId,
       });
       await setLeadRexIds(userId, leadId, result.contactId, result.leadId);
       await markPushed();

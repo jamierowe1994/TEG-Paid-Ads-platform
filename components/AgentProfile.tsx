@@ -354,112 +354,103 @@ export default function AgentProfile({
           )}
         </div>
 
-        {/* Ad creatives — uploaded here, shown in the customer's review panel */}
-        <div className="mt-4 rounded-2xl border border-gray-200 p-4">
-          <p className="text-sm font-semibold">Ad creatives</p>
-          <p className="mt-0.5 text-xs text-gray-400">
-            These appear in the customer's review panel to sign off before go-live.
-          </p>
-          {(agent.campaignAssets ?? []).length > 0 && (
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              {(agent.campaignAssets ?? []).map((a) => (
-                <div key={a.id} className="group relative">
-                  {a.type === "image" ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={a.url}
-                      alt={a.caption ?? "Creative"}
-                      className="aspect-square w-full rounded-lg border border-gray-200 object-cover"
-                    />
-                  ) : (
-                    <div className="flex aspect-square w-full items-center justify-center rounded-lg border border-gray-200 bg-gray-900 text-xs font-medium text-white">
-                      ▶ Video
-                    </div>
-                  )}
-                  <button
-                    onClick={() => removeAsset(a.id)}
-                    className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-gray-900 text-xs text-white shadow"
-                    aria-label="Remove"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-          <div className="mt-3 space-y-2">
-            <label className="flex cursor-pointer items-center justify-center rounded-lg border border-dashed border-gray-300 py-3 text-sm font-medium text-gray-500 hover:bg-gray-50">
-              Upload an image
-              <input type="file" accept="image/*" onChange={onUploadImage} className="hidden" />
-            </label>
-            <div className="flex gap-2">
-              <input
-                value={assetUrl}
-                onChange={(e) => setAssetUrl(e.target.value)}
-                placeholder="…or paste an image / video URL"
-                className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gray-900"
-              />
-              <select
-                value={assetType}
-                onChange={(e) => setAssetType(e.target.value as "image" | "video")}
-                className="rounded-lg border border-gray-200 px-2 text-sm outline-none focus:border-gray-900"
-              >
-                <option value="image">Image</option>
-                <option value="video">Video</option>
-              </select>
-            </div>
+        {/* Meta campaigns — the main thing once ads are LIVE. Supports several
+            at once (comma-separated), since agents can run multiple campaigns. */}
+        {agent.onboardingStage === "live" && (
+          <div className="mt-4 rounded-2xl border-2 border-gray-900 p-4">
+            <p className="text-sm font-semibold">Meta campaigns</p>
+            <p className="mt-0.5 text-xs text-gray-400">
+              Tag the campaign ID(s) this agent's ads run under — comma-separate
+              if they have more than one.
+            </p>
             <input
-              value={assetCaption}
-              onChange={(e) => setAssetCaption(e.target.value)}
-              placeholder="Caption (optional)"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gray-900"
+              defaultValue={agent.metaCampaignId ?? ""}
+              placeholder="e.g. 1201234567890, 1209876543210"
+              onBlur={(e) => {
+                if (e.target.value !== (agent.metaCampaignId ?? ""))
+                  patch({ metaCampaignId: e.target.value });
+              }}
+              className="mt-3 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gray-900"
             />
-            <button
-              onClick={() => assetUrl.trim() && addAsset(assetUrl.trim(), assetType)}
-              disabled={!assetUrl.trim() || saving}
-              className="w-full rounded-lg bg-gray-900 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
-            >
-              Add creative from URL
-            </button>
           </div>
-        </div>
+        )}
 
-        {/* Customer sign-off — their approval + any feedback */}
-        {(agent.onboardingStage === "review" ||
-          (agent.campaignFeedback ?? []).length > 0) && (
-          <div
-            className="mt-4 rounded-2xl border p-4"
-            style={{
-              borderColor: agent.campaignApproved ? "#86efac" : "#e5e7eb",
-              backgroundColor: agent.campaignApproved ? "#f0fdf4" : undefined,
-            }}
-          >
-            <p className="text-sm font-semibold">Customer sign-off</p>
-            {agent.onboardingStage === "review" &&
-              (agent.campaignApproved ? (
-                <p className="mt-1 text-sm font-medium text-green-700">
-                  ✅ Approved — you're clear to set them live.
-                </p>
-              ) : (
-                <p className="mt-1 text-sm font-medium text-amber-600">
-                  ⏳ Awaiting customer approval.
-                </p>
+        {/* Ad creatives — progressive with the onboarding stage:
+            production = a "being built" note, review = the full uploader
+            (the customer just sees them, no sign-off), live = folded away
+            into a dropdown so the campaign IDs above take the spotlight. */}
+        {agent.onboardingStage === "creatives" && (
+          <div className="mt-4 rounded-2xl border border-dashed border-gray-300 p-4">
+            <p className="text-sm font-semibold">Ad creatives</p>
+            <p className="mt-0.5 text-xs text-gray-400">
+              In production — the customer sees "we're working on them". Move
+              the stage to <strong>Campaign review</strong> to upload the
+              finished creatives.
+            </p>
+          </div>
+        )}
+        {agent.onboardingStage === "review" && (
+          <div className="mt-4 rounded-2xl border border-gray-200 p-4">
+            <p className="text-sm font-semibold">Ad creatives</p>
+            <p className="mt-0.5 text-xs text-gray-400">
+              These show on the customer's dashboard for them to see — no
+              sign-off needed from them.
+            </p>
+            <CreativesBody
+              agent={agent}
+              saving={saving}
+              assetUrl={assetUrl}
+              setAssetUrl={setAssetUrl}
+              assetType={assetType}
+              setAssetType={setAssetType}
+              assetCaption={assetCaption}
+              setAssetCaption={setAssetCaption}
+              onUploadImage={onUploadImage}
+              addAsset={addAsset}
+              removeAsset={removeAsset}
+            />
+          </div>
+        )}
+        {agent.onboardingStage === "live" && (
+          <details className="mt-4 rounded-2xl border border-gray-200 p-4">
+            <summary className="cursor-pointer text-sm font-semibold text-gray-600">
+              Ad creatives ({(agent.campaignAssets ?? []).length}) — campaign
+              live
+            </summary>
+            <CreativesBody
+              agent={agent}
+              saving={saving}
+              assetUrl={assetUrl}
+              setAssetUrl={setAssetUrl}
+              assetType={assetType}
+              setAssetType={setAssetType}
+              assetCaption={assetCaption}
+              setAssetCaption={setAssetCaption}
+              onUploadImage={onUploadImage}
+              addAsset={addAsset}
+              removeAsset={removeAsset}
+            />
+          </details>
+        )}
+
+        {/* Customer feedback — shown whenever they've sent any (no approval
+            flow: the customer just sees the creatives, they don't sign off) */}
+        {(agent.campaignFeedback ?? []).length > 0 && (
+          <div className="mt-4 rounded-2xl border border-gray-200 p-4">
+            <p className="text-sm font-semibold">Customer feedback</p>
+            <ul className="mt-3 space-y-2">
+              {[...(agent.campaignFeedback ?? [])].reverse().map((f, i) => (
+                <li
+                  key={i}
+                  className="rounded-lg bg-gray-50 p-3 text-sm text-gray-700"
+                >
+                  “{f.text}”
+                  <span className="mt-1 block text-xs text-gray-400">
+                    {new Date(f.at).toLocaleString("en-GB")}
+                  </span>
+                </li>
               ))}
-            {(agent.campaignFeedback ?? []).length > 0 && (
-              <ul className="mt-3 space-y-2">
-                {[...(agent.campaignFeedback ?? [])].reverse().map((f, i) => (
-                  <li
-                    key={i}
-                    className="rounded-lg bg-white/70 p-3 text-sm text-gray-700"
-                  >
-                    “{f.text}”
-                    <span className="mt-1 block text-xs text-gray-400">
-                      {new Date(f.at).toLocaleString("en-GB")}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
+            </ul>
           </div>
         )}
 
@@ -503,15 +494,9 @@ export default function AgentProfile({
             onSave={(v) => patch({ location: v })}
           />
           <EditRow
-            label="Meta campaign ID"
-            defaultValue={agent.metaCampaignId ?? ""}
-            placeholder="Campaign ID"
-            onSave={(v) => patch({ metaCampaignId: v })}
-          />
-          <EditRow
             label="Rex user ID"
             defaultValue={agent.rexUserId ?? ""}
-            placeholder="e.g. 77498"
+            placeholder="Auto-matched by email"
             onSave={(v) => patch({ rexUserId: v })}
           />
         </div>
@@ -627,5 +612,100 @@ function EditRow({
         className="w-40 rounded-lg border border-gray-200 px-2 py-1.5 text-right text-sm outline-none focus:border-gray-900"
       />
     </div>
+  );
+}
+
+// The creatives gallery + upload controls — shared between the review stage
+// (full card) and the live stage (folded into a dropdown).
+function CreativesBody({
+  agent,
+  saving,
+  assetUrl,
+  setAssetUrl,
+  assetType,
+  setAssetType,
+  assetCaption,
+  setAssetCaption,
+  onUploadImage,
+  addAsset,
+  removeAsset,
+}: {
+  agent: UserProfile;
+  saving: boolean;
+  assetUrl: string;
+  setAssetUrl: (v: string) => void;
+  assetType: "image" | "video";
+  setAssetType: (v: "image" | "video") => void;
+  assetCaption: string;
+  setAssetCaption: (v: string) => void;
+  onUploadImage: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  addAsset: (url: string, type: "image" | "video") => void;
+  removeAsset: (id: string) => void;
+}) {
+  return (
+    <>
+      {(agent.campaignAssets ?? []).length > 0 && (
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          {(agent.campaignAssets ?? []).map((a) => (
+            <div key={a.id} className="group relative">
+              {a.type === "image" ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={a.url}
+                  alt={a.caption ?? "Creative"}
+                  className="aspect-square w-full rounded-lg border border-gray-200 object-cover"
+                />
+              ) : (
+                <div className="flex aspect-square w-full items-center justify-center rounded-lg border border-gray-200 bg-gray-900 text-xs font-medium text-white">
+                  ▶ Video
+                </div>
+              )}
+              <button
+                onClick={() => removeAsset(a.id)}
+                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-gray-900 text-xs text-white shadow"
+                aria-label="Remove"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="mt-3 space-y-2">
+        <label className="flex cursor-pointer items-center justify-center rounded-lg border border-dashed border-gray-300 py-3 text-sm font-medium text-gray-500 hover:bg-gray-50">
+          Upload an image
+          <input type="file" accept="image/*" onChange={onUploadImage} className="hidden" />
+        </label>
+        <div className="flex gap-2">
+          <input
+            value={assetUrl}
+            onChange={(e) => setAssetUrl(e.target.value)}
+            placeholder="…or paste an image / video URL"
+            className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gray-900"
+          />
+          <select
+            value={assetType}
+            onChange={(e) => setAssetType(e.target.value as "image" | "video")}
+            className="rounded-lg border border-gray-200 px-2 text-sm outline-none focus:border-gray-900"
+          >
+            <option value="image">Image</option>
+            <option value="video">Video</option>
+          </select>
+        </div>
+        <input
+          value={assetCaption}
+          onChange={(e) => setAssetCaption(e.target.value)}
+          placeholder="Caption (optional)"
+          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gray-900"
+        />
+        <button
+          onClick={() => assetUrl.trim() && addAsset(assetUrl.trim(), assetType)}
+          disabled={!assetUrl.trim() || saving}
+          className="w-full rounded-lg bg-gray-900 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+        >
+          Add creative from URL
+        </button>
+      </div>
+    </>
   );
 }

@@ -826,38 +826,20 @@ export default function AdminPage() {
         {tab === "overview" && (
           <>
             {(() => {
-              const awaitingLive = users.filter(
-                (u) => u.onboardingStage === "review" && u.campaignApproved
+              // No customer sign-off any more — review just means "creatives
+              // uploaded, we set them live when ready".
+              const inReview = users.filter(
+                (u) => u.onboardingStage === "review"
               );
-              const awaitingApproval = users.filter(
-                (u) => u.onboardingStage === "review" && !u.campaignApproved
-              );
-              if (awaitingLive.length === 0 && awaitingApproval.length === 0) {
-                return null;
-              }
+              if (inReview.length === 0) return null;
               return (
-                <div className="mb-6 space-y-2">
-                  {awaitingLive.length > 0 && (
-                    <div className="rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-                      ✅ <strong>{awaitingLive.length}</strong> customer
-                      {awaitingLive.length === 1 ? " has" : "s have"} approved —
-                      ready to set live:{" "}
-                      <span className="font-medium">
-                        {awaitingLive.map((u) => u.name).join(", ")}
-                      </span>
-                      . Open their record → move to <em>Ads live</em>.
-                    </div>
-                  )}
-                  {awaitingApproval.length > 0 && (
-                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
-                      ⏳ <strong>{awaitingApproval.length}</strong> awaiting
-                      customer approval:{" "}
-                      <span className="font-medium">
-                        {awaitingApproval.map((u) => u.name).join(", ")}
-                      </span>
-                      .
-                    </div>
-                  )}
+                <div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+                  👀 <strong>{inReview.length}</strong> campaign
+                  {inReview.length === 1 ? "" : "s"} in review:{" "}
+                  <span className="font-medium">
+                    {inReview.map((u) => u.name).join(", ")}
+                  </span>
+                  . Open their record → move to <em>Ads live</em> when ready.
                 </div>
               );
             })()}

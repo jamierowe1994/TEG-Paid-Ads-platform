@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   getUser,
   fetchLeads,
-  approveCampaign,
   sendCampaignFeedback,
   moveLeadStage,
   pushLeadToCrm,
@@ -84,7 +83,6 @@ export default function DashboardOverview() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [feedbackText, setFeedbackText] = useState("");
   const [reviewStatus, setReviewStatus] = useState("");
-  const [approving, setApproving] = useState(false);
   const [openStep, setOpenStep] = useState<number | null>(null);
   const [hoverLead, setHoverLead] = useState<string | null>(null);
   const [openWeek, setOpenWeek] = useState<number | null>(null);
@@ -92,13 +90,6 @@ export default function DashboardOverview() {
   const [openLeadId, setOpenLeadId] = useState<string | null>(null);
   const [pushingId, setPushingId] = useState<string | null>(null);
 
-  async function approve() {
-    if (approving) return;
-    setApproving(true);
-    const u = await approveCampaign();
-    setApproving(false);
-    if (u) setUser(u);
-  }
   async function submitFeedback() {
     const text = feedbackText.trim();
     if (!text) return;
@@ -246,7 +237,9 @@ export default function DashboardOverview() {
     { label: "Converted", value: String(converted) },
   ];
 
-  const isReview = user.onboardingStage === "review" && !user.campaignApproved;
+  // The customer sees their creatives at review — no approval step, we
+  // handle go-live ourselves.
+  const isReview = user.onboardingStage === "review";
   const maxWeek = Math.max(1, ...weekly);
   const pct = Math.round((doneCount / campaignSteps.length) * 100);
   const g = glaze();
@@ -295,7 +288,8 @@ export default function DashboardOverview() {
         </div>
       </div>
 
-      {/* Review & approve — surfaced full-width only while awaiting sign-off */}
+      {/* Campaign review — the customer just SEES their creatives here (no
+          sign-off needed); they can send feedback if something's off. */}
       {isReview && (
         <section
           className="mt-6 rounded-3xl border-2 bg-white/70 p-6 backdrop-blur-xl"
@@ -337,12 +331,14 @@ export default function DashboardOverview() {
             </div>
           )}
           <p className="text-sm font-semibold text-gray-900">
-            Your creatives are ready to review
+            {(user.campaignAssets ?? []).length > 0
+              ? "Here's your campaign — going live soon"
+              : "Your campaign is in final review"}
           </p>
           <p className="mt-1 text-sm text-gray-500">
-            Happy with everything? Give it the final sign-off. Spotted something
-            — a typo, a colour, the wrong brand — pop it below and we&apos;ll fix
-            it before it goes live.
+            Spotted something — a typo, a colour, the wrong brand? Pop it below
+            and we&apos;ll fix it before it goes live. Otherwise, sit tight —
+            we&apos;ll take it from here.
           </p>
           <textarea
             value={feedbackText}
@@ -352,14 +348,6 @@ export default function DashboardOverview() {
             className="mt-3 w-full rounded-xl border border-gray-200 bg-white p-3 text-sm outline-none focus:border-gray-900"
           />
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button
-              onClick={approve}
-              disabled={approving}
-              className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
-              style={{ backgroundColor: brand.accent }}
-            >
-              {approving ? "Approving…" : "Approve & go live"}
-            </button>
             <button
               onClick={submitFeedback}
               disabled={!feedbackText.trim()}

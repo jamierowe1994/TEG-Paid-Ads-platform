@@ -374,6 +374,48 @@ export async function rexListUsers(brandId: string): Promise<unknown> {
   return res.result;
 }
 
+// Auto-match a portal agent to their Rex user by EMAIL — the natural key,
+// since it's the same address they sign into Rex with. Best-effort: returns
+// null (never throws) so a failed lookup can't block a push. Cached per
+// account+email so repeated pushes don't re-list users every time.
+const rexUserIdCache = new Map<string, string | null>();
+
+export async function rexFindUserIdByEmail(
+  email: string,
+  brandId: string
+): Promise<string | null> {
+  const needle = email.trim().toLowerCase();
+  if (!needle) return null;
+  const accountId = rexAccountForBrand(brandId);
+  const key = `${accountId ?? "default"}:${needle}`;
+  const cached = rexUserIdCache.get(key);
+  if (cached !== undefined) return cached;
+
+  let found: string | null = null;
+  try {
+    const res = await rexCall("AccountUsers/search", { limit: 100 }, accountId);
+    if (res.ok) {
+      const rows = Array.isArray(res.result)
+        ? res.result
+        : (((res.result as { rows?: unknown[] })?.rows) ?? []);
+      for (const raw of rows as Array<Record<string, unknown>>) {
+        const rowEmail = String(raw.email_address ?? raw.email ?? "")
+          .trim()
+          .toLowerCase();
+        if (rowEmail && rowEmail === needle) {
+          const id = raw.id ?? raw.user_id;
+          if (id != null) found = String(id);
+          break;
+        }
+      }
+    }
+  } catch {
+    /* best-effort — the push proceeds unowned rather than failing */
+  }
+  rexUserIdCache.set(key, found);
+  return found;
+}
+
 // ── Health check (admin Connections tab) ────────────────────────────────────
 
 // Proves the login works and reports the accounts this user can reach — a
