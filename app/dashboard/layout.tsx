@@ -30,39 +30,33 @@ const NAV = [
   { href: "/dashboard/profile", label: "Profile", icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
 ];
 
-// The chrome (sidebar + top bar) reads as one continuous white surface that
-// wraps the top-left of the page. Solid white + soft shadow; the concave
-// "swoop" at the inner corner is drawn by <ConcaveCorner/> below.
-const FRAME = "bg-white shadow-[0_14px_48px_-20px_rgba(0,0,0,0.22)]";
+// Chrome geometry (px). The nav is flush to the screen's left/top/bottom edges;
+// the content sits inside, and the two arms join with a concave swoop.
+const SIDEBAR_W = 240;
+const TOPBAR_H = 64;
+const SWOOP = 22;
 
-// Layout constants (px) so the frame pieces and the concave corner line up.
-const SIDEBAR_RIGHT = 252; // left-3 (12) + w-60 (240)
-const TOPBAR_BOTTOM = 76; // top-3 (12) + h-16 (64)
-const SWOOP = 22; // concave corner radius
-
-// A concave (inward-curving) corner that visually joins the vertical sidebar
-// to the horizontal top bar, so the white chrome swoops around the page.
-function ConcaveCorner() {
+// The whole chrome is drawn as ONE seamless white L-shape (left arm + top arm)
+// via a clip-path, so there's no seam/line where the sidebar meets the top bar.
+// The concave corner is part of the path. Interactive controls float on top.
+function ChromeSurface({ vw, vh }: { vw: number; vh: number }) {
+  const sw = SIDEBAR_W;
+  const th = TOPBAR_H;
   const r = SWOOP;
+  const d =
+    `M0 0 L${vw} 0 L${vw} ${th} L${sw + r} ${th} ` +
+    `A${r} ${r} 0 0 0 ${sw} ${th + r} L${sw} ${vh} L0 ${vh} Z`;
   return (
-    <svg
-      width={r}
-      height={r}
-      viewBox={`0 0 ${r} ${r}`}
-      className="pointer-events-none fixed z-30"
-      style={{
-        left: SIDEBAR_RIGHT,
-        top: TOPBAR_BOTTOM,
-        filter: "drop-shadow(0 8px 10px rgba(0,0,0,0.05))",
-      }}
+    <div
       aria-hidden
-    >
-      {/* Fill the corner white, cutting a quarter-circle out toward the page */}
-      <path
-        d={`M0 0 L${r} 0 A${r} ${r} 0 0 0 0 ${r} Z`}
-        fill="#ffffff"
-      />
-    </svg>
+      className="pointer-events-none fixed inset-0 z-20 bg-white"
+      style={{
+        clipPath: `path('${d}')`,
+        WebkitClipPath: `path('${d}')`,
+        filter:
+          "drop-shadow(3px 0 12px rgba(0,0,0,0.05)) drop-shadow(0 4px 12px rgba(0,0,0,0.05))",
+      }}
+    />
   );
 }
 
@@ -84,10 +78,16 @@ export default function DashboardLayout({
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
+  const [vp, setVp] = useState({ w: 0, h: 0 });
 
   useEffect(() => {
-    // Validate the session against the server (httpOnly cookie), not just the
-    // localStorage cache — this is what makes sign-in real and secure.
+    const on = () => setVp({ w: window.innerWidth, h: window.innerHeight });
+    on();
+    window.addEventListener("resize", on);
+    return () => window.removeEventListener("resize", on);
+  }, []);
+
+  useEffect(() => {
     refreshUser().then((u) => {
       if (!u) {
         router.replace("/login");
@@ -100,8 +100,7 @@ export default function DashboardLayout({
   }, [router]);
 
   // Notification dots + campaign-stage toast — refresh on navigation and on a
-  // light interval. When the admin advances the customer's stage, we detect
-  // the change against the last-seen stage and pop a toast.
+  // light interval.
   useEffect(() => {
     if (!checked) return;
     function handle(n: Awaited<ReturnType<typeof fetchNotifications>>) {
@@ -161,7 +160,6 @@ export default function DashboardLayout({
       title: string;
       sub: string;
       href: string;
-      at?: string;
     }[] = [];
     if (user?.onboardingStage && STAGE_TOAST[user.onboardingStage]) {
       items.push({
@@ -181,7 +179,6 @@ export default function DashboardLayout({
         title: `Referral: ${r.leadName}`,
         sub: "Waiting for you to accept",
         href: "/dashboard/referrals",
-        at: r.createdAt,
       });
     }
     for (const l of leads.filter((x) => x.stage === "new").slice(0, 8)) {
@@ -191,7 +188,6 @@ export default function DashboardLayout({
         title: `New lead: ${l.name}`,
         sub: `via ${l.source}`,
         href: `/dashboard/leads?lead=${l.id}`,
-        at: l.receivedAt,
       });
     }
     return items;
@@ -213,27 +209,27 @@ export default function DashboardLayout({
         {
           "--accent": brand.accent,
           "--accent-soft": brand.accentSoft,
-          // One big directional glow from the top-right, sweeping down toward
-          // (but not reaching) the bottom-left. The frosted tiles let this
-          // read through them rather than each painting its own gradient.
-          background: `radial-gradient(1500px 1200px at 100% -8%, ${brand.accent}2e, transparent 62%), #f6f6f7`,
+          // Glow emanates from the right-hand edge, in the upper area (not the
+          // corner) — soft at the very top, building as it comes down and left.
+          background: `radial-gradient(1250px 1250px at 106% 30%, ${brand.accent}29, transparent 56%), #f6f6f7`,
         } as React.CSSProperties
       }
     >
-      {/* ── Left sidebar (right edge is straight so it joins the top bar) ── */}
-      <aside
-        className={`fixed inset-y-3 left-3 z-30 flex w-60 flex-col overflow-hidden rounded-l-[28px] ${FRAME}`}
-      >
-        <div className="flex items-center gap-2.5 px-5 pb-5 pt-8">
+      {/* One seamless white chrome surface (sidebar + top bar + swoop) */}
+      {vp.w > 0 && <ChromeSurface vw={vp.w} vh={vp.h} />}
+
+      {/* ── Sidebar controls (transparent — the chrome provides the surface) ── */}
+      <aside className="fixed inset-y-0 left-0 z-30 flex w-60 flex-col">
+        <div className="flex h-16 items-center gap-2.5 px-5">
           <BrandMark
             name={brand.name}
             accent={brand.accent}
             logo={brand.logo}
-            size={42}
+            size={36}
           />
           <div className="leading-tight">
             <p className="text-sm font-semibold">{brand.name}</p>
-            <p className="text-xs text-gray-400">Paid Ads Portal</p>
+            <p className="text-[11px] text-gray-400">Paid Ads Portal</p>
           </div>
         </div>
 
@@ -246,9 +242,10 @@ export default function DashboardLayout({
                 href={item.href}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
                   active
-                    ? "bg-white text-gray-900 shadow-sm ring-1 ring-gray-100"
-                    : "text-gray-500 hover:bg-white/70 hover:text-gray-900"
+                    ? "text-gray-900"
+                    : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
                 }`}
+                style={active ? { backgroundColor: brand.accentSoft } : undefined}
               >
                 <svg
                   className="h-4 w-4"
@@ -275,8 +272,7 @@ export default function DashboardLayout({
           })}
         </nav>
 
-        {/* User card */}
-        <div className="border-t border-gray-100 p-4">
+        <div className="p-4">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-gray-200 text-sm font-semibold text-gray-600">
               {user.photo ? (
@@ -300,21 +296,18 @@ export default function DashboardLayout({
               signOut();
               router.push("/");
             }}
-            className="mt-3 w-full rounded-lg border border-gray-200 py-1.5 text-xs font-medium text-gray-500 transition hover:bg-white hover:text-gray-900"
+            className="mt-3 w-full rounded-lg border border-gray-200 py-1.5 text-xs font-medium text-gray-500 transition hover:bg-gray-50 hover:text-gray-900"
           >
             Sign out
           </button>
         </div>
       </aside>
 
-      {/* ── Top bar (search + notifications) — butts flush against the sidebar
-          on the left, rounds off on the right ── */}
-      <header
-        className={`fixed left-[252px] right-3 top-3 z-40 flex h-16 items-center gap-3 rounded-r-[28px] px-4 ${FRAME}`}
-      >
+      {/* ── Top bar controls (transparent) ── */}
+      <header className="fixed left-[240px] right-0 top-0 z-40 flex h-16 items-center gap-3 px-6">
         {/* Search */}
         <div className="relative flex-1">
-          <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white/80 px-3.5 py-2">
+          <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2">
             <svg
               className="h-4 w-4 shrink-0 text-gray-400"
               fill="none"
@@ -413,7 +406,7 @@ export default function DashboardLayout({
         <div className="relative">
           <button
             onClick={() => setBellOpen((v) => !v)}
-            className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white/80 text-gray-500 transition hover:text-gray-900"
+            className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-500 transition hover:text-gray-900"
             aria-label="Notifications"
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
@@ -453,11 +446,8 @@ export default function DashboardLayout({
         </div>
       </header>
 
-      {/* Concave swoop joining the sidebar to the top bar */}
-      <ConcaveCorner />
-
       {/* ── Main ── */}
-      <main className="ml-[264px] mr-3 px-8 pb-10 pt-[120px]">{children}</main>
+      <main className="ml-[240px] px-8 pb-10 pt-[140px]">{children}</main>
 
       {/* Campaign-stage toast — bigger white card with a black outline */}
       {toast && (
@@ -524,7 +514,6 @@ function NotificationsFeed({
     title: string;
     sub: string;
     href: string;
-    at?: string;
   }[];
   accent: string;
   onGo: (href: string) => void;
