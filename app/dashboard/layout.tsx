@@ -13,7 +13,6 @@ import {
 import { brandById, type Brand } from "@/lib/brands";
 import { getPreviewBrandId, getPreviewAccent } from "@/lib/preview";
 import type { UserProfile, Lead, Referral } from "@/lib/types";
-import BrandMark from "@/components/BrandMark";
 
 // Toast copy when the admin advances a customer's campaign stage.
 const STAGE_TOAST: Record<string, string> = {
@@ -271,14 +270,8 @@ export default function DashboardLayout({
 
       {/* ── Sidebar controls (transparent — the chrome provides the surface) ── */}
       <aside className="fixed inset-y-0 left-0 z-30 flex w-60 flex-col">
-        <div className="px-5 pt-14">
-          <BrandMark
-            name={brand.name}
-            accent={brand.accent}
-            logo={brand.logo}
-            size={40}
-          />
-          <h1 className="mt-3 text-xl font-semibold leading-[1.15] tracking-tight">
+        <div className="px-5 pt-[108px]">
+          <h1 className="text-xl font-semibold leading-[1.15] tracking-tight">
             {brand.name.split(" ").map((w, i) => (
               <span key={i} className="block">
                 {w}
