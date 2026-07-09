@@ -97,12 +97,12 @@ export default function DashboardOverview() {
     spend: number;
     leads: number;
   } | null>(null);
-  // The actual live ad's creative image, when Meta can give us one — swaps
-  // the "Current ad" mock for the real thing.
-  const [myCreative, setMyCreative] = useState<{
-    adName: string;
-    imageUrl: string;
-  } | null>(null);
+  // The actual live ads' creative images, when Meta can give us them — swaps
+  // the "Current ad" mock for the real thing, rotating through every ad.
+  const [myCreatives, setMyCreatives] = useState<
+    Array<{ adName: string; imageUrl: string }>
+  >([]);
+  const [creativeIdx, setCreativeIdx] = useState(0);
 
   async function submitFeedback() {
     const text = feedbackText.trim();
@@ -195,10 +195,20 @@ export default function DashboardOverview() {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d?.configured && d?.snapshot) setMyMeta(d.snapshot);
-        if (d?.creative) setMyCreative(d.creative);
+        if (Array.isArray(d?.creatives)) setMyCreatives(d.creatives);
       })
       .catch(() => {});
   }, []);
+
+  // Rotate the Current-ad tile through every live creative, one per 10s.
+  useEffect(() => {
+    if (myCreatives.length < 2) return;
+    const t = setInterval(
+      () => setCreativeIdx((i) => (i + 1) % myCreatives.length),
+      10000
+    );
+    return () => clearInterval(t);
+  }, [myCreatives.length]);
 
   // Leads bucketed into the last 6 weeks (oldest left, this week right) — the
   // actual leads, so a week can be clicked open to list its names.
@@ -396,17 +406,29 @@ export default function DashboardOverview() {
 
       {/* Bento — square glaze tiles, Onboarding Tracker spans both rows */}
       <section className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Current ad — the REAL live creative straight from Meta when the
-            campaign's tagged; the personalised mock until then. */}
-        {myCreative ? (
+        {/* Current ad — the REAL live creatives straight from Meta when the
+            campaign's tagged, rotating through every ad (10s each); the
+            personalised mock until then. */}
+        {myCreatives.length > 0 ? (
           <div className="relative aspect-square overflow-hidden rounded-3xl border border-white/10 text-white shadow-[0_2px_8px_-2px_rgba(0,0,0,0.14)]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={myCreative.imageUrl}
-              alt={myCreative.adName}
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/30" />
+            {/* keyed on the index so each rotation fades in */}
+            <div key={creativeIdx} className="fade-up absolute inset-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={myCreatives[creativeIdx % myCreatives.length].imageUrl}
+                alt={myCreatives[creativeIdx % myCreatives.length].adName}
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/30" />
+              <div className="absolute inset-x-0 bottom-0 p-5 pb-7">
+                <p className="truncate font-semibold">
+                  {myCreatives[creativeIdx % myCreatives.length].adName}
+                </p>
+                <p className="text-xs text-white/70">
+                  £{pkg?.adSpend?.toLocaleString("en-GB")}/mo
+                </p>
+              </div>
+            </div>
             <div className="absolute inset-x-0 top-0 flex items-start justify-between p-5">
               <span className="rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide backdrop-blur">
                 Current ad
@@ -415,12 +437,21 @@ export default function DashboardOverview() {
                 ● Live
               </span>
             </div>
-            <div className="absolute inset-x-0 bottom-0 p-5">
-              <p className="truncate font-semibold">{myCreative.adName}</p>
-              <p className="text-xs text-white/70">
-                £{pkg?.adSpend?.toLocaleString("en-GB")}/mo
-              </p>
-            </div>
+            {/* Rotation dots — one per ad */}
+            {myCreatives.length > 1 && (
+              <div className="absolute inset-x-0 bottom-2.5 flex justify-center gap-1.5">
+                {myCreatives.map((_, i) => (
+                  <span
+                    key={i}
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                      i === creativeIdx % myCreatives.length
+                        ? "w-4 bg-white"
+                        : "w-1.5 bg-white/40"
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div

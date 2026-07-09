@@ -2,17 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
 import { findById } from "@/lib/users-store";
 import {
-  getCampaignSnapshot,
   getAdsWithCreatives,
+  getAdInsightsByAd,
   parseCampaignIds,
   metaTokenSet,
   sanitizePreset,
 } from "@/lib/meta";
 
-// The signed-in agent's OWN live ad stats — insights for the Meta campaign(s)
-// the admin tagged on their profile, scoped inside their brand's ad account.
-// Returns { configured: false } until both the brand connection and their
-// campaign id(s) exist, so the dashboard can show placeholders honestly.
+// The signed-in agent's ads gallery: every ad in their tagged campaign(s),
+// each with its creative image and its own figures for the chosen range.
+// { configured: false } until the campaign link exists.
 export async function GET(req: NextRequest) {
   const userId = verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
   if (!userId) {
@@ -30,18 +29,15 @@ export async function GET(req: NextRequest) {
 
   const preset = sanitizePreset(req.nextUrl.searchParams.get("preset"));
   try {
-    // Creatives are best-effort (empty on any failure) — the stats shouldn't
-    // disappear just because thumbnails couldn't be fetched. The overview's
-    // "Current ad" tile rotates through every ad that has an image.
-    const [snapshot, ads] = await Promise.all([
-      getCampaignSnapshot(user.brandId, campaignIds, preset),
+    const [ads, figures] = await Promise.all([
       getAdsWithCreatives(user.brandId, campaignIds),
+      getAdInsightsByAd(user.brandId, campaignIds, preset),
     ]);
-    if (!snapshot) return NextResponse.json({ configured: false });
-    const creatives = ads
-      .filter((a) => a.imageUrl)
-      .map((a) => ({ adName: a.name, imageUrl: a.imageUrl as string }));
-    return NextResponse.json({ configured: true, snapshot, creatives });
+    return NextResponse.json({
+      configured: true,
+      preset,
+      ads: ads.map((a) => ({ ...a, figures: figures[a.id] ?? null })),
+    });
   } catch (e) {
     return NextResponse.json({
       configured: true,

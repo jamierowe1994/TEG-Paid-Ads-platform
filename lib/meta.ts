@@ -253,16 +253,24 @@ export async function getCampaignSnapshot(
   return { impressions, clicks, spend, leads, datePreset };
 }
 
-// The visual for the customer's "Current ad" tile: the creative image of the
-// first ACTIVE ad inside their tagged campaign(s). Best-effort — returns null
-// rather than throwing, since the dashboard works fine without it.
-export async function getCampaignCreative(
+export interface AgentAd {
+  id: string;
+  name: string;
+  status: string;
+  imageUrl: string | null;
+}
+
+// Every ad inside the agent's tagged campaign(s), with each creative's image
+// — feeds the overview's rotating "Current ad" tile and the All Ads gallery.
+// Best-effort: returns [] rather than throwing; a missing thumbnail just
+// leaves that ad's imageUrl null. Active ads first, capped at 12.
+export async function getAdsWithCreatives(
   brandId: string,
   campaignIds: string[]
-): Promise<{ adName: string; imageUrl: string } | null> {
+): Promise<AgentAd[]> {
   try {
     const acc = await accountId(brandId);
-    if (!acc || campaignIds.length === 0) return null;
+    if (!acc || campaignIds.length === 0) return [];
 
     const ads = (await graph(`${acc}/ads`, {
       fields: "name,effective_status,creative{id}",
@@ -272,28 +280,95 @@ export async function getCampaignCreative(
       limit: "25",
     })) as {
       data?: Array<{
+        id?: string;
         name?: string;
         effective_status?: string;
         creative?: { id?: string };
       }>;
     };
-    const list = ads.data ?? [];
-    const ad =
-      list.find((a) => a.effective_status === "ACTIVE" && a.creative?.id) ??
-      list.find((a) => a.creative?.id);
-    if (!ad?.creative?.id) return null;
+    const list = (ads.data ?? [])
+      .filter((a) => a.id)
+      .sort((a, b) =>
+        a.effective_status === "ACTIVE" && b.effective_status !== "ACTIVE"
+          ? -1
+          : b.effective_status === "ACTIVE" && a.effective_status !== "ACTIVE"
+            ? 1
+            : 0
+      )
+      .slice(0, 12);
 
-    const creative = (await graph(ad.creative.id, {
-      fields: "thumbnail_url",
-      thumbnail_width: "800",
-      thumbnail_height: "800",
-    })) as { thumbnail_url?: string };
-    if (!creative.thumbnail_url) return null;
-
-    return { adName: ad.name ?? "Your ad", imageUrl: creative.thumbnail_url };
+    return Promise.all(
+      list.map(async (ad) => {
+        let imageUrl: string | null = null;
+        if (ad.creative?.id) {
+          try {
+            const creative = (await graph(ad.creative.id, {
+              fields: "thumbnail_url",
+              thumbnail_width: "800",
+              thumbnail_height: "800",
+            })) as { thumbnail_url?: string };
+            imageUrl = creative.thumbnail_url ?? null;
+          } catch {
+            /* thumbnail is optional */
+          }
+        }
+        return {
+          id: String(ad.id),
+          name: ad.name ?? "Untitled ad",
+          status: ad.effective_status ?? "UNKNOWN",
+          imageUrl,
+        };
+      })
+    );
   } catch {
-    return null;
+    return [];
   }
+}
+
+export interface AdFigures {
+  impressions: number;
+  clicks: number;
+  spend: number;
+  leads: number;
+  cpl: number | null;
+}
+
+// Per-ad figures for the agent's campaigns — keyed by ad id so the gallery
+// can pair each thumbnail with its own numbers.
+export async function getAdInsightsByAd(
+  brandId: string,
+  campaignIds: string[],
+  datePreset = "last_30d"
+): Promise<Record<string, AdFigures>> {
+  const acc = await accountId(brandId);
+  if (!acc || campaignIds.length === 0) return {};
+  const data = (await graph(`${acc}/insights`, {
+    level: "ad",
+    fields: "ad_id,impressions,clicks,spend,actions",
+    date_preset: datePreset,
+    filtering: JSON.stringify([
+      { field: "campaign.id", operator: "IN", value: campaignIds },
+    ]),
+    limit: "100",
+  })) as { data?: Array<Record<string, unknown>> };
+
+  const out: Record<string, AdFigures> = {};
+  for (const row of data.data ?? []) {
+    const id = String(row.ad_id ?? "");
+    if (!id) continue;
+    const leads = countLeads(
+      (row.actions as Array<{ action_type: string; value: string }>) ?? []
+    );
+    const spend = Number(row.spend ?? 0);
+    out[id] = {
+      impressions: Number(row.impressions ?? 0),
+      clicks: Number(row.clicks ?? 0),
+      spend,
+      leads,
+      cpl: leads > 0 ? spend / leads : null,
+    };
+  }
+  return out;
 }
 
 // Date ranges offered in the admin. Meta's presets exclude "today", matching
