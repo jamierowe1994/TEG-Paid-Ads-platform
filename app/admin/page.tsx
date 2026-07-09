@@ -285,6 +285,10 @@ export default function AdminPage() {
   const [rexTesting, setRexTesting] = useState(false);
   const [rexTestResult, setRexTestResult] = useState("");
   const [rexTestError, setRexTestError] = useState("");
+  const [rexDescribeModelName, setRexDescribeModelName] = useState("Contacts");
+  const [rexDescribing, setRexDescribing] = useState(false);
+  const [rexDescribeResult, setRexDescribeResult] = useState("");
+  const [rexDescribeError, setRexDescribeError] = useState("");
   const [metaPreset, setMetaPreset] = useState<string>("last_30d");
   const [drillBrand, setDrillBrand] = useState<string | null>(null);
   const [activity, setActivity] = useState<ActivityData | null>(null);
@@ -366,6 +370,29 @@ export default function AdminPage() {
         data.result.contactAlreadyExisted ? " (already existed)" : ""
       } and lead ${data.result.leadId} in account ${data.accountId}.`
     );
+  }
+
+  // Asks Rex what fields a model actually accepts — ground truth for fixing
+  // the create-contact/create-lead mapping instead of guessing again.
+  async function describeRexModel() {
+    setRexDescribing(true);
+    setRexDescribeResult("");
+    setRexDescribeError("");
+    const res = await fetch("/api/admin/rex/describe", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${password}`,
+      },
+      body: JSON.stringify({ model: rexDescribeModelName, brandId: "property" }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setRexDescribing(false);
+    if (!res.ok || !data.ok) {
+      setRexDescribeError(data.error ?? "Describe failed");
+      return;
+    }
+    setRexDescribeResult(JSON.stringify(data.result, null, 2));
   }
 
   // Save a brand's Meta ad account + page (Option B — no redeploy) and refresh.
@@ -1917,6 +1944,36 @@ export default function AdminPage() {
                 )}
                 {rexTestError && (
                   <p className="mt-3 text-sm text-red-600">{rexTestError}</p>
+                )}
+
+                {/* Inspect Rex's own field list — ground truth instead of guessing */}
+                <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4">
+                  <select
+                    value={rexDescribeModelName}
+                    onChange={(e) => setRexDescribeModelName(e.target.value)}
+                    className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 outline-none focus:border-gray-900"
+                  >
+                    <option value="Contacts">Contacts</option>
+                    <option value="Leads">Leads</option>
+                  </select>
+                  <button
+                    onClick={describeRexModel}
+                    disabled={rexDescribing || !rex?.ok}
+                    className="rounded-lg border border-gray-200 px-3.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                  >
+                    {rexDescribing ? "Asking Rex…" : "Inspect fields"}
+                  </button>
+                  <span className="text-xs text-gray-400">
+                    Asks Rex what this model actually accepts.
+                  </span>
+                </div>
+                {rexDescribeError && (
+                  <p className="mt-3 text-sm text-red-600">{rexDescribeError}</p>
+                )}
+                {rexDescribeResult && (
+                  <pre className="mt-3 max-h-80 overflow-auto rounded-xl bg-gray-900 p-3.5 text-[11px] leading-relaxed text-green-300">
+                    {rexDescribeResult}
+                  </pre>
                 )}
               </div>
             </section>

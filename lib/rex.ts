@@ -155,6 +155,20 @@ async function rexCall(
   return res;
 }
 
+// Asks Rex itself what fields a model accepts (e.g. "Contacts", "Leads") —
+// ground truth instead of guessing field names against the live account.
+export async function rexDescribeModel(
+  model: string,
+  brandId: string
+): Promise<unknown> {
+  const accountId = rexAccountForBrand(brandId);
+  const res = await rexCall(`${model}/describeModel`, {}, accountId);
+  if (!res.ok) {
+    throw new Error(res.error ?? `Rex describeModel(${model}) failed`);
+  }
+  return res.result;
+}
+
 // ── Contacts ──────────────────────────────────────────────────────────────
 
 // Split a full name into Rex's first/last. Rex contacts also expose a single
