@@ -9,15 +9,48 @@ import {
   sendCampaignFeedback,
 } from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
+import { getPreviewBrandId, getPreviewAccent } from "@/lib/preview";
 import { packageById } from "@/lib/packages";
 import { ONBOARDING_STAGES, stageIndex } from "@/lib/onboarding";
 import Confetti from "@/components/Confetti";
 import type { UserProfile, Lead } from "@/lib/types";
 
-// A random property photo for the "Current ad" tile (falls back to a brand
-// gradient if it can't load).
-const AD_PHOTO =
-  "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=70";
+// A brief + typical timescale for each onboarding stage — shown when a step
+// is expanded on the sign-up tracker.
+const STAGE_DETAIL: { blurb: string; time: string }[] = [
+  {
+    blurb:
+      "You've created your account and chosen your package. Nothing to do here — you're in.",
+    time: "Instant",
+  },
+  {
+    blurb:
+      "Our design team builds your personalised ad creatives around your goal, brand and local area.",
+    time: "Typically 2–3 working days",
+  },
+  {
+    blurb:
+      "You review the finished creatives and give them the final sign-off — or ask for tweaks before they go live.",
+    time: "About a day, once creatives land",
+  },
+  {
+    blurb:
+      "Your ads are live and running. Leads start dropping straight into your funnel.",
+    time: "Ongoing from launch",
+  },
+];
+
+// Personalised-ad tagline per brand — a stand-in for the real creative
+// ("This is James — see how I can sell more homes in Gloucestershire").
+const AD_PITCH: Record<string, (area: string) => string> = {
+  property: (a) => `See how I can sell more homes in ${a}`,
+  lettings: (a) => `Let your property faster across ${a}`,
+  mortgage: (a) => `Get the right mortgage sorted in ${a}`,
+  recruitment: (a) => `See how I place top talent across ${a}`,
+  commercial: (a) => `Find your next commercial space in ${a}`,
+  fineandcountry: (a) => `Selling premium homes across ${a}`,
+  auction: (a) => `Sell fast at auction in ${a}`,
+};
 
 // Stat-row icons (stroke SVGs) keyed by label.
 const STAT_ICON: Record<string, string> = {
@@ -45,6 +78,7 @@ export default function DashboardOverview() {
   const [feedbackText, setFeedbackText] = useState("");
   const [reviewStatus, setReviewStatus] = useState("");
   const [approving, setApproving] = useState(false);
+  const [openStep, setOpenStep] = useState<number | null>(null);
 
   async function approve() {
     if (approving) return;
@@ -69,7 +103,10 @@ export default function DashboardOverview() {
     const u = getUser();
     if (!u) return;
     setUser(u);
-    setBrand(brandById(u.brandId) ?? null);
+    let b = brandById(getPreviewBrandId() ?? u.brandId) ?? brandById(u.brandId) ?? null;
+    const pa = getPreviewAccent();
+    if (b && pa) b = { ...b, accent: pa };
+    setBrand(b);
     fetchLeads().then(setLeads);
   }, []);
 
@@ -247,31 +284,50 @@ export default function DashboardOverview() {
 
       {/* Bento — square glaze tiles, Onboarding Tracker spans both rows */}
       <section className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Current ad — photo, top-left */}
+        {/* Current ad — a personalised-ad mock (stand-in for the real creative) */}
         <div
-          className="relative aspect-square overflow-hidden rounded-3xl border border-white/60 shadow-[inset_0_0_44px_rgba(0,0,0,0.4)]"
+          className="relative aspect-square overflow-hidden rounded-3xl border border-white/10 p-5 text-white shadow-[inset_0_0_60px_rgba(0,0,0,0.35)]"
           style={{
-            background: `linear-gradient(135deg, ${brand.accent}, ${brand.accent}aa)`,
+            background: `radial-gradient(120% 120% at 15% 0%, ${brand.accent}, ${brand.accent}cc 45%, rgba(0,0,0,0.55)), ${brand.accent}`,
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={AD_PHOTO}
-            alt="Current ad"
-            className="absolute inset-0 h-full w-full object-cover"
-            onError={(e) => (e.currentTarget.style.display = "none")}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 p-5 text-white">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-white/70">
-              Current ad
-            </p>
-            <p className="mt-1 truncate font-semibold">
-              {topAd ?? "In production"}
-            </p>
-            <p className="text-xs text-white/70">
-              £{pkg?.adSpend?.toLocaleString("en-GB")}/mo
-            </p>
+          <div className="flex h-full flex-col">
+            <div className="flex items-start justify-between">
+              <span className="rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide backdrop-blur">
+                Current ad
+              </span>
+              <span className="text-xs font-medium text-white/80">
+                £{pkg?.adSpend?.toLocaleString("en-GB")}/mo
+              </span>
+            </div>
+
+            <div className="mt-auto">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/20 text-lg font-bold ring-2 ring-white/40">
+                  {user.photo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={user.photo}
+                      alt={user.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    user.name.charAt(0).toUpperCase()
+                  )}
+                </div>
+                <p className="text-sm font-medium text-white/85">
+                  This is {user.name.split(" ")[0]}
+                </p>
+              </div>
+              <p className="mt-3 text-lg font-semibold leading-snug">
+                {(AD_PITCH[brand.id] ?? AD_PITCH.property)(
+                  user.location || "your area"
+                )}
+              </p>
+              <span className="mt-3 inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-semibold text-gray-900">
+                Learn more →
+              </span>
+            </div>
           </div>
         </div>
 
@@ -321,12 +377,12 @@ export default function DashboardOverview() {
                 All →
               </Link>
             </div>
-            <div className="mt-3 flex-1 space-y-2.5 overflow-hidden">
+            <div className="group/rl mt-3 flex-1 space-y-1">
               {leads.slice(0, 3).map((lead) => (
                 <Link
                   key={lead.id}
                   href={`/dashboard/leads?lead=${lead.id}`}
-                  className="block"
+                  className="-mx-2 block rounded-lg px-2 py-1 transition duration-200 group-hover/rl:opacity-40 group-hover/rl:blur-[1.5px] hover:!scale-[1.04] hover:!opacity-100 hover:!blur-0 hover:bg-white/50"
                 >
                   <p className="truncate text-sm font-medium">{lead.name}</p>
                   <p className="truncate text-[11px] capitalize text-gray-400">
@@ -400,49 +456,87 @@ export default function DashboardOverview() {
               </span>
             </div>
 
-            <ol className="mt-4 space-y-1.5">
-              {campaignSteps.map((step, i) => (
-                <li
-                  key={step.label}
-                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ${
-                    step.current ? "bg-white/10" : ""
-                  }`}
-                >
-                  <span
-                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
-                      step.done ? "text-white" : "text-white/50"
-                    }`}
-                    style={
-                      step.done
-                        ? { backgroundColor: brand.accent }
-                        : step.current
-                          ? { boxShadow: `inset 0 0 0 2px ${brand.accent}` }
-                          : { boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.2)" }
-                    }
-                  >
-                    {step.done ? "✓" : i + 1}
-                  </span>
-                  <span
-                    className={`text-sm ${
-                      step.done
-                        ? "text-white/80"
-                        : step.current
-                          ? "font-medium text-white"
-                          : "text-white/50"
-                    }`}
-                  >
-                    {step.label}
-                  </span>
-                  {step.current && (
-                    <span
-                      className="ml-auto text-[11px] font-medium"
-                      style={{ color: brand.accent }}
+            <ol className="mt-4 space-y-1">
+              {campaignSteps.map((step, i) => {
+                const open = openStep === i;
+                return (
+                  <li key={step.label}>
+                    <button
+                      onClick={() => setOpenStep(open ? null : i)}
+                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition ${
+                        step.current || open
+                          ? "bg-white/10"
+                          : "hover:bg-white/5"
+                      }`}
                     >
-                      Now
-                    </span>
-                  )}
-                </li>
-              ))}
+                      <span
+                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                          step.done ? "text-white" : "text-white/50"
+                        }`}
+                        style={
+                          step.done
+                            ? { backgroundColor: brand.accent }
+                            : step.current
+                              ? { boxShadow: `inset 0 0 0 2px ${brand.accent}` }
+                              : {
+                                  boxShadow:
+                                    "inset 0 0 0 1px rgba(255,255,255,0.2)",
+                                }
+                        }
+                      >
+                        {step.done ? "✓" : i + 1}
+                      </span>
+                      <span
+                        className={`flex-1 text-sm ${
+                          step.done
+                            ? "text-white/80"
+                            : step.current
+                              ? "font-medium text-white"
+                              : "text-white/50"
+                        }`}
+                      >
+                        {step.label}
+                      </span>
+                      {step.current && (
+                        <span
+                          className="text-[11px] font-medium"
+                          style={{ color: brand.accent }}
+                        >
+                          Now
+                        </span>
+                      )}
+                      <svg
+                        className={`h-4 w-4 shrink-0 text-white/40 transition-transform ${
+                          open ? "rotate-180" : ""
+                        }`}
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                    {/* Expandable brief + timescale */}
+                    <div
+                      className={`grid transition-all duration-300 ${
+                        open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                      }`}
+                    >
+                      <div className="overflow-hidden">
+                        <div className="pb-2 pl-[52px] pr-3 pt-1">
+                          <p className="text-xs leading-relaxed text-white/60">
+                            {STAGE_DETAIL[i].blurb}
+                          </p>
+                          <p className="mt-1.5 text-[11px] font-medium text-white/40">
+                            ⏱ {STAGE_DETAIL[i].time}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
             </ol>
 
             <div className="mt-auto pt-4">

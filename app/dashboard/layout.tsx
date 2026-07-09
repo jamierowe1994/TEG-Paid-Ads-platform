@@ -11,6 +11,7 @@ import {
   fetchReferrals,
 } from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
+import { getPreviewBrandId, getPreviewAccent } from "@/lib/preview";
 import type { UserProfile, Lead, Referral } from "@/lib/types";
 import BrandMark from "@/components/BrandMark";
 
@@ -106,7 +107,11 @@ export default function DashboardLayout({
         return;
       }
       setUser(u);
-      setBrand(brandById(u.brandId) ?? null);
+      // Apply the temporary brand/colour preview override if one is set.
+      let b = brandById(getPreviewBrandId() ?? u.brandId) ?? brandById(u.brandId) ?? null;
+      const pa = getPreviewAccent();
+      if (b && pa) b = { ...b, accent: pa };
+      setBrand(b);
       setChecked(true);
     });
   }, [router]);
@@ -233,20 +238,26 @@ export default function DashboardLayout({
 
       {/* ── Sidebar controls (transparent — the chrome provides the surface) ── */}
       <aside className="fixed inset-y-0 left-0 z-30 flex w-60 flex-col">
-        <div className="flex h-16 items-center gap-2.5 px-5">
+        <div className="px-5 pt-14">
           <BrandMark
             name={brand.name}
             accent={brand.accent}
             logo={brand.logo}
-            size={36}
+            size={40}
           />
-          <div className="leading-tight">
-            <p className="text-sm font-semibold">{brand.name}</p>
-            <p className="text-[11px] text-gray-400">Paid Ads Portal</p>
-          </div>
+          <h1 className="mt-3 text-xl font-semibold leading-[1.15] tracking-tight">
+            {brand.name.split(" ").map((w, i) => (
+              <span key={i} className="block">
+                {w}
+              </span>
+            ))}
+          </h1>
+          <p className="mt-1.5 text-[11px] uppercase tracking-wide text-gray-400">
+            Paid Ads Portal
+          </p>
         </div>
 
-        <nav className="mt-6 flex-1 space-y-0.5 px-3">
+        <nav className="mt-8 flex-1 space-y-0.5 px-3">
           {NAV.map((item) => {
             const active = pathname === item.href;
             return (

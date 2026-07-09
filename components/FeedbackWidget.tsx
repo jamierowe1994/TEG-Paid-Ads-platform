@@ -1,17 +1,36 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { BRANDS } from "@/lib/brands";
+import { getPreviewAccent, getPreviewBrandId, setPreview } from "@/lib/preview";
 
-// Floating feedback button (bottom-right, every page). Reviewers can draw
-// on the screen to circle things, add a note, and submit — the annotated
-// screenshot + note is POSTed to /api/feedback for the admin dashboard.
+// Floating feedback button (bottom-right, every page). Clicking it opens a
+// little menu: "Send feedback" (draw + note → /api/feedback) or "Preview
+// brand colours" (a temporary tool to preview each brand's theme and tweak
+// an accent — stored locally, applied on reload).
 
 type Mode = "closed" | "drawing" | "note" | "sending" | "done";
 
 export default function FeedbackWidget() {
   const [mode, setMode] = useState<Mode>("closed");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [themeOpen, setThemeOpen] = useState(false);
+  const [accentInput, setAccentInput] = useState("#000000");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
+
+  // Seed the colour picker from any active preview accent (else brand default).
+  useEffect(() => {
+    if (!themeOpen) return;
+    const pa = getPreviewAccent();
+    if (pa) {
+      setAccentInput(pa);
+      return;
+    }
+    const id = getPreviewBrandId();
+    const b = BRANDS.find((x) => x.id === id);
+    if (b) setAccentInput(b.accent);
+  }, [themeOpen]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const last = useRef<{ x: number; y: number } | null>(null);
@@ -249,11 +268,118 @@ export default function FeedbackWidget() {
         </div>
       )}
 
+      {/* Theme / colour preview panel (temporary tool) */}
+      {themeOpen && (
+        <div className="fixed bottom-6 right-6 z-[95] w-72 rounded-2xl border border-gray-200 bg-white p-4 shadow-2xl">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold">Preview brand colours</h3>
+            <button
+              onClick={() => setThemeOpen(false)}
+              className="rounded p-1 text-gray-400 hover:bg-gray-100"
+              aria-label="Close"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
+          <p className="mt-1 text-xs text-gray-400">
+            Temporary — see how the portal looks per brand.
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {BRANDS.map((b) => (
+              <button
+                key={b.id}
+                onClick={() => {
+                  setPreview(b.id, null);
+                  window.location.reload();
+                }}
+                className="flex items-center gap-2 rounded-lg border border-gray-200 p-2 text-left text-xs font-medium transition hover:border-gray-400"
+              >
+                <span
+                  className="h-4 w-4 shrink-0 rounded-full ring-1 ring-black/10"
+                  style={{ backgroundColor: b.accent }}
+                />
+                <span className="truncate">{b.shortName}</span>
+              </button>
+            ))}
+          </div>
+          <div className="mt-4">
+            <label className="text-xs font-medium text-gray-500">
+              Tweak the accent
+            </label>
+            <div className="mt-1.5 flex items-center gap-2">
+              <input
+                type="color"
+                value={accentInput}
+                onChange={(e) => setAccentInput(e.target.value)}
+                className="h-9 w-9 cursor-pointer rounded border border-gray-200 bg-white"
+              />
+              <input
+                type="text"
+                value={accentInput}
+                onChange={(e) => setAccentInput(e.target.value)}
+                className="w-24 rounded-lg border border-gray-200 px-2 py-1.5 text-xs outline-none focus:border-gray-900"
+              />
+              <button
+                onClick={() => {
+                  setPreview(getPreviewBrandId(), accentInput);
+                  window.location.reload();
+                }}
+                className="rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-700"
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setPreview(null, null);
+              window.location.reload();
+            }}
+            className="mt-4 w-full rounded-lg border border-gray-200 py-2 text-xs font-medium text-gray-500 hover:bg-gray-50"
+          >
+            Reset to my brand
+          </button>
+        </div>
+      )}
+
+      {/* Menu */}
+      {menuOpen && mode === "closed" && !themeOpen && (
+        <>
+          <button
+            className="fixed inset-0 z-[94] cursor-default"
+            aria-hidden
+            onClick={() => setMenuOpen(false)}
+          />
+          <div className="fixed bottom-20 right-6 z-[95] w-56 overflow-hidden rounded-2xl border border-gray-200 bg-white p-1.5 shadow-2xl">
+            <button
+              onClick={() => {
+                setMenuOpen(false);
+                setMode("drawing");
+              }}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium hover:bg-gray-50"
+            >
+              <span className="text-base">✏️</span> Send feedback
+            </button>
+            <button
+              onClick={() => {
+                setMenuOpen(false);
+                setThemeOpen(true);
+              }}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium hover:bg-gray-50"
+            >
+              <span className="text-base">🎨</span> Preview brand colours
+            </button>
+          </div>
+        </>
+      )}
+
       {/* Floating button */}
-      {mode === "closed" && (
+      {mode === "closed" && !themeOpen && (
         <button
-          onClick={() => setMode("drawing")}
-          title="Send feedback"
+          onClick={() => setMenuOpen((v) => !v)}
+          title="Options"
           className="fixed bottom-6 right-6 z-[95] flex h-12 w-12 items-center justify-center rounded-full bg-gray-900 text-white shadow-lg transition hover:scale-105 hover:bg-gray-700"
         >
           <svg
