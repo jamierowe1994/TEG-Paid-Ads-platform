@@ -13,7 +13,7 @@ import {
 import { brandById, type Brand } from "@/lib/brands";
 import { packageById } from "@/lib/packages";
 import SourceIcon from "@/components/SourceIcon";
-import { LeadModal, stageLabel, whatFor, shortDate } from "./lead-modal";
+import { LeadModal, stageLabel, shortDate } from "./lead-modal";
 import type { Lead, LeadStage } from "@/lib/types";
 
 // Leads funnel — built to be usable by anyone. Compact clickable tiles,
@@ -23,6 +23,81 @@ import type { Lead, LeadStage } from "@/lib/types";
 //
 // New → up to 3 contact attempts → (no answer) marketing funnel → book the
 // appointment → push to the brand's CRM (Atlas is live; others pending).
+
+// Status colour per stage — uncontacted reads as red (needs attention)
+// regardless of brand accent, so it's unmissable at a glance.
+const STAGE_COLOR: Record<LeadStage, { accent: string; bg: string; text: string }> = {
+  new: { accent: "#EF4444", bg: "#FEF2F2", text: "#DC2626" },
+  attempt1: { accent: "#F59E0B", bg: "#FFFBEB", text: "#B45309" },
+  attempt2: { accent: "#F59E0B", bg: "#FFFBEB", text: "#B45309" },
+  attempt3: { accent: "#F59E0B", bg: "#FFFBEB", text: "#B45309" },
+  nurture: { accent: "#A855F7", bg: "#FAF5FF", text: "#7E22CE" },
+  converted: { accent: "#16A34A", bg: "#F0FDF4", text: "#15803D" },
+  pushed: { accent: "#16A34A", bg: "#F0FDF4", text: "#15803D" },
+  lost: { accent: "#9CA3AF", bg: "#F9FAFB", text: "#6B7280" },
+};
+
+// Tiles per snake row (matches the sm:grid-cols-4 layout below).
+const ROW_SIZE = 4;
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
+type TileSize = "lg" | "md" | "sm";
+
+// A "mini profile" tile — status colour, avatar, name, source, date and
+// stage — sized down for older rows so the snake also reads as a fade.
+function LeadTile({
+  lead,
+  brand,
+  size,
+  onClick,
+}: {
+  lead: Lead;
+  brand: Brand;
+  size: TileSize;
+  onClick: () => void;
+}) {
+  const c = STAGE_COLOR[lead.stage] ?? STAGE_COLOR.new;
+  const pad = size === "lg" ? "p-4" : size === "md" ? "p-3.5" : "p-3";
+  const avatar =
+    size === "lg" ? "h-11 w-11 text-base" : size === "md" ? "h-9 w-9 text-sm" : "h-8 w-8 text-xs";
+  const nameSize = size === "lg" ? "text-sm" : "text-[13px]";
+  return (
+    <button
+      onClick={onClick}
+      className={`flex w-full flex-col rounded-2xl border border-gray-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md ${pad}`}
+      style={{ borderTop: `3px solid ${c.accent}` }}
+    >
+      <div className="flex items-center justify-between">
+        <SourceIcon source={lead.source} size={14} />
+        <span className="text-[10px] text-gray-400">
+          {shortDate(lead.receivedAt)}
+        </span>
+      </div>
+      <div className="mt-2.5 flex min-w-0 items-center gap-2.5">
+        <span
+          className={`flex shrink-0 items-center justify-center rounded-full font-bold text-white ${avatar}`}
+          style={{ backgroundColor: c.accent }}
+        >
+          {lead.name.charAt(0).toUpperCase()}
+        </span>
+        <p className={`truncate font-semibold text-gray-900 ${nameSize}`}>
+          {lead.name}
+        </p>
+      </div>
+      <span
+        className="mt-2.5 inline-block w-fit rounded-full px-2 py-0.5 text-[10px] font-medium"
+        style={{ backgroundColor: c.bg, color: c.text }}
+      >
+        {stageLabel(lead.stage, brand)}
+      </span>
+    </button>
+  );
+}
 
 
 // Human-friendly duration for speed-to-lead (e.g. "42m", "3h 10m", "1d 4h").
@@ -334,45 +409,29 @@ export default function LeadsPage() {
         </div>
       </div>
 
-      {/* Lead tiles */}
-      <div className="mt-4 space-y-3">
-        {visible.map((lead) => {
+      {/* Lead tiles — mini profile cards in a snake pattern: newest at the
+          top-right, each row alternating direction, tapering smaller for
+          older rows so recency reads at a glance. */}
+      <div className="mt-4 flex flex-col gap-3">
+        {chunk(visible, ROW_SIZE).map((row, ri) => {
+          const size: TileSize = ri < 2 ? "lg" : ri < 5 ? "md" : "sm";
           return (
-            <button
-              key={lead.id}
-              onClick={() => setOpenId(lead.id)}
-              className="flex w-full items-center gap-4 rounded-2xl border border-gray-200 shadow-sm bg-white p-4 text-left transition hover:border-gray-300 hover:shadow-sm"
+            <div
+              key={ri}
+              dir={ri % 2 === 0 ? "rtl" : "ltr"}
+              className="grid grid-cols-2 gap-3 sm:grid-cols-4"
             >
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <SourceIcon
-                    source={lead.source}
-                    size={16}
-                    className="shrink-0"
+              {row.map((lead) => (
+                <div dir="ltr" key={lead.id}>
+                  <LeadTile
+                    lead={lead}
+                    brand={brand}
+                    size={size}
+                    onClick={() => setOpenId(lead.id)}
                   />
-                  <h3 className="truncate font-semibold">{lead.name}</h3>
-                  {lead.adName && (
-                    <span className="hidden truncate text-xs text-gray-400 sm:inline">
-                      · {lead.adName}
-                    </span>
-                  )}
                 </div>
-                <p className="mt-1 truncate text-sm text-gray-500">
-                  {whatFor(lead)}
-                </p>
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-1">
-                <span
-                  className="rounded-full px-3 py-1 text-xs font-medium"
-                  style={{ backgroundColor: brand.accentSoft, color: brand.accent }}
-                >
-                  {stageLabel(lead.stage, brand)}
-                </span>
-                <span className="text-[11px] text-gray-400">
-                  {shortDate(lead.receivedAt)}
-                </span>
-              </div>
-            </button>
+              ))}
+            </div>
           );
         })}
         {visible.length === 0 && (

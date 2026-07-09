@@ -207,7 +207,17 @@ export default function DashboardOverview() {
     (l) => l.stage === "converted" || l.stage === "pushed"
   ).length;
   const untouched = leads.filter((l) => l.stage === "new");
-  const convRate = leads.length ? Math.round((converted / leads.length) * 100) : 0;
+
+  // Ad spend running total. We don't yet have live per-agent Meta spend, so
+  // this paces the monthly cap by how far through the month we are — a clear
+  // estimate of the burn, not a claimed-exact figure (labelled as such).
+  const now = new Date();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const cap = pkg?.adSpend ?? 0;
+  const spentEst = Math.min(cap, Math.round((cap / daysInMonth) * now.getDate()));
+  const spendLeft = Math.max(0, cap - spentEst);
+  const spendPct = cap > 0 ? Math.min(100, Math.round((spentEst / cap) * 100)) : 0;
+
   const openLead = openLeadId
     ? leads.find((l) => l.id === openLeadId) ?? null
     : null;
@@ -422,27 +432,40 @@ export default function DashboardOverview() {
             <div className="flex h-full flex-col">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold">Uncontacted</h2>
-                <span
-                  className="rounded-full px-2 py-0.5 text-[11px] font-semibold text-white"
-                  style={{ backgroundColor: brand.accent }}
-                >
+                <span className="rounded-full bg-red-500 px-2 py-0.5 text-[11px] font-semibold text-white">
                   {untouched.length}
                 </span>
               </div>
-              <p className="mt-3 text-5xl font-semibold tracking-tight">
-                {untouched.length}
-              </p>
-              <p className="text-xs text-gray-500">leads to action</p>
-              <div className="mt-auto space-y-1">
-                {untouched.slice(0, 2).map((l) => (
+              {/* Bigger, clearer rows — this stays readable for the handful of
+                  leads waiting at once; beyond 4 it folds the rest into a link. */}
+              <div className="mt-3 flex-1 space-y-2 overflow-hidden">
+                {untouched.slice(0, 4).map((l) => (
                   <button
                     key={l.id}
                     onClick={() => setOpenLeadId(l.id)}
-                    className="block truncate text-left text-xs font-medium text-gray-600 hover:text-gray-900"
+                    className="flex w-full items-center gap-2.5 rounded-xl bg-red-50/80 px-2.5 py-2 text-left transition hover:bg-red-100/80"
                   >
-                    {l.name}
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-500 text-sm font-bold text-white">
+                      {l.name.charAt(0).toUpperCase()}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-gray-900">
+                        {l.name}
+                      </p>
+                      <p className="truncate text-[11px] capitalize text-gray-500">
+                        via {l.source}
+                      </p>
+                    </div>
                   </button>
                 ))}
+                {untouched.length > 4 && (
+                  <Link
+                    href="/dashboard/leads"
+                    className="block pt-0.5 text-center text-xs font-medium text-gray-400 hover:text-gray-700"
+                  >
+                    +{untouched.length - 4} more →
+                  </Link>
+                )}
               </div>
             </div>
           )}
@@ -651,20 +674,34 @@ export default function DashboardOverview() {
           </div>
         </div>
 
-        {/* Conversion rate — extra metric, bottom-left */}
+        {/* Ad spend running total — the glance-and-go view of budget left */}
         <div className={`${g.className} aspect-square p-5`} style={g.style}>
           <div className="flex h-full flex-col justify-between">
-            <h2 className="text-sm font-semibold">Conversion rate</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold">Ad spend</h2>
+              <span className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
+                Est. pace
+              </span>
+            </div>
             <div>
               <p
-                className="text-5xl font-semibold tracking-tight"
+                className="text-4xl font-semibold tracking-tight"
                 style={{ color: brand.accent }}
               >
-                {convRate}%
+                £{spentEst}
               </p>
               <p className="mt-1 text-xs text-gray-500">
-                {converted} of {leads.length} lead{leads.length === 1 ? "" : "s"}{" "}
-                {brand.conversionLabel.toLowerCase()}
+                of £{cap} this month
+              </p>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/5">
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${spendPct}%`, backgroundColor: brand.accent }}
+                />
+              </div>
+              <p className="mt-2.5 text-xs font-medium text-gray-700">
+                £{spendLeft} left · {leads.length} lead
+                {leads.length === 1 ? "" : "s"} so far
               </p>
             </div>
           </div>
