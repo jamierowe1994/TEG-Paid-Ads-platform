@@ -30,6 +30,18 @@ const NAV = [
   { href: "/dashboard/profile", label: "Profile", icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
 ];
 
+// Per-brand glow strength (hex alpha). Muted accents (bronze/gold) need more
+// to read; vivid ones (red) need less so they don't overpower.
+const GLOW_ALPHA: Record<string, string> = {
+  property: "22",
+  lettings: "22",
+  mortgage: "30",
+  recruitment: "4a",
+  commercial: "2e",
+  fineandcountry: "3c",
+  auction: "2c",
+};
+
 // Chrome geometry (px). The nav is flush to the screen's left/top/bottom edges;
 // the content sits inside, and the two arms join with a concave swoop.
 const SIDEBAR_W = 240;
@@ -210,8 +222,9 @@ export default function DashboardLayout({
           "--accent": brand.accent,
           "--accent-soft": brand.accentSoft,
           // Subtle glow: strongest at the top-right corner, fading gently
-          // across towards the top-left and down to the bottom-left.
-          background: `radial-gradient(1900px 1500px at 102% -2%, ${brand.accent}1f, transparent 82%), #f6f6f7`,
+          // across towards the top-left and down to the bottom-left. Alpha is
+          // set a touch high so muted brand accents (e.g. TRE bronze) still read.
+          background: `radial-gradient(1900px 1500px at 102% -2%, ${brand.accent}${GLOW_ALPHA[brand.id] ?? "2c"}, transparent 82%), #f6f6f7`,
         } as React.CSSProperties
       }
     >

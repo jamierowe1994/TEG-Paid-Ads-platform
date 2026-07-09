@@ -33,7 +33,7 @@ const STAT_ICON: Record<string, string> = {
 function glaze() {
   return {
     className:
-      "relative overflow-hidden rounded-3xl border border-white/50 backdrop-blur-xl shadow-[inset_0_1px_2px_rgba(255,255,255,0.75),inset_0_-22px_32px_-24px_rgba(0,0,0,0.14)]",
+      "relative overflow-hidden rounded-3xl border border-white/50 backdrop-blur-xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.65),inset_0_0_28px_rgba(0,0,0,0.09)]",
     style: { background: "rgba(255,255,255,0.34)" } as React.CSSProperties,
   };
 }
@@ -249,7 +249,7 @@ export default function DashboardOverview() {
       <section className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Current ad — photo, top-left */}
         <div
-          className="relative aspect-square overflow-hidden rounded-3xl border border-white/60 shadow-[inset_0_2px_4px_rgba(255,255,255,0.2),inset_0_-44px_64px_-44px_rgba(0,0,0,0.5)]"
+          className="relative aspect-square overflow-hidden rounded-3xl border border-white/60 shadow-[inset_0_0_44px_rgba(0,0,0,0.4)]"
           style={{
             background: `linear-gradient(135deg, ${brand.accent}, ${brand.accent}aa)`,
           }}
@@ -380,7 +380,7 @@ export default function DashboardOverview() {
           </div>
 
           {/* Dark-grey sign-up card — edge-to-edge, filling the tile */}
-          <div className="relative mt-4 flex flex-1 flex-col overflow-hidden rounded-t-2xl bg-neutral-800 p-5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+          <div className="relative mt-4 flex flex-1 flex-col overflow-hidden rounded-t-2xl bg-neutral-800 p-5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.07),inset_0_0_34px_rgba(0,0,0,0.4)]">
             <Confetti fire={isLive} />
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold">Sign-up process</p>
