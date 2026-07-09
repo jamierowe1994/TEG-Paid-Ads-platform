@@ -7,6 +7,7 @@ import { packageById, PACKAGES } from "@/lib/packages";
 import { stageLabel } from "@/lib/onboarding";
 import BrandMark from "@/components/BrandMark";
 import AgentProfile from "@/components/AgentProfile";
+import PasswordInput from "@/components/PasswordInput";
 import type { UserProfile, Referral } from "@/lib/types";
 
 // Admin backend. Password-gated (ADMIN_PASSWORD env var, default
@@ -125,14 +126,55 @@ type Tab =
   | "performance"
   | "connections";
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: "overview", label: "Overview" },
-  { id: "activity", label: "Activity" },
-  { id: "referrals", label: "Referrals" },
-  { id: "crm", label: "CRM" },
-  { id: "performance", label: "Performance" },
-  { id: "connections", label: "Connections" },
+const TABS: { id: Tab; label: string; icon: string }[] = [
+  { id: "overview", label: "Overview", icon: "M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10" },
+  { id: "activity", label: "Activity", icon: "M3 12h4l3 8 4-16 3 8h4" },
+  {
+    id: "referrals",
+    label: "Referrals",
+    icon: "M8 7h12m0 0l-4-4m4 4l-4 4M16 17H4m0 0l4 4m-4-4l4-4",
+  },
+  {
+    id: "crm",
+    label: "CRM",
+    icon: "M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4z",
+  },
+  { id: "performance", label: "Performance", icon: "M3 17l6-6 4 4 8-8M21 7v6M21 7h-6" },
+  {
+    id: "connections",
+    label: "Connections",
+    icon: "M13.5 10.5 21 3m0 0h-5m5 0v5M10.5 13.5 3 21m0 0h5m-5 0v-5",
+  },
 ];
+
+// Chrome geometry (px) — the same wrap-around L-shape the customer portal uses.
+const SIDEBAR_W = 240;
+const TOPBAR_H = 64;
+const SWOOP = 22;
+
+// One seamless white L-shape (sidebar + top bar) drawn with a clip-path so
+// there's no seam where the two arms meet — the concave swoop is part of the
+// path. Neutral (no brand colour) for the admin section.
+function ChromeSurface({ vw, vh }: { vw: number; vh: number }) {
+  const sw = SIDEBAR_W;
+  const th = TOPBAR_H;
+  const r = SWOOP;
+  const d =
+    `M0 0 L${vw} 0 L${vw} ${th} L${sw + r} ${th} ` +
+    `A${r} ${r} 0 0 0 ${sw} ${th + r} L${sw} ${vh} L0 ${vh} Z`;
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none fixed inset-0 z-20 bg-white"
+      style={{
+        clipPath: `path('${d}')`,
+        WebkitClipPath: `path('${d}')`,
+        filter:
+          "drop-shadow(3px 0 12px rgba(0,0,0,0.05)) drop-shadow(0 4px 12px rgba(0,0,0,0.05))",
+      }}
+    />
+  );
+}
 
 const REFERRAL_STATUS_STYLE: Record<Referral["status"], string> = {
   pending: "bg-amber-50 text-amber-600",
@@ -250,6 +292,15 @@ export default function AdminPage() {
     "all"
   );
   const [crmSearch, setCrmSearch] = useState("");
+  const [vp, setVp] = useState({ w: 0, h: 0 });
+
+  // Track the viewport so the chrome L-shape (a clip-path) can be sized to it.
+  useEffect(() => {
+    const on = () => setVp({ w: window.innerWidth, h: window.innerHeight });
+    on();
+    window.addEventListener("resize", on);
+    return () => window.removeEventListener("resize", on);
+  }, []);
 
   async function loadData(pass: string): Promise<boolean> {
     const headers = { Authorization: `Bearer ${pass}` };
@@ -495,37 +546,41 @@ export default function AdminPage() {
 
   if (!authed) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-gray-50 px-6">
-        <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-8">
-          <div className="mb-6 flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-900 text-sm font-bold text-white">
+      <main className="flex min-h-screen items-center justify-center bg-white px-6">
+        <div className="w-full max-w-sm">
+          <div className="mb-10 flex items-center justify-center gap-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-900 text-sm font-bold text-white">
               E
-            </div>
-            <div className="leading-tight">
-              <p className="text-sm font-semibold">The Experts Group</p>
-              <p className="text-xs text-gray-400">Admin</p>
-            </div>
+            </span>
+            <span className="text-sm font-semibold">The Experts Group</span>
           </div>
-          <input
-            autoFocus
-            type="password"
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-gray-900"
-            placeholder="Admin password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && signIn()}
-          />
-          {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+          <h1 className="text-center text-2xl font-semibold tracking-tight">
+            Admin sign in
+          </h1>
+          <p className="mt-2 text-center text-sm text-gray-500">
+            Enter your admin password to continue
+          </p>
+          <div className="mt-8">
+            <PasswordInput
+              autoFocus
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-gray-900 focus:ring-4 focus:ring-gray-100"
+              placeholder="Admin password"
+              value={password}
+              onChange={setPassword}
+              onEnter={signIn}
+            />
+          </div>
+          {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
           <button
             onClick={signIn}
             disabled={loading || !password}
-            className="mt-4 w-full rounded-xl bg-gray-900 py-3 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+            className="mt-4 w-full rounded-xl bg-gray-900 py-3 text-sm font-medium text-white transition hover:bg-gray-700 disabled:opacity-50"
           >
             {loading ? "Checking…" : "Sign in"}
           </button>
           <Link
             href="/"
-            className="mt-6 block text-center text-xs text-gray-400 hover:text-gray-600"
+            className="mt-6 block text-center text-sm text-gray-500 hover:text-gray-900"
           >
             ← Back to site
           </Link>
@@ -535,56 +590,98 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-900 text-sm font-bold text-white">
+    <div
+      className="relative min-h-screen isolate"
+      style={{ background: "#f6f6f7" }}
+    >
+      {/* One seamless white chrome surface (sidebar + top bar + swoop) —
+          mirrors the customer portal, but neutral (no brand colour). */}
+      {vp.w > 0 && <ChromeSurface vw={vp.w} vh={vp.h} />}
+
+      {/* ── Sidebar (transparent — the chrome provides the white surface) ── */}
+      <aside className="fixed inset-y-0 left-0 z-30 flex w-60 flex-col">
+        <div className="px-5 pt-14">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-900 text-sm font-bold text-white">
               E
+            </span>
+            <div className="leading-tight">
+              <p className="text-sm font-semibold">The Experts Group</p>
+              <p className="text-[11px] uppercase tracking-wide text-gray-400">
+                Admin
+              </p>
             </div>
-            <span className="text-sm font-semibold">Admin</span>
-          </div>
-          <div className="flex items-center gap-4 text-sm">
-            <button
-              onClick={() => loadData(password)}
-              className="text-gray-500 hover:text-gray-900"
-            >
-              Refresh
-            </button>
-            <Link href="/" className="text-gray-500 hover:text-gray-900">
-              View site
-            </Link>
-            <button
-              onClick={() => {
-                sessionStorage.removeItem("teg_admin");
-                setAuthed(false);
-                setPassword("");
-              }}
-              className="rounded-lg border border-gray-200 px-3 py-1.5 text-gray-500 hover:bg-gray-50"
-            >
-              Sign out
-            </button>
           </div>
         </div>
-        {/* Tabs */}
-        <div className="mx-auto flex max-w-6xl gap-1 px-6">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`-mb-px border-b-2 px-4 py-3 text-sm font-medium transition ${
-                tab === t.id
-                  ? "border-gray-900 text-gray-900"
-                  : "border-transparent text-gray-400 hover:text-gray-600"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+
+        <nav className="mt-10 flex-1 space-y-0.5 px-3">
+          {TABS.map((t) => {
+            const active = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                  active
+                    ? "bg-gray-100 text-gray-900"
+                    : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                }`}
+              >
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.8}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  viewBox="0 0 24 24"
+                >
+                  <path d={t.icon} />
+                </svg>
+                {t.label}
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="p-4">
+          <button
+            onClick={() => {
+              sessionStorage.removeItem("teg_admin");
+              setAuthed(false);
+              setPassword("");
+            }}
+            className="w-full rounded-lg border border-gray-200 py-1.5 text-xs font-medium text-gray-500 transition hover:bg-gray-50 hover:text-gray-900"
+          >
+            Sign out
+          </button>
+        </div>
+      </aside>
+
+      {/* ── Top bar (transparent) ── */}
+      <header className="fixed left-[240px] right-0 top-0 z-40 flex h-16 items-center justify-between gap-3 px-8">
+        <h1 className="text-lg font-semibold tracking-tight">
+          {TABS.find((t) => t.id === tab)?.label}
+        </h1>
+        <div className="flex items-center gap-3 text-sm">
+          <button
+            onClick={() => loadData(password)}
+            className="rounded-lg border border-gray-200 bg-gray-50 px-3.5 py-2 font-medium text-gray-500 transition hover:text-gray-900"
+          >
+            Refresh
+          </button>
+          <Link
+            href="/"
+            className="rounded-lg border border-gray-200 bg-gray-50 px-3.5 py-2 font-medium text-gray-500 transition hover:text-gray-900"
+          >
+            View site
+          </Link>
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl px-6 py-10">
+      {/* ── Main ── */}
+      <main className="ml-[240px] px-8 pb-10 pt-[104px]">
+        <div className="mx-auto max-w-6xl">
         {/* ═══ OVERVIEW ═══ */}
         {tab === "overview" && (
           <>
@@ -1772,6 +1869,7 @@ export default function AdminPage() {
           </>
         )}
       </div>
+      </main>
 
       {/* Screenshot viewer */}
       {selected?.screenshot && (
@@ -1832,7 +1930,7 @@ export default function AdminPage() {
           {toast}
         </div>
       )}
-    </main>
+    </div>
   );
 }
 
