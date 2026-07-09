@@ -244,16 +244,20 @@ function splitName(full: string): { first: string; last: string | null } {
 // searchable as `contact.name_first` etc. Search + create both need the
 // relational shape below, not flat fields.
 
-// Find a contact by email, returning its id if one exists. Rex search takes a
-// `criteria` array of [field, op, value] — the field is the dotted
-// `contact.email_address` search alias, not a bare column.
-async function findContactIdByEmail(
-  email: string,
+// Find a contact by a searchable field, returning its id if one exists. Rex
+// search takes a `criteria` array of [field, op, value] — the field is a
+// dotted alias like `contact.email_address`, not a bare column. Rex applies
+// system_record_state=active automatically, so a contact that's been deleted
+// (archived/trashed) in Rex will NOT match — deleting there deliberately
+// frees the person to be pushed again as a fresh record.
+async function findContactIdBy(
+  field: string,
+  value: string,
   accountId: string | null
 ): Promise<string | null> {
   const res = await rexCall(
     "Contacts/search",
-    { criteria: [["contact.email_address", "=", email]], limit: 1 },
+    { criteria: [[field, "=", value]], limit: 1 },
     accountId
   );
   if (!res.ok) return null;
@@ -303,6 +307,10 @@ async function createContact(
   return String(id);
 }
 
+// Pre-check before creating: is this person already on the system? Matched by
+// email first, then phone (covers phone-only leads). A match means we reuse
+// the existing contact and just attach a new lead to it — never a duplicate
+// person. No match (including deleted-in-Rex) → create fresh.
 async function findOrCreateContact(
   lead: Lead,
   accountId: string | null,
@@ -314,7 +322,19 @@ async function findOrCreateContact(
     );
   }
   if (lead.email?.trim()) {
-    const existing = await findContactIdByEmail(lead.email.trim(), accountId);
+    const existing = await findContactIdBy(
+      "contact.email_address",
+      lead.email.trim(),
+      accountId
+    );
+    if (existing) return { id: existing, alreadyExisted: true };
+  }
+  if (lead.phone?.trim()) {
+    const existing = await findContactIdBy(
+      "contact.phone_number",
+      lead.phone.trim(),
+      accountId
+    );
     if (existing) return { id: existing, alreadyExisted: true };
   }
   return {

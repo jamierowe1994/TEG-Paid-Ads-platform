@@ -576,10 +576,24 @@ export function LeadModal({
             )}
 
             {lead.stage === "pushed" && (
-              <p className="rounded-2xl bg-green-50 py-3 text-center text-sm font-medium text-green-700">
-                ✓ In {brand.crmName}
-                {booked ? ` · ${apptLabel(lead.appointmentAt!)}` : ""}
-              </p>
+              <>
+                <p className="rounded-2xl bg-green-50 py-3 text-center text-sm font-medium text-green-700">
+                  ✓ In {brand.crmName}
+                  {booked ? ` · ${apptLabel(lead.appointmentAt!)}` : ""}
+                </p>
+                {/* Safe to re-run: the push pre-checks by email/phone, so if
+                    they're still in the CRM it just adds to their existing
+                    record; if they were deleted there, it re-creates them. */}
+                <button
+                  onClick={onPush}
+                  disabled={pushing}
+                  className="w-full rounded-2xl border border-transparent py-2.5 text-sm font-medium text-gray-400 transition hover:border-gray-300 hover:text-gray-600 disabled:opacity-50"
+                >
+                  {pushing
+                    ? "Pushing…"
+                    : `Deleted them in ${brand.crmName}? Push again`}
+                </button>
+              </>
             )}
 
             {/* Mark lost / reopen */}

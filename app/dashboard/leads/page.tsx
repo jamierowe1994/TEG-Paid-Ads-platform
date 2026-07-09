@@ -239,13 +239,20 @@ export default function LeadsPage() {
           : l
       )
     );
+    // The push pre-checks by email/phone so a person is never duplicated —
+    // spell out which of the two paths happened.
+    if (res.contactAlreadyExisted) {
+      showToast(
+        `${lead.name} is already on ${brand.crmName} — new enquiry added to their existing record ✓`,
+        5000
+      );
+      return;
+    }
     const extra = res.alreadyExisted
       ? ` (already in ${brand.crmName} — note added)`
-      : res.contactAlreadyExisted
-        ? ` (contact already in ${brand.crmName})`
-        : res.noteAttached
-          ? " with notes"
-          : "";
+      : res.noteAttached
+        ? " with notes"
+        : "";
     showToast(`${lead.name} pushed to ${brand.crmName} ✓${extra}`);
   }
 
