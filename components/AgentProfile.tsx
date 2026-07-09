@@ -44,6 +44,12 @@ export default function AgentProfile({
   const [metaSearching, setMetaSearching] = useState(false);
   const [metaResult, setMetaResult] = useState<string | null>(null);
   const [metaError, setMetaError] = useState<string | null>(null);
+  const [testLeadName, setTestLeadName] = useState("");
+  const [testLeadPhone, setTestLeadPhone] = useState("");
+  const [testLeadEmail, setTestLeadEmail] = useState("");
+  const [addingLead, setAddingLead] = useState(false);
+  const [addLeadResult, setAddLeadResult] = useState<string | null>(null);
+  const [addLeadError, setAddLeadError] = useState<string | null>(null);
   const brand = brandById(agent.brandId);
   const pkg = packageById(agent.packageId);
   const rate =
@@ -144,6 +150,40 @@ export default function AgentProfile({
       );
       onLeadsImported?.();
     }
+  }
+
+  // Manually add a lead straight into this agent's funnel — for seeding test
+  // data or logging one that came in outside the usual channels.
+  async function addTestLead() {
+    const name = testLeadName.trim();
+    if (!name) return;
+    setAddingLead(true);
+    setAddLeadResult(null);
+    setAddLeadError(null);
+    const res = await fetch("/api/admin/leads/add", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${adminPassword}`,
+      },
+      body: JSON.stringify({
+        userId: agent.id,
+        name,
+        phone: testLeadPhone.trim(),
+        email: testLeadEmail.trim(),
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setAddingLead(false);
+    if (!res.ok) {
+      setAddLeadError(data.error ?? "Couldn't add that lead.");
+      return;
+    }
+    setAddLeadResult(`Added ${name} to ${agent.name.split(" ")[0]}'s leads ✓`);
+    setTestLeadName("");
+    setTestLeadPhone("");
+    setTestLeadEmail("");
+    onLeadsImported?.();
   }
 
   return (
@@ -264,6 +304,53 @@ export default function AgentProfile({
                 <>— add a Page ID for {brand?.name} in Connections first.</>
               )}
             </p>
+          )}
+        </div>
+
+        {/* Add a test lead — seed data for a fresh account, or log one that
+            came in outside the usual channels */}
+        <div className="mt-4 rounded-2xl border border-gray-200 p-4">
+          <p className="text-sm font-semibold">Add a lead</p>
+          <p className="mt-0.5 text-xs text-gray-400">
+            Drops straight into {agent.name.split(" ")[0]}&apos;s Leads funnel
+            as a new enquiry.
+          </p>
+          <div className="mt-3 space-y-2">
+            <input
+              value={testLeadName}
+              onChange={(e) => setTestLeadName(e.target.value)}
+              placeholder="Lead name"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gray-900"
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                value={testLeadPhone}
+                onChange={(e) => setTestLeadPhone(e.target.value)}
+                placeholder="Phone (optional)"
+                className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gray-900"
+              />
+              <input
+                value={testLeadEmail}
+                onChange={(e) => setTestLeadEmail(e.target.value)}
+                placeholder="Email (optional)"
+                className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gray-900"
+              />
+            </div>
+            <button
+              onClick={addTestLead}
+              disabled={!testLeadName.trim() || addingLead}
+              className="w-full rounded-lg bg-gray-900 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+            >
+              {addingLead ? "Adding…" : "Add lead"}
+            </button>
+          </div>
+          {addLeadResult && (
+            <p className="mt-2.5 text-sm font-medium text-green-700">
+              {addLeadResult}
+            </p>
+          )}
+          {addLeadError && (
+            <p className="mt-2.5 text-sm text-red-600">{addLeadError}</p>
           )}
         </div>
 
