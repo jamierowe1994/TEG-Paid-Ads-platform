@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { brandById } from "@/lib/brands";
 import { packageById } from "@/lib/packages";
 import { ONBOARDING_STAGES, stageIndex } from "@/lib/onboarding";
@@ -205,7 +205,14 @@ export default function AgentProfile({
       .filter(Boolean);
   }
 
-  // Verify ids against Meta → real campaign names/statuses for the tags.
+  // The authoritative current id list. A ref (not the `agent` prop) so two
+  // quick adds can't race — the prop only refreshes after each PATCH round-
+  // trips, and reading it mid-flight could drop the previous add.
+  const campaignIdsRef = useRef<string[]>(parseIds(agent.metaCampaignId));
+
+  // Verify ids against Meta → real campaign names/statuses for the tags,
+  // including the silent stats-killer: a campaign that verifies fine but
+  // lives in a different ad account than this agent's brand pulls from.
   async function checkCampaigns(
     ids: string[]
   ): Promise<Array<{ id: string; name?: string; status?: string; error?: string }>> {
@@ -217,7 +224,10 @@ export default function AgentProfile({
           "Content-Type": "application/json",
           Authorization: `Bearer ${adminPassword}`,
         },
-        body: JSON.stringify({ campaignIds: ids.join(", ") }),
+        body: JSON.stringify({
+          campaignIds: ids.join(", "),
+          brandId: agent.brandId,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && Array.isArray(data.campaigns)) return data.campaigns;
@@ -232,6 +242,7 @@ export default function AgentProfile({
   useEffect(() => {
     let cancelled = false;
     const ids = parseIds(agent.metaCampaignId);
+    campaignIdsRef.current = ids;
     if (ids.length === 0) {
       setCampaignTags([]);
       return;
@@ -252,20 +263,20 @@ export default function AgentProfile({
     const id = newCampaignId.trim().replace(/,+$/, "");
     if (!id || addingCampaign) return;
     setCampaignsError(null);
-    const existing = parseIds(agent.metaCampaignId);
+    const existing = campaignIdsRef.current;
     if (existing.includes(id)) {
       setCampaignsError("That campaign is already tagged.");
       return;
     }
     setAddingCampaign(true);
-    const saved = await patch({
-      metaCampaignId: [...existing, id].join(", "),
-    });
+    const next = [...existing, id];
+    const saved = await patch({ metaCampaignId: next.join(", ") });
     if (!saved) {
       setAddingCampaign(false);
       setCampaignsError("Couldn't save — please try again.");
       return;
     }
+    campaignIdsRef.current = next;
     setNewCampaignId("");
     const [tag] = await checkCampaigns([id]);
     setCampaignTags((prev) => [...prev, tag ?? { id }]);
@@ -274,12 +285,13 @@ export default function AgentProfile({
 
   // Remove one campaign from the stored list (via Edit mode on its tag).
   async function removeCampaign(id: string) {
-    const remaining = parseIds(agent.metaCampaignId).filter((x) => x !== id);
+    const remaining = campaignIdsRef.current.filter((x) => x !== id);
     const saved = await patch({ metaCampaignId: remaining.join(", ") });
     if (!saved) {
       setCampaignsError("Couldn't remove — please try again.");
       return;
     }
+    campaignIdsRef.current = remaining;
     setCampaignTags((prev) => prev.filter((t) => t.id !== id));
     if (remaining.length === 0) setCampaignsEditing(false);
   }

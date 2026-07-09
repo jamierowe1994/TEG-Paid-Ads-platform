@@ -9,8 +9,10 @@ function authorised(req: NextRequest): boolean {
 
 // Verifies an agent's Meta campaign id(s) against Meta itself — returns each
 // campaign's real name + status so the admin can see the link actually saved
-// AND points at a real campaign, not just that text landed in a box.
-// Body: { campaignIds: "id, id, …" }
+// AND points at a real campaign, not just that text landed in a box. Pass
+// `brandId` to also catch campaigns living in a DIFFERENT ad account than the
+// brand pulls stats from (they verify fine by id but contribute nothing).
+// Body: { campaignIds: "id, id, …", brandId? }
 export async function POST(req: NextRequest) {
   if (!authorised(req)) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
@@ -26,6 +28,7 @@ export async function POST(req: NextRequest) {
   if (ids.length === 0) {
     return NextResponse.json({ error: "No campaign ids given." }, { status: 400 });
   }
-  const campaigns = await getCampaignsInfo(ids);
+  const brandId = body?.brandId ? String(body.brandId) : undefined;
+  const campaigns = await getCampaignsInfo(ids, brandId);
   return NextResponse.json({ ok: true, campaigns });
 }

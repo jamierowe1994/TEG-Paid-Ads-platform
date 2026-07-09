@@ -189,19 +189,47 @@ export function parseCampaignIds(raw: string | null | undefined): string[] {
     .filter(Boolean);
 }
 
+// The ad account a brand's stats are pulled from — exposed so callers can
+// check a campaign actually lives in it (a campaign from a DIFFERENT account
+// verifies fine by id but contributes zero stats, which is silently wrong).
+export async function configuredAdAccountId(
+  brandId: string
+): Promise<string | null> {
+  return accountId(brandId);
+}
+
 // Verify campaign ids against Meta — returns each one's real name + status so
 // the admin can SEE the link is right when they hit Save (a bad id comes back
-// as its error message instead).
+// as its error message instead). When `brandId` is given, also flags any
+// campaign that lives in a different ad account than the brand pulls from —
+// the silent stats-killer.
 export async function getCampaignsInfo(
-  ids: string[]
+  ids: string[],
+  brandId?: string
 ): Promise<Array<{ id: string; name?: string; status?: string; error?: string }>> {
+  const brandAccount = brandId ? await configuredAdAccountId(brandId) : null;
   return Promise.all(
     ids.map(async (id) => {
       try {
-        const c = (await graph(id, { fields: "name,effective_status" })) as {
+        const c = (await graph(id, {
+          fields: "name,effective_status,account_id",
+        })) as {
           name?: string;
           effective_status?: string;
+          account_id?: string;
         };
+        if (brandAccount && c.account_id) {
+          const campaignAccount = c.account_id.startsWith("act_")
+            ? c.account_id
+            : `act_${c.account_id}`;
+          if (campaignAccount !== brandAccount) {
+            return {
+              id,
+              name: c.name,
+              error: `"${c.name}" lives in ad account ${campaignAccount}, but this brand pulls stats from ${brandAccount} — its figures won't show.`,
+            };
+          }
+        }
         return { id, name: c.name, status: c.effective_status };
       } catch (e) {
         return { id, error: e instanceof Error ? e.message : "Meta error" };
