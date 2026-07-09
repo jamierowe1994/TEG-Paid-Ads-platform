@@ -182,7 +182,15 @@ export async function rexSearchContactsByName(
     {
       criteria: [["contact.name_full", "~", name]],
       limit: 10,
-      extra_fields: ["related.contact_names", "related.contact_emails", "related.contact_phones"],
+      // Confirmed via Rex's own "invalid argument" error: extra fields must
+      // be nested under extra_options, not passed as a top-level arg.
+      extra_options: {
+        extra_fields: [
+          "related.contact_names",
+          "related.contact_emails",
+          "related.contact_phones",
+        ],
+      },
     },
     accountId
   );
@@ -201,7 +209,13 @@ export async function rexRecentContacts(brandId: string): Promise<unknown> {
       criteria: [],
       limit: 10,
       order_by: [{ field: "system_ctime", direction: "desc" }],
-      extra_fields: ["related.contact_names", "related.contact_emails", "related.contact_phones"],
+      extra_options: {
+        extra_fields: [
+          "related.contact_names",
+          "related.contact_emails",
+          "related.contact_phones",
+        ],
+      },
     },
     accountId
   );
