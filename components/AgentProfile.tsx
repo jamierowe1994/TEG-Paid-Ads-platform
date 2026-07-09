@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { brandById } from "@/lib/brands";
 import { packageById } from "@/lib/packages";
 import { ONBOARDING_STAGES, stageIndex } from "@/lib/onboarding";
@@ -50,11 +50,15 @@ export default function AgentProfile({
   const [addingLead, setAddingLead] = useState(false);
   const [addLeadResult, setAddLeadResult] = useState<string | null>(null);
   const [addLeadError, setAddLeadError] = useState<string | null>(null);
-  const [campaignsInput, setCampaignsInput] = useState(agent.metaCampaignId ?? "");
-  const [savingCampaigns, setSavingCampaigns] = useState(false);
-  const [campaignsChecked, setCampaignsChecked] = useState<
+  // Campaign tags: each stored campaign id rendered as its own chip, verified
+  // against Meta for its real name/status. Edit mode swaps the Active badge
+  // for a Remove button on every chip.
+  const [campaignTags, setCampaignTags] = useState<
     Array<{ id: string; name?: string; status?: string; error?: string }>
   >([]);
+  const [newCampaignId, setNewCampaignId] = useState("");
+  const [addingCampaign, setAddingCampaign] = useState(false);
+  const [campaignsEditing, setCampaignsEditing] = useState(false);
   const [campaignsError, setCampaignsError] = useState<string | null>(null);
   const brand = brandById(agent.brandId);
   const pkg = packageById(agent.packageId);
@@ -192,41 +196,92 @@ export default function AgentProfile({
     onLeadsImported?.();
   }
 
-  // Save the campaign id(s), then verify them against Meta itself — so "did
-  // it actually save AND point at a real campaign" is answered in one click.
-  async function saveCampaigns() {
-    setSavingCampaigns(true);
-    setCampaignsChecked([]);
+  // Storage stays a comma-separated string on the profile; the UI treats
+  // each id as its own tag.
+  function parseIds(raw: string | null | undefined): string[] {
+    return (raw ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
+  // Verify ids against Meta → real campaign names/statuses for the tags.
+  async function checkCampaigns(
+    ids: string[]
+  ): Promise<Array<{ id: string; name?: string; status?: string; error?: string }>> {
+    if (ids.length === 0) return [];
+    try {
+      const res = await fetch("/api/admin/meta/campaign-check", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${adminPassword}`,
+        },
+        body: JSON.stringify({ campaignIds: ids.join(", ") }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && Array.isArray(data.campaigns)) return data.campaigns;
+      // Verification unavailable (e.g. Meta not connected) — show bare ids.
+      return ids.map((id) => ({ id, error: data.error ?? "Not verified" }));
+    } catch {
+      return ids.map((id) => ({ id, error: "Not verified" }));
+    }
+  }
+
+  // Load the stored campaigns as verified tags whenever the record opens.
+  useEffect(() => {
+    let cancelled = false;
+    const ids = parseIds(agent.metaCampaignId);
+    if (ids.length === 0) {
+      setCampaignTags([]);
+      return;
+    }
+    setCampaignTags(ids.map((id) => ({ id }))); // instant bare tags…
+    checkCampaigns(ids).then((tags) => {
+      if (!cancelled) setCampaignTags(tags); // …then filled with names
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agent.id]);
+
+  // Add one campaign: append to the stored list, clear the box for the next
+  // one, and verify the new id so its tag shows the real name.
+  async function addCampaign() {
+    const id = newCampaignId.trim().replace(/,+$/, "");
+    if (!id || addingCampaign) return;
     setCampaignsError(null);
-    const saved = await patch({ metaCampaignId: campaignsInput });
+    const existing = parseIds(agent.metaCampaignId);
+    if (existing.includes(id)) {
+      setCampaignsError("That campaign is already tagged.");
+      return;
+    }
+    setAddingCampaign(true);
+    const saved = await patch({
+      metaCampaignId: [...existing, id].join(", "),
+    });
     if (!saved) {
-      setSavingCampaigns(false);
+      setAddingCampaign(false);
       setCampaignsError("Couldn't save — please try again.");
       return;
     }
-    if (!campaignsInput.trim()) {
-      // Cleared the field — saved, nothing to verify.
-      setSavingCampaigns(false);
-      setCampaignsChecked([]);
+    setNewCampaignId("");
+    const [tag] = await checkCampaigns([id]);
+    setCampaignTags((prev) => [...prev, tag ?? { id }]);
+    setAddingCampaign(false);
+  }
+
+  // Remove one campaign from the stored list (via Edit mode on its tag).
+  async function removeCampaign(id: string) {
+    const remaining = parseIds(agent.metaCampaignId).filter((x) => x !== id);
+    const saved = await patch({ metaCampaignId: remaining.join(", ") });
+    if (!saved) {
+      setCampaignsError("Couldn't remove — please try again.");
       return;
     }
-    const res = await fetch("/api/admin/meta/campaign-check", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${adminPassword}`,
-      },
-      body: JSON.stringify({ campaignIds: campaignsInput }),
-    });
-    const data = await res.json().catch(() => ({}));
-    setSavingCampaigns(false);
-    if (!res.ok) {
-      setCampaignsError(
-        `Saved, but couldn't verify with Meta: ${data.error ?? "try again"}`
-      );
-      return;
-    }
-    setCampaignsChecked(data.campaigns ?? []);
+    setCampaignTags((prev) => prev.filter((t) => t.id !== id));
+    if (remaining.length === 0) setCampaignsEditing(false);
   }
 
   return (
@@ -407,30 +462,33 @@ export default function AgentProfile({
             at once (comma-separated), since agents can run multiple campaigns. */}
         {agent.onboardingStage === "live" && (
           <div className="mt-6 rounded-2xl border-2 border-gray-900 p-4">
-            <p className="text-sm font-semibold">Meta campaigns</p>
-            <p className="mt-0.5 text-xs text-gray-400">
-              Tag the campaign ID(s) this agent's ads run under — comma-separate
-              if they have more than one. Save verifies them against Meta and
-              switches their dashboard to live figures.
-            </p>
-            <div className="mt-3 flex gap-2">
-              <input
-                value={campaignsInput}
-                onChange={(e) => setCampaignsInput(e.target.value)}
-                placeholder="e.g. 1201234567890, 1209876543210"
-                className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gray-900"
-              />
-              <button
-                onClick={saveCampaigns}
-                disabled={savingCampaigns}
-                className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
-              >
-                {savingCampaigns ? "Checking…" : "Save"}
-              </button>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold">Meta campaigns</p>
+                <p className="mt-0.5 text-xs text-gray-400">
+                  Add each campaign this agent&apos;s ads run under — they can
+                  have several live at once.
+                </p>
+              </div>
+              {campaignTags.length > 0 && (
+                <button
+                  onClick={() => setCampaignsEditing((v) => !v)}
+                  className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium ${
+                    campaignsEditing
+                      ? "bg-gray-900 text-white"
+                      : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  {campaignsEditing ? "Done" : "Edit"}
+                </button>
+              )}
             </div>
-            {campaignsChecked.length > 0 && (
+
+            {/* One tag per campaign — green when verified against Meta. In
+                Edit mode the Active badge slides over to a Remove button. */}
+            {campaignTags.length > 0 && (
               <ul className="mt-3 space-y-1.5">
-                {campaignsChecked.map((c) => (
+                {campaignTags.map((c) => (
                   <li
                     key={c.id}
                     className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
@@ -441,21 +499,58 @@ export default function AgentProfile({
                   >
                     {c.error ? (
                       <>
-                        ✕ <span className="font-mono text-xs">{c.id}</span> —{" "}
-                        {c.error}
+                        ✕{" "}
+                        <span className="font-mono text-xs">{c.id}</span>
+                        <span className="truncate text-xs">— {c.error}</span>
                       </>
                     ) : (
                       <>
-                        ✓ <span className="font-medium">{c.name}</span>
-                        <span className="ml-auto text-xs opacity-70">
-                          {c.status}
+                        ✓{" "}
+                        <span className="truncate font-medium">
+                          {c.name ?? c.id}
                         </span>
                       </>
+                    )}
+                    {campaignsEditing ? (
+                      <button
+                        onClick={() => removeCampaign(c.id)}
+                        className="ml-auto shrink-0 rounded-full bg-red-600 px-2.5 py-0.5 text-[11px] font-semibold text-white hover:bg-red-700"
+                      >
+                        Remove
+                      </button>
+                    ) : (
+                      <span
+                        className={`ml-auto shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                          c.error
+                            ? "bg-red-100 text-red-600"
+                            : "bg-green-600 text-white"
+                        }`}
+                      >
+                        {c.error ? "Unverified" : (c.status ?? "Active")}
+                      </span>
                     )}
                   </li>
                 ))}
               </ul>
             )}
+
+            {/* Add another — clears itself after each add */}
+            <div className="mt-3 flex gap-2">
+              <input
+                value={newCampaignId}
+                onChange={(e) => setNewCampaignId(e.target.value)}
+                placeholder="Campaign ID, e.g. 1201234567890"
+                className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gray-900"
+                onKeyDown={(e) => e.key === "Enter" && addCampaign()}
+              />
+              <button
+                onClick={addCampaign}
+                disabled={addingCampaign || !newCampaignId.trim()}
+                className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+              >
+                {addingCampaign ? "Adding…" : "Add"}
+              </button>
+            </div>
             {campaignsError && (
               <p className="mt-2.5 text-sm text-red-600">{campaignsError}</p>
             )}

@@ -97,6 +97,12 @@ export default function DashboardOverview() {
     spend: number;
     leads: number;
   } | null>(null);
+  // The actual live ad's creative image, when Meta can give us one — swaps
+  // the "Current ad" mock for the real thing.
+  const [myCreative, setMyCreative] = useState<{
+    adName: string;
+    imageUrl: string;
+  } | null>(null);
 
   async function submitFeedback() {
     const text = feedbackText.trim();
@@ -189,6 +195,7 @@ export default function DashboardOverview() {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d?.configured && d?.snapshot) setMyMeta(d.snapshot);
+        if (d?.creative) setMyCreative(d.creative);
       })
       .catch(() => {});
   }, []);
@@ -389,52 +396,79 @@ export default function DashboardOverview() {
 
       {/* Bento — square glaze tiles, Onboarding Tracker spans both rows */}
       <section className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Current ad — a personalised-ad mock (stand-in for the real creative) */}
-        <div
-          className="relative aspect-square overflow-hidden rounded-3xl border border-white/10 p-5 text-white shadow-[0_2px_8px_-2px_rgba(0,0,0,0.14),inset_0_0_60px_rgba(0,0,0,0.35)]"
-          style={{
-            background: `radial-gradient(120% 120% at 15% 0%, ${brand.accent}, ${brand.accent}cc 45%, rgba(0,0,0,0.55)), ${brand.accent}`,
-          }}
-        >
-          <div className="flex h-full flex-col">
-            <div className="flex items-start justify-between">
+        {/* Current ad — the REAL live creative straight from Meta when the
+            campaign's tagged; the personalised mock until then. */}
+        {myCreative ? (
+          <div className="relative aspect-square overflow-hidden rounded-3xl border border-white/10 text-white shadow-[0_2px_8px_-2px_rgba(0,0,0,0.14)]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={myCreative.imageUrl}
+              alt={myCreative.adName}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/30" />
+            <div className="absolute inset-x-0 top-0 flex items-start justify-between p-5">
               <span className="rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide backdrop-blur">
                 Current ad
               </span>
-              <span className="text-xs font-medium text-white/80">
-                £{pkg?.adSpend?.toLocaleString("en-GB")}/mo
+              <span className="flex items-center gap-1 rounded-full bg-green-500/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide backdrop-blur">
+                ● Live
               </span>
             </div>
-
-            <div className="mt-auto">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/20 text-lg font-bold ring-2 ring-white/40">
-                  {user.photo ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={user.photo}
-                      alt={user.name}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    user.name.charAt(0).toUpperCase()
-                  )}
-                </div>
-                <p className="text-sm font-medium text-white/85">
-                  This is {user.name.split(" ")[0]}
-                </p>
-              </div>
-              <p className="mt-3 text-lg font-semibold leading-snug">
-                {(AD_PITCH[brand.id] ?? AD_PITCH.property)(
-                  user.location || "your area"
-                )}
+            <div className="absolute inset-x-0 bottom-0 p-5">
+              <p className="truncate font-semibold">{myCreative.adName}</p>
+              <p className="text-xs text-white/70">
+                £{pkg?.adSpend?.toLocaleString("en-GB")}/mo
               </p>
-              <span className="mt-3 inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-semibold text-gray-900">
-                Learn more →
-              </span>
             </div>
           </div>
-        </div>
+        ) : (
+          <div
+            className="relative aspect-square overflow-hidden rounded-3xl border border-white/10 p-5 text-white shadow-[0_2px_8px_-2px_rgba(0,0,0,0.14),inset_0_0_60px_rgba(0,0,0,0.35)]"
+            style={{
+              background: `radial-gradient(120% 120% at 15% 0%, ${brand.accent}, ${brand.accent}cc 45%, rgba(0,0,0,0.55)), ${brand.accent}`,
+            }}
+          >
+            <div className="flex h-full flex-col">
+              <div className="flex items-start justify-between">
+                <span className="rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide backdrop-blur">
+                  Current ad
+                </span>
+                <span className="text-xs font-medium text-white/80">
+                  £{pkg?.adSpend?.toLocaleString("en-GB")}/mo
+                </span>
+              </div>
+
+              <div className="mt-auto">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/20 text-lg font-bold ring-2 ring-white/40">
+                    {user.photo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={user.photo}
+                        alt={user.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      user.name.charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  <p className="text-sm font-medium text-white/85">
+                    This is {user.name.split(" ")[0]}
+                  </p>
+                </div>
+                <p className="mt-3 text-lg font-semibold leading-snug">
+                  {(AD_PITCH[brand.id] ?? AD_PITCH.property)(
+                    user.location || "your area"
+                  )}
+                </p>
+                <span className="mt-3 inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-semibold text-gray-900">
+                  Learn more →
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Leads uncontacted — celebrates (in black) with a confetti pop once
             the leads have loaded and there are none to action */}

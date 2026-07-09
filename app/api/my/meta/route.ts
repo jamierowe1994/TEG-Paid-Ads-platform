@@ -3,6 +3,7 @@ import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
 import { findById } from "@/lib/users-store";
 import {
   getCampaignSnapshot,
+  getCampaignCreative,
   parseCampaignIds,
   metaTokenSet,
   sanitizePreset,
@@ -29,9 +30,14 @@ export async function GET(req: NextRequest) {
 
   const preset = sanitizePreset(req.nextUrl.searchParams.get("preset"));
   try {
-    const snapshot = await getCampaignSnapshot(user.brandId, campaignIds, preset);
+    // Creative is best-effort (returns null on any failure) — the stats
+    // shouldn't disappear just because a thumbnail couldn't be fetched.
+    const [snapshot, creative] = await Promise.all([
+      getCampaignSnapshot(user.brandId, campaignIds, preset),
+      getCampaignCreative(user.brandId, campaignIds),
+    ]);
     if (!snapshot) return NextResponse.json({ configured: false });
-    return NextResponse.json({ configured: true, snapshot });
+    return NextResponse.json({ configured: true, snapshot, creative });
   } catch (e) {
     return NextResponse.json({
       configured: true,

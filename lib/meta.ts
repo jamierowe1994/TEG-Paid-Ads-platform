@@ -253,6 +253,49 @@ export async function getCampaignSnapshot(
   return { impressions, clicks, spend, leads, datePreset };
 }
 
+// The visual for the customer's "Current ad" tile: the creative image of the
+// first ACTIVE ad inside their tagged campaign(s). Best-effort — returns null
+// rather than throwing, since the dashboard works fine without it.
+export async function getCampaignCreative(
+  brandId: string,
+  campaignIds: string[]
+): Promise<{ adName: string; imageUrl: string } | null> {
+  try {
+    const acc = await accountId(brandId);
+    if (!acc || campaignIds.length === 0) return null;
+
+    const ads = (await graph(`${acc}/ads`, {
+      fields: "name,effective_status,creative{id}",
+      filtering: JSON.stringify([
+        { field: "campaign.id", operator: "IN", value: campaignIds },
+      ]),
+      limit: "25",
+    })) as {
+      data?: Array<{
+        name?: string;
+        effective_status?: string;
+        creative?: { id?: string };
+      }>;
+    };
+    const list = ads.data ?? [];
+    const ad =
+      list.find((a) => a.effective_status === "ACTIVE" && a.creative?.id) ??
+      list.find((a) => a.creative?.id);
+    if (!ad?.creative?.id) return null;
+
+    const creative = (await graph(ad.creative.id, {
+      fields: "thumbnail_url",
+      thumbnail_width: "800",
+      thumbnail_height: "800",
+    })) as { thumbnail_url?: string };
+    if (!creative.thumbnail_url) return null;
+
+    return { adName: ad.name ?? "Your ad", imageUrl: creative.thumbnail_url };
+  } catch {
+    return null;
+  }
+}
+
 // Date ranges offered in the admin. Meta's presets exclude "today", matching
 // Ads Manager's own windows.
 export const META_DATE_PRESETS = [
