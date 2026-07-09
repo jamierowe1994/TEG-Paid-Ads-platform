@@ -237,21 +237,31 @@ export default function DashboardLayout({
         <div
           className="glow-blob glow-a"
           style={{
-            top: "-25%",
-            right: "-15%",
-            width: "110%",
-            height: "115%",
-            background: `radial-gradient(circle at 60% 40%, ${brand.accent}${GLOW_ALPHA[brand.id] ?? "2c"}, transparent 60%)`,
+            top: "-35%",
+            right: "-25%",
+            width: "135%",
+            height: "135%",
+            background: `radial-gradient(circle at 55% 45%, ${brand.accent}${GLOW_ALPHA[brand.id] ?? "2c"}, transparent 68%)`,
           }}
         />
         <div
           className="glow-blob glow-b"
           style={{
-            top: "0%",
-            right: "2%",
-            width: "62%",
-            height: "72%",
-            background: `radial-gradient(circle at 50% 45%, ${brand.accent}26, transparent 62%)`,
+            top: "-10%",
+            right: "0%",
+            width: "85%",
+            height: "95%",
+            background: `radial-gradient(circle at 50% 50%, ${brand.accent}1c, transparent 70%)`,
+          }}
+        />
+        <div
+          className="glow-blob glow-c"
+          style={{
+            top: "25%",
+            right: "-5%",
+            width: "80%",
+            height: "85%",
+            background: `radial-gradient(circle at 50% 50%, ${brand.accent}18, transparent 70%)`,
           }}
         />
       </div>

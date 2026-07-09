@@ -421,38 +421,50 @@ h5 {
   animation: fade-up 0.35s ease both;
 }
 
-/* ── Ambient dashboard glow — soft blobs that drift/swirl behind the glass ── */
+/* ── Ambient dashboard glow — big soft bubbles that drift behind the glass ── */
 .glow-blob {
   position: absolute;
   border-radius: 9999px;
-  filter: blur(70px);
+  filter: blur(110px);
   will-change: transform;
 }
 .glow-a {
-  animation: glow-drift-a 26s ease-in-out infinite alternate;
+  animation: glow-drift-a 30s ease-in-out infinite alternate;
 }
 .glow-b {
-  animation: glow-drift-b 34s ease-in-out infinite alternate;
+  animation: glow-drift-b 38s ease-in-out infinite alternate;
+}
+.glow-c {
+  animation: glow-drift-c 44s ease-in-out infinite alternate;
 }
 @keyframes glow-drift-a {
   0% {
     transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
   }
   100% {
-    transform: translate3d(-12%, 20%, 0) scale(1.18) rotate(14deg);
+    transform: translate3d(-10%, 16%, 0) scale(1.12) rotate(10deg);
   }
 }
 @keyframes glow-drift-b {
   0% {
-    transform: translate3d(4%, 4%, 0) scale(1.05) rotate(0deg);
+    transform: translate3d(4%, 2%, 0) scale(1.05) rotate(0deg);
   }
   100% {
-    transform: translate3d(-6%, 14%, 0) scale(0.9) rotate(-16deg);
+    transform: translate3d(-8%, 12%, 0) scale(0.92) rotate(-12deg);
+  }
+}
+@keyframes glow-drift-c {
+  0% {
+    transform: translate3d(-4%, 6%, 0) scale(0.95) rotate(0deg);
+  }
+  100% {
+    transform: translate3d(8%, -6%, 0) scale(1.1) rotate(8deg);
   }
 }
 @media (prefers-reduced-motion: reduce) {
   .glow-a,
-  .glow-b {
+  .glow-b,
+  .glow-c {
     animation: none;
   }
 }
