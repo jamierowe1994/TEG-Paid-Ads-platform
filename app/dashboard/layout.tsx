@@ -209,10 +209,9 @@ export default function DashboardLayout({
         {
           "--accent": brand.accent,
           "--accent-soft": brand.accentSoft,
-          // A big diagonal wash: emanates from the right-hand side up towards
-          // the top, then stretches all the way across the page down to the
-          // bottom-left corner.
-          background: `radial-gradient(2100px 1800px at 110% 18%, ${brand.accent}2b, transparent 84%), #f6f6f7`,
+          // Subtle glow: strongest at the top-right corner, fading gently
+          // across towards the top-left and down to the bottom-left.
+          background: `radial-gradient(1900px 1500px at 102% -2%, ${brand.accent}1f, transparent 82%), #f6f6f7`,
         } as React.CSSProperties
       }
     >
