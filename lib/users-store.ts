@@ -45,6 +45,7 @@ interface UserRow {
   created_at: string | Date;
   password_hash: string;
   meta_campaign_id: string | null;
+  rex_user_id: string | null;
   location: string | null;
   onboarding_stage: string | null;
   admin_notes: unknown;
@@ -70,6 +71,7 @@ function fromRow(row: UserRow): StoredUser {
     createdAt: new Date(row.created_at).toISOString(),
     passwordHash: row.password_hash,
     metaCampaignId: row.meta_campaign_id,
+    rexUserId: row.rex_user_id,
     location: row.location,
     onboardingStage:
       (row.onboarding_stage as StoredUser["onboardingStage"]) ?? "signed_up",
@@ -170,7 +172,7 @@ export async function updateUser(
          goal = $7, package_id = $8, paid = $9, password_hash = $10,
          meta_campaign_id = $11, location = $12, onboarding_stage = $13,
          admin_notes = $14, campaign_approved = $15, campaign_feedback = $16,
-         campaign_assets = $17
+         campaign_assets = $17, rex_user_id = $18
        WHERE id = $1`,
       [
         next.id,
@@ -190,6 +192,7 @@ export async function updateUser(
         next.campaignApproved ?? false,
         JSON.stringify(next.campaignFeedback ?? []),
         JSON.stringify(next.campaignAssets ?? []),
+        next.rexUserId ?? null,
       ]
     );
     return next;

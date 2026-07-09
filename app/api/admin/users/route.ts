@@ -38,6 +38,12 @@ export async function PATCH(req: NextRequest) {
         ? body.metaCampaignId.trim()
         : null;
   }
+  if ("rexUserId" in body) {
+    patch.rexUserId =
+      typeof body.rexUserId === "string" && body.rexUserId.trim()
+        ? body.rexUserId.trim()
+        : null;
+  }
   if ("location" in body) {
     patch.location =
       typeof body.location === "string" && body.location.trim()

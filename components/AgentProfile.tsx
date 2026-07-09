@@ -508,6 +508,12 @@ export default function AgentProfile({
             placeholder="Campaign ID"
             onSave={(v) => patch({ metaCampaignId: v })}
           />
+          <EditRow
+            label="Rex user ID"
+            defaultValue={agent.rexUserId ?? ""}
+            placeholder="e.g. 77498"
+            onSave={(v) => patch({ rexUserId: v })}
+          />
         </div>
 
         {/* Reset password */}

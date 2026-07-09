@@ -31,6 +31,10 @@ export interface UserProfile {
   // The Meta campaign this agent's ads run under — set by the admin, used to
   // pull per-agent stats/leads once Meta is connected.
   metaCampaignId?: string | null;
+  // This agent's own user id inside Rex — set by the admin. When present,
+  // leads they push to Rex are owned/assigned to them (rather than sitting
+  // against the shared API login).
+  rexUserId?: string | null;
   // Admin-managed fields:
   location?: string | null; // the agent's town / patch
   onboardingStage?: OnboardingStage;

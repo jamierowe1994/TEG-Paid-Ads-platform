@@ -78,7 +78,9 @@ export async function POST(req: NextRequest) {
       );
     }
     try {
-      const result = await pushLeadToRex(lead, user.brandId);
+      const result = await pushLeadToRex(lead, user.brandId, {
+        agentRexUserId: user.rexUserId ?? null,
+      });
       await setLeadRexIds(userId, leadId, result.contactId, result.leadId);
       await markPushed();
       return NextResponse.json({ ok: true, ...result });

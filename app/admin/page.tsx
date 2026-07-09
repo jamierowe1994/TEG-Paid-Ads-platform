@@ -300,6 +300,9 @@ export default function AdminPage() {
   // Which brand's configured Rex account the tools below query — each brand
   // can have its own REX_ACCOUNT_<BRAND> override, so this matters.
   const [rexBrand, setRexBrand] = useState("lettings");
+  const [rexUsersLoading, setRexUsersLoading] = useState(false);
+  const [rexUsersResult, setRexUsersResult] = useState("");
+  const [rexUsersError, setRexUsersError] = useState("");
   const [metaPreset, setMetaPreset] = useState<string>("last_30d");
   const [drillBrand, setDrillBrand] = useState<string | null>(null);
   const [activity, setActivity] = useState<ActivityData | null>(null);
@@ -404,6 +407,29 @@ export default function AdminPage() {
       return;
     }
     setRexDescribeResult(JSON.stringify(data.result, null, 2));
+  }
+
+  // Lists the users on the selected brand's Rex account — how you find each
+  // agent's Rex user id to paste into their profile.
+  async function listRexUsers() {
+    setRexUsersLoading(true);
+    setRexUsersResult("");
+    setRexUsersError("");
+    const res = await fetch("/api/admin/rex/users", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${password}`,
+      },
+      body: JSON.stringify({ brandId: rexBrand }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setRexUsersLoading(false);
+    if (!res.ok || !data.ok) {
+      setRexUsersError(data.error ?? "Couldn't list Rex users");
+      return;
+    }
+    setRexUsersResult(JSON.stringify(data.result, null, 2));
   }
 
   // Recent raw Rex webhook deliveries — lets us read the real event shape
@@ -2077,6 +2103,33 @@ export default function AdminPage() {
                   {rexSearchResult && (
                     <pre className="mt-3 max-h-80 overflow-auto rounded-xl bg-gray-900 p-3.5 text-[11px] leading-relaxed text-green-300">
                       {rexSearchResult}
+                    </pre>
+                  )}
+                </div>
+
+                {/* Rex users — find each agent's Rex user id, then paste it
+                    into their CRM record so pushed leads land owned by them */}
+                <div className="mt-4 border-t border-gray-100 pt-4">
+                  <p className="text-sm font-semibold">Rex users</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Lists the users on this brand&apos;s Rex account. Copy an
+                    agent&apos;s user id into the <strong>Rex user ID</strong>{" "}
+                    field on their CRM record — their pushed leads then show as
+                    owned/assigned to them in Rex, not the shared API login.
+                  </p>
+                  <button
+                    onClick={listRexUsers}
+                    disabled={rexUsersLoading || !rex?.ok}
+                    className="mt-2 rounded-lg border border-gray-200 px-3.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                  >
+                    {rexUsersLoading ? "Asking Rex…" : "List Rex users"}
+                  </button>
+                  {rexUsersError && (
+                    <p className="mt-3 text-sm text-red-600">{rexUsersError}</p>
+                  )}
+                  {rexUsersResult && (
+                    <pre className="mt-3 max-h-80 overflow-auto rounded-xl bg-gray-900 p-3.5 text-[11px] leading-relaxed text-green-300">
+                      {rexUsersResult}
                     </pre>
                   )}
                 </div>

@@ -272,7 +272,8 @@ async function findContactIdByEmail(
 // rejects it, check contact.type's option list via describeModel.
 async function createContact(
   lead: Lead,
-  accountId: string | null
+  accountId: string | null,
+  ownerRexUserId?: string | null
 ): Promise<string> {
   const { first, last } = splitName(lead.name);
   const related: Record<string, unknown> = {
@@ -287,6 +288,9 @@ async function createContact(
     related.contact_phones = [{ phone_number: lead.phone.trim(), is_primary: true }];
   }
   const data: Record<string, unknown> = { type: "person", related };
+  // Make the record OWNED by the pushing agent's Rex user (rather than the
+  // shared API login). system_owner_user_id is a real column per describeModel.
+  if (ownerRexUserId) data.system_owner_user_id = ownerRexUserId;
 
   const res = await rexCall("Contacts/create", { data, return_id: true }, accountId);
   if (!res.ok) throw new Error(res.error ?? "Rex contact create failed");
@@ -301,7 +305,8 @@ async function createContact(
 
 async function findOrCreateContact(
   lead: Lead,
-  accountId: string | null
+  accountId: string | null,
+  ownerRexUserId?: string | null
 ): Promise<{ id: string; alreadyExisted: boolean }> {
   if (!lead.email?.trim() && !lead.phone?.trim()) {
     throw new Error(
@@ -312,7 +317,21 @@ async function findOrCreateContact(
     const existing = await findContactIdByEmail(lead.email.trim(), accountId);
     if (existing) return { id: existing, alreadyExisted: true };
   }
-  return { id: await createContact(lead, accountId), alreadyExisted: false };
+  return {
+    id: await createContact(lead, accountId, ownerRexUserId),
+    alreadyExisted: false,
+  };
+}
+
+// The users on a brand's Rex account (id + name/email) — how the admin finds
+// each agent's Rex user id to store against their portal profile, so pushed
+// leads land owned by the right person. TODO(rex-demo): "AccountUsers" is the
+// expected service name; if Rex rejects it, its error will name the valid one.
+export async function rexListUsers(brandId: string): Promise<unknown> {
+  const accountId = rexAccountForBrand(brandId);
+  const res = await rexCall("AccountUsers/search", { limit: 100 }, accountId);
+  if (!res.ok) throw new Error(res.error ?? "Rex user list failed");
+  return res.result;
 }
 
 // ── Health check (admin Connections tab) ────────────────────────────────────
@@ -363,19 +382,23 @@ export interface RexPushResult {
 }
 
 // Push one portal lead into Rex: find-or-create the contact, then create a
-// lead referencing it, with the note. `leadType` lets property vs auction pick
-// the right Rex lead_type (e.g. "appraisal_request").
+// lead referencing it, with the note. `opts.leadType` lets property vs auction
+// pick the right Rex lead_type; `opts.agentRexUserId` is the pushing agent's
+// own Rex user, so the contact + lead land owned/assigned to THEM instead of
+// the shared API login.
 export async function pushLeadToRex(
   lead: Lead,
   brandId: string,
-  leadType = "appraisal_request"
+  opts?: { leadType?: string; agentRexUserId?: string | null }
 ): Promise<RexPushResult> {
   if (!rexConfigured()) {
     throw new Error("Rex isn't connected yet (missing REX_API_EMAIL/PASSWORD).");
   }
   const accountId = rexAccountForBrand(brandId);
+  const leadType = opts?.leadType ?? "appraisal_request";
+  const agentRexUserId = opts?.agentRexUserId ?? null;
 
-  const contact = await findOrCreateContact(lead, accountId);
+  const contact = await findOrCreateContact(lead, accountId, agentRexUserId);
 
   // Build the lead. Sub-records are linked by id. lead_source / assignee are
   // optional here — only sent when configured. TODO(rex-demo): confirm which
@@ -387,7 +410,8 @@ export async function pushLeadToRex(
   };
   const sourceId = process.env.REX_LEAD_SOURCE_ID;
   if (sourceId) data.lead_source = { id: sourceId };
-  const assigneeId = process.env.REX_DEFAULT_ASSIGNEE_ID;
+  // The agent's own Rex user wins; REX_DEFAULT_ASSIGNEE_ID is the fallback.
+  const assigneeId = agentRexUserId || process.env.REX_DEFAULT_ASSIGNEE_ID;
   if (assigneeId) data.assignee = { id: assigneeId };
 
   const res = await rexCall("Leads/create", { data, return_id: true }, accountId);
