@@ -30,8 +30,41 @@ const NAV = [
   { href: "/dashboard/profile", label: "Profile", icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
 ];
 
-const GLASS =
-  "border border-gray-200/70 bg-white/70 backdrop-blur-xl shadow-[0_4px_24px_-8px_rgba(0,0,0,0.12)]";
+// The chrome (sidebar + top bar) reads as one continuous white surface that
+// wraps the top-left of the page. Solid white + soft shadow; the concave
+// "swoop" at the inner corner is drawn by <ConcaveCorner/> below.
+const FRAME = "bg-white shadow-[0_14px_48px_-20px_rgba(0,0,0,0.22)]";
+
+// Layout constants (px) so the frame pieces and the concave corner line up.
+const SIDEBAR_RIGHT = 252; // left-3 (12) + w-60 (240)
+const TOPBAR_BOTTOM = 76; // top-3 (12) + h-16 (64)
+const SWOOP = 22; // concave corner radius
+
+// A concave (inward-curving) corner that visually joins the vertical sidebar
+// to the horizontal top bar, so the white chrome swoops around the page.
+function ConcaveCorner() {
+  const r = SWOOP;
+  return (
+    <svg
+      width={r}
+      height={r}
+      viewBox={`0 0 ${r} ${r}`}
+      className="pointer-events-none fixed z-30"
+      style={{
+        left: SIDEBAR_RIGHT,
+        top: TOPBAR_BOTTOM,
+        filter: "drop-shadow(0 8px 10px rgba(0,0,0,0.05))",
+      }}
+      aria-hidden
+    >
+      {/* Fill the corner white, cutting a quarter-circle out toward the page */}
+      <path
+        d={`M0 0 L${r} 0 A${r} ${r} 0 0 0 0 ${r} Z`}
+        fill="#ffffff"
+      />
+    </svg>
+  );
+}
 
 export default function DashboardLayout({
   children,
@@ -185,9 +218,9 @@ export default function DashboardLayout({
         } as React.CSSProperties
       }
     >
-      {/* ── Left sidebar ── */}
+      {/* ── Left sidebar (right edge is straight so it joins the top bar) ── */}
       <aside
-        className={`fixed inset-y-3 left-3 z-30 flex w-60 flex-col overflow-hidden rounded-2xl ${GLASS}`}
+        className={`fixed inset-y-3 left-3 z-30 flex w-60 flex-col overflow-hidden rounded-l-[28px] ${FRAME}`}
       >
         <div className="flex items-center gap-2.5 px-5 pb-5 pt-8">
           <BrandMark
@@ -272,9 +305,10 @@ export default function DashboardLayout({
         </div>
       </aside>
 
-      {/* ── Top bar (search + notifications) ── */}
+      {/* ── Top bar (search + notifications) — butts flush against the sidebar
+          on the left, rounds off on the right ── */}
       <header
-        className={`fixed left-[264px] right-3 top-3 z-30 flex h-16 items-center gap-3 rounded-2xl px-3 xl:right-[264px] ${GLASS}`}
+        className={`fixed left-[252px] right-3 top-3 z-40 flex h-16 items-center gap-3 rounded-r-[28px] px-4 ${FRAME}`}
       >
         {/* Search */}
         <div className="relative flex-1">
@@ -417,34 +451,11 @@ export default function DashboardLayout({
         </div>
       </header>
 
-      {/* ── Right notifications rail (xl and up) ── */}
-      <aside
-        className={`fixed inset-y-3 right-3 z-20 hidden w-60 flex-col overflow-hidden rounded-2xl xl:flex ${GLASS}`}
-      >
-        <div className="flex items-center justify-between px-4 pb-2 pt-5">
-          <p className="text-sm font-semibold">Notifications</p>
-          {unread > 0 && (
-            <span
-              className="rounded-full px-2 py-0.5 text-[11px] font-semibold text-white"
-              style={{ backgroundColor: brand.accent }}
-            >
-              {unread} new
-            </span>
-          )}
-        </div>
-        <div className="flex-1 overflow-y-auto px-2 pb-4">
-          <NotificationsFeed
-            items={feed}
-            accent={brand.accent}
-            onGo={(href) => router.push(href)}
-          />
-        </div>
-      </aside>
+      {/* Concave swoop joining the sidebar to the top bar */}
+      <ConcaveCorner />
 
       {/* ── Main ── */}
-      <main className="ml-[264px] mr-3 px-8 pb-8 pt-[84px] xl:mr-[264px]">
-        {children}
-      </main>
+      <main className="ml-[264px] mr-3 px-8 pb-8 pt-[92px]">{children}</main>
 
       {/* Campaign-stage toast — bigger white card with a black outline */}
       {toast && (
