@@ -344,7 +344,7 @@ export default function LandingPage() {
                         <span>New</span>
                         <span>Contacted</span>
                         <span>MA booked</span>
-                        <span>In REP</span>
+                        <span>In REX</span>
                       </div>
                     </div>
                     {/* lead rows */}
@@ -386,7 +386,7 @@ export default function LandingPage() {
                           </span>
                           {l.stage === "MA booked" && (
                             <span className="rounded-md bg-gray-900 px-2 py-1 text-[8px] font-semibold text-white">
-                              Push to REP →
+                              Push to REX →
                             </span>
                           )}
                         </div>

@@ -66,7 +66,7 @@ const STAT_ICON: Record<string, string> = {
 function glaze() {
   return {
     className:
-      "relative overflow-hidden rounded-3xl border border-white/40 backdrop-blur-xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.7),inset_0_0_30px_rgba(0,0,0,0.08)]",
+      "relative overflow-hidden rounded-3xl border border-white/40 backdrop-blur-xl shadow-[0_2px_8px_-2px_rgba(0,0,0,0.12),inset_0_1px_1px_rgba(255,255,255,0.7),inset_0_0_30px_rgba(0,0,0,0.08)]",
     style: { background: "rgba(255,255,255,0.2)" } as React.CSSProperties,
   };
 }
@@ -295,7 +295,7 @@ export default function DashboardOverview() {
       <section className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Current ad — a personalised-ad mock (stand-in for the real creative) */}
         <div
-          className="relative aspect-square overflow-hidden rounded-3xl border border-white/10 p-5 text-white shadow-[inset_0_0_60px_rgba(0,0,0,0.35)]"
+          className="relative aspect-square overflow-hidden rounded-3xl border border-white/10 p-5 text-white shadow-[0_2px_8px_-2px_rgba(0,0,0,0.14),inset_0_0_60px_rgba(0,0,0,0.35)]"
           style={{
             background: `radial-gradient(120% 120% at 15% 0%, ${brand.accent}, ${brand.accent}cc 45%, rgba(0,0,0,0.55)), ${brand.accent}`,
           }}

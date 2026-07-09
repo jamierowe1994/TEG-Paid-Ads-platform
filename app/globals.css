@@ -421,50 +421,61 @@ h5 {
   animation: fade-up 0.35s ease both;
 }
 
-/* ── Ambient dashboard glow — big soft bubbles that drift behind the glass ── */
+/* Polished modal entrance — settles up with a soft ease */
+@keyframes modal-pop {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.975);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.modal-pop {
+  animation: modal-pop 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ── Ambient dashboard glow — a soft bubble anchored bottom-right that wanders
+   between three points (bottom-right → top-right → bottom-left) behind the
+   glass, covering the area with a gentle wave. ── */
 .glow-blob {
   position: absolute;
   border-radius: 9999px;
-  filter: blur(110px);
+  filter: blur(120px);
   will-change: transform;
 }
 .glow-a {
-  animation: glow-drift-a 30s ease-in-out infinite alternate;
+  animation: glow-wander-a 42s ease-in-out infinite alternate;
 }
 .glow-b {
-  animation: glow-drift-b 38s ease-in-out infinite alternate;
+  animation: glow-wander-b 54s ease-in-out infinite alternate;
 }
-.glow-c {
-  animation: glow-drift-c 44s ease-in-out infinite alternate;
-}
-@keyframes glow-drift-a {
+@keyframes glow-wander-a {
   0% {
-    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+    transform: translate3d(0, 0, 0) scale(1);
+  } /* bottom-right */
+  50% {
+    transform: translate3d(-6%, -46%, 0) scale(1.08);
+  } /* up to top-right */
+  100% {
+    transform: translate3d(-50%, -8%, 0) scale(1.04);
+  } /* over to bottom-left */
+}
+@keyframes glow-wander-b {
+  0% {
+    transform: translate3d(-4%, -6%, 0) scale(1.04);
+  }
+  50% {
+    transform: translate3d(2%, -34%, 0) scale(0.94);
   }
   100% {
-    transform: translate3d(-10%, 16%, 0) scale(1.12) rotate(10deg);
-  }
-}
-@keyframes glow-drift-b {
-  0% {
-    transform: translate3d(4%, 2%, 0) scale(1.05) rotate(0deg);
-  }
-  100% {
-    transform: translate3d(-8%, 12%, 0) scale(0.92) rotate(-12deg);
-  }
-}
-@keyframes glow-drift-c {
-  0% {
-    transform: translate3d(-4%, 6%, 0) scale(0.95) rotate(0deg);
-  }
-  100% {
-    transform: translate3d(8%, -6%, 0) scale(1.1) rotate(8deg);
+    transform: translate3d(-38%, 2%, 0) scale(1.1);
   }
 }
 @media (prefers-reduced-motion: reduce) {
   .glow-a,
-  .glow-b,
-  .glow-c {
+  .glow-b {
     animation: none;
   }
 }

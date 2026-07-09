@@ -1718,7 +1718,7 @@ export default function AdminPage() {
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {[
                   {
-                    name: "REP",
+                    name: "REX",
                     desc: "Property/Lettings CRM — push converted MAs",
                   },
                   {

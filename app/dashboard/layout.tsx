@@ -33,13 +33,13 @@ const NAV = [
 // Per-brand glow strength (hex alpha). Muted accents (bronze/gold) need more
 // to read; vivid ones (red) need less so they don't overpower.
 const GLOW_ALPHA: Record<string, string> = {
-  property: "22",
-  lettings: "22",
-  mortgage: "30",
-  recruitment: "4a",
-  commercial: "2e",
-  fineandcountry: "3c",
-  auction: "2c",
+  property: "18",
+  lettings: "18",
+  mortgage: "26",
+  recruitment: "40",
+  commercial: "26",
+  fineandcountry: "34",
+  auction: "24",
 };
 
 // Chrome geometry (px). The nav is flush to the screen's left/top/bottom edges;
@@ -236,31 +236,21 @@ export default function DashboardLayout({
         <div
           className="glow-blob glow-a"
           style={{
-            top: "-35%",
-            right: "-25%",
-            width: "135%",
-            height: "135%",
-            background: `radial-gradient(circle at 55% 45%, ${brand.accent}${GLOW_ALPHA[brand.id] ?? "2c"}, transparent 68%)`,
+            bottom: "-32%",
+            right: "-28%",
+            width: "130%",
+            height: "130%",
+            background: `radial-gradient(circle at 50% 52%, ${brand.accent}${GLOW_ALPHA[brand.id] ?? "24"}, transparent 66%)`,
           }}
         />
         <div
           className="glow-blob glow-b"
           style={{
-            top: "-10%",
-            right: "0%",
-            width: "85%",
-            height: "95%",
-            background: `radial-gradient(circle at 50% 50%, ${brand.accent}1c, transparent 70%)`,
-          }}
-        />
-        <div
-          className="glow-blob glow-c"
-          style={{
-            top: "25%",
-            right: "-5%",
-            width: "80%",
-            height: "85%",
-            background: `radial-gradient(circle at 50% 50%, ${brand.accent}18, transparent 70%)`,
+            bottom: "-12%",
+            right: "-6%",
+            width: "88%",
+            height: "92%",
+            background: `radial-gradient(circle at 50% 50%, ${brand.accent}14, transparent 68%)`,
           }}
         />
       </div>

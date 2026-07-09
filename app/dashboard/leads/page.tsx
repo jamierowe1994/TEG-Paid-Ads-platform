@@ -600,7 +600,7 @@ function LeadModal({
       onClick={onClose}
     >
       <div
-        className="relative max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-t-3xl bg-white p-6 sm:rounded-3xl sm:p-8"
+        className="modal-pop relative max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-t-3xl bg-white p-6 sm:rounded-3xl sm:p-8"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -1176,10 +1176,14 @@ function InlineCalendar({
 
 // Sweeping expand/collapse — grid-rows 0fr→1fr animates auto height.
 function Expand({ open, children }: { open: boolean; children: ReactNode }) {
+  // The 0fr→1fr grid trick animates height smoothly; a matching opacity +
+  // blur fade and a soft ease make it feel polished as it comes out. (An extra
+  // transformed inner wrapper breaks the fr height measurement, so we keep the
+  // content directly inside the clipped row.)
   return (
     <div
-      className={`grid transition-all duration-300 ease-out ${
-        open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+      className={`grid transition-all duration-[440ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+        open ? "grid-rows-[1fr] opacity-100 blur-0" : "grid-rows-[0fr] opacity-0 blur-[2px]"
       }`}
     >
       <div className="overflow-hidden">{children}</div>

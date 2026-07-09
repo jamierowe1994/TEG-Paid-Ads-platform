@@ -52,7 +52,7 @@ export const BRANDS: Brand[] = [
     domains: ["thepropertyexperts.co.uk", "propertyexperts.co.uk"],
     accent: "#E31F36", // red (shared group/estate colour)
     accentSoft: "#FEF2F2",
-    crmName: "REP",
+    crmName: "REX",
     conversionLabel: "Market Appraisal (MA)",
     conversionVerb: "Book Market Appraisal",
     audience: "Estate agents",
@@ -70,7 +70,7 @@ export const BRANDS: Brand[] = [
     domains: ["thelettingexperts.co.uk", "lettingexperts.co.uk"],
     accent: "#E31F36", // red
     accentSoft: "#FEF2F2",
-    crmName: "REP",
+    crmName: "REX",
     conversionLabel: "Market Appraisal (MA)",
     conversionVerb: "Book Market Appraisal",
     audience: "Lettings agents",
@@ -143,7 +143,7 @@ export const BRANDS: Brand[] = [
     domains: ["fineandcountry.com", "fineandcountry.co.uk"],
     accent: "#A78F51", // gold
     accentSoft: "#F7F4EC",
-    crmName: "REP",
+    crmName: "REX",
     conversionLabel: "Market Appraisal (MA)",
     conversionVerb: "Book Market Appraisal",
     audience: "Premium estate agents",
@@ -162,7 +162,7 @@ export const BRANDS: Brand[] = [
     domains: ["theauctioncompany.co.uk", "auctioncompany.co.uk"],
     accent: "#A3C739", // green
     accentSoft: "#F4F8E9",
-    crmName: "REP",
+    crmName: "REX",
     conversionLabel: "Valuation Booked",
     conversionVerb: "Book Valuation",
     audience: "Auction valuers",
