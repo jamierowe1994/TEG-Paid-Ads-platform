@@ -233,23 +233,33 @@ async function findOrCreateContact(
 // ── Health check (admin Connections tab) ────────────────────────────────────
 
 // Proves the login works and reports the accounts this user can reach — a
-// cheap read the admin panel uses to show connection status.
+// cheap read the admin panel (and /api/health?rex=1) uses to show connection
+// status. Login to getAccessibleAccounts doesn't require an account_id, so
+// this works even before REX_ACCOUNT_ID is set — the returned list is how you
+// find that id in the first place, no digging through the Rex UI needed.
 export async function rexPing(): Promise<{
   configured: boolean;
   ok: boolean;
-  accounts?: number;
+  accounts?: Array<{ id: string; name: string | null }>;
   error?: string;
 }> {
   if (!rexConfigured()) return { configured: false, ok: false };
   try {
-    const res = await rexCall(
-      "UserProfile/getAccessibleAccounts",
-      {},
-      process.env.REX_ACCOUNT_ID ?? null
-    );
+    const res = await rexCall("UserProfile/getAccessibleAccounts", {}, null);
     if (!res.ok) return { configured: true, ok: false, error: res.error ?? "failed" };
-    const list = Array.isArray(res.result) ? res.result : [];
-    return { configured: true, ok: true, accounts: list.length };
+    const raw = Array.isArray(res.result) ? res.result : [];
+    const accounts = raw.map((a) => {
+      const row = a as Record<string, unknown>;
+      const id = row.id ?? row.account_id ?? row.value;
+      const name =
+        (row.name as string) ??
+        (row.account_name as string) ??
+        (row.title as string) ??
+        (row.label as string) ??
+        null;
+      return { id: String(id), name };
+    });
+    return { configured: true, ok: true, accounts };
   } catch (e) {
     return {
       configured: true,

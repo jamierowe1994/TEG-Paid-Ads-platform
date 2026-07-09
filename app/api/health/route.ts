@@ -3,6 +3,7 @@ import { hasDb, q } from "@/lib/db";
 import { pingAll } from "@/lib/meta";
 import { linkedinStatus } from "@/lib/linkedin";
 import { whatsappStatus } from "@/lib/whatsapp";
+import { rexPing } from "@/lib/rex";
 
 // Deployment health check — visit /api/health on the live site to see which
 // store the app is actually using. If it says "file-fallback" in production,
@@ -62,6 +63,12 @@ export async function GET(req: NextRequest) {
   // /api/health?whatsapp=1 confirms the token works + the number's status.
   if (req.nextUrl.searchParams.has("whatsapp")) {
     body.whatsapp = await whatsappStatus();
+  }
+
+  // /api/health?rex=1 confirms the Rex login works and lists every account
+  // id it can see — the fastest way to find REX_ACCOUNT_ID.
+  if (req.nextUrl.searchParams.has("rex")) {
+    body.rex = await rexPing();
   }
 
   return NextResponse.json(body);
