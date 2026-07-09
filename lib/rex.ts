@@ -182,17 +182,22 @@ function splitName(full: string): { first: string; last: string | null } {
     : { first: t.slice(0, i), last: t.slice(i + 1) };
 }
 
+// Confirmed via Contacts/describeModel against the demo account: a Contact's
+// top-level record has no name/email/phone fields at all — those live in
+// related sub-records (contact_names / contact_emails / contact_phones), each
+// searchable as `contact.name_first` etc. Search + create both need the
+// relational shape below, not flat fields.
+
 // Find a contact by email, returning its id if one exists. Rex search takes a
-// `criteria` array of [field, op, value]. TODO(rex-demo): confirm the exact
-// email field name (`email_address` per the lead response) and the search
-// result shape (rows vs bare array).
+// `criteria` array of [field, op, value] — the field is the dotted
+// `contact.email_address` search alias, not a bare column.
 async function findContactIdByEmail(
   email: string,
   accountId: string | null
 ): Promise<string | null> {
   const res = await rexCall(
     "Contacts/search",
-    { criteria: [["email_address", "=", email]], limit: 1 },
+    { criteria: [["contact.email_address", "=", email]], limit: 1 },
     accountId
   );
   if (!res.ok) return null;
@@ -203,19 +208,29 @@ async function findContactIdByEmail(
   return id != null ? String(id) : null;
 }
 
-// Create a contact and return its id. TODO(rex-demo): confirm create field
-// names via Contacts/describeModel (expected: name, email_address,
-// phone_number — from the lead response sample).
+// Create a contact and return its id. `type: "person"` plus a
+// `related.contact_names` entry is what satisfies Rex's "cannot be saved
+// without a name" validation — confirmed against the demo account.
+// TODO(rex-demo): "person" is the conventional Rex contact_type value but
+// hasn't been confirmed against this account's actual enum list yet; if Rex
+// rejects it, check contact.type's option list via describeModel.
 async function createContact(
   lead: Lead,
   accountId: string | null
 ): Promise<string> {
   const { first, last } = splitName(lead.name);
-  const data: Record<string, unknown> = { name: lead.name.trim() };
-  if (first) data.first_name = first;
-  if (last) data.last_name = last;
-  if (lead.email?.trim()) data.email_address = lead.email.trim();
-  if (lead.phone?.trim()) data.phone_number = lead.phone.trim();
+  const related: Record<string, unknown> = {
+    contact_names: [
+      { name_first: first || lead.name.trim(), name_last: last ?? "", is_primary: true },
+    ],
+  };
+  if (lead.email?.trim()) {
+    related.contact_emails = [{ email_address: lead.email.trim(), is_primary: true }];
+  }
+  if (lead.phone?.trim()) {
+    related.contact_phones = [{ phone_number: lead.phone.trim(), is_primary: true }];
+  }
+  const data: Record<string, unknown> = { type: "person", related };
 
   const res = await rexCall("Contacts/create", { data, return_id: true }, accountId);
   if (!res.ok) throw new Error(res.error ?? "Rex contact create failed");
