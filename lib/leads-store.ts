@@ -30,6 +30,8 @@ interface LeadRow {
   notes: unknown;
   appointment_at: string | Date | null;
   meta_lead_id: string | null;
+  rex_contact_id: string | null;
+  rex_lead_id: string | null;
 }
 
 function fromRow(row: LeadRow): Lead {
@@ -49,6 +51,8 @@ function fromRow(row: LeadRow): Lead {
       ? new Date(row.appointment_at).toISOString()
       : null,
     metaLeadId: row.meta_lead_id ?? null,
+    rexContactId: row.rex_contact_id ?? null,
+    rexLeadId: row.rex_lead_id ?? null,
   };
 }
 
@@ -321,6 +325,44 @@ export async function updateLeadStage(
   await writeAllFile(all);
   const { userId: _omit, ...lead } = all[idx];
   return lead;
+}
+
+// Records the Rex ids returned by a successful push, so a later Rex webhook
+// (e.g. an Appraisal changing for this contact) can trace back to this lead.
+export async function setLeadRexIds(
+  userId: string,
+  leadId: string,
+  rexContactId: string,
+  rexLeadId: string
+): Promise<void> {
+  if (hasDb()) {
+    await q(
+      `UPDATE leads SET rex_contact_id = $3, rex_lead_id = $4
+         WHERE id = $2 AND user_id = $1`,
+      [userId, leadId, rexContactId, rexLeadId]
+    );
+    return;
+  }
+  const all = await readAllFile();
+  const idx = all.findIndex((l) => l.id === leadId && l.userId === userId);
+  if (idx === -1) return;
+  all[idx] = { ...all[idx], rexContactId, rexLeadId };
+  await writeAllFile(all);
+}
+
+// Cross-user lookup by Rex's own contact id — the webhook receiver only
+// knows Rex's ids, not which agent/brand a lead belongs to.
+export async function findLeadByRexContactId(
+  rexContactId: string
+): Promise<(Lead & { userId: string }) | undefined> {
+  if (hasDb()) {
+    const rows = await q<LeadRow>(
+      "SELECT * FROM leads WHERE rex_contact_id = $1 LIMIT 1",
+      [rexContactId]
+    );
+    return rows[0] ? { ...fromRow(rows[0]), userId: rows[0].user_id } : undefined;
+  }
+  return (await readAllFile()).find((l) => l.rexContactId === rexContactId);
 }
 
 // Admin aggregate: per-user lead counts + speed-to-lead for the Performance

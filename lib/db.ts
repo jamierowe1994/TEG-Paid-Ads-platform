@@ -138,6 +138,17 @@ ALTER TABLE leads ADD COLUMN IF NOT EXISTS appointment_at TIMESTAMPTZ;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS meta_lead_id TEXT;
 CREATE UNIQUE INDEX IF NOT EXISTS leads_user_meta_lead_uq
   ON leads(user_id, meta_lead_id) WHERE meta_lead_id IS NOT NULL;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS rex_contact_id TEXT;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS rex_lead_id TEXT;
+CREATE INDEX IF NOT EXISTS leads_rex_contact_idx ON leads(rex_contact_id);
+
+-- Raw capture of every Rex webhook delivery, so we can see real payload
+-- shapes before building the stage-mapping logic against them.
+CREATE TABLE IF NOT EXISTS rex_webhook_log (
+  id          TEXT PRIMARY KEY,
+  received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  body        JSONB NOT NULL DEFAULT '{}'
+);
 `;
 
 async function ensureSchema(): Promise<void> {

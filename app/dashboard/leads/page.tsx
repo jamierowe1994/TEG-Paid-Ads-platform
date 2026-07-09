@@ -216,20 +216,12 @@ export default function LeadsPage() {
   async function pushToCrm(lead: Lead) {
     if (!brand || pushing) return;
 
-    // The Recruitment Experts push live into Atlas. Other brands' CRMs (REP
-    // etc.) aren't wired yet — keep the "pending" stub for those.
-    if (brand.crmName !== "Atlas") {
-      update(lead.id, "pushed");
-      showToast(`${lead.name} sent to ${brand.crmName} ✓ (integration pending)`);
-      return;
-    }
-
     setPushing(lead.id);
     const res = await pushLeadToCrm(lead.id);
     setPushing(null);
 
     if (!res.ok) {
-      showToast(res.error ?? "Couldn't push to Atlas — please try again");
+      showToast(res.error ?? `Couldn't push to ${brand.crmName} — please try again`);
       return;
     }
 
@@ -248,11 +240,13 @@ export default function LeadsPage() {
       )
     );
     const extra = res.alreadyExisted
-      ? " (already in Atlas — note added)"
-      : res.noteAttached
-        ? " with notes"
-        : "";
-    showToast(`${lead.name} pushed to Atlas ✓${extra}`);
+      ? ` (already in ${brand.crmName} — note added)`
+      : res.contactAlreadyExisted
+        ? ` (contact already in ${brand.crmName})`
+        : res.noteAttached
+          ? " with notes"
+          : "";
+    showToast(`${lead.name} pushed to ${brand.crmName} ✓${extra}`);
   }
 
   function applyLead(updated: Lead | null, okMsg?: string, failMsg?: string) {

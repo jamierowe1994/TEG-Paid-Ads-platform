@@ -145,13 +145,16 @@ export async function moveLeadStage(
   }
 }
 
-// Push a lead into the brand's CRM (Atlas for The Recruitment Experts).
-// Creates the person + attaches its note; the server marks the lead pushed.
+// Push a lead into the brand's CRM — Atlas for Recruitment, Rex for
+// Property/Lettings/Fine & Country/Auction. Creates the person + attaches
+// its note; the server marks the lead pushed.
 export async function pushLeadToCrm(leadId: string): Promise<{
   ok: boolean;
   error?: string;
-  alreadyExisted?: boolean;
-  noteAttached?: boolean;
+  alreadyExisted?: boolean; // Atlas
+  noteAttached?: boolean; // Atlas
+  contactId?: string; // Rex
+  contactAlreadyExisted?: boolean; // Rex
 }> {
   try {
     const res = await fetch("/api/leads/push", {

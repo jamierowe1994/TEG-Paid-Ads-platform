@@ -289,6 +289,10 @@ export default function AdminPage() {
   const [rexDescribing, setRexDescribing] = useState(false);
   const [rexDescribeResult, setRexDescribeResult] = useState("");
   const [rexDescribeError, setRexDescribeError] = useState("");
+  const [rexWebhookEvents, setRexWebhookEvents] = useState<
+    Array<{ id: string; receivedAt: string; body: unknown }>
+  >([]);
+  const [rexWebhookLoading, setRexWebhookLoading] = useState(false);
   const [metaPreset, setMetaPreset] = useState<string>("last_30d");
   const [drillBrand, setDrillBrand] = useState<string | null>(null);
   const [activity, setActivity] = useState<ActivityData | null>(null);
@@ -393,6 +397,18 @@ export default function AdminPage() {
       return;
     }
     setRexDescribeResult(JSON.stringify(data.result, null, 2));
+  }
+
+  // Recent raw Rex webhook deliveries — lets us read the real event shape
+  // once it's registered, instead of guessing at it.
+  async function loadRexWebhookEvents() {
+    setRexWebhookLoading(true);
+    const res = await fetch("/api/admin/rex/webhook-log", {
+      headers: { Authorization: `Bearer ${password}` },
+    });
+    const data = await res.json().catch(() => ({}));
+    setRexWebhookLoading(false);
+    setRexWebhookEvents(data.events ?? []);
   }
 
   // Save a brand's Meta ad account + page (Option B — no redeploy) and refresh.
@@ -1975,6 +1991,57 @@ export default function AdminPage() {
                     {rexDescribeResult}
                   </pre>
                 )}
+
+                {/* Webhook — tracks a lead's downstream progress inside Rex
+                    (Appraisal booked, sale won, etc.) so referrals can mirror it */}
+                <div className="mt-4 border-t border-gray-100 pt-4">
+                  <p className="text-sm font-semibold">Webhook</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Register this exact URL in Rex → Settings → Webhooks (needs
+                    the "Manage Zapier and Webhooks" privilege), with{" "}
+                    <code className="rounded bg-gray-100 px-1">
+                      REX_WEBHOOK_SECRET
+                    </code>{" "}
+                    set in Railway to any random string:
+                  </p>
+                  <code className="mt-2 block break-all rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-700">
+                    {`${typeof window !== "undefined" ? window.location.origin : ""}/api/rex/webhook?token=YOUR_REX_WEBHOOK_SECRET`}
+                  </code>
+                  <div className="mt-3 flex items-center gap-3">
+                    <button
+                      onClick={loadRexWebhookEvents}
+                      disabled={rexWebhookLoading}
+                      className="rounded-lg border border-gray-200 px-3.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                    >
+                      {rexWebhookLoading ? "Checking…" : "Check recent events"}
+                    </button>
+                    <span className="text-xs text-gray-400">
+                      Shows the last events Rex has sent — useful to confirm
+                      the webhook is firing and see its real payload shape.
+                    </span>
+                  </div>
+                  {rexWebhookEvents.length > 0 ? (
+                    <div className="mt-3 space-y-2">
+                      {rexWebhookEvents.map((e) => (
+                        <details
+                          key={e.id}
+                          className="rounded-xl border border-gray-200 bg-white p-3"
+                        >
+                          <summary className="cursor-pointer text-xs font-medium text-gray-600">
+                            {new Date(e.receivedAt).toLocaleString("en-GB")}
+                          </summary>
+                          <pre className="mt-2 max-h-60 overflow-auto rounded-lg bg-gray-900 p-3 text-[11px] leading-relaxed text-green-300">
+                            {JSON.stringify(e.body, null, 2)}
+                          </pre>
+                        </details>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-xs text-gray-400">
+                      No webhook events captured yet.
+                    </p>
+                  )}
+                </div>
               </div>
             </section>
 

@@ -79,6 +79,11 @@ export interface Lead {
   // Meta's own lead id (Instant Form leadgen import). Used to dedupe re-runs
   // of the historic-leads backfill — never set for referral/manual leads.
   metaLeadId?: string | null;
+  // Rex's own ids for this lead, set once it's pushed to Rex — lets a later
+  // Rex webhook (e.g. an Appraisal changing for this contact) trace back to
+  // this lead so we can mirror its downstream progress.
+  rexContactId?: string | null;
+  rexLeadId?: string | null;
 }
 
 // Referral lifecycle:
