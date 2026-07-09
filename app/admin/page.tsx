@@ -118,6 +118,13 @@ interface AtlasStatus {
   error?: string;
 }
 
+interface RexStatus {
+  configured: boolean;
+  ok: boolean;
+  accounts?: Array<{ id: string; name: string | null }>;
+  error?: string;
+}
+
 type Tab =
   | "overview"
   | "activity"
@@ -274,6 +281,10 @@ export default function AdminPage() {
   const [meta, setMeta] = useState<MetaStatus | null>(null);
   const [linkedin, setLinkedin] = useState<LinkedInStatus | null>(null);
   const [atlas, setAtlas] = useState<AtlasStatus | null>(null);
+  const [rex, setRex] = useState<RexStatus | null>(null);
+  const [rexTesting, setRexTesting] = useState(false);
+  const [rexTestResult, setRexTestResult] = useState("");
+  const [rexTestError, setRexTestError] = useState("");
   const [metaPreset, setMetaPreset] = useState<string>("last_30d");
   const [drillBrand, setDrillBrand] = useState<string | null>(null);
   const [activity, setActivity] = useState<ActivityData | null>(null);
@@ -304,7 +315,7 @@ export default function AdminPage() {
 
   async function loadData(pass: string): Promise<boolean> {
     const headers = { Authorization: `Bearer ${pass}` };
-    const [fb, us, ev, ls, mt, li, at, ac, rf] = await Promise.all([
+    const [fb, us, ev, ls, mt, li, at, ac, rf, rx] = await Promise.all([
       fetch("/api/feedback", { headers }),
       fetch("/api/admin/users", { headers }),
       fetch("/api/track", { headers }),
@@ -314,6 +325,7 @@ export default function AdminPage() {
       fetch("/api/admin/atlas", { headers }),
       fetch("/api/admin/activity", { headers }),
       fetch("/api/admin/referrals", { headers }),
+      fetch("/api/health?rex=1", { headers }),
     ]);
     if (!fb.ok || !us.ok || !ev.ok || !ls.ok) return false;
     setFeedback(await fb.json());
@@ -325,7 +337,35 @@ export default function AdminPage() {
     setAtlas(at.ok ? await at.json() : null);
     setActivity(ac.ok ? await ac.json() : null);
     setReferrals(rf.ok ? await rf.json() : []);
+    setRex(rx.ok ? (await rx.json()).rex ?? null : null);
     return true;
+  }
+
+  // One-off probe: pushes a synthetic test lead into Rex via the connected
+  // account, using this session's own admin password — no need to share it.
+  async function testRexPush() {
+    setRexTesting(true);
+    setRexTestResult("");
+    setRexTestError("");
+    const res = await fetch("/api/admin/rex/test-push", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${password}`,
+      },
+      body: JSON.stringify({ brandId: "property" }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setRexTesting(false);
+    if (!res.ok || !data.ok) {
+      setRexTestError(data.error ?? "Test push failed");
+      return;
+    }
+    setRexTestResult(
+      `✓ Created contact ${data.result.contactId}${
+        data.result.contactAlreadyExisted ? " (already existed)" : ""
+      } and lead ${data.result.leadId} in account ${data.accountId}.`
+    );
   }
 
   // Save a brand's Meta ad account + page (Option B — no redeploy) and refresh.
@@ -1825,15 +1865,67 @@ export default function AdminPage() {
               </div>
             </section>
 
+            {/* Rex CRM (Property / Lettings / Fine & Country / Auction) */}
+            <section className="mt-10">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold">Rex CRM</h2>
+                {rex && (
+                  <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${rex.ok ? "bg-green-500" : rex.configured ? "bg-red-500" : "bg-gray-300"}`}
+                    />
+                    {rex.ok
+                      ? `Connected — ${rex.accounts?.length ?? 0} account${rex.accounts?.length === 1 ? "" : "s"} visible`
+                      : rex.configured
+                        ? (rex.error ?? "Connection failed")
+                        : "Add REX_API_EMAIL/PASSWORD in Railway"}
+                  </span>
+                )}
+              </div>
+              <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-5">
+                <p className="text-sm text-gray-600">
+                  Property, Lettings, Fine &amp; Country and Auction push
+                  converted leads into Rex (rexsoftware.com).
+                </p>
+                {rex?.accounts && rex.accounts.length > 0 && (
+                  <ul className="mt-3 space-y-1 text-xs text-gray-500">
+                    {rex.accounts.map((a) => (
+                      <li key={a.id}>
+                        · {a.name ?? "Unnamed account"}{" "}
+                        <span className="text-gray-400">(id {a.id})</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <button
+                    onClick={testRexPush}
+                    disabled={rexTesting || !rex?.ok}
+                    className="rounded-lg bg-gray-900 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-40"
+                  >
+                    {rexTesting ? "Pushing…" : "Test push a lead"}
+                  </button>
+                  <span className="text-xs text-gray-400">
+                    Creates a throwaway test contact + lead in the connected
+                    account (REX_ACCOUNT_ID) — safe to delete afterwards.
+                  </span>
+                </div>
+                {rexTestResult && (
+                  <p className="mt-3 text-sm font-medium text-green-700">
+                    {rexTestResult}
+                  </p>
+                )}
+                {rexTestError && (
+                  <p className="mt-3 text-sm text-red-600">{rexTestError}</p>
+                )}
+              </div>
+            </section>
+
             {/* Other systems */}
             <section className="mt-10">
               <h2 className="text-lg font-semibold">Systems</h2>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {[
-                  {
-                    name: "REX",
-                    desc: "Property/Lettings CRM — push converted MAs",
-                  },
                   {
                     name: "HighLevel",
                     desc: "Marketing funnels — nurture unanswered leads",
