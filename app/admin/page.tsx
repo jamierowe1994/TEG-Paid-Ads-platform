@@ -297,6 +297,9 @@ export default function AdminPage() {
   const [rexSearching, setRexSearching] = useState(false);
   const [rexSearchResult, setRexSearchResult] = useState("");
   const [rexSearchError, setRexSearchError] = useState("");
+  // Which brand's configured Rex account the tools below query — each brand
+  // can have its own REX_ACCOUNT_<BRAND> override, so this matters.
+  const [rexBrand, setRexBrand] = useState("lettings");
   const [metaPreset, setMetaPreset] = useState<string>("last_30d");
   const [drillBrand, setDrillBrand] = useState<string | null>(null);
   const [activity, setActivity] = useState<ActivityData | null>(null);
@@ -365,7 +368,7 @@ export default function AdminPage() {
         "Content-Type": "application/json",
         Authorization: `Bearer ${password}`,
       },
-      body: JSON.stringify({ brandId: "property" }),
+      body: JSON.stringify({ brandId: rexBrand }),
     });
     const data = await res.json().catch(() => ({}));
     setRexTesting(false);
@@ -392,7 +395,7 @@ export default function AdminPage() {
         "Content-Type": "application/json",
         Authorization: `Bearer ${password}`,
       },
-      body: JSON.stringify({ model: rexDescribeModelName, brandId: "property" }),
+      body: JSON.stringify({ model: rexDescribeModelName, brandId: rexBrand }),
     });
     const data = await res.json().catch(() => ({}));
     setRexDescribing(false);
@@ -428,7 +431,7 @@ export default function AdminPage() {
         "Content-Type": "application/json",
         Authorization: `Bearer ${password}`,
       },
-      body: JSON.stringify({ name: rexSearchName.trim(), brandId: "property" }),
+      body: JSON.stringify({ name: rexSearchName.trim(), brandId: rexBrand }),
     });
     const data = await res.json().catch(() => ({}));
     setRexSearching(false);
@@ -1968,6 +1971,29 @@ export default function AdminPage() {
                     ))}
                   </ul>
                 )}
+
+                {/* Every tool below queries THIS brand's configured Rex
+                    account (REX_ACCOUNT_<BRAND>, falling back to
+                    REX_ACCOUNT_ID) — brands can be on different accounts. */}
+                <div className="mt-4 flex items-center gap-2 border-t border-gray-100 pt-4">
+                  <label className="text-xs font-medium text-gray-500">
+                    Tools below act as
+                  </label>
+                  <select
+                    value={rexBrand}
+                    onChange={(e) => setRexBrand(e.target.value)}
+                    className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 outline-none focus:border-gray-900"
+                  >
+                    {["property", "lettings", "fineandcountry", "auction"].map(
+                      (id) => (
+                        <option key={id} value={id}>
+                          {brandById(id)?.name ?? id}
+                        </option>
+                      )
+                    )}
+                  </select>
+                </div>
+
                 <div className="mt-4 flex flex-wrap items-center gap-3">
                   <button
                     onClick={testRexPush}
