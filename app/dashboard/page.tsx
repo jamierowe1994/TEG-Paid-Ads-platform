@@ -9,6 +9,7 @@ import {
   sendCampaignFeedback,
   moveLeadStage,
   pushLeadToCrm,
+  resetRexLead,
   addLeadNote,
   bookLeadAppointment,
   cancelLeadAppointment,
@@ -162,6 +163,13 @@ export default function DashboardOverview() {
             : l
         )
       );
+  }
+
+  async function overviewRexReset(lead: Lead) {
+    const res = await resetRexLead(lead.id);
+    if (res.ok && res.lead) {
+      setLeads((prev) => prev.map((l) => (l.id === lead.id ? res.lead! : l)));
+    }
   }
 
   useEffect(() => {
@@ -811,6 +819,7 @@ export default function DashboardOverview() {
           onAddNote={(text) => overviewAddNote(openLead.id, text)}
           onBook={(at) => overviewBook(openLead.id, at)}
           onCancelBooking={() => overviewCancel(openLead.id)}
+          onRexReset={() => overviewRexReset(openLead)}
         />
       )}
     </div>

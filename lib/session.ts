@@ -170,6 +170,28 @@ export async function pushLeadToCrm(leadId: string): Promise<{
   }
 }
 
+// The agent says this person was deleted inside Rex — verify with Rex and,
+// if they're genuinely gone, reset the file to its pre-push state.
+export async function resetRexLead(leadId: string): Promise<{
+  ok: boolean;
+  stillInRex?: boolean;
+  lead?: Lead;
+  error?: string;
+}> {
+  try {
+    const res = await fetch("/api/leads/rex-reset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ leadId }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: data.error ?? "Reset failed" };
+    return data as { ok: boolean; stillInRex?: boolean; lead?: Lead };
+  } catch {
+    return { ok: false, error: "Network error — please try again" };
+  }
+}
+
 // Per-lead modal actions (note / book / cancel booking). Each returns the
 // updated lead, or null on failure.
 async function leadAction(body: Record<string, unknown>): Promise<Lead | null> {

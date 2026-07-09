@@ -108,6 +108,7 @@ export function LeadModal({
   onAddNote,
   onBook,
   onCancelBooking,
+  onRexReset,
 }: {
   lead: Lead;
   brand: Brand;
@@ -118,6 +119,8 @@ export function LeadModal({
   onAddNote: (text: string) => Promise<void>;
   onBook: (at: string) => Promise<void>;
   onCancelBooking: () => Promise<void>;
+  // "They've been deleted in REX" — verify with Rex and reset the file if so.
+  onRexReset?: () => Promise<void>;
 }) {
   const [showTimeline, setShowTimeline] = useState(false);
   const [lostStep, setLostStep] = useState<
@@ -143,6 +146,7 @@ export function LeadModal({
       : ""
   );
   const [booking, setBooking] = useState(false);
+  const [resettingRex, setResettingRex] = useState(false);
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
   const [emailToast, setEmailToast] = useState("");
@@ -150,7 +154,10 @@ export function LeadModal({
   const firstName = lead.name.split(" ")[0] || "there";
   const events = [
     { label: "Lead received", at: lead.receivedAt },
-    ...lead.history.map((h) => ({ label: stageLabel(h.stage, brand), at: h.at })),
+    ...lead.history.map((h) => ({
+      label: h.label ?? stageLabel(h.stage, brand),
+      at: h.at,
+    })),
   ];
   const latest = events[events.length - 1];
   const notes = lead.notes ?? [];
@@ -581,18 +588,26 @@ export function LeadModal({
                   ✓ In {brand.crmName}
                   {booked ? ` · ${apptLabel(lead.appointmentAt!)}` : ""}
                 </p>
-                {/* Safe to re-run: the push pre-checks by email/phone, so if
-                    they're still in the CRM it just adds to their existing
-                    record; if they were deleted there, it re-creates them. */}
-                <button
-                  onClick={onPush}
-                  disabled={pushing}
-                  className="w-full rounded-2xl border border-transparent py-2.5 text-sm font-medium text-gray-400 transition hover:border-gray-300 hover:text-gray-600 disabled:opacity-50"
-                >
-                  {pushing
-                    ? "Pushing…"
-                    : `Deleted them in ${brand.crmName}? Push again`}
-                </button>
+                {/* Verifies with Rex first — only resets the file if the
+                    person is genuinely gone there. The reset drops the lead
+                    back to converted (with a timeline entry recording the
+                    deletion) so the normal push action returns. */}
+                {onRexReset && brand.crmName === "REX" && (
+                  <button
+                    onClick={async () => {
+                      if (resettingRex) return;
+                      setResettingRex(true);
+                      await onRexReset();
+                      setResettingRex(false);
+                    }}
+                    disabled={resettingRex}
+                    className="w-full rounded-2xl border border-transparent py-2.5 text-sm font-medium text-gray-400 transition hover:border-gray-300 hover:text-gray-600 disabled:opacity-50"
+                  >
+                    {resettingRex
+                      ? "Checking REX…"
+                      : `Deleted them in ${brand.crmName}? Reset the file`}
+                  </button>
+                )}
               </>
             )}
 

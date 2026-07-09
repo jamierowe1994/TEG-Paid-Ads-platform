@@ -70,7 +70,9 @@ export interface Lead {
   note: string;
   stage: LeadStage;
   receivedAt: string;
-  history: { stage: LeadStage; at: string }[];
+  // `label` overrides the stage's default timeline wording for special events
+  // (e.g. "Removed from REX — file reset").
+  history: { stage: LeadStage; at: string; label?: string }[];
   referralId?: string | null; // set when the lead came from a referral
   // Populated later by the Meta lead webhook; optional until then. The UI
   // falls back to `note` when interestedIn is absent.

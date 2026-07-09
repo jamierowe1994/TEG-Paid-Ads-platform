@@ -343,6 +343,26 @@ async function findOrCreateContact(
   };
 }
 
+// Is this contact still ACTIVE in Rex? Search auto-filters to active records,
+// so a contact that was deleted (archived/trashed) there returns no rows —
+// which is how the portal registers a Rex-side deletion and resets the file.
+export async function rexContactActive(
+  contactId: string,
+  brandId: string
+): Promise<boolean> {
+  const accountId = rexAccountForBrand(brandId);
+  const res = await rexCall(
+    "Contacts/search",
+    { criteria: [["id", "=", contactId]], limit: 1 },
+    accountId
+  );
+  if (!res.ok) throw new Error(res.error ?? "Rex contact check failed");
+  const rows = Array.isArray(res.result)
+    ? res.result
+    : (((res.result as { rows?: unknown[] })?.rows) ?? []);
+  return rows.length > 0;
+}
+
 // The users on a brand's Rex account (id + name/email) — how the admin finds
 // each agent's Rex user id to store against their portal profile, so pushed
 // leads land owned by the right person. TODO(rex-demo): "AccountUsers" is the

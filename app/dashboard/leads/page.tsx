@@ -6,6 +6,7 @@ import {
   fetchLeads,
   moveLeadStage,
   pushLeadToCrm,
+  resetRexLead,
   addLeadNote,
   bookLeadAppointment,
   cancelLeadAppointment,
@@ -256,6 +257,24 @@ export default function LeadsPage() {
     showToast(`${lead.name} pushed to ${brand.crmName} ✓${extra}`);
   }
 
+  // "They've been deleted in REX" — verify with Rex; if genuinely gone, the
+  // file resets to converted (timeline records it) and the push returns.
+  async function rexReset(lead: Lead) {
+    if (!brand) return;
+    const res = await resetRexLead(lead.id);
+    if (res.ok && res.lead) {
+      setLeads((prev) => prev.map((l) => (l.id === lead.id ? res.lead! : l)));
+      showToast(
+        `${lead.name} was removed from ${brand.crmName} — file reset, ready to push again ✓`,
+        5000
+      );
+    } else if (res.stillInRex) {
+      showToast(`${lead.name} is still in ${brand.crmName} — nothing to reset.`);
+    } else {
+      showToast(res.error ?? "Couldn't check REX — please try again");
+    }
+  }
+
   function applyLead(updated: Lead | null, okMsg?: string, failMsg?: string) {
     if (updated) {
       setLeads((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
@@ -458,6 +477,7 @@ export default function LeadsPage() {
           onAddNote={(text) => addNote(open.id, text)}
           onBook={(at) => book(open.id, at)}
           onCancelBooking={() => cancelBooking(open.id)}
+          onRexReset={() => rexReset(open)}
         />
       )}
 

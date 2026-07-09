@@ -327,6 +327,47 @@ export async function updateLeadStage(
   return lead;
 }
 
+// The person was deleted inside Rex, so return the file to its pre-push
+// state: back to "converted" (a push always starts from converted), Rex ids
+// cleared, and a labelled timeline entry recording exactly what happened —
+// which puts the normal "Push to REX" action back on the card.
+export async function resetLeadFromRex(
+  userId: string,
+  leadId: string
+): Promise<Lead | undefined> {
+  const entry = {
+    stage: "converted" as LeadStage,
+    at: new Date().toISOString(),
+    label: "Removed from REX — file reset",
+  };
+  if (hasDb()) {
+    const rows = await q<LeadRow>(
+      `UPDATE leads
+          SET stage = 'converted', rex_contact_id = NULL, rex_lead_id = NULL,
+              history = history || $3::jsonb
+        WHERE id = $2 AND user_id = $1 AND stage = 'pushed'
+        RETURNING *`,
+      [userId, leadId, JSON.stringify([entry])]
+    );
+    return rows[0] ? fromRow(rows[0]) : undefined;
+  }
+  const all = await readAllFile();
+  const idx = all.findIndex(
+    (l) => l.id === leadId && l.userId === userId && l.stage === "pushed"
+  );
+  if (idx === -1) return undefined;
+  all[idx] = {
+    ...all[idx],
+    stage: "converted",
+    rexContactId: null,
+    rexLeadId: null,
+    history: [...all[idx].history, entry],
+  };
+  await writeAllFile(all);
+  const { userId: _omit, ...lead } = all[idx];
+  return lead;
+}
+
 // Records the Rex ids returned by a successful push, so a later Rex webhook
 // (e.g. an Appraisal changing for this contact) can trace back to this lead.
 export async function setLeadRexIds(

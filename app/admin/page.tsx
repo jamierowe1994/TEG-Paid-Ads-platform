@@ -218,7 +218,7 @@ interface ActivityLead {
   receivedAt: string;
   lastAt: string;
   appointmentAt: string | null;
-  history: { stage: string; at: string }[];
+  history: { stage: string; at: string; label?: string }[];
   notes: { at: string; text: string }[];
 }
 interface ActivityData {
@@ -2442,7 +2442,7 @@ function LeadTimeline({
                   />
                   <div>
                     <p className="text-gray-700">
-                      {LEAD_STAGE_LABEL[h.stage] ?? h.stage}
+                      {h.label ?? LEAD_STAGE_LABEL[h.stage] ?? h.stage}
                     </p>
                     <p className="text-xs text-gray-400">
                       {new Date(h.at).toLocaleString("en-GB")}
