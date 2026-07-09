@@ -154,13 +154,52 @@ interface AttentionItem {
   kind: "unanswered" | "cold";
   leadName: string;
   agentName: string;
+  userId: string;
   brandId: string;
   ageMs: number;
+}
+interface ActivityLead {
+  id: string;
+  leadName: string;
+  agentName: string;
+  userId: string;
+  brandId: string;
+  source: string;
+  stage: string;
+  receivedAt: string;
+  lastAt: string;
+  appointmentAt: string | null;
+  history: { stage: string; at: string }[];
+  notes: { at: string; text: string }[];
 }
 interface ActivityData {
   events: ActivityEvent[];
   attention: AttentionItem[];
+  leads: ActivityLead[];
 }
+
+// Lead funnel stages → readable labels for the activity CRM table.
+const LEAD_STAGE_LABEL: Record<string, string> = {
+  new: "New",
+  attempt1: "Attempt 1",
+  attempt2: "Attempt 2",
+  attempt3: "Attempt 3",
+  nurture: "In marketing funnel",
+  converted: "Converted",
+  pushed: "In CRM",
+  lost: "Lost",
+};
+
+const LEAD_STAGE_STYLE: Record<string, string> = {
+  new: "bg-blue-50 text-blue-600",
+  attempt1: "bg-amber-50 text-amber-600",
+  attempt2: "bg-amber-50 text-amber-600",
+  attempt3: "bg-amber-50 text-amber-600",
+  nurture: "bg-purple-50 text-purple-600",
+  converted: "bg-green-50 text-green-600",
+  pushed: "bg-green-50 text-green-600",
+  lost: "bg-gray-100 text-gray-500",
+};
 
 function ago(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
@@ -198,6 +237,9 @@ export default function AdminPage() {
   const [activity, setActivity] = useState<ActivityData | null>(null);
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [selected, setSelected] = useState<FeedbackItem | null>(null);
+  const [openLead, setOpenLead] = useState<ActivityLead | null>(null);
+  const [nudging, setNudging] = useState<string | null>(null);
+  const [toast, setToast] = useState("");
 
   // CRM view state
   const [selectedAgent, setSelectedAgent] = useState<UserProfile | null>(null);
@@ -287,6 +329,42 @@ export default function AdminPage() {
       headers: { Authorization: `Bearer ${password}` },
     });
     if (res.ok) setLinkedin(await res.json());
+  }
+
+  function flash(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(""), 4000);
+  }
+
+  // Nudge an agent by WhatsApp to go back to a cold/unanswered lead.
+  async function nudgeAgent(userId: string, leadName: string, key: string) {
+    setNudging(key);
+    try {
+      const res = await fetch("/api/admin/nudge", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${password}`,
+        },
+        body: JSON.stringify({ userId, leadName }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data.ok) {
+        flash(`WhatsApp reminder sent to ${data.agentName ?? "the agent"} ✓`);
+      } else if (data.reason === "not_configured") {
+        flash("WhatsApp isn't live yet — reminder couldn't be sent.");
+      } else if (data.reason === "no_mobile") {
+        flash("That agent has no mobile number on file.");
+      } else if (data.reason === "bad_number") {
+        flash("That agent's mobile number doesn't look valid.");
+      } else {
+        flash(`Couldn't send — ${data.reason ?? data.error ?? "try again"}.`);
+      }
+    } catch {
+      flash("Couldn't send the reminder — network error.");
+    } finally {
+      setNudging(null);
+    }
   }
 
   // Merge an updated agent record back into the list (and the open drawer)
@@ -619,20 +697,21 @@ export default function AdminPage() {
         {/* ═══ ACTIVITY ═══ */}
         {tab === "activity" && (
           <>
-            {/* Attention needed — unanswered / cold leads */}
+            {/* Attention needed — unanswered / cold leads, with a nudge button */}
             <section>
               <h2 className="text-lg font-semibold">Attention needed</h2>
               <p className="mt-1 text-sm text-gray-500">
                 Leads going unanswered (&gt;1 day) or cold (no activity &gt;2
-                days) — the faster we're on these, the better they convert.
+                days). Send the agent a WhatsApp to jump back on them.
               </p>
               <div className="mt-4 space-y-2">
                 {(activity?.attention ?? []).slice(0, 20).map((a, i) => {
                   const b = brandById(a.brandId);
+                  const key = `${a.userId}-${a.leadName}-${i}`;
                   return (
                     <div
-                      key={i}
-                      className={`flex items-center gap-3 rounded-2xl border p-3.5 ${
+                      key={key}
+                      className={`flex flex-wrap items-center gap-3 rounded-2xl border p-3.5 ${
                         a.kind === "unanswered"
                           ? "border-red-200 bg-red-50"
                           : "border-amber-200 bg-amber-50"
@@ -658,6 +737,20 @@ export default function AdminPage() {
                       <span className="shrink-0 text-sm font-semibold text-gray-700">
                         {agoDur(a.ageMs)}
                       </span>
+                      <button
+                        onClick={() => nudgeAgent(a.userId, a.leadName, key)}
+                        disabled={nudging === key}
+                        className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[#25D366] px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          className="h-3.5 w-3.5"
+                          fill="currentColor"
+                        >
+                          <path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.8 4.9-1.3A10 10 0 1 0 12 2zm0 2a8 8 0 1 1-4.2 14.8l-.3-.2-2.9.8.8-2.8-.2-.3A8 8 0 0 1 12 4zm4.5 10.3c-.2-.1-1.3-.7-1.5-.8s-.4-.1-.5.1-.6.8-.7.9-.3.2-.5.1a6.5 6.5 0 0 1-3.2-2.8c-.2-.4.2-.4.6-1.2a.4.4 0 0 0 0-.4l-.7-1.7c-.2-.5-.4-.4-.5-.4h-.5a.9.9 0 0 0-.7.3A2.8 2.8 0 0 0 7 11c0 1.6 1.2 3.2 1.4 3.4a9.3 9.3 0 0 0 3.9 3.2c1.4.6 1.9.6 2.6.5a2.3 2.3 0 0 0 1.5-1.1 1.9 1.9 0 0 0 .1-1c-.1-.1-.3-.2-.5-.3z" />
+                        </svg>
+                        {nudging === key ? "Sending…" : "Send WhatsApp again"}
+                      </button>
                     </div>
                   );
                 })}
@@ -669,47 +762,89 @@ export default function AdminPage() {
               </div>
             </section>
 
-            {/* Live activity feed */}
+            {/* Live activity — CRM-style lead table, click a row for the full picture */}
             <section className="mt-10">
               <h2 className="text-lg font-semibold">Live activity</h2>
-              <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-2">
-                {(activity?.events ?? []).map((e, i) => {
-                  const b = brandById(e.brandId);
-                  const meta = {
-                    new_lead: { dot: "#3B82F6", verb: "New lead" },
-                    converted: { dot: "#16A34A", verb: "Converted" },
-                    pushed: { dot: "#7C3AED", verb: "Pushed to CRM" },
-                    lost: { dot: "#9CA3AF", verb: "Marked lost" },
-                    signup: { dot: b?.accent ?? "#111827", verb: "Signed up" },
-                  }[e.type];
-                  return (
-                    <div
-                      key={i}
-                      className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-gray-50"
-                    >
-                      <span
-                        className="h-2 w-2 shrink-0 rounded-full"
-                        style={{ backgroundColor: meta.dot }}
-                      />
-                      <p className="min-w-0 flex-1 truncate text-sm text-gray-700">
-                        <span className="font-medium">{meta.verb}</span>
-                        {e.leadName ? ` — ${e.leadName}` : ""}
-                        <span className="text-gray-400">
-                          {" "}
-                          · {b?.shortName ?? e.brandId} · {e.agentName}
-                        </span>
-                      </p>
-                      <span className="shrink-0 text-xs text-gray-400">
-                        {ago(e.at)}
-                      </span>
-                    </div>
-                  );
-                })}
-                {(activity?.events ?? []).length === 0 && (
-                  <p className="py-10 text-center text-sm text-gray-400">
-                    No activity yet — it'll fill in as leads and signups arrive.
-                  </p>
-                )}
+              <p className="mt-1 text-sm text-gray-500">
+                Every lead across the group, newest activity first. Click any row
+                to see the full timeline — including whether a lost lead went into
+                the marketing funnel.
+              </p>
+              <div className="mt-4 overflow-x-auto rounded-2xl border border-gray-200 bg-white">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-400">
+                    <tr>
+                      <th className="px-5 py-3 font-medium">Lead</th>
+                      <th className="px-5 py-3 font-medium">Business · Agent</th>
+                      <th className="px-5 py-3 font-medium">Source</th>
+                      <th className="px-5 py-3 font-medium">Status</th>
+                      <th className="px-5 py-3 font-medium">Funnel</th>
+                      <th className="px-5 py-3 font-medium">Updated</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {(activity?.leads ?? []).map((l) => {
+                      const b = brandById(l.brandId);
+                      return (
+                        <tr
+                          key={l.id}
+                          onClick={() => setOpenLead(l)}
+                          className="cursor-pointer transition hover:bg-gray-50"
+                        >
+                          <td className="px-5 py-3 font-medium text-gray-800">
+                            {l.leadName}
+                          </td>
+                          <td className="px-5 py-3">
+                            <span className="inline-flex items-center gap-2">
+                              <span
+                                className="h-2 w-2 rounded-full"
+                                style={{ backgroundColor: b?.accent }}
+                              />
+                              {b?.shortName ?? l.brandId}
+                              <span className="text-gray-400">· {l.agentName}</span>
+                            </span>
+                          </td>
+                          <td className="px-5 py-3 capitalize text-gray-500">
+                            {l.source}
+                          </td>
+                          <td className="px-5 py-3">
+                            <span
+                              className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${LEAD_STAGE_STYLE[l.stage] ?? "bg-gray-100 text-gray-500"}`}
+                            >
+                              {LEAD_STAGE_LABEL[l.stage] ?? l.stage}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3">
+                            {l.stage === "nurture" ? (
+                              <span className="inline-flex items-center gap-1 text-xs font-medium text-purple-600">
+                                ✓ In funnel
+                              </span>
+                            ) : l.stage === "lost" ? (
+                              <span className="text-xs font-medium text-gray-400">
+                                Not in funnel
+                              </span>
+                            ) : (
+                              <span className="text-gray-300">—</span>
+                            )}
+                          </td>
+                          <td className="px-5 py-3 text-gray-500">
+                            {ago(l.lastAt)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {(activity?.leads ?? []).length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={6}
+                          className="px-5 py-12 text-center text-sm text-gray-400"
+                        >
+                          No leads yet — this fills in as leads arrive.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </section>
           </>
@@ -1668,7 +1803,184 @@ export default function AdminPage() {
             />
           );
         })()}
+
+      {/* Lead timeline (from the Activity table) */}
+      {openLead && (
+        <LeadTimeline lead={openLead} onClose={() => setOpenLead(null)} />
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 z-[60] -translate-x-1/2 rounded-xl bg-gray-900 px-5 py-3 text-sm font-medium text-white shadow-lg">
+          {toast}
+        </div>
+      )}
     </main>
+  );
+}
+
+// Full lead timeline for the admin Activity table — what's going on, the
+// booked appointment, agent notes, whether it went into the marketing funnel,
+// and the complete stage history.
+function LeadTimeline({
+  lead,
+  onClose,
+}: {
+  lead: ActivityLead;
+  onClose: () => void;
+}) {
+  const b = brandById(lead.brandId);
+  const inFunnel = lead.stage === "nurture";
+  const isLost = lead.stage === "lost";
+  return (
+    <div
+      className="fixed inset-0 z-50 flex justify-end bg-gray-900/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="h-full w-full max-w-md overflow-y-auto bg-white p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-xl font-semibold">{lead.leadName}</h2>
+            <p className="mt-1 flex items-center gap-1.5 text-sm text-gray-500">
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ backgroundColor: b?.accent }}
+              />
+              {b?.shortName ?? lead.brandId} · {lead.agentName}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1 text-gray-400 hover:bg-gray-100"
+            aria-label="Close"
+          >
+            <svg
+              className="h-5 w-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Status + funnel banner */}
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          <span
+            className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${LEAD_STAGE_STYLE[lead.stage] ?? "bg-gray-100 text-gray-500"}`}
+          >
+            {LEAD_STAGE_LABEL[lead.stage] ?? lead.stage}
+          </span>
+          <span className="rounded-full bg-gray-50 px-2.5 py-0.5 text-xs capitalize text-gray-500">
+            {lead.source}
+          </span>
+        </div>
+
+        {(inFunnel || isLost) && (
+          <div
+            className={`mt-4 rounded-2xl border p-4 text-sm ${
+              inFunnel
+                ? "border-purple-200 bg-purple-50 text-purple-700"
+                : "border-gray-200 bg-gray-50 text-gray-600"
+            }`}
+          >
+            {inFunnel ? (
+              <>
+                ✓ <strong>Sent into the marketing funnel.</strong> This lead was
+                marked lost but added to nurture — it&apos;ll be worked through
+                marketing rather than dropped.
+              </>
+            ) : (
+              <>
+                <strong>Lost — not in the marketing funnel.</strong> Marked lost
+                and not added to nurture.
+              </>
+            )}
+          </div>
+        )}
+
+        {lead.appointmentAt && (
+          <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+            📅 Appointment booked for{" "}
+            <strong>
+              {new Date(lead.appointmentAt).toLocaleString("en-GB", {
+                weekday: "short",
+                day: "numeric",
+                month: "long",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </strong>
+          </div>
+        )}
+
+        {/* Agent notes */}
+        {lead.notes.length > 0 && (
+          <div className="mt-6">
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+              Notes
+            </p>
+            <div className="mt-3 space-y-2">
+              {[...lead.notes].reverse().map((n, i) => (
+                <div
+                  key={i}
+                  className="rounded-xl bg-gray-50 p-3 text-sm text-gray-700"
+                >
+                  <p>{n.text}</p>
+                  <p className="mt-1 text-xs text-gray-400">
+                    {new Date(n.at).toLocaleString("en-GB")}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Stage history */}
+        <div className="mt-6">
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+            History
+          </p>
+          <ol className="mt-3 space-y-3">
+            <li className="flex gap-3 text-sm">
+              <span
+                className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
+                style={{ backgroundColor: b?.accent ?? "#111827" }}
+              />
+              <div>
+                <p className="text-gray-700">Lead received</p>
+                <p className="text-xs text-gray-400">
+                  {new Date(lead.receivedAt).toLocaleString("en-GB")}
+                </p>
+              </div>
+            </li>
+            {lead.history
+              .filter((h) => h.stage !== "new")
+              .map((h, i) => (
+                <li key={i} className="flex gap-3 text-sm">
+                  <span
+                    className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: b?.accent ?? "#111827" }}
+                  />
+                  <div>
+                    <p className="text-gray-700">
+                      {LEAD_STAGE_LABEL[h.stage] ?? h.stage}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {new Date(h.at).toLocaleString("en-GB")}
+                    </p>
+                  </div>
+                </li>
+              ))}
+          </ol>
+        </div>
+      </div>
+    </div>
   );
 }
 

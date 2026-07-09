@@ -8,6 +8,7 @@ import "server-only";
 //   WHATSAPP_TOKEN         — Cloud API access token (from the WABA / system user)
 //   WHATSAPP_PHONE_ID      — the WhatsApp Business phone number ID
 //   WHATSAPP_TEMPLATE      — approved template name (default "new_lead")
+//   WHATSAPP_NUDGE_TEMPLATE — approved reminder template (default "lead_reminder")
 //   WHATSAPP_TEMPLATE_LANG — template language code (default "en_GB")
 //   APP_URL                — portal origin, used in the message's link button
 //
@@ -123,5 +124,62 @@ export async function sendNewLeadAlert(opts: {
     });
   } catch {
     /* alerting is best-effort — swallow errors */
+  }
+}
+
+// Admin-triggered nudge: prompt an agent to go back to a lead that's going
+// cold. Unlike the new-lead alert this reports its outcome, so the admin gets
+// real feedback (sent / WhatsApp not live yet / bad number / API error).
+export async function sendLeadNudge(opts: {
+  toMobile: string;
+  agentName: string;
+  leadName: string;
+}): Promise<{ ok: boolean; reason?: string }> {
+  if (!whatsappConfigured()) return { ok: false, reason: "not_configured" };
+  const to = toE164(opts.toMobile);
+  if (!to) return { ok: false, reason: "bad_number" };
+
+  const name = process.env.WHATSAPP_NUDGE_TEMPLATE ?? "lead_reminder";
+  const lang = process.env.WHATSAPP_TEMPLATE_LANG ?? "en_GB";
+  const body = {
+    messaging_product: "whatsapp",
+    to,
+    type: "template",
+    template: {
+      name,
+      language: { code: lang },
+      components: [
+        {
+          type: "body",
+          parameters: [
+            { type: "text", text: opts.agentName || "there" },
+            { type: "text", text: opts.leadName || "a lead" },
+          ],
+        },
+      ],
+    },
+  };
+
+  try {
+    const res = await fetch(
+      `${GRAPH}/${process.env.WHATSAPP_PHONE_ID}/messages`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      }
+    );
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: { message?: string };
+      };
+      return { ok: false, reason: data?.error?.message ?? `HTTP ${res.status}` };
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, reason: e instanceof Error ? e.message : "unreachable" };
   }
 }

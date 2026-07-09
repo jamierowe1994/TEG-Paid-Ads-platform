@@ -34,8 +34,24 @@ export async function GET(req: NextRequest) {
     kind: "unanswered" | "cold";
     leadName: string;
     agentName: string;
+    userId: string;
     brandId: string;
     ageMs: number;
+  }[] = [];
+  // Lead-centric rows for the CRM-style activity table.
+  const activityLeads: {
+    id: string;
+    leadName: string;
+    agentName: string;
+    userId: string;
+    brandId: string;
+    source: string;
+    stage: string;
+    receivedAt: string;
+    lastAt: string;
+    appointmentAt: string | null;
+    history: { stage: string; at: string }[];
+    notes: { at: string; text: string }[];
   }[] = [];
 
   for (const lead of leads) {
@@ -57,6 +73,22 @@ export async function GET(req: NextRequest) {
         events.push({ ...base, at: h.at, type: "lost" });
     }
 
+    const lastAt = lead.history.at(-1)?.at ?? lead.receivedAt;
+    activityLeads.push({
+      id: lead.id,
+      leadName: lead.name,
+      agentName: u.name,
+      userId: lead.userId,
+      brandId: u.brandId,
+      source: lead.source,
+      stage: lead.stage,
+      receivedAt: lead.receivedAt,
+      lastAt,
+      appointmentAt: lead.appointmentAt ?? null,
+      history: lead.history,
+      notes: lead.notes ?? [],
+    });
+
     // Attention: still "new" for >1 day, or working but no activity for >2 days.
     if (lead.stage === "new") {
       const age = now - new Date(lead.receivedAt).getTime();
@@ -65,19 +97,20 @@ export async function GET(req: NextRequest) {
           kind: "unanswered",
           leadName: lead.name,
           agentName: u.name,
+          userId: lead.userId,
           brandId: u.brandId,
           ageMs: age,
         });
     } else if (
       ["attempt1", "attempt2", "attempt3", "nurture"].includes(lead.stage)
     ) {
-      const last = lead.history.at(-1)?.at ?? lead.receivedAt;
-      const age = now - new Date(last).getTime();
+      const age = now - new Date(lastAt).getTime();
       if (age > 2 * DAY)
         attention.push({
           kind: "cold",
           leadName: lead.name,
           agentName: u.name,
+          userId: lead.userId,
           brandId: u.brandId,
           ageMs: age,
         });
@@ -95,6 +128,11 @@ export async function GET(req: NextRequest) {
 
   events.sort((a, b) => b.at.localeCompare(a.at));
   attention.sort((a, b) => b.ageMs - a.ageMs);
+  activityLeads.sort((a, b) => b.lastAt.localeCompare(a.lastAt));
 
-  return NextResponse.json({ events: events.slice(0, 50), attention });
+  return NextResponse.json({
+    events: events.slice(0, 50),
+    attention,
+    leads: activityLeads,
+  });
 }
