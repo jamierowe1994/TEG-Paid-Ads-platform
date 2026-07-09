@@ -76,7 +76,7 @@ function journey(r: Referral, toBrand?: Brand): Step[] {
 export default function ReferralsPage() {
   const [brand, setBrand] = useState<Brand | null>(null);
   const [referrals, setReferrals] = useState<Referral[]>([]);
-  const [railTab, setRailTab] = useState<"sent" | "received">("sent");
+  const [tab, setTab] = useState<"send" | "received">("send");
   const [preview, setPreview] = useState<Brand | null>(null);
   const [formBrand, setFormBrand] = useState<Brand | null>(null);
   const [open, setOpen] = useState<Referral | null>(null);
@@ -99,7 +99,6 @@ export default function ReferralsPage() {
   );
   const sent = referrals.filter((r) => r.direction === "sent");
   const received = referrals.filter((r) => r.direction === "received");
-  const railItems = railTab === "sent" ? sent : received;
 
   function flash(msg: string) {
     setToast(msg);
@@ -129,6 +128,11 @@ export default function ReferralsPage() {
 
   if (!brand) return null;
 
+  const TABS: { id: "send" | "received"; label: string; count: number }[] = [
+    { id: "send", label: "Send", count: sent.length },
+    { id: "received", label: "Received", count: received.length },
+  ];
+
   return (
     <div className="w-full">
       <div>
@@ -140,61 +144,76 @@ export default function ReferralsPage() {
         </p>
       </div>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
-        {/* Advertisement grid */}
-        <div>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {/* Two simple tabs */}
+      <div className="mt-6 inline-flex rounded-xl border border-gray-200 bg-white p-1">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`rounded-lg px-5 py-2 text-sm font-medium transition ${
+              tab === t.id
+                ? "bg-gray-900 text-white"
+                : "text-gray-500 hover:bg-gray-50"
+            }`}
+          >
+            {t.label}
+            <span
+              className={`ml-1.5 text-xs ${
+                tab === t.id ? "text-white/60" : "text-gray-400"
+              }`}
+            >
+              {t.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* SEND — advertisement tiles, then the referrals you've sent */}
+      {tab === "send" && (
+        <>
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {otherBrands.map((b) => (
               <BrandTile key={b.id} brand={b} onOpen={() => openPreview(b)} />
             ))}
           </div>
-        </div>
 
-        {/* Rail */}
-        <aside className="lg:sticky lg:top-6 lg:self-start">
-          <div className="rounded-2xl border border-gray-200 shadow-sm">
-            <div className="flex gap-1 p-1.5">
-              {(["sent", "received"] as const).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setRailTab(t)}
-                  className={`flex-1 rounded-xl px-3 py-2 text-sm font-medium capitalize transition ${
-                    railTab === t
-                      ? "bg-gray-900 text-white"
-                      : "text-gray-500 hover:bg-gray-50"
-                  }`}
-                >
-                  {t}
-                  <span
-                    className={`ml-1.5 text-xs ${
-                      railTab === t ? "text-white/60" : "text-gray-400"
-                    }`}
-                  >
-                    {t === "sent" ? sent.length : received.length}
-                  </span>
-                </button>
-              ))}
+          {sent.length > 0 && (
+            <section className="mt-10">
+              <h2 className="text-lg font-semibold">Referrals you&apos;ve sent</h2>
+              <div className="mt-4 space-y-3">
+                {sent.map((r) => (
+                  <ReferralRow
+                    key={r.id}
+                    referral={r}
+                    viewerBrand={brand}
+                    onClick={() => setOpen(r)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      )}
+
+      {/* RECEIVED — referrals sent to your business */}
+      {tab === "received" && (
+        <section className="mt-8 space-y-3">
+          {received.map((r) => (
+            <ReferralRow
+              key={r.id}
+              referral={r}
+              viewerBrand={brand}
+              onClick={() => setOpen(r)}
+            />
+          ))}
+          {received.length === 0 && (
+            <div className="rounded-2xl border border-dashed border-gray-200 py-16 text-center text-sm text-gray-400">
+              No referrals have come in yet. When another business sends you one,
+              it&apos;ll appear here to accept.
             </div>
-            <div className="max-h-[calc(100vh-11rem)] space-y-2.5 overflow-y-auto p-3 pt-1.5">
-              {railItems.map((r) => (
-                <RailCard
-                  key={r.id}
-                  referral={r}
-                  viewerBrand={brand}
-                  onClick={() => setOpen(r)}
-                />
-              ))}
-              {railItems.length === 0 && (
-                <div className="rounded-xl border border-dashed border-gray-200 py-12 text-center text-sm text-gray-400">
-                  {railTab === "sent"
-                    ? "Nothing sent yet — pick a business to refer into."
-                    : "No referrals have come in yet."}
-                </div>
-              )}
-            </div>
-          </div>
-        </aside>
-      </div>
+          )}
+        </section>
+      )}
 
       {preview && (
         <BrandPreview
@@ -211,7 +230,7 @@ export default function ReferralsPage() {
           onClose={() => setFormBrand(null)}
           onSent={async (name) => {
             setFormBrand(null);
-            setRailTab("sent");
+            setTab("send");
             await reload();
             flash(`Referral sent to ${name} ✓`);
           }}
@@ -535,8 +554,8 @@ function ReferForm({
   );
 }
 
-// ── Rail card ───────────────────────────────────────────────────────────────
-function RailCard({
+// ── Referral row (full width, under the tiles / on Received) ─────────────────
+function ReferralRow({
   referral: r,
   viewerBrand,
   onClick,
@@ -551,52 +570,47 @@ function RailCard({
       : brandById(r.toBrandId);
   const steps = journey(r, brandById(r.toBrandId));
   const accent = other?.accent ?? viewerBrand.accent;
+  const lastDone =
+    [...steps].reverse().find((s) => s.done)?.label ?? steps[0]?.label;
 
   return (
     <button
       onClick={onClick}
-      className="block w-full rounded-xl border border-gray-200 p-3.5 text-left transition hover:border-gray-300 hover:shadow-sm"
+      className="block w-full rounded-2xl border border-gray-200 p-5 text-left transition hover:border-gray-300 hover:shadow-sm"
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">{r.leadName}</p>
-          <p className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-400">
+      <div className="flex items-center gap-4">
+        {other && <BrandBadge brand={other} size={44} />}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className="truncate font-semibold">{r.leadName}</p>
             <span
-              className="h-1.5 w-1.5 shrink-0 rounded-full"
-              style={{ backgroundColor: accent }}
-            />
-            <span className="truncate">
-              {r.direction === "received" ? "From" : "To"} {other?.shortName}
+              className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${STATUS_STYLE[r.status]}`}
+            >
+              {r.status}
             </span>
+          </div>
+          <p className="mt-0.5 truncate text-sm text-gray-400">
+            {r.direction === "received"
+              ? `From ${other?.name}${r.fromName ? ` · ${r.fromName}` : ""}`
+              : `To ${other?.name}`}
           </p>
+          {/* Progress bar */}
+          <div className="mt-3 flex max-w-xs items-center gap-1.5">
+            {steps.map((s, i) => (
+              <div
+                key={i}
+                className="h-1.5 flex-1 rounded-full"
+                style={{ backgroundColor: s.done ? accent : "#e5e7eb" }}
+              />
+            ))}
+          </div>
         </div>
-        <span className="shrink-0 text-sm font-semibold text-gray-900">
-          {money(r.feeAmount)}
-        </span>
-      </div>
-
-      {/* Mini progress */}
-      <div className="mt-3 flex items-center gap-1.5">
-        {steps.map((s, i) => (
-          <div
-            key={i}
-            className="h-1.5 flex-1 rounded-full"
-            style={{
-              backgroundColor: s.done ? accent : "#e5e7eb",
-              opacity: s.done ? 1 : 1,
-            }}
-          />
-        ))}
-      </div>
-      <div className="mt-1.5 flex items-center justify-between">
-        <span
-          className={`rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${STATUS_STYLE[r.status]}`}
-        >
-          {r.status}
-        </span>
-        <span className="text-[11px] text-gray-400">
-          {[...steps].reverse().find((s) => s.done)?.label ?? steps[0]?.label}
-        </span>
+        <div className="shrink-0 text-right">
+          <p className="text-lg font-semibold text-gray-900">
+            {money(r.feeAmount)}
+          </p>
+          <p className="text-xs text-gray-400">{lastDone}</p>
+        </div>
       </div>
     </button>
   );

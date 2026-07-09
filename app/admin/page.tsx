@@ -7,7 +7,7 @@ import { packageById, PACKAGES } from "@/lib/packages";
 import { stageLabel } from "@/lib/onboarding";
 import BrandMark from "@/components/BrandMark";
 import AgentProfile from "@/components/AgentProfile";
-import type { UserProfile } from "@/lib/types";
+import type { UserProfile, Referral } from "@/lib/types";
 
 // Admin backend. Password-gated (ADMIN_PASSWORD env var, default
 // "experts-admin") — upgrade to proper admin accounts later.
@@ -117,15 +117,30 @@ interface AtlasStatus {
   error?: string;
 }
 
-type Tab = "overview" | "activity" | "crm" | "performance" | "connections";
+type Tab =
+  | "overview"
+  | "activity"
+  | "referrals"
+  | "crm"
+  | "performance"
+  | "connections";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "activity", label: "Activity" },
+  { id: "referrals", label: "Referrals" },
   { id: "crm", label: "CRM" },
   { id: "performance", label: "Performance" },
   { id: "connections", label: "Connections" },
 ];
+
+const REFERRAL_STATUS_STYLE: Record<Referral["status"], string> = {
+  pending: "bg-amber-50 text-amber-600",
+  accepted: "bg-blue-50 text-blue-600",
+  converted: "bg-green-50 text-green-600",
+  paid: "bg-gray-900 text-white",
+  declined: "bg-gray-100 text-gray-500",
+};
 
 interface ActivityEvent {
   at: string;
@@ -181,6 +196,7 @@ export default function AdminPage() {
   const [metaPreset, setMetaPreset] = useState<string>("last_30d");
   const [drillBrand, setDrillBrand] = useState<string | null>(null);
   const [activity, setActivity] = useState<ActivityData | null>(null);
+  const [referrals, setReferrals] = useState<Referral[]>([]);
   const [selected, setSelected] = useState<FeedbackItem | null>(null);
 
   // CRM view state
@@ -195,7 +211,7 @@ export default function AdminPage() {
 
   async function loadData(pass: string): Promise<boolean> {
     const headers = { Authorization: `Bearer ${pass}` };
-    const [fb, us, ev, ls, mt, li, at, ac] = await Promise.all([
+    const [fb, us, ev, ls, mt, li, at, ac, rf] = await Promise.all([
       fetch("/api/feedback", { headers }),
       fetch("/api/admin/users", { headers }),
       fetch("/api/track", { headers }),
@@ -204,6 +220,7 @@ export default function AdminPage() {
       fetch("/api/admin/linkedin", { headers }),
       fetch("/api/admin/atlas", { headers }),
       fetch("/api/admin/activity", { headers }),
+      fetch("/api/admin/referrals", { headers }),
     ]);
     if (!fb.ok || !us.ok || !ev.ok || !ls.ok) return false;
     setFeedback(await fb.json());
@@ -214,6 +231,7 @@ export default function AdminPage() {
     setLinkedin(li.ok ? await li.json() : null);
     setAtlas(at.ok ? await at.json() : null);
     setActivity(ac.ok ? await ac.json() : null);
+    setReferrals(rf.ok ? await rf.json() : []);
     return true;
   }
 
@@ -692,6 +710,131 @@ export default function AdminPage() {
                     No activity yet — it'll fill in as leads and signups arrive.
                   </p>
                 )}
+              </div>
+            </section>
+          </>
+        )}
+
+        {/* ═══ REFERRALS ═══ */}
+        {tab === "referrals" && (
+          <>
+            <div className="grid gap-4 sm:grid-cols-4">
+              <AdminStat label="Total referrals" value={String(referrals.length)} />
+              <AdminStat
+                label="Awaiting acceptance"
+                value={String(
+                  referrals.filter((r) => r.status === "pending").length
+                )}
+              />
+              <AdminStat
+                label="Converted"
+                value={String(
+                  referrals.filter(
+                    (r) => r.status === "converted" || r.status === "paid"
+                  ).length
+                )}
+                note="Fee earned or now due"
+              />
+              <AdminStat
+                label="Fees paid out"
+                value={`£${referrals
+                  .filter((r) => r.status === "paid")
+                  .reduce((t, r) => t + r.feeAmount, 0)
+                  .toLocaleString("en-GB")}`}
+              />
+            </div>
+
+            <section className="mt-10">
+              <h2 className="text-lg font-semibold">
+                All referrals{" "}
+                <span className="text-sm font-normal text-gray-400">
+                  {referrals.length}
+                </span>
+              </h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Every referral passed between the businesses — who sent what,
+                where it went, and where it&apos;s got to.
+              </p>
+              <div className="mt-4 overflow-x-auto rounded-2xl border border-gray-200 bg-white">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-400">
+                    <tr>
+                      <th className="px-5 py-3 font-medium">Lead</th>
+                      <th className="px-5 py-3 font-medium">From</th>
+                      <th className="px-5 py-3 font-medium">To</th>
+                      <th className="px-5 py-3 font-medium">Fee</th>
+                      <th className="px-5 py-3 font-medium">Status</th>
+                      <th className="px-5 py-3 font-medium">Sent</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {referrals.map((r) => {
+                      const from = brandById(r.fromBrandId);
+                      const to = brandById(r.toBrandId);
+                      return (
+                        <tr key={r.id}>
+                          <td className="px-5 py-3">
+                            <p className="font-medium text-gray-800">
+                              {r.leadName}
+                            </p>
+                            {r.leadPhone && (
+                              <p className="text-xs text-gray-400">
+                                {r.leadPhone}
+                              </p>
+                            )}
+                          </td>
+                          <td className="px-5 py-3">
+                            <span className="inline-flex items-center gap-2">
+                              <span
+                                className="h-2 w-2 rounded-full"
+                                style={{ backgroundColor: from?.accent }}
+                              />
+                              <span>
+                                {from?.shortName ?? r.fromBrandId}
+                                <span className="block text-xs text-gray-400">
+                                  {r.fromName}
+                                </span>
+                              </span>
+                            </span>
+                          </td>
+                          <td className="px-5 py-3">
+                            <span className="inline-flex items-center gap-2">
+                              <span
+                                className="h-2 w-2 rounded-full"
+                                style={{ backgroundColor: to?.accent }}
+                              />
+                              {to?.shortName ?? r.toBrandId}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3 font-medium">
+                            £{r.feeAmount.toLocaleString("en-GB")}
+                          </td>
+                          <td className="px-5 py-3">
+                            <span
+                              className={`rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${REFERRAL_STATUS_STYLE[r.status]}`}
+                            >
+                              {r.status}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3 text-gray-500">
+                            {new Date(r.createdAt).toLocaleDateString("en-GB")}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {referrals.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={6}
+                          className="px-5 py-12 text-center text-sm text-gray-400"
+                        >
+                          No referrals yet — they&apos;ll appear here as agents
+                          pass leads between the businesses.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </section>
           </>

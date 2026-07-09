@@ -124,6 +124,20 @@ export async function getReferral(id: string): Promise<Referral | undefined> {
   return (await readAllFile()).find((r) => r.id === id);
 }
 
+// Every referral across the whole group (admin oversight). No `direction` —
+// the admin sees both ends of each one.
+export async function listAllReferrals(): Promise<Referral[]> {
+  if (hasDb()) {
+    const rows = await q<ReferralRow>(
+      "SELECT * FROM referrals ORDER BY created_at DESC"
+    );
+    return rows.map(fromRow);
+  }
+  return (await readAllFile()).sort((a, b) =>
+    b.createdAt.localeCompare(a.createdAt)
+  );
+}
+
 // Everything this user can see: referrals they sent, plus referrals sent to
 // their business by others. `direction` is tagged for the viewer.
 export async function listForUser(
