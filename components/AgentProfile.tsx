@@ -26,12 +26,14 @@ export default function AgentProfile({
   adminPassword,
   onClose,
   onUpdated,
+  onLeadsImported,
 }: {
   agent: UserProfile;
   summary?: { total: number; converted: number };
   adminPassword: string;
   onClose: () => void;
   onUpdated: (u: UserProfile) => void;
+  onLeadsImported?: () => void;
 }) {
   const [saving, setSaving] = useState(false);
   const [noteText, setNoteText] = useState("");
@@ -39,6 +41,9 @@ export default function AgentProfile({
   const [assetUrl, setAssetUrl] = useState("");
   const [assetType, setAssetType] = useState<"image" | "video">("image");
   const [assetCaption, setAssetCaption] = useState("");
+  const [metaSearching, setMetaSearching] = useState(false);
+  const [metaResult, setMetaResult] = useState<string | null>(null);
+  const [metaError, setMetaError] = useState<string | null>(null);
   const brand = brandById(agent.brandId);
   const pkg = packageById(agent.packageId);
   const rate =
@@ -106,6 +111,39 @@ export default function AgentProfile({
       body: JSON.stringify({ userId: agent.id }),
     });
     if (res.ok) setReset((await res.json()).temporaryPassword);
+  }
+
+  // One-click historic backfill: pulls every Instant Form lead Meta still
+  // holds for this agent's brand Page and creates them against this agent.
+  // Safe to run again later — already-imported leads are skipped.
+  async function findOlderLeads() {
+    setMetaSearching(true);
+    setMetaResult(null);
+    setMetaError(null);
+    const res = await fetch("/api/admin/meta/leadgen", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${adminPassword}`,
+      },
+      body: JSON.stringify({ brandId: agent.brandId, agentUserId: agent.id }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setMetaSearching(false);
+    if (!res.ok) {
+      setMetaError(data.error ?? "Couldn't reach Meta — please try again.");
+      return;
+    }
+    if (data.imported === 0 && data.total === 0) {
+      setMetaResult("No historic leads found on Meta for this business.");
+    } else {
+      setMetaResult(
+        `Imported ${data.imported} lead${data.imported === 1 ? "" : "s"}${
+          data.skipped ? ` · ${data.skipped} already here` : ""
+        } from ${data.forms} form${data.forms === 1 ? "" : "s"} ✓`
+      );
+      onLeadsImported?.();
+    }
   }
 
   return (
@@ -193,6 +231,40 @@ export default function AgentProfile({
               );
             })}
           </div>
+        </div>
+
+        {/* Historic Meta leads — one-click backfill for this agent */}
+        <div className="mt-4 rounded-2xl border border-gray-200 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold">Historic leads</p>
+              <p className="mt-0.5 text-xs text-gray-400">
+                Pull any leads Meta still holds for {brand?.name ?? "this business"}
+                &apos;s Instant Form ads into {agent.name.split(" ")[0]}&apos;s
+                account.
+              </p>
+            </div>
+            <button
+              onClick={findOlderLeads}
+              disabled={metaSearching}
+              className="shrink-0 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+            >
+              {metaSearching ? "Searching Meta…" : "Find older leads"}
+            </button>
+          </div>
+          {metaResult && (
+            <p className="mt-2.5 text-sm font-medium text-green-700">
+              {metaResult}
+            </p>
+          )}
+          {metaError && (
+            <p className="mt-2.5 text-sm text-red-600">
+              {metaError}{" "}
+              {/No Meta Page configured/.test(metaError) && (
+                <>— add a Page ID for {brand?.name} in Connections first.</>
+              )}
+            </p>
+          )}
         </div>
 
         {/* Ad creatives — uploaded here, shown in the customer's review panel */}

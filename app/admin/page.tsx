@@ -297,76 +297,6 @@ export default function AdminPage() {
     if (res.ok) setMeta(await res.json());
   }
 
-  // ── Historic-leads backfill (Instant Form leadgen import) ─────────────
-  const [backfillBrand, setBackfillBrand] = useState<string | null>(null);
-  const [backfillForms, setBackfillForms] = useState<
-    { id: string; name: string; status: string; leadsCount: number }[]
-  >([]);
-  const [backfillLoading, setBackfillLoading] = useState(false);
-  const [backfillError, setBackfillError] = useState("");
-  const [backfillAgent, setBackfillAgent] = useState("");
-  const [backfillImporting, setBackfillImporting] = useState<string | null>(
-    null
-  );
-  const [backfillResult, setBackfillResult] = useState("");
-
-  async function openBackfill(brandId: string) {
-    if (backfillBrand === brandId) {
-      setBackfillBrand(null);
-      return;
-    }
-    setBackfillBrand(brandId);
-    setBackfillForms([]);
-    setBackfillError("");
-    setBackfillResult("");
-    setBackfillAgent("");
-    setBackfillLoading(true);
-    const res = await fetch(`/api/admin/meta/leadgen?brand=${brandId}`, {
-      headers: { Authorization: `Bearer ${password}` },
-    });
-    const data = await res.json().catch(() => ({}));
-    setBackfillLoading(false);
-    if (!res.ok) {
-      setBackfillError(data.error ?? "Couldn't load forms");
-      return;
-    }
-    setBackfillForms(data.forms ?? []);
-  }
-
-  async function importForm(formId: string) {
-    if (!backfillBrand) return;
-    if (!backfillAgent) {
-      setBackfillError("Pick an agent to import into first.");
-      return;
-    }
-    setBackfillImporting(formId);
-    setBackfillResult("");
-    setBackfillError("");
-    const res = await fetch("/api/admin/meta/leadgen", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${password}`,
-      },
-      body: JSON.stringify({
-        brandId: backfillBrand,
-        formId,
-        agentUserId: backfillAgent,
-      }),
-    });
-    const data = await res.json().catch(() => ({}));
-    setBackfillImporting(null);
-    if (!res.ok) {
-      setBackfillError(data.error ?? "Import failed");
-      return;
-    }
-    setBackfillResult(
-      `Imported ${data.imported} lead${data.imported === 1 ? "" : "s"}${
-        data.skipped ? ` · ${data.skipped} already imported` : ""
-      } ✓`
-    );
-  }
-
   // Re-pull Meta stats for a different date range (Performance tab + drill-down).
   async function refetchMeta(preset: string) {
     setMetaPreset(preset);
@@ -1573,8 +1503,8 @@ export default function AdminPage() {
                 Paste each business's <strong>Ad Account ID</strong> to connect
                 it (add its Page + Ad account to the "Portal Server" system
                 user first). Add the <strong>Page ID</strong> too to unlock
-                historic-lead backfill below. Saves instantly — no redeploy.
-                Clear a box to disconnect it.
+                "Find older leads" on each agent's CRM record. Saves instantly
+                — no redeploy. Clear a box to disconnect it.
               </p>
               <div className="mt-4 space-y-3">
                 {BRANDS.map((b) => {
@@ -1583,171 +1513,63 @@ export default function AdminPage() {
                   const err = res?.error;
                   const currentAcc = meta?.config?.[b.id]?.adAccountId ?? "";
                   const currentPage = meta?.config?.[b.id]?.pageId ?? "";
-                  const hasPage = !!currentPage;
                   return (
                     <div
                       key={b.id}
-                      className="rounded-2xl border border-gray-200 bg-white p-4"
+                      className="flex flex-wrap items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4"
                     >
-                      <div className="flex flex-wrap items-center gap-3">
-                        <div className="flex min-w-[220px] flex-1 items-center gap-3">
-                          <BrandMark
-                            name={b.name}
-                            accent={b.accent}
-                            logo={b.logo}
-                            size={30}
-                          />
-                          <div>
-                            <p className="text-sm font-medium">{b.name}</p>
-                            <p className="flex items-center gap-1.5 text-xs text-gray-400">
-                              <span
-                                className={`h-1.5 w-1.5 rounded-full ${connected ? "bg-green-500" : err ? "bg-red-500" : "bg-amber-400"}`}
-                              />
-                              {connected
-                                ? `Connected — ${res!.snapshot!.account.name}`
-                                : err
-                                  ? err
-                                  : "Not connected"}
-                            </p>
-                          </div>
-                        </div>
-                        <input
-                          defaultValue={currentAcc}
-                          placeholder="Ad Account ID (act_…)"
-                          className="w-40 rounded-lg border border-gray-200 px-3 py-1.5 text-sm outline-none focus:border-gray-900"
-                          id={`meta-acc-${b.id}`}
+                      <div className="flex min-w-[220px] flex-1 items-center gap-3">
+                        <BrandMark
+                          name={b.name}
+                          accent={b.accent}
+                          logo={b.logo}
+                          size={30}
                         />
-                        <input
-                          defaultValue={currentPage}
-                          placeholder="Page ID"
-                          className="w-32 rounded-lg border border-gray-200 px-3 py-1.5 text-sm outline-none focus:border-gray-900"
-                          id={`meta-page-${b.id}`}
-                        />
-                        <button
-                          onClick={() => {
-                            const acc = document.getElementById(
-                              `meta-acc-${b.id}`
-                            ) as HTMLInputElement | null;
-                            const page = document.getElementById(
-                              `meta-page-${b.id}`
-                            ) as HTMLInputElement | null;
-                            saveBrandMeta(
-                              b.id,
-                              acc?.value ?? "",
-                              page?.value ?? ""
-                            );
-                          }}
-                          className="rounded-lg bg-gray-900 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-gray-700"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={() => openBackfill(b.id)}
-                          disabled={!hasPage}
-                          title={
-                            hasPage
-                              ? "Pull historic leads from Meta"
-                              : "Add a Page ID first"
-                          }
-                          className="rounded-lg border border-gray-200 px-3.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-30"
-                        >
-                          Historic leads →
-                        </button>
-                      </div>
-
-                      {/* Backfill panel — only this brand's, expands beneath its row */}
-                      {backfillBrand === b.id && (
-                        <div className="mt-4 rounded-xl border border-gray-100 bg-gray-50 p-4">
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <h3 className="text-sm font-semibold">
-                              Pull historic leads — {b.name}
-                            </h3>
-                            <button
-                              onClick={() => setBackfillBrand(null)}
-                              className="text-xs font-medium text-gray-400 hover:text-gray-600"
-                            >
-                              Close
-                            </button>
-                          </div>
-                          <p className="mt-1 text-xs text-gray-500">
-                            Only works for native Instant Form ads, and only
-                            within Meta's ~90-day retention window. Safe to
-                            re-run — already-imported leads are skipped.
+                        <div>
+                          <p className="text-sm font-medium">{b.name}</p>
+                          <p className="flex items-center gap-1.5 text-xs text-gray-400">
+                            <span
+                              className={`h-1.5 w-1.5 rounded-full ${connected ? "bg-green-500" : err ? "bg-red-500" : "bg-amber-400"}`}
+                            />
+                            {connected
+                              ? `Connected — ${res!.snapshot!.account.name}`
+                              : err
+                                ? err
+                                : "Not connected"}
+                            {currentPage && " · Page linked"}
                           </p>
-
-                          <div className="mt-3">
-                            <label className="text-xs font-medium text-gray-500">
-                              Import into
-                            </label>
-                            <select
-                              value={backfillAgent}
-                              onChange={(e) => setBackfillAgent(e.target.value)}
-                              className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-gray-900"
-                            >
-                              <option value="">Select an agent…</option>
-                              {users
-                                .filter((u) => u.brandId === b.id)
-                                .map((u) => (
-                                  <option key={u.id} value={u.id}>
-                                    {u.name} · {u.email}
-                                  </option>
-                                ))}
-                            </select>
-                          </div>
-
-                          {backfillLoading ? (
-                            <p className="mt-4 text-sm text-gray-400">
-                              Loading forms…
-                            </p>
-                          ) : backfillError ? (
-                            <p className="mt-4 text-sm text-red-600">
-                              {backfillError}
-                            </p>
-                          ) : (
-                            <div className="mt-4 space-y-2">
-                              {backfillForms.map((f) => (
-                                <div
-                                  key={f.id}
-                                  className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-3.5 py-2.5"
-                                >
-                                  <div>
-                                    <p className="text-sm font-medium">
-                                      {f.name}
-                                    </p>
-                                    <p className="text-xs text-gray-400">
-                                      {f.leadsCount} lead
-                                      {f.leadsCount === 1 ? "" : "s"} on Meta ·{" "}
-                                      {f.status}
-                                    </p>
-                                  </div>
-                                  <button
-                                    onClick={() => importForm(f.id)}
-                                    disabled={
-                                      !backfillAgent ||
-                                      backfillImporting === f.id
-                                    }
-                                    className="rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-40"
-                                  >
-                                    {backfillImporting === f.id
-                                      ? "Importing…"
-                                      : "Import"}
-                                  </button>
-                                </div>
-                              ))}
-                              {backfillForms.length === 0 && (
-                                <p className="text-sm text-gray-400">
-                                  No leadgen forms found on this Page.
-                                </p>
-                              )}
-                            </div>
-                          )}
-                          {backfillResult && (
-                            <p className="mt-3 text-sm font-medium text-green-700">
-                              {backfillResult}
-                            </p>
-                          )}
                         </div>
-                      )}
+                      </div>
+                      <input
+                        defaultValue={currentAcc}
+                        placeholder="Ad Account ID (act_…)"
+                        className="w-40 rounded-lg border border-gray-200 px-3 py-1.5 text-sm outline-none focus:border-gray-900"
+                        id={`meta-acc-${b.id}`}
+                      />
+                      <input
+                        defaultValue={currentPage}
+                        placeholder="Page ID"
+                        className="w-32 rounded-lg border border-gray-200 px-3 py-1.5 text-sm outline-none focus:border-gray-900"
+                        id={`meta-page-${b.id}`}
+                      />
+                      <button
+                        onClick={() => {
+                          const acc = document.getElementById(
+                            `meta-acc-${b.id}`
+                          ) as HTMLInputElement | null;
+                          const page = document.getElementById(
+                            `meta-page-${b.id}`
+                          ) as HTMLInputElement | null;
+                          saveBrandMeta(
+                            b.id,
+                            acc?.value ?? "",
+                            page?.value ?? ""
+                          );
+                        }}
+                        className="rounded-lg bg-gray-900 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-gray-700"
+                      >
+                        Save
+                      </button>
                     </div>
                   );
                 })}
@@ -1977,6 +1799,7 @@ export default function AdminPage() {
           adminPassword={password}
           onClose={() => setSelectedAgent(null)}
           onUpdated={applyAgentUpdate}
+          onLeadsImported={() => loadData(password)}
         />
       )}
 
