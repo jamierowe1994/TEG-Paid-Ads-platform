@@ -147,7 +147,12 @@ export default function LeadsPage() {
     const pkg = packageById(u.packageId);
     setAdSpend(pkg?.adSpend ?? 0);
     setMonthlyCost(pkg?.price ?? 0);
-    fetchLeads().then(setLeads);
+    fetchLeads().then((ls) => {
+      setLeads(ls);
+      // Deep link from the global search bar: /dashboard/leads?lead=<id>
+      const id = new URLSearchParams(window.location.search).get("lead");
+      if (id && ls.some((l) => l.id === id)) setOpenId(id);
+    });
   }, []);
 
   const lostCount = useMemo(
