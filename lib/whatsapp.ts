@@ -183,3 +183,58 @@ export async function sendLeadNudge(opts: {
     return { ok: false, reason: e instanceof Error ? e.message : "unreachable" };
   }
 }
+
+// Admin test send: fires the real `new_lead` template at a chosen number and
+// reports Meta's exact response — proof the whole chain (token, number,
+// approved template, delivery) works before any real lead relies on it.
+export async function sendWhatsAppTest(
+  toMobile: string
+): Promise<{ ok: boolean; reason?: string }> {
+  if (!whatsappConfigured()) return { ok: false, reason: "not_configured" };
+  const to = toE164(toMobile);
+  if (!to) return { ok: false, reason: "bad_number" };
+
+  const name = process.env.WHATSAPP_TEMPLATE ?? "new_lead";
+  const lang = process.env.WHATSAPP_TEMPLATE_LANG ?? "en_GB";
+  const body = {
+    messaging_product: "whatsapp",
+    to,
+    type: "template",
+    template: {
+      name,
+      language: { code: lang },
+      components: [
+        {
+          type: "body",
+          parameters: [
+            { type: "text", text: "there" },
+            { type: "text", text: "Portal Test Lead" },
+          ],
+        },
+      ],
+    },
+  };
+
+  try {
+    const res = await fetch(
+      `${GRAPH}/${process.env.WHATSAPP_PHONE_ID}/messages`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      }
+    );
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: { message?: string };
+      };
+      return { ok: false, reason: data?.error?.message ?? `HTTP ${res.status}` };
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, reason: e instanceof Error ? e.message : "unreachable" };
+  }
+}

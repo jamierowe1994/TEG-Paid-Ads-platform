@@ -282,6 +282,18 @@ export default function AdminPage() {
   const [linkedin, setLinkedin] = useState<LinkedInStatus | null>(null);
   const [atlas, setAtlas] = useState<AtlasStatus | null>(null);
   const [rex, setRex] = useState<RexStatus | null>(null);
+  const [whatsapp, setWhatsapp] = useState<{
+    configured: boolean;
+    ok?: boolean;
+    number?: string;
+    name?: string;
+    verified?: boolean;
+    error?: string;
+  } | null>(null);
+  const [waMobile, setWaMobile] = useState("");
+  const [waSending, setWaSending] = useState(false);
+  const [waResult, setWaResult] = useState("");
+  const [waError, setWaError] = useState("");
   const [rexTesting, setRexTesting] = useState(false);
   const [rexTestResult, setRexTestResult] = useState("");
   const [rexTestError, setRexTestError] = useState("");
@@ -343,7 +355,7 @@ export default function AdminPage() {
       fetch("/api/admin/atlas", { headers }),
       fetch("/api/admin/activity", { headers }),
       fetch("/api/admin/referrals", { headers }),
-      fetch("/api/health?rex=1", { headers }),
+      fetch("/api/health?rex=1&whatsapp=1", { headers }),
     ]);
     if (!fb.ok || !us.ok || !ev.ok || !ls.ok) return false;
     setFeedback(await fb.json());
@@ -355,8 +367,43 @@ export default function AdminPage() {
     setAtlas(at.ok ? await at.json() : null);
     setActivity(ac.ok ? await ac.json() : null);
     setReferrals(rf.ok ? await rf.json() : []);
-    setRex(rx.ok ? (await rx.json()).rex ?? null : null);
+    if (rx.ok) {
+      const health = await rx.json();
+      setRex(health.rex ?? null);
+      setWhatsapp(health.whatsapp ?? null);
+    } else {
+      setRex(null);
+      setWhatsapp(null);
+    }
     return true;
+  }
+
+  // Fires the real new_lead template at a chosen number — end-to-end proof.
+  async function sendWhatsAppTestMsg() {
+    const mobile = waMobile.trim();
+    if (!mobile) return;
+    setWaSending(true);
+    setWaResult("");
+    setWaError("");
+    const res = await fetch("/api/admin/whatsapp/test", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${password}`,
+      },
+      body: JSON.stringify({ mobile }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setWaSending(false);
+    if (data.ok) {
+      setWaResult(`Sent ✓ — check WhatsApp on ${mobile}.`);
+    } else if (data.reason === "not_configured") {
+      setWaError("WHATSAPP_TOKEN / WHATSAPP_PHONE_ID aren't set in Railway.");
+    } else if (data.reason === "bad_number") {
+      setWaError("That doesn't look like a valid UK mobile.");
+    } else {
+      setWaError(data.reason ?? data.error ?? "Send failed — try again.");
+    }
   }
 
   // One-off probe: pushes a synthetic test lead into Rex via the connected
@@ -2166,6 +2213,66 @@ export default function AdminPage() {
                     </p>
                   )}
                 </div>
+              </div>
+            </section>
+
+            {/* WhatsApp — new-lead alerts + cold-lead nudges to agents */}
+            <section className="mt-10">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold">WhatsApp alerts</h2>
+                {whatsapp && (
+                  <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        whatsapp.ok && whatsapp.verified
+                          ? "bg-green-500"
+                          : whatsapp.configured
+                            ? "bg-amber-400"
+                            : "bg-gray-300"
+                      }`}
+                    />
+                    {whatsapp.ok
+                      ? `${whatsapp.name ?? "Connected"} · ${whatsapp.number ?? ""}${whatsapp.verified ? " · verified" : " · unverified"}`
+                      : whatsapp.configured
+                        ? (whatsapp.error ?? "Connection failed")
+                        : "Add WHATSAPP_TOKEN / WHATSAPP_PHONE_ID in Railway"}
+                  </span>
+                )}
+              </div>
+              <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-5">
+                <p className="text-sm text-gray-600">
+                  Agents get a WhatsApp the moment a lead lands, plus the
+                  &ldquo;Send WhatsApp again&rdquo; nudge on cold leads. Both
+                  use approved templates (<code>new_lead</code> /{" "}
+                  <code>lead_reminder</code>).
+                </p>
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <input
+                    value={waMobile}
+                    onChange={(e) => setWaMobile(e.target.value)}
+                    placeholder="07700 900000"
+                    className="w-44 rounded-lg border border-gray-200 px-3 py-1.5 text-sm outline-none focus:border-gray-900"
+                    onKeyDown={(e) => e.key === "Enter" && sendWhatsAppTestMsg()}
+                  />
+                  <button
+                    onClick={sendWhatsAppTestMsg}
+                    disabled={waSending || !waMobile.trim() || !whatsapp?.ok}
+                    className="rounded-lg bg-[#25D366] px-3.5 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-40"
+                  >
+                    {waSending ? "Sending…" : "Send test message"}
+                  </button>
+                  <span className="text-xs text-gray-400">
+                    Fires the real new-lead template at that number.
+                  </span>
+                </div>
+                {waResult && (
+                  <p className="mt-3 text-sm font-medium text-green-700">
+                    {waResult}
+                  </p>
+                )}
+                {waError && (
+                  <p className="mt-3 text-sm text-red-600">{waError}</p>
+                )}
               </div>
             </section>
 
