@@ -66,8 +66,8 @@ const STAT_ICON: Record<string, string> = {
 function glaze() {
   return {
     className:
-      "relative overflow-hidden rounded-3xl border border-white/50 backdrop-blur-xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.65),inset_0_0_28px_rgba(0,0,0,0.09)]",
-    style: { background: "rgba(255,255,255,0.34)" } as React.CSSProperties,
+      "relative overflow-hidden rounded-3xl border border-white/40 backdrop-blur-xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.7),inset_0_0_30px_rgba(0,0,0,0.08)]",
+    style: { background: "rgba(255,255,255,0.2)" } as React.CSSProperties,
   };
 }
 
@@ -80,6 +80,8 @@ export default function DashboardOverview() {
   const [approving, setApproving] = useState(false);
   const [openStep, setOpenStep] = useState<number | null>(null);
   const [hoverLead, setHoverLead] = useState<string | null>(null);
+  const [openWeek, setOpenWeek] = useState<number | null>(null);
+  const [leadsLoaded, setLeadsLoaded] = useState(false);
 
   async function approve() {
     if (approving) return;
@@ -108,20 +110,26 @@ export default function DashboardOverview() {
     const pa = getPreviewAccent();
     if (b && pa) b = { ...b, accent: pa };
     setBrand(b);
-    fetchLeads().then(setLeads);
+    fetchLeads().then((ls) => {
+      setLeads(ls);
+      setLeadsLoaded(true);
+    });
   }, []);
 
-  const weekly = useMemo(() => {
+  // Leads bucketed into the last 6 weeks (oldest left, this week right) — the
+  // actual leads, so a week can be clicked open to list its names.
+  const weeklyBuckets = useMemo(() => {
     const WEEKS = 6;
     const WEEK = 7 * 24 * 3600 * 1000;
     const now = Date.now();
-    const buckets = Array(WEEKS).fill(0) as number[];
+    const buckets: Lead[][] = Array.from({ length: WEEKS }, () => []);
     for (const l of leads) {
       const wi = Math.floor((now - new Date(l.receivedAt).getTime()) / WEEK);
-      if (wi >= 0 && wi < WEEKS) buckets[WEEKS - 1 - wi]++;
+      if (wi >= 0 && wi < WEEKS) buckets[WEEKS - 1 - wi].push(l);
     }
     return buckets;
   }, [leads]);
+  const weekly = weeklyBuckets.map((b) => b.length);
 
   const topAd = useMemo(() => {
     const counts = new Map<string, number>();
@@ -332,37 +340,47 @@ export default function DashboardOverview() {
           </div>
         </div>
 
-        {/* Leads uncontacted */}
+        {/* Leads uncontacted — celebrates (in black) with a confetti pop once
+            the leads have loaded and there are none to action */}
         <div className={`${g.className} aspect-square p-5`} style={g.style}>
-          <div className="flex h-full flex-col">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold">Uncontacted</h2>
-              <span
-                className="rounded-full px-2 py-0.5 text-[11px] font-semibold text-white"
-                style={{ backgroundColor: brand.accent }}
-              >
-                {untouched.length}
-              </span>
+          {leadsLoaded && untouched.length === 0 ? (
+            <div className="relative flex h-full flex-col items-center justify-center text-center">
+              <Confetti fire />
+              <p className="fade-up text-2xl font-bold tracking-tight text-gray-900">
+                All caught up
+              </p>
+              <p className="fade-up mt-1 text-xs text-gray-500">
+                No leads to action 🎉
+              </p>
             </div>
-            <p className="mt-3 text-5xl font-semibold tracking-tight">
-              {untouched.length}
-            </p>
-            <p className="text-xs text-gray-500">leads to action</p>
-            <div className="mt-auto space-y-1">
-              {untouched.slice(0, 2).map((l) => (
-                <Link
-                  key={l.id}
-                  href={`/dashboard/leads?lead=${l.id}`}
-                  className="block truncate text-xs font-medium text-gray-600 hover:text-gray-900"
+          ) : (
+            <div className="flex h-full flex-col">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold">Uncontacted</h2>
+                <span
+                  className="rounded-full px-2 py-0.5 text-[11px] font-semibold text-white"
+                  style={{ backgroundColor: brand.accent }}
                 >
-                  {l.name}
-                </Link>
-              ))}
-              {untouched.length === 0 && (
-                <p className="text-xs text-gray-400">All caught up 🎉</p>
-              )}
+                  {untouched.length}
+                </span>
+              </div>
+              <p className="mt-3 text-5xl font-semibold tracking-tight">
+                {untouched.length}
+              </p>
+              <p className="text-xs text-gray-500">leads to action</p>
+              <div className="mt-auto space-y-1">
+                {untouched.slice(0, 2).map((l) => (
+                  <Link
+                    key={l.id}
+                    href={`/dashboard/leads?lead=${l.id}`}
+                    className="block truncate text-xs font-medium text-gray-600 hover:text-gray-900"
+                  >
+                    {l.name}
+                  </Link>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Recent leads */}
@@ -587,15 +605,23 @@ export default function DashboardOverview() {
           </div>
         </div>
 
-        {/* Leads per week — wide, second row */}
+        {/* Leads per week — wide; click a bar to list that week's leads below */}
         <div
-          className={`${g.className} p-6 sm:col-span-2`}
+          className={`${g.className} flex flex-col p-5 sm:col-span-2`}
           style={g.style}
         >
           <div className="flex items-center justify-between">
             <div>
               <h2 className="font-semibold">Leads per week</h2>
-              <p className="mt-0.5 text-xs text-gray-400">Last 6 weeks</p>
+              <p className="mt-0.5 text-xs text-gray-400">
+                {openWeek === null
+                  ? "Tap a bar to see the leads"
+                  : openWeek === weekly.length - 1
+                    ? "This week"
+                    : `${weekly.length - 1 - openWeek} week${
+                        weekly.length - 1 - openWeek === 1 ? "" : "s"
+                      } ago`}
+              </p>
             </div>
             <p className="text-2xl font-semibold tracking-tight">
               {leads.length}
@@ -604,12 +630,15 @@ export default function DashboardOverview() {
               </span>
             </p>
           </div>
-          <div className="mt-5 flex h-28 gap-3">
+
+          <div className="mt-4 flex flex-1 gap-3">
             {weekly.map((n, i) => {
               const last = i === weekly.length - 1;
+              const sel = openWeek === i;
               return (
-                <div
+                <button
                   key={i}
+                  onClick={() => setOpenWeek(sel ? null : i)}
                   className="flex h-full flex-1 flex-col items-center gap-2"
                 >
                   <div className="flex w-full flex-1 items-end">
@@ -617,29 +646,54 @@ export default function DashboardOverview() {
                       className="relative w-full rounded-lg transition-all"
                       style={{
                         height: `${Math.max(4, (n / maxWeek) * 100)}%`,
-                        backgroundColor: last
-                          ? brand.accent
-                          : `${brand.accent}33`,
+                        backgroundColor:
+                          sel || (openWeek === null && last)
+                            ? brand.accent
+                            : `${brand.accent}33`,
+                        boxShadow: sel ? `0 0 0 2px ${brand.accent}55` : undefined,
                       }}
-                      title={`${n} lead${n === 1 ? "" : "s"}`}
                     >
                       <span
                         className={`absolute -top-5 left-1/2 -translate-x-1/2 text-[11px] font-semibold ${
                           n === 0 ? "hidden" : ""
                         }`}
-                        style={{ color: last ? brand.accent : "#9ca3af" }}
+                        style={{ color: sel || last ? brand.accent : "#9ca3af" }}
                       >
                         {n}
                       </span>
                     </div>
                   </div>
-                  <span className="text-[11px] text-gray-400">
+                  <span
+                    className={`text-[11px] ${
+                      sel ? "font-semibold text-gray-700" : "text-gray-400"
+                    }`}
+                  >
                     {last ? "This wk" : `${weekly.length - 1 - i}w`}
                   </span>
-                </div>
+                </button>
               );
             })}
           </div>
+
+          {openWeek !== null && (
+            <div className="mt-3 border-t border-black/5 pt-3">
+              {weeklyBuckets[openWeek].length === 0 ? (
+                <p className="text-xs text-gray-400">No leads that week.</p>
+              ) : (
+                <div className="flex max-h-14 flex-wrap gap-1.5 overflow-y-auto">
+                  {weeklyBuckets[openWeek].map((l) => (
+                    <Link
+                      key={l.id}
+                      href={`/dashboard/leads?lead=${l.id}`}
+                      className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-medium text-gray-700 transition hover:bg-white"
+                    >
+                      {l.name}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </section>
     </div>
