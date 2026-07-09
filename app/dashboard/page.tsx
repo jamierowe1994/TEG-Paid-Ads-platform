@@ -33,7 +33,7 @@ const STAT_ICON: Record<string, string> = {
 function glaze() {
   return {
     className:
-      "relative overflow-hidden rounded-3xl border border-white/50 backdrop-blur-xl shadow-[0_12px_36px_-18px_rgba(0,0,0,0.18)]",
+      "relative overflow-hidden rounded-3xl border border-white/50 backdrop-blur-xl shadow-[0_12px_36px_-18px_rgba(0,0,0,0.18),inset_0_1px_2px_rgba(255,255,255,0.75),inset_0_-22px_32px_-24px_rgba(0,0,0,0.16)]",
     style: { background: "rgba(255,255,255,0.34)" } as React.CSSProperties,
   };
 }
@@ -249,7 +249,7 @@ export default function DashboardOverview() {
       <section className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Current ad — photo, top-left */}
         <div
-          className="relative aspect-square overflow-hidden rounded-3xl border border-white/60 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.22)]"
+          className="relative aspect-square overflow-hidden rounded-3xl border border-white/60 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.22),inset_0_2px_4px_rgba(255,255,255,0.2),inset_0_-44px_64px_-44px_rgba(0,0,0,0.55)]"
           style={{
             background: `linear-gradient(135deg, ${brand.accent}, ${brand.accent}aa)`,
           }}
@@ -348,10 +348,10 @@ export default function DashboardOverview() {
         {/* Onboarding Tracker — glazed outer with a dark inner card holding the
             sign-up steps (a rectangle within a rectangle), spans both rows */}
         <div
-          className={`${g.className} flex flex-col p-5 lg:col-start-4 lg:row-span-2 lg:row-start-1`}
+          className={`${g.className} flex flex-col p-2.5 lg:col-start-4 lg:row-span-2 lg:row-start-1`}
           style={g.style}
         >
-          <div className="flex items-start justify-between">
+          <div className="flex items-start justify-between px-2 pt-1.5">
             <div>
               <h2 className="font-semibold">Onboarding tracker</h2>
               <p className="mt-0.5 text-xs text-gray-500">{pkg?.name} package</p>
@@ -365,7 +365,7 @@ export default function DashboardOverview() {
           </div>
 
           {/* progress bar */}
-          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-black/5">
+          <div className="mx-2 mt-3 h-2 overflow-hidden rounded-full bg-black/5">
             <div
               className="h-full rounded-full transition-all duration-700"
               style={{
@@ -375,8 +375,8 @@ export default function DashboardOverview() {
             />
           </div>
 
-          {/* Dark inner card — the sign-up process */}
-          <div className="relative mt-4 flex flex-1 flex-col overflow-hidden rounded-2xl bg-gray-900 p-4 text-white">
+          {/* Dark inner card — the sign-up process (black, stretched near the edges) */}
+          <div className="relative mt-2.5 flex flex-1 flex-col overflow-hidden rounded-2xl bg-black p-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08),inset_0_12px_30px_-18px_rgba(0,0,0,0.9)]">
             <Confetti fire={isLive} />
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold">Sign-up process</p>

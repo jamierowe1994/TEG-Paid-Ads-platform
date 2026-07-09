@@ -209,9 +209,10 @@ export default function DashboardLayout({
         {
           "--accent": brand.accent,
           "--accent-soft": brand.accentSoft,
-          // Glow emanates from the right-hand edge, in the upper area (not the
-          // corner) — soft at the very top, building as it comes down and left.
-          background: `radial-gradient(1250px 1250px at 106% 30%, ${brand.accent}29, transparent 56%), #f6f6f7`,
+          // A big diagonal wash: emanates from the right-hand side up towards
+          // the top, then stretches all the way across the page down to the
+          // bottom-left corner.
+          background: `radial-gradient(2100px 1800px at 110% 18%, ${brand.accent}2b, transparent 84%), #f6f6f7`,
         } as React.CSSProperties
       }
     >
@@ -304,9 +305,13 @@ export default function DashboardLayout({
       </aside>
 
       {/* ── Top bar controls (transparent) ── */}
-      <header className="fixed left-[240px] right-0 top-0 z-40 flex h-16 items-center gap-3 px-6">
-        {/* Search */}
-        <div className="relative flex-1">
+      <header className="fixed left-[240px] right-0 top-0 z-40 flex h-16 items-center justify-between gap-3 px-6">
+        {/* Search — normal size, expands when focused */}
+        <div
+          className={`relative transition-[width] duration-300 ease-out ${
+            searchOpen ? "w-[460px]" : "w-72"
+          }`}
+        >
           <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2">
             <svg
               className="h-4 w-4 shrink-0 text-gray-400"
@@ -325,11 +330,12 @@ export default function DashboardLayout({
                 setSearchOpen(true);
               }}
               onFocus={() => setSearchOpen(true)}
+              onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") openFirstResult();
-                if (e.key === "Escape") setSearchOpen(false);
+                if (e.key === "Escape") (e.target as HTMLInputElement).blur();
               }}
-              placeholder="Search leads, referrals, pages…"
+              placeholder="Search…"
               className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400"
             />
             {query && (
@@ -346,14 +352,11 @@ export default function DashboardLayout({
           </div>
 
           {searchOpen && q && (
-            <>
-              <button
-                className="fixed inset-0 z-10 cursor-default"
-                aria-hidden
-                onClick={() => setSearchOpen(false)}
-              />
-              <div className="absolute left-0 right-0 top-full z-20 mt-2 max-h-[70vh] overflow-y-auto rounded-2xl border border-gray-200 bg-white p-2 shadow-xl">
-                {!hasResults && (
+            <div
+              onMouseDown={(e) => e.preventDefault()}
+              className="absolute left-0 right-0 top-full z-20 mt-2 max-h-[70vh] overflow-y-auto rounded-2xl border border-gray-200 bg-white p-2 shadow-xl"
+            >
+              {!hasResults && (
                   <p className="px-3 py-6 text-center text-sm text-gray-400">
                     No matches for “{query}”.
                   </p>
@@ -397,8 +400,7 @@ export default function DashboardLayout({
                     ))}
                   </SearchGroup>
                 )}
-              </div>
-            </>
+            </div>
           )}
         </div>
 
@@ -447,7 +449,7 @@ export default function DashboardLayout({
       </header>
 
       {/* ── Main ── */}
-      <main className="ml-[240px] px-8 pb-10 pt-[140px]">{children}</main>
+      <main className="ml-[240px] px-8 pb-10 pt-[176px]">{children}</main>
 
       {/* Campaign-stage toast — bigger white card with a black outline */}
       {toast && (
