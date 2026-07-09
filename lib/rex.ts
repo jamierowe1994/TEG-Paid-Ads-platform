@@ -208,7 +208,9 @@ export async function rexRecentContacts(brandId: string): Promise<unknown> {
     {
       criteria: [],
       limit: 10,
-      order_by: [{ field: "system_ctime", direction: "desc" }],
+      // Confirmed via Rex's own "invalid argument" error: order_by is a
+      // plain { field_name: direction } object, not an array of pairs.
+      order_by: { system_ctime: "desc" },
       extra_options: {
         extra_fields: [
           "related.contact_names",
