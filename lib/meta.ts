@@ -46,6 +46,22 @@ async function accountId(brandId: string): Promise<string | null> {
   return raw.startsWith("act_") ? raw : `act_${raw}`;
 }
 
+// A brand's Page (needed for the leadgen-forms API — separate from the ad
+// account, and needs its own `leads_retrieval` permission on the System User).
+async function pageId(brandId: string): Promise<string | null> {
+  const map = await getBrandMetaMap();
+  const dbId = map[brandId]?.pageId;
+  if (dbId) return dbId;
+  const envId = process.env[`META_PAGE_${brandId.toUpperCase()}`];
+  if (envId) return envId;
+  if (brandId === "recruitment") return process.env.TRE_PAGE_ID ?? null;
+  return null;
+}
+
+export async function pageConfigured(brandId: string): Promise<boolean> {
+  return !!(await pageId(brandId));
+}
+
 // Which brands have an ad account wired up (and the token is present).
 export async function configuredBrandIds(): Promise<string[]> {
   if (!token()) return [];
@@ -256,4 +272,118 @@ export async function pingAll(): Promise<{
   const ids = await configuredBrandIds();
   const brands = await Promise.all(ids.map((id) => pingBrand(id)));
   return { tokenSet: metaTokenSet(), brands };
+}
+
+// ── Instant Form lead retrieval (one-off historic backfill) ────────────────
+// Separate from the Insights API above: this reads Meta's own stored lead
+// records (name/phone/email) for a brand's Page — only works for native
+// "Instant Form" lead ads, and only within Meta's ~90-day retention window.
+// Needs the System User to have the Page asset + `leads_retrieval` permission
+// (a different grant from the ad account's `ads_read`).
+
+export interface LeadgenForm {
+  id: string;
+  name: string;
+  status: string;
+  leadsCount: number;
+}
+
+// The forms on a brand's Page, most recently active first. Returns null if
+// no Page is configured for the brand.
+export async function getLeadgenForms(
+  brandId: string
+): Promise<LeadgenForm[] | null> {
+  const pid = await pageId(brandId);
+  if (!pid) return null;
+  const data = (await graph(`${pid}/leadgen_forms`, {
+    fields: "id,name,status,leads_count",
+    limit: "200",
+  })) as { data?: Array<Record<string, unknown>> };
+  return (data.data ?? []).map((f) => ({
+    id: String(f.id),
+    name: String(f.name ?? "Untitled form"),
+    status: String(f.status ?? ""),
+    leadsCount: Number(f.leads_count ?? 0),
+  }));
+}
+
+export interface MetaLead {
+  id: string;
+  createdTime: string;
+  adName: string | null;
+  platform: string | null; // "fb" | "ig"
+  fields: Record<string, string>; // flattened field_data (name -> first value)
+}
+
+function flattenFieldData(
+  fieldData: Array<{ name: string; values?: string[] }> | undefined
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const f of fieldData ?? []) out[f.name] = f.values?.[0] ?? "";
+  return out;
+}
+
+// Every lead Meta still holds for one form, oldest pagination first, capped
+// at maxLeads as a sane ceiling for a one-off backfill.
+export async function getFormLeads(
+  formId: string,
+  maxLeads = 2000
+): Promise<MetaLead[]> {
+  const leads: MetaLead[] = [];
+  let after: string | undefined;
+  while (leads.length < maxLeads) {
+    const params: Record<string, string> = {
+      fields: "id,created_time,field_data,ad_name,platform",
+      limit: "100",
+    };
+    if (after) params.after = after;
+    const data = (await graph(`${formId}/leads`, params)) as {
+      data?: Array<Record<string, unknown>>;
+      paging?: { cursors?: { after?: string } };
+    };
+    const rows = data.data ?? [];
+    for (const r of rows) {
+      leads.push({
+        id: String(r.id),
+        createdTime: String(r.created_time ?? new Date().toISOString()),
+        adName: r.ad_name ? String(r.ad_name) : null,
+        platform: r.platform ? String(r.platform) : null,
+        fields: flattenFieldData(
+          r.field_data as Array<{ name: string; values?: string[] }>
+        ),
+      });
+    }
+    after = data.paging?.cursors?.after;
+    if (!after || rows.length === 0) break;
+  }
+  return leads.slice(0, maxLeads);
+}
+
+// Meta's standard Instant Form question keys -> our lead fields; anything
+// else on the form gets folded into a readable note.
+export function mapLeadFields(fields: Record<string, string>): {
+  name: string;
+  phone: string;
+  email: string;
+  extra: string;
+} {
+  const name =
+    fields.full_name ||
+    [fields.first_name, fields.last_name].filter(Boolean).join(" ") ||
+    "Unknown";
+  const phone = fields.phone_number || fields.phone || "";
+  const email = fields.email || "";
+  const knownKeys = new Set([
+    "full_name",
+    "first_name",
+    "last_name",
+    "phone_number",
+    "phone",
+    "email",
+  ]);
+  const extra = Object.keys(fields)
+    .filter((k) => !knownKeys.has(k) && fields[k])
+    .map((k) => `${k.replace(/_/g, " ")}: ${fields[k]}`)
+    .join(" · ");
+  return { name, phone, email, extra };
 }

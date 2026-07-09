@@ -29,6 +29,7 @@ interface LeadRow {
   referral_id: string | null;
   notes: unknown;
   appointment_at: string | Date | null;
+  meta_lead_id: string | null;
 }
 
 function fromRow(row: LeadRow): Lead {
@@ -47,6 +48,7 @@ function fromRow(row: LeadRow): Lead {
     appointmentAt: row.appointment_at
       ? new Date(row.appointment_at).toISOString()
       : null,
+    metaLeadId: row.meta_lead_id ?? null,
   };
 }
 
@@ -84,11 +86,23 @@ async function notifyNewLead(userId: string, lead: Lead): Promise<void> {
   }
 }
 
-export async function createLead(userId: string, lead: Lead): Promise<void> {
+// Creates a lead. Returns false (no-op) instead of inserting when `lead`
+// carries a `metaLeadId` that's already been imported for this user — makes
+// the Meta historic-leads backfill safe to re-run without duplicating leads.
+// `opts.notify: false` skips the WhatsApp nudge (used for bulk/historic
+// imports, where dozens of old leads landing at once shouldn't alert anyone).
+export async function createLead(
+  userId: string,
+  lead: Lead,
+  opts?: { notify?: boolean }
+): Promise<boolean> {
+  let inserted = true;
   if (hasDb()) {
-    await q(
-      `INSERT INTO leads (id, user_id, name, phone, email, source, note, stage, received_at, history, referral_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+    const rows = await q<{ id: string }>(
+      `INSERT INTO leads (id, user_id, name, phone, email, source, note, stage, received_at, history, referral_id, meta_lead_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+       ON CONFLICT (user_id, meta_lead_id) WHERE meta_lead_id IS NOT NULL DO NOTHING
+       RETURNING id`,
       [
         lead.id,
         userId,
@@ -101,14 +115,24 @@ export async function createLead(userId: string, lead: Lead): Promise<void> {
         lead.receivedAt,
         JSON.stringify(lead.history),
         lead.referralId ?? null,
+        lead.metaLeadId ?? null,
       ]
     );
+    inserted = rows.length > 0;
   } else {
     const all = await readAllFile();
-    all.push({ ...lead, userId });
-    await writeAllFile(all);
+    if (
+      lead.metaLeadId &&
+      all.some((l) => l.userId === userId && l.metaLeadId === lead.metaLeadId)
+    ) {
+      inserted = false;
+    } else {
+      all.push({ ...lead, userId });
+      await writeAllFile(all);
+    }
   }
-  void notifyNewLead(userId, lead);
+  if (inserted && opts?.notify !== false) void notifyNewLead(userId, lead);
+  return inserted;
 }
 
 // Every lead across all agents (admin activity feed). Carries userId so the

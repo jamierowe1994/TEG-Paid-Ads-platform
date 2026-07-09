@@ -76,6 +76,9 @@ export interface Lead {
   notes?: { at: string; text: string }[];
   // When an appointment/call is booked (ISO). null once cancelled.
   appointmentAt?: string | null;
+  // Meta's own lead id (Instant Form leadgen import). Used to dedupe re-runs
+  // of the historic-leads backfill — never set for referral/manual leads.
+  metaLeadId?: string | null;
 }
 
 // Referral lifecycle:

@@ -135,6 +135,9 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS campaign_assets JSONB NOT NULL DEFAUL
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS referral_id TEXT;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS notes JSONB NOT NULL DEFAULT '[]';
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS appointment_at TIMESTAMPTZ;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS meta_lead_id TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS leads_user_meta_lead_uq
+  ON leads(user_id, meta_lead_id) WHERE meta_lead_id IS NOT NULL;
 `;
 
 async function ensureSchema(): Promise<void> {
