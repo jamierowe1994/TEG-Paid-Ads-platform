@@ -28,15 +28,13 @@ const STAT_ICON: Record<string, string> = {
   Converted: "M20 6L9 17l-5-5",
 };
 
-// Translucent "glaze" tile — barely see-through with a soft brand-colour fade
-// in the top-right so the page background reads through it.
-function glaze(accent: string) {
+// Translucent "glaze" tile — a light frost that lets the page's background
+// glow read straight through it (the gradient lives on the page, not the box).
+function glaze() {
   return {
     className:
-      "relative overflow-hidden rounded-3xl border border-white/60 backdrop-blur-xl shadow-[0_12px_36px_-18px_rgba(0,0,0,0.22)]",
-    style: {
-      background: `linear-gradient(155deg, rgba(255,255,255,0.62), rgba(255,255,255,0.26)), radial-gradient(130% 110% at 100% 0%, ${accent}26, transparent 55%)`,
-    } as React.CSSProperties,
+      "relative overflow-hidden rounded-3xl border border-white/50 backdrop-blur-xl shadow-[0_12px_36px_-18px_rgba(0,0,0,0.18)]",
+    style: { background: "rgba(255,255,255,0.34)" } as React.CSSProperties,
   };
 }
 
@@ -121,7 +119,8 @@ export default function DashboardOverview() {
 
   const isReview = user.onboardingStage === "review" && !user.campaignApproved;
   const maxWeek = Math.max(1, ...weekly);
-  const g = glaze(brand.accent);
+  const pct = Math.round((doneCount / campaignSteps.length) * 100);
+  const g = glaze();
 
   return (
     <div className="w-full">
@@ -346,87 +345,111 @@ export default function DashboardOverview() {
           </div>
         </div>
 
-        {/* Onboarding Tracker — dark, spans both rows on the right */}
+        {/* Onboarding Tracker — glazed outer with a dark inner card holding the
+            sign-up steps (a rectangle within a rectangle), spans both rows */}
         <div
-          className="relative overflow-hidden rounded-3xl bg-gray-900 p-6 text-white shadow-[0_12px_36px_-18px_rgba(0,0,0,0.3)] lg:col-start-4 lg:row-span-2 lg:row-start-1"
+          className={`${g.className} flex flex-col p-5 lg:col-start-4 lg:row-span-2 lg:row-start-1`}
+          style={g.style}
         >
-          <Confetti fire={isLive} />
           <div className="flex items-start justify-between">
             <div>
               <h2 className="font-semibold">Onboarding tracker</h2>
-              <p className="mt-0.5 text-xs text-white/50">
-                {pkg?.name} package · £{pkg?.adSpend}/mo
-              </p>
+              <p className="mt-0.5 text-xs text-gray-500">{pkg?.name} package</p>
             </div>
             <span
-              className="rounded-full px-2.5 py-1 text-xs font-semibold"
-              style={
-                isLive
-                  ? { backgroundColor: "#DCFCE7", color: "#15803D" }
-                  : { backgroundColor: brand.accent, color: "white" }
-              }
+              className="text-2xl font-semibold tracking-tight"
+              style={{ color: brand.accent }}
             >
-              {isLive
-                ? "🎉 Live"
-                : user.onboardingStage === "paused"
-                  ? "Paused"
-                  : `${doneCount}/${campaignSteps.length}`}
+              {isLive ? "100%" : `${pct}%`}
             </span>
           </div>
 
-          <ol className="mt-6 space-y-2">
-            {campaignSteps.map((step, i) => (
-              <li
-                key={step.label}
-                className={`flex items-center gap-3 rounded-xl px-3 py-3 ${
-                  step.current ? "bg-white/10" : ""
-                }`}
-              >
-                <span
-                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
-                    step.done ? "text-white" : "text-white/50"
-                  }`}
-                  style={
-                    step.done
-                      ? { backgroundColor: brand.accent }
-                      : step.current
-                        ? { boxShadow: `inset 0 0 0 2px ${brand.accent}` }
-                        : { boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.2)" }
-                  }
-                >
-                  {step.done ? "✓" : i + 1}
-                </span>
-                <span
-                  className={`text-sm ${
-                    step.done
-                      ? "text-white/80"
-                      : step.current
-                        ? "font-medium text-white"
-                        : "text-white/50"
-                  }`}
-                >
-                  {step.label}
-                </span>
-                {step.current && (
-                  <span
-                    className="ml-auto text-[11px] font-medium"
-                    style={{ color: brand.accent }}
-                  >
-                    Now
-                  </span>
-                )}
-              </li>
-            ))}
-          </ol>
+          {/* progress bar */}
+          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-black/5">
+            <div
+              className="h-full rounded-full transition-all duration-700"
+              style={{
+                width: `${isLive ? 100 : pct}%`,
+                backgroundColor: brand.accent,
+              }}
+            />
+          </div>
 
-          {!isLive && (
-            <Link
-              href="/dashboard/grow"
-              className="mt-5 inline-block text-xs font-medium text-white/60 hover:text-white"
-            >
-              Increase your ad spend →
-            </Link>
-          )}
+          {/* Dark inner card — the sign-up process */}
+          <div className="relative mt-4 flex flex-1 flex-col overflow-hidden rounded-2xl bg-gray-900 p-4 text-white">
+            <Confetti fire={isLive} />
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold">Sign-up process</p>
+              <span
+                className="rounded-full px-2.5 py-1 text-[11px] font-semibold"
+                style={
+                  isLive
+                    ? { backgroundColor: "#DCFCE7", color: "#15803D" }
+                    : { backgroundColor: brand.accent, color: "white" }
+                }
+              >
+                {isLive
+                  ? "🎉 Live"
+                  : user.onboardingStage === "paused"
+                    ? "Paused"
+                    : `${doneCount}/${campaignSteps.length}`}
+              </span>
+            </div>
+
+            <ol className="mt-4 space-y-1.5">
+              {campaignSteps.map((step, i) => (
+                <li
+                  key={step.label}
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ${
+                    step.current ? "bg-white/10" : ""
+                  }`}
+                >
+                  <span
+                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                      step.done ? "text-white" : "text-white/50"
+                    }`}
+                    style={
+                      step.done
+                        ? { backgroundColor: brand.accent }
+                        : step.current
+                          ? { boxShadow: `inset 0 0 0 2px ${brand.accent}` }
+                          : { boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.2)" }
+                    }
+                  >
+                    {step.done ? "✓" : i + 1}
+                  </span>
+                  <span
+                    className={`text-sm ${
+                      step.done
+                        ? "text-white/80"
+                        : step.current
+                          ? "font-medium text-white"
+                          : "text-white/50"
+                    }`}
+                  >
+                    {step.label}
+                  </span>
+                  {step.current && (
+                    <span
+                      className="ml-auto text-[11px] font-medium"
+                      style={{ color: brand.accent }}
+                    >
+                      Now
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ol>
+
+            {!isLive && (
+              <Link
+                href="/dashboard/grow"
+                className="mt-auto inline-block pt-4 text-xs font-medium text-white/60 hover:text-white"
+              >
+                Increase your ad spend →
+              </Link>
+            )}
+          </div>
         </div>
 
         {/* Conversion rate — extra metric, bottom-left */}

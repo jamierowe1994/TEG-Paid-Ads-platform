@@ -213,8 +213,10 @@ export default function DashboardLayout({
         {
           "--accent": brand.accent,
           "--accent-soft": brand.accentSoft,
-          background:
-            "radial-gradient(1100px 460px at 100% -5%, var(--accent-soft), transparent 70%), #fafafa",
+          // One big directional glow from the top-right, sweeping down toward
+          // (but not reaching) the bottom-left. The frosted tiles let this
+          // read through them rather than each painting its own gradient.
+          background: `radial-gradient(1500px 1200px at 100% -8%, ${brand.accent}2e, transparent 62%), #f6f6f7`,
         } as React.CSSProperties
       }
     >
@@ -455,7 +457,7 @@ export default function DashboardLayout({
       <ConcaveCorner />
 
       {/* ── Main ── */}
-      <main className="ml-[264px] mr-3 px-8 pb-8 pt-[92px]">{children}</main>
+      <main className="ml-[264px] mr-3 px-8 pb-10 pt-[120px]">{children}</main>
 
       {/* Campaign-stage toast — bigger white card with a black outline */}
       {toast && (
