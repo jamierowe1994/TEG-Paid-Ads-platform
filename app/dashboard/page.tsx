@@ -79,6 +79,7 @@ export default function DashboardOverview() {
   const [reviewStatus, setReviewStatus] = useState("");
   const [approving, setApproving] = useState(false);
   const [openStep, setOpenStep] = useState<number | null>(null);
+  const [hoverLead, setHoverLead] = useState<string | null>(null);
 
   async function approve() {
     if (approving) return;
@@ -377,21 +378,29 @@ export default function DashboardOverview() {
                 All →
               </Link>
             </div>
-            <div className="group/rl mt-3 flex-1 space-y-1">
-              {leads.slice(0, 3).map((lead) => (
-                <Link
-                  key={lead.id}
-                  href={`/dashboard/leads?lead=${lead.id}`}
-                  className="-mx-2 block rounded-lg px-2 py-1 transition duration-200 group-hover/rl:opacity-40 group-hover/rl:blur-[1.5px] hover:!scale-[1.04] hover:!opacity-100 hover:!blur-0 hover:bg-white/50"
-                >
-                  <p className="truncate text-sm font-medium">{lead.name}</p>
-                  <p className="truncate text-[11px] capitalize text-gray-400">
-                    {lead.stage === "converted" || lead.stage === "pushed"
-                      ? brand.conversionLabel
-                      : `via ${lead.source}`}
-                  </p>
-                </Link>
-              ))}
+            <div className="mt-3 flex-1 space-y-1">
+              {leads.slice(0, 3).map((lead) => {
+                const dim = hoverLead !== null && hoverLead !== lead.id;
+                const active = hoverLead === lead.id;
+                return (
+                  <Link
+                    key={lead.id}
+                    href={`/dashboard/leads?lead=${lead.id}`}
+                    onMouseEnter={() => setHoverLead(lead.id)}
+                    onMouseLeave={() => setHoverLead(null)}
+                    className={`-mx-2 block rounded-lg px-2 py-1 transition duration-200 ${
+                      dim ? "opacity-40 blur-[1.5px]" : "opacity-100 blur-0"
+                    } ${active ? "scale-[1.04] bg-white/50" : ""}`}
+                  >
+                    <p className="truncate text-sm font-medium">{lead.name}</p>
+                    <p className="truncate text-[11px] capitalize text-gray-400">
+                      {lead.stage === "converted" || lead.stage === "pushed"
+                        ? brand.conversionLabel
+                        : `via ${lead.source}`}
+                    </p>
+                  </Link>
+                );
+              })}
               {leads.length === 0 && (
                 <p className="text-xs text-gray-400">
                   Leads appear here once ads are live.

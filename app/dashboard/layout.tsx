@@ -221,18 +221,41 @@ export default function DashboardLayout({
 
   return (
     <div
-      className="relative min-h-screen"
+      className="relative min-h-screen isolate"
       style={
         {
           "--accent": brand.accent,
           "--accent-soft": brand.accentSoft,
-          // Subtle glow: strongest at the top-right corner, fading gently
-          // across towards the top-left and down to the bottom-left. Alpha is
-          // set a touch high so muted brand accents (e.g. TRE bronze) still read.
-          background: `radial-gradient(1900px 1500px at 102% -2%, ${brand.accent}${GLOW_ALPHA[brand.id] ?? "2c"}, transparent 82%), #f6f6f7`,
+          background: "#f6f6f7",
         } as React.CSSProperties
       }
     >
+      {/* Ambient glow — soft accent blobs that slowly drift/swirl behind the
+          glass tiles, sweeping diagonally from the right down to the lower-left.
+          -z-10 so the tiles' backdrop-blur picks it up and refracts it. */}
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div
+          className="glow-blob glow-a"
+          style={{
+            top: "-25%",
+            right: "-15%",
+            width: "110%",
+            height: "115%",
+            background: `radial-gradient(circle at 60% 40%, ${brand.accent}${GLOW_ALPHA[brand.id] ?? "2c"}, transparent 60%)`,
+          }}
+        />
+        <div
+          className="glow-blob glow-b"
+          style={{
+            top: "0%",
+            right: "2%",
+            width: "62%",
+            height: "72%",
+            background: `radial-gradient(circle at 50% 45%, ${brand.accent}26, transparent 62%)`,
+          }}
+        />
+      </div>
+
       {/* One seamless white chrome surface (sidebar + top bar + swoop) */}
       {vp.w > 0 && <ChromeSurface vw={vp.w} vh={vp.h} />}
 
