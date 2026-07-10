@@ -446,6 +446,130 @@ export async function getAdInsightsByAd(
   return out;
 }
 
+// ── Diagnostics ─────────────────────────────────────────────────────────────
+// Every step of the per-agent pipeline, with Meta's RAW answer at each one —
+// nothing swallowed. This exists because the normal queries hide errors
+// (deliberately: one broken account shouldn't blank the dashboard), which
+// makes "the numbers are zero" impossible to debug from the outside.
+export interface CampaignDiagnostics {
+  brandAccount: string | null;
+  campaigns: Array<{
+    id: string;
+    name?: string;
+    status?: string;
+    accountId?: string;
+    error?: string;
+  }>;
+  accounts: Array<{
+    account: string;
+    campaignIds: string[];
+    accountName?: string;
+    accountError?: string;
+    adsFound?: number;
+    adNames?: string[];
+    adsError?: string;
+    insightRows?: number;
+    impressions?: number;
+    spend?: number;
+    insightsError?: string;
+  }>;
+}
+
+export async function diagnoseAgentCampaigns(
+  brandId: string,
+  campaignIds: string[]
+): Promise<CampaignDiagnostics> {
+  const brandAccount = await accountId(brandId);
+
+  // Step 1: each campaign's identity + home account, straight from Meta.
+  const campaigns = await Promise.all(
+    campaignIds.map(async (id) => {
+      try {
+        const c = (await graph(id, {
+          fields: "name,effective_status,account_id",
+        })) as { name?: string; effective_status?: string; account_id?: string };
+        return {
+          id,
+          name: c.name,
+          status: c.effective_status,
+          accountId: c.account_id
+            ? c.account_id.startsWith("act_")
+              ? c.account_id
+              : `act_${c.account_id}`
+            : undefined,
+        };
+      } catch (e) {
+        return { id, error: e instanceof Error ? e.message : "Meta error" };
+      }
+    })
+  );
+
+  // Step 2: for each account the campaigns resolve to, prove we can actually
+  // read it, list its ads, and pull insights — the three calls the dashboard
+  // relies on.
+  const groups = new Map<string, string[]>();
+  for (const c of campaigns) {
+    const acc = c.accountId ?? brandAccount;
+    if (!acc) continue;
+    groups.set(acc, [...(groups.get(acc) ?? []), c.id]);
+  }
+
+  const accounts = await Promise.all(
+    [...groups.entries()].map(async ([account, ids]) => {
+      const entry: CampaignDiagnostics["accounts"][number] = {
+        account,
+        campaignIds: ids,
+      };
+      try {
+        const info = (await graph(account, { fields: "name" })) as {
+          name?: string;
+        };
+        entry.accountName = info.name;
+      } catch (e) {
+        entry.accountError = e instanceof Error ? e.message : "Meta error";
+      }
+      try {
+        const ads = (await graph(`${account}/ads`, {
+          fields: "name,effective_status",
+          filtering: JSON.stringify([
+            { field: "campaign.id", operator: "IN", value: ids },
+          ]),
+          limit: "25",
+        })) as { data?: Array<{ name?: string }> };
+        entry.adsFound = (ads.data ?? []).length;
+        entry.adNames = (ads.data ?? [])
+          .map((a) => a.name ?? "?")
+          .slice(0, 12);
+      } catch (e) {
+        entry.adsError = e instanceof Error ? e.message : "Meta error";
+      }
+      try {
+        const insights = (await graph(`${account}/insights`, {
+          level: "campaign",
+          fields: "impressions,clicks,spend",
+          date_preset: "last_30d",
+          filtering: JSON.stringify([
+            { field: "campaign.id", operator: "IN", value: ids },
+          ]),
+          limit: "100",
+        })) as { data?: Array<Record<string, unknown>> };
+        const rows = insights.data ?? [];
+        entry.insightRows = rows.length;
+        entry.impressions = rows.reduce(
+          (s, r) => s + Number(r.impressions ?? 0),
+          0
+        );
+        entry.spend = rows.reduce((s, r) => s + Number(r.spend ?? 0), 0);
+      } catch (e) {
+        entry.insightsError = e instanceof Error ? e.message : "Meta error";
+      }
+      return entry;
+    })
+  );
+
+  return { brandAccount, campaigns, accounts };
+}
+
 // Date ranges offered in the admin. Meta's presets exclude "today", matching
 // Ads Manager's own windows.
 export const META_DATE_PRESETS = [

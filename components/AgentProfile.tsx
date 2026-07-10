@@ -60,6 +60,8 @@ export default function AgentProfile({
   const [addingCampaign, setAddingCampaign] = useState(false);
   const [campaignsEditing, setCampaignsEditing] = useState(false);
   const [campaignsError, setCampaignsError] = useState<string | null>(null);
+  const [diagnosing, setDiagnosing] = useState(false);
+  const [diagnosis, setDiagnosis] = useState<string[] | null>(null);
   const brand = brandById(agent.brandId);
   const pkg = packageById(agent.packageId);
   const rate =
@@ -281,6 +283,87 @@ export default function AgentProfile({
     const [tag] = await checkCampaigns([id]);
     setCampaignTags((prev) => [...prev, tag ?? { id }]);
     setAddingCampaign(false);
+  }
+
+  // Run the full pipeline diagnostics — shows exactly what Meta says at each
+  // step (campaign → its home account → that account's ads + insights), so a
+  // token/permission gap can't hide behind a green tag and silent zeros.
+  async function diagnoseCampaigns() {
+    if (diagnosing) return;
+    setDiagnosing(true);
+    setDiagnosis(null);
+    try {
+      const res = await fetch("/api/admin/meta/agent-debug", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${adminPassword}`,
+        },
+        body: JSON.stringify({
+          campaignIds: campaignIdsRef.current.join(", "),
+          brandId: agent.brandId,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.report) {
+        setDiagnosis([`✕ ${data.error ?? "Diagnostics failed"}`]);
+        return;
+      }
+      const r = data.report as {
+        brandAccount: string | null;
+        campaigns: Array<{
+          id: string;
+          name?: string;
+          status?: string;
+          accountId?: string;
+          error?: string;
+        }>;
+        accounts: Array<{
+          account: string;
+          campaignIds: string[];
+          accountName?: string;
+          accountError?: string;
+          adsFound?: number;
+          adNames?: string[];
+          adsError?: string;
+          insightRows?: number;
+          impressions?: number;
+          spend?: number;
+          insightsError?: string;
+        }>;
+      };
+      const lines: string[] = [];
+      lines.push(`Brand's configured ad account: ${r.brandAccount ?? "— none set"}`);
+      for (const c of r.campaigns) {
+        lines.push(
+          c.error
+            ? `✕ Campaign ${c.id}: ${c.error}`
+            : `✓ Campaign "${c.name ?? c.id}" (${c.status ?? "?"}) lives in ${c.accountId ?? "unknown account"}`
+        );
+      }
+      for (const a of r.accounts) {
+        lines.push(
+          a.accountError
+            ? `✕ Account ${a.account}: can't read it — ${a.accountError}`
+            : `✓ Account ${a.account} ("${a.accountName ?? "?"}") is readable`
+        );
+        lines.push(
+          a.adsError
+            ? `✕ Ads in ${a.account}: ${a.adsError}`
+            : `${(a.adsFound ?? 0) > 0 ? "✓" : "✕"} Ads found: ${a.adsFound ?? 0}${a.adNames?.length ? ` — ${a.adNames.join(", ")}` : ""}`
+        );
+        lines.push(
+          a.insightsError
+            ? `✕ Stats in ${a.account}: ${a.insightsError}`
+            : `${(a.insightRows ?? 0) > 0 ? "✓" : "✕"} Stats rows: ${a.insightRows ?? 0} (${(a.impressions ?? 0).toLocaleString()} impressions, £${(a.spend ?? 0).toFixed(2)} spend, last 30 days)`
+        );
+      }
+      setDiagnosis(lines);
+    } catch {
+      setDiagnosis(["✕ Diagnostics failed — please try again."]);
+    } finally {
+      setDiagnosing(false);
+    }
   }
 
   // Remove one campaign from the stored list (via Edit mode on its tag).
@@ -565,6 +648,40 @@ export default function AgentProfile({
             </div>
             {campaignsError && (
               <p className="mt-2.5 text-sm text-red-600">{campaignsError}</p>
+            )}
+
+            {/* Diagnose — the raw truth from Meta when a green tag still
+                shows zeros on the customer side */}
+            {campaignTags.length > 0 && (
+              <div className="mt-3">
+                <button
+                  onClick={diagnoseCampaigns}
+                  disabled={diagnosing}
+                  className="text-xs font-medium text-gray-400 underline decoration-dotted underline-offset-2 hover:text-gray-600 disabled:opacity-50"
+                >
+                  {diagnosing
+                    ? "Asking Meta…"
+                    : "Stats not showing? Run diagnostics"}
+                </button>
+                {diagnosis && (
+                  <ul className="mt-2 space-y-1 rounded-lg bg-gray-50 p-3">
+                    {diagnosis.map((line, i) => (
+                      <li
+                        key={i}
+                        className={`text-xs ${
+                          line.startsWith("✕")
+                            ? "text-red-600"
+                            : line.startsWith("✓")
+                              ? "text-green-700"
+                              : "text-gray-500"
+                        }`}
+                      >
+                        {line}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             )}
           </div>
         )}
