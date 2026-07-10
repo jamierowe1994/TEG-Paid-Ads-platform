@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getLeadgenForms, getFormLeads, mapLeadFields } from "@/lib/meta";
+import {
+  getLeadgenForms,
+  getFormLeads,
+  getPageAccessToken,
+  mapLeadFields,
+} from "@/lib/meta";
 import { createLead, uid } from "@/lib/leads-store";
 import { findById } from "@/lib/users-store";
 import type { Lead } from "@/lib/types";
@@ -43,9 +48,10 @@ export async function GET(req: NextRequest) {
 
 async function importForm(
   formId: string,
-  agentUserId: string
+  agentUserId: string,
+  pageToken?: string
 ): Promise<{ imported: number; skipped: number; total: number }> {
-  const metaLeads = await getFormLeads(formId);
+  const metaLeads = await getFormLeads(formId, 2000, pageToken);
   let imported = 0;
   let skipped = 0;
   for (const ml of metaLeads) {
@@ -97,8 +103,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const pageToken = (await getPageAccessToken(brandId)) ?? undefined;
     if (formId) {
-      const result = await importForm(formId, agentUserId);
+      const result = await importForm(formId, agentUserId, pageToken);
       return NextResponse.json({ ok: true, forms: 1, ...result });
     }
 
@@ -122,7 +129,7 @@ export async function POST(req: NextRequest) {
     let skipped = 0;
     let total = 0;
     for (const f of forms) {
-      const r = await importForm(f.id, agentUserId);
+      const r = await importForm(f.id, agentUserId, pageToken);
       imported += r.imported;
       skipped += r.skipped;
       total += r.total;

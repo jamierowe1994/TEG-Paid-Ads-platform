@@ -69,19 +69,22 @@ export async function configuredBrandIds(): Promise<string[]> {
   return BRANDS.map((b) => b.id).filter((id) => !!rawAccount(id, map));
 }
 
-// Meta recommends signing server calls with appsecret_proof.
-function appSecretProof(): string | undefined {
+// Meta recommends signing server calls with appsecret_proof — it must be
+// computed with the SAME token the call uses.
+function appSecretProof(tok: string): string | undefined {
   const secret = process.env.META_APP_SECRET;
   if (!secret) return undefined;
-  return crypto.createHmac("sha256", secret).update(token()).digest("hex");
+  return crypto.createHmac("sha256", secret).update(tok).digest("hex");
 }
 
 async function graph(
   path: string,
-  params: Record<string, string>
+  params: Record<string, string>,
+  tokenOverride?: string
 ): Promise<Record<string, unknown>> {
-  const q = new URLSearchParams({ access_token: token(), ...params });
-  const proof = appSecretProof();
+  const tok = tokenOverride ?? token();
+  const q = new URLSearchParams({ access_token: tok, ...params });
+  const proof = appSecretProof(tok);
   if (proof) q.set("appsecret_proof", proof);
   const res = await fetch(`${GRAPH}/${path}?${q.toString()}`, {
     cache: "no-store",
@@ -720,6 +723,27 @@ export interface LeadgenForm {
   leadsCount: number;
 }
 
+// The leadgen endpoints refuse the business/system-user token outright
+// ("(#190) This method must be called with a Page Access Token") — the token
+// has to be exchanged for the Page's own token first, which works precisely
+// because the system user now has the Page assigned.
+const pageTokenCache = new Map<string, string>();
+
+export async function getPageAccessToken(
+  brandId: string
+): Promise<string | null> {
+  const pid = await pageId(brandId);
+  if (!pid) return null;
+  const cached = pageTokenCache.get(pid);
+  if (cached) return cached;
+  const page = (await graph(pid, { fields: "access_token" })) as {
+    access_token?: string;
+  };
+  if (!page.access_token) return null;
+  pageTokenCache.set(pid, page.access_token);
+  return page.access_token;
+}
+
 // The forms on a brand's Page, most recently active first. Returns null if
 // no Page is configured for the brand.
 export async function getLeadgenForms(
@@ -727,10 +751,15 @@ export async function getLeadgenForms(
 ): Promise<LeadgenForm[] | null> {
   const pid = await pageId(brandId);
   if (!pid) return null;
-  const data = (await graph(`${pid}/leadgen_forms`, {
-    fields: "id,name,status,leads_count",
-    limit: "200",
-  })) as { data?: Array<Record<string, unknown>> };
+  const pageToken = await getPageAccessToken(brandId);
+  const data = (await graph(
+    `${pid}/leadgen_forms`,
+    {
+      fields: "id,name,status,leads_count",
+      limit: "200",
+    },
+    pageToken ?? undefined
+  )) as { data?: Array<Record<string, unknown>> };
   return (data.data ?? []).map((f) => ({
     id: String(f.id),
     name: String(f.name ?? "Untitled form"),
@@ -756,10 +785,12 @@ function flattenFieldData(
 }
 
 // Every lead Meta still holds for one form, oldest pagination first, capped
-// at maxLeads as a sane ceiling for a one-off backfill.
+// at maxLeads as a sane ceiling for a one-off backfill. Needs the Page's own
+// token (see getPageAccessToken).
 export async function getFormLeads(
   formId: string,
-  maxLeads = 2000
+  maxLeads = 2000,
+  pageToken?: string
 ): Promise<MetaLead[]> {
   const leads: MetaLead[] = [];
   let after: string | undefined;
@@ -769,7 +800,7 @@ export async function getFormLeads(
       limit: "100",
     };
     if (after) params.after = after;
-    const data = (await graph(`${formId}/leads`, params)) as {
+    const data = (await graph(`${formId}/leads`, params, pageToken)) as {
       data?: Array<Record<string, unknown>>;
       paging?: { cursors?: { after?: string } };
     };
