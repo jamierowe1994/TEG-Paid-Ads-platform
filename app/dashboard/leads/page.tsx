@@ -136,12 +136,23 @@ const SORTS: { id: SortOrder; label: string }[] = [
   { id: "uncontacted", label: "Not contacted first" },
 ];
 
+// Time-range filter — mainly so a big historic import (backfilled Meta leads
+// keep their original dates) doesn't drown out what's actually current.
+type TimeRange = "all" | "7d" | "30d";
+
+const RANGES: { id: TimeRange; label: string; days?: number }[] = [
+  { id: "7d", label: "This week", days: 7 },
+  { id: "30d", label: "Last 30 days", days: 30 },
+  { id: "all", label: "All time" },
+];
+
 export default function LeadsPage() {
   const [brand, setBrand] = useState<Brand | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [adSpend, setAdSpend] = useState(0);
   const [monthlyCost, setMonthlyCost] = useState(0);
   const [newOnly, setNewOnly] = useState(false);
+  const [range, setRange] = useState<TimeRange>("all");
   const [sort, setSort] = useState<SortOrder>("newest");
   const [filterOpen, setFilterOpen] = useState(false);
   const [toast, setToast] = useState("");
@@ -170,12 +181,17 @@ export default function LeadsPage() {
   );
 
   const visible = useMemo(() => {
-    const base =
+    let base =
       view === "lost"
         ? leads.filter((l) => l.stage === "lost")
         : newOnly
           ? leads.filter((l) => l.stage === "new")
           : leads.filter((l) => l.stage !== "lost");
+    const days = RANGES.find((r) => r.id === range)?.days;
+    if (days) {
+      const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+      base = base.filter((l) => new Date(l.receivedAt).getTime() >= cutoff);
+    }
     const byNewest = (a: Lead, b: Lead) =>
       new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime();
     return [...base].sort((a, b) => {
@@ -186,7 +202,7 @@ export default function LeadsPage() {
       }
       return byNewest(a, b);
     });
-  }, [leads, newOnly, sort, view]);
+  }, [leads, newOnly, range, sort, view]);
 
   function showToast(msg: string, ms = 3500) {
     setToast(msg);
@@ -363,17 +379,34 @@ export default function LeadsPage() {
       {/* Controls: New-only pill + filter popout */}
       <div className="mt-4 flex items-center justify-between gap-3">
         {view === "active" ? (
-          <button
-            onClick={() => setNewOnly((v) => !v)}
-            className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
-              newOnly
-                ? "text-white"
-                : "border border-gray-200 text-gray-600 hover:bg-gray-50"
-            }`}
-            style={newOnly ? { backgroundColor: brand.accent } : undefined}
-          >
-            New only
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setNewOnly((v) => !v)}
+              className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
+                newOnly
+                  ? "text-white"
+                  : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+              }`}
+              style={newOnly ? { backgroundColor: brand.accent } : undefined}
+            >
+              New only
+            </button>
+            <span className="mx-1 h-5 w-px bg-gray-200" aria-hidden />
+            {/* Date filter — tucks a big historic import out of the way */}
+            {RANGES.map((r) => (
+              <button
+                key={r.id}
+                onClick={() => setRange(r.id)}
+                className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
+                  range === r.id
+                    ? "bg-gray-900 text-white"
+                    : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
         ) : (
           <span className="text-sm text-gray-400">
             Deals you marked lost. Reopen any from its card.
@@ -460,7 +493,9 @@ export default function LeadsPage() {
               ? "No lost deals — keep it that way. 💪"
               : newOnly
                 ? "No new leads right now."
-                : "No leads yet — they'll drop in here automatically once your ads are live."}
+                : range !== "all" && leads.length > 0
+                  ? "No leads in this time range — try All time."
+                  : "No leads yet — they'll drop in here automatically once your ads are live."}
           </div>
         )}
       </div>
