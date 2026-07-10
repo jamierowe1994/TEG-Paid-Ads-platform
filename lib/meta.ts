@@ -772,8 +772,16 @@ export interface MetaLead {
   id: string;
   createdTime: string;
   adName: string | null;
+  campaignId: string | null; // routes the lead to the agent tagged with it
   platform: string | null; // "fb" | "ig"
   fields: Record<string, string>; // flattened field_data (name -> first value)
+}
+
+// The real campaign id behind each tagged id (ad set / ad ids resolve to
+// their parent campaign) — lets the lead sync match a lead's campaign_id
+// against whatever the admin actually pasted.
+export async function resolveCampaignIds(ids: string[]): Promise<string[]> {
+  return Promise.all(ids.map(async (id) => (await resolveTaggedId(id)).campaignId));
 }
 
 function flattenFieldData(
@@ -796,7 +804,7 @@ export async function getFormLeads(
   let after: string | undefined;
   while (leads.length < maxLeads) {
     const params: Record<string, string> = {
-      fields: "id,created_time,field_data,ad_name,platform",
+      fields: "id,created_time,field_data,ad_name,campaign_id,platform",
       limit: "100",
     };
     if (after) params.after = after;
@@ -810,6 +818,7 @@ export async function getFormLeads(
         id: String(r.id),
         createdTime: String(r.created_time ?? new Date().toISOString()),
         adName: r.ad_name ? String(r.ad_name) : null,
+        campaignId: r.campaign_id ? String(r.campaign_id) : null,
         platform: r.platform ? String(r.platform) : null,
         fields: flattenFieldData(
           r.field_data as Array<{ name: string; values?: string[] }>
