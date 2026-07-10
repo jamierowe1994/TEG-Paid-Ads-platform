@@ -90,6 +90,9 @@ export default function DashboardLayout({
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
+  // Notifications the user has cleared — kept per user in localStorage so
+  // "Clear all" sticks between visits (the feed itself is derived live).
+  const [cleared, setCleared] = useState<Set<string>>(new Set());
   const [vp, setVp] = useState({ w: 0, h: 0 });
 
   useEffect(() => {
@@ -134,7 +137,14 @@ export default function DashboardLayout({
     fetchNotifications().then(handle);
     fetchLeads().then(setLeads);
     fetchReferrals().then(setReferrals);
-    const t = setInterval(() => fetchNotifications().then(handle), 30000);
+    // The bell feed/badge derive from leads + referrals, so those refresh on
+    // the same poll — a lead landing via the background sync shows up within
+    // 30s without navigating.
+    const t = setInterval(() => {
+      fetchNotifications().then(handle);
+      fetchLeads().then(setLeads);
+      fetchReferrals().then(setReferrals);
+    }, 30000);
     return () => clearInterval(t);
   }, [checked, pathname]);
 
@@ -168,6 +178,36 @@ export default function DashboardLayout({
     else if (search.pages[0]) go(search.pages[0].href);
   }
 
+  // Load this user's cleared-notification keys once we know who they are.
+  useEffect(() => {
+    if (!user) return;
+    try {
+      const raw = localStorage.getItem(`notifs-cleared-${user.id}`);
+      if (raw) setCleared(new Set(JSON.parse(raw) as string[]));
+    } catch {
+      /* fresh start */
+    }
+  }, [user]);
+
+  function persistCleared(next: Set<string>) {
+    setCleared(next);
+    try {
+      if (user) {
+        // Prune to keys that can still appear (they're in the live feed) —
+        // anything else can never match again, so storing it is dead weight
+        // that could push real cleared keys past the cap.
+        const liveKeys = new Set(feed.map((i) => i.key));
+        const kept = [...next].filter((k) => liveKeys.has(k));
+        localStorage.setItem(
+          `notifs-cleared-${user.id}`,
+          JSON.stringify(kept.slice(-1000))
+        );
+      }
+    } catch {
+      /* storage full/blocked — clearing just won't stick */
+    }
+  }
+
   // ── Notifications feed ────────────────────────────────────────────────────
   const feed = useMemo(() => {
     const items: {
@@ -179,7 +219,9 @@ export default function DashboardLayout({
     }[] = [];
     if (user?.onboardingStage && STAGE_TOAST[user.onboardingStage]) {
       items.push({
-        key: "stage",
+        // Keyed per stage — clearing "creatives ready" must not also clear
+        // the future "you're live" update (cleared keys persist).
+        key: `stage-${user.onboardingStage}`,
         icon: "🎯",
         title: STAGE_TOAST[user.onboardingStage].replace(/\s*[🎨👀🎉]+/gu, ""),
         sub: "Campaign update",
@@ -197,9 +239,16 @@ export default function DashboardLayout({
         href: "/dashboard/referrals",
       });
     }
-    for (const l of leads.filter((x) => x.stage === "new").slice(0, 8)) {
+    // Every new lead — the panel scrolls, so nothing gets cut off when a
+    // batch lands at once. The key carries the lead's LATEST "new" timestamp,
+    // so a snoozed lead that resurfaces gets a fresh notification even if its
+    // original one was cleared.
+    for (const l of leads.filter((x) => x.stage === "new" && !x.archivedAt)) {
+      const lastNewAt =
+        [...l.history].reverse().find((h) => h.stage === "new")?.at ??
+        l.receivedAt;
       items.push({
-        key: `lead-${l.id}`,
+        key: `lead-${l.id}-${lastNewAt}`,
         icon: "✨",
         title: `New lead: ${l.name}`,
         sub: `via ${l.source}`,
@@ -208,7 +257,12 @@ export default function DashboardLayout({
     }
     return items;
   }, [user, leads, referrals]);
-  const unread = notifs.newLeads + notifs.pendingReferrals;
+  // What's actually showing (cleared ones stay hidden) drives the badge.
+  const visibleFeed = useMemo(
+    () => feed.filter((i) => !cleared.has(i.key)),
+    [feed, cleared]
+  );
+  const unread = visibleFeed.length;
 
   if (!checked || !user || !brand) {
     return (
@@ -470,17 +524,44 @@ export default function DashboardLayout({
                 onClick={() => setBellOpen(false)}
               />
               <div className="absolute right-0 top-full z-20 mt-2 w-80 rounded-2xl border border-gray-200 bg-white p-2 shadow-xl">
-                <p className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                  Notifications
-                </p>
-                <NotificationsFeed
-                  items={feed}
-                  accent={brand.accent}
-                  onGo={(href) => {
-                    setBellOpen(false);
-                    router.push(href);
-                  }}
-                />
+                <div className="flex items-center justify-between px-3 py-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                    Notifications
+                  </p>
+                  {visibleFeed.length > 0 && (
+                    <button
+                      onClick={() =>
+                        persistCleared(
+                          new Set([...cleared, ...visibleFeed.map((i) => i.key)])
+                        )
+                      }
+                      className="text-xs font-medium text-gray-400 hover:text-gray-700"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
+                {/* Scrolls — a big batch of leads never gets cut off */}
+                <div className="max-h-[26rem] overflow-y-auto overscroll-contain">
+                  <NotificationsFeed
+                    items={visibleFeed}
+                    accent={brand.accent}
+                    onGo={(href, key) => {
+                      setBellOpen(false);
+                      // Opening one deals with it — it leaves the list.
+                      persistCleared(new Set([...cleared, key]));
+                      // Already on the leads page? router.push won't remount
+                      // it, so also announce which lead to pop open.
+                      const leadId = href.match(/[?&]lead=([^&]+)/)?.[1];
+                      if (leadId) {
+                        window.dispatchEvent(
+                          new CustomEvent("teg:open-lead", { detail: leadId })
+                        );
+                      }
+                      router.push(href);
+                    }}
+                  />
+                </div>
               </div>
             </>
           )}
@@ -557,7 +638,7 @@ function NotificationsFeed({
     href: string;
   }[];
   accent: string;
-  onGo: (href: string) => void;
+  onGo: (href: string, key: string) => void;
 }) {
   if (items.length === 0) {
     return (
@@ -571,7 +652,7 @@ function NotificationsFeed({
       {items.map((it) => (
         <button
           key={it.key}
-          onClick={() => onGo(it.href)}
+          onClick={() => onGo(it.href, it.key)}
           className="flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-gray-50"
         >
           <span

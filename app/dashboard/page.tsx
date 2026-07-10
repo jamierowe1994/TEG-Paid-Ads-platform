@@ -103,6 +103,21 @@ export default function DashboardOverview() {
     Array<{ adName: string; imageUrl: string }>
   >([]);
   const [creativeIdx, setCreativeIdx] = useState(0);
+  // The going-live confetti fires ONCE per user (first visit after the
+  // campaign goes live), not on every page load — tracked in localStorage.
+  const [celebrateLive, setCelebrateLive] = useState(false);
+  useEffect(() => {
+    if (!user || user.onboardingStage !== "live") return;
+    try {
+      const key = `confetti-live-${user.id}`;
+      if (!localStorage.getItem(key)) {
+        localStorage.setItem(key, "1");
+        setCelebrateLive(true);
+      }
+    } catch {
+      /* storage blocked — just skip the party */
+    }
+  }, [user]);
 
   async function submitFeedback() {
     const text = feedbackText.trim();
@@ -654,7 +669,7 @@ export default function DashboardOverview() {
 
           {/* Dark-grey sign-up card — edge-to-edge, filling the tile */}
           <div className="relative mt-4 flex flex-1 flex-col overflow-hidden rounded-t-2xl bg-neutral-800 p-5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.07),inset_0_0_34px_rgba(0,0,0,0.4)]">
-            <Confetti fire={isLive} />
+            <Confetti fire={celebrateLive} />
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold">Sign-up process</p>
               <span

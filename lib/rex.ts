@@ -268,6 +268,55 @@ async function findContactIdBy(
   return id != null ? String(id) : null;
 }
 
+// Duplicate check for the funnel: is this person already in the brand's Rex
+// account? Tries email first, then phone (same order the push pre-check
+// uses). Read-only — never creates anything. Unlike the push pre-check, a
+// FAILED Rex call here THROWS rather than reading as "no match" — otherwise
+// an outage would get recorded as a definitive "not on the CRM" for every
+// lead swept, and those wrong records would never be re-checked.
+async function searchContactIdStrict(
+  field: string,
+  value: string,
+  accountId: string | null
+): Promise<string | null> {
+  const res = await rexCall(
+    "Contacts/search",
+    { criteria: [[field, "=", value]], limit: 1 },
+    accountId
+  );
+  if (!res.ok) throw new Error(res.error ?? "Rex search failed");
+  const rows = Array.isArray(res.result)
+    ? (res.result as Array<{ id?: string | number }>)
+    : (((res.result as { rows?: Array<{ id?: string | number }> })?.rows) ?? []);
+  const id = rows[0]?.id;
+  return id != null ? String(id) : null;
+}
+
+export async function rexFindContact(
+  brandId: string,
+  email: string,
+  phone: string
+): Promise<{ id: string; matchedBy: "email" | "phone" } | null> {
+  const accountId = rexAccountForBrand(brandId);
+  if (email.trim()) {
+    const id = await searchContactIdStrict(
+      "contact.email_address",
+      email.trim(),
+      accountId
+    );
+    if (id) return { id, matchedBy: "email" };
+  }
+  if (phone.trim()) {
+    const id = await searchContactIdStrict(
+      "contact.phone_number",
+      phone.trim(),
+      accountId
+    );
+    if (id) return { id, matchedBy: "phone" };
+  }
+  return null;
+}
+
 // Create a contact and return its id. `type: "person"` plus a
 // `related.contact_names` entry is what satisfies Rex's "cannot be saved
 // without a name" validation — confirmed against the demo account.

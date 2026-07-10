@@ -9,8 +9,10 @@ import {
   pageConfigured,
   metaTokenSet,
 } from "./meta";
-import { listUsers } from "./users-store";
-import { createLead, uid } from "./leads-store";
+import { findById, listUsers } from "./users-store";
+import { createLead, resurfaceDueLeads, uid } from "./leads-store";
+import { syncReferralFromLead } from "./referrals-store";
+import { sendNewLeadAlert } from "./whatsapp";
 import { BRANDS } from "./brands";
 import type { Lead } from "./types";
 
@@ -124,19 +126,65 @@ async function syncBrand(brandId: string): Promise<BrandSyncResult> {
   return out;
 }
 
-// Sync every brand that has a Page wired up. Serial on purpose — gentle on
-// Meta's rate limits, and a five-minute cadence doesn't need speed.
-export async function syncAllBrands(): Promise<SyncRun> {
-  const results: BrandSyncResult[] = [];
-  if (metaTokenSet()) {
-    for (const brand of BRANDS) {
-      if (await pageConfigured(brand.id)) {
-        results.push(await syncBrand(brand.id));
+// "Saved for later" leads whose comeback date has arrived: bring them back
+// as new and ping the agent — same alert as a fresh lead, they should treat
+// it like one.
+async function resurfaceSnoozedLeads(): Promise<void> {
+  try {
+    const due = await resurfaceDueLeads();
+    for (const lead of due) {
+      // Referral-sourced leads mirror the stage move back to the referrer.
+      if (lead.referralId) {
+        try {
+          await syncReferralFromLead(lead.id, "new");
+        } catch {
+          /* mirror is best-effort */
+        }
+      }
+      try {
+        const user = await findById(lead.userId);
+        if (user?.mobile) {
+          await sendNewLeadAlert({
+            toMobile: user.mobile,
+            agentName: user.name,
+            leadName: `${lead.name} (back on — they said they'd be ready now)`,
+          });
+        }
+      } catch {
+        /* alert is best-effort; the lead is already back in the funnel */
       }
     }
+  } catch {
+    /* next tick retries */
   }
-  lastRun = { at: new Date().toISOString(), results };
-  return lastRun;
+}
+
+// Sync every brand that has a Page wired up. Serial on purpose — gentle on
+// Meta's rate limits, and a five-minute cadence doesn't need speed. Runs are
+// mutually exclusive: an admin "run now" landing mid-tick joins the run in
+// flight rather than racing it (double resurfacing = double alerts).
+let inFlight: Promise<SyncRun> | null = null;
+
+export function syncAllBrands(): Promise<SyncRun> {
+  if (inFlight) return inFlight;
+  inFlight = (async () => {
+    try {
+      await resurfaceSnoozedLeads();
+      const results: BrandSyncResult[] = [];
+      if (metaTokenSet()) {
+        for (const brand of BRANDS) {
+          if (await pageConfigured(brand.id)) {
+            results.push(await syncBrand(brand.id));
+          }
+        }
+      }
+      lastRun = { at: new Date().toISOString(), results };
+      return lastRun;
+    } finally {
+      inFlight = null;
+    }
+  })();
+  return inFlight;
 }
 
 // Background loop, started once per server process (instrumentation.ts).

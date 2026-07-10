@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
-import { getLead, updateLeadStage, setLeadRexIds } from "@/lib/leads-store";
+import {
+  getLead,
+  updateLeadStage,
+  setLeadRexIds,
+  setLeadCrmMatch,
+} from "@/lib/leads-store";
 import { syncReferralFromLead } from "@/lib/referrals-store";
 import { findById } from "@/lib/users-store";
 import { pushLeadToAtlas, atlasConfigured } from "@/lib/atlas";
@@ -57,6 +62,15 @@ export async function POST(req: NextRequest) {
     }
     try {
       const result = await pushLeadToAtlas(lead, user.email);
+      if (result.alreadyExisted) {
+        await setLeadCrmMatch(userId, leadId, {
+          system: "atlas",
+          checkedAt: new Date().toISOString(),
+          found: true,
+          id: result.personId,
+          matchedBy: "push",
+        });
+      }
       await markPushed();
       return NextResponse.json({ ok: true, ...result });
     } catch (e) {
@@ -88,6 +102,15 @@ export async function POST(req: NextRequest) {
         agentRexUserId,
       });
       await setLeadRexIds(userId, leadId, result.contactId, result.leadId);
+      if (result.contactAlreadyExisted) {
+        await setLeadCrmMatch(userId, leadId, {
+          system: "rex",
+          checkedAt: new Date().toISOString(),
+          found: true,
+          id: result.contactId,
+          matchedBy: "push",
+        });
+      }
       await markPushed();
       return NextResponse.json({ ok: true, ...result });
     } catch (e) {

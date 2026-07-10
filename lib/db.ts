@@ -142,6 +142,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS leads_user_meta_lead_uq
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS rex_contact_id TEXT;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS rex_lead_id TEXT;
 CREATE INDEX IF NOT EXISTS leads_rex_contact_idx ON leads(rex_contact_id);
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS resurface_at TIMESTAMPTZ;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS crm_match JSONB;
+CREATE INDEX IF NOT EXISTS leads_resurface_idx ON leads(resurface_at)
+  WHERE resurface_at IS NOT NULL;
 
 -- Raw capture of every Rex webhook delivery, so we can see real payload
 -- shapes before building the stage-mapping logic against them.

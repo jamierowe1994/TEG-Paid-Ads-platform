@@ -10,6 +10,9 @@ import {
   addLeadNote,
   bookLeadAppointment,
   cancelLeadAppointment,
+  archiveLeads,
+  snoozeLeadUntil,
+  crmCheckAllLeads,
 } from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
 import { packageById } from "@/lib/packages";
@@ -49,18 +52,31 @@ function chunk<T>(arr: T[], size: number): T[][] {
 
 type TileSize = "lg" | "md" | "sm";
 
+// True when the CRM already has this person — either a duplicate check found
+// them, or a push revealed/created them there.
+function onCrm(lead: Lead): boolean {
+  return !!(lead.crmMatch?.found || lead.rexContactId);
+}
+
 // A "mini profile" tile — status colour, avatar, name, source, date and
 // stage — sized down for older rows so the snake also reads as a fade.
+// In the archive, tiles grow a selection ring (multi-select unarchive).
 function LeadTile({
   lead,
   brand,
   size,
   onClick,
+  selectable,
+  selected,
+  onToggleSelect,
 }: {
   lead: Lead;
   brand: Brand;
   size: TileSize;
   onClick: () => void;
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }) {
   const c = STAGE_COLOR[lead.stage] ?? STAGE_COLOR.new;
   const pad = size === "lg" ? "p-4" : size === "md" ? "p-3.5" : "p-3";
@@ -70,13 +86,42 @@ function LeadTile({
   return (
     <button
       onClick={onClick}
-      className={`flex w-full flex-col rounded-2xl border border-gray-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md ${pad}`}
+      className={`relative flex w-full flex-col rounded-2xl border bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${pad} ${
+        selected
+          ? "border-gray-900 ring-2 ring-gray-900"
+          : "border-gray-200 hover:border-gray-300"
+      }`}
       style={{ borderTop: `3px solid ${c.accent}` }}
     >
       <div className="flex items-center justify-between">
         <SourceIcon source={lead.source} size={14} />
-        <span className="text-[10px] text-gray-400">
+        <span className="flex items-center gap-1.5 text-[10px] text-gray-400">
           {shortDate(lead.receivedAt)}
+          {selectable && (
+            <span
+              role="checkbox"
+              aria-checked={selected}
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleSelect?.();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onToggleSelect?.();
+                }
+              }}
+              className={`flex h-5 w-5 items-center justify-center rounded-full border text-[11px] transition ${
+                selected
+                  ? "border-gray-900 bg-gray-900 text-white"
+                  : "border-gray-300 text-transparent hover:border-gray-500"
+              }`}
+            >
+              ✓
+            </span>
+          )}
         </span>
       </div>
       <div className="mt-2.5 flex min-w-0 items-center gap-2.5">
@@ -90,11 +135,21 @@ function LeadTile({
           {lead.name}
         </p>
       </div>
-      <span
-        className="mt-2.5 inline-block w-fit rounded-full px-2 py-0.5 text-[10px] font-medium"
-        style={{ backgroundColor: c.bg, color: c.text }}
-      >
-        {stageLabel(lead.stage, brand)}
+      <span className="mt-2.5 flex flex-wrap items-center gap-1">
+        <span
+          className="inline-block w-fit rounded-full px-2 py-0.5 text-[10px] font-medium"
+          style={{ backgroundColor: c.bg, color: c.text }}
+        >
+          {lead.resurfaceAt
+            ? `Back ${shortDate(lead.resurfaceAt)}`
+            : stageLabel(lead.stage, brand)}
+        </span>
+        {/* Already on the brand's CRM — the duplicate-check pill */}
+        {onCrm(lead) && (
+          <span className="inline-block w-fit rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700">
+            On {brand.crmName}
+          </span>
+        )}
       </span>
     </button>
   );
@@ -158,7 +213,10 @@ export default function LeadsPage() {
   const [toast, setToast] = useState("");
   const [pushing, setPushing] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
-  const [view, setView] = useState<"active" | "lost">("active");
+  const [view, setView] = useState<"active" | "lost" | "archived">("active");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [checkingCrm, setCheckingCrm] = useState(false);
+  const [archiving, setArchiving] = useState(false);
 
   useEffect(() => {
     const u = getUser();
@@ -175,20 +233,45 @@ export default function LeadsPage() {
     });
   }, []);
 
+  // A notification clicked while ALREADY on this page can't remount it —
+  // the layout announces the lead instead.
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const id = (e as CustomEvent<string>).detail;
+      if (id) setOpenId(id);
+    };
+    window.addEventListener("teg:open-lead", onOpen);
+    return () => window.removeEventListener("teg:open-lead", onOpen);
+  }, []);
+
   const lostCount = useMemo(
-    () => leads.filter((l) => l.stage === "lost").length,
+    () => leads.filter((l) => l.stage === "lost" && !l.archivedAt).length,
+    [leads]
+  );
+  const archivedCount = useMemo(
+    () => leads.filter((l) => !!l.archivedAt).length,
+    [leads]
+  );
+  // "Finished" = done (pushed) or lost — the ones safe to file away in bulk.
+  const finished = useMemo(
+    () =>
+      leads.filter(
+        (l) => !l.archivedAt && (l.stage === "pushed" || l.stage === "lost")
+      ),
     [leads]
   );
 
   const visible = useMemo(() => {
     let base =
-      view === "lost"
-        ? leads.filter((l) => l.stage === "lost")
-        : newOnly
-          ? leads.filter((l) => l.stage === "new")
-          : leads.filter((l) => l.stage !== "lost");
+      view === "archived"
+        ? leads.filter((l) => !!l.archivedAt)
+        : view === "lost"
+          ? leads.filter((l) => l.stage === "lost" && !l.archivedAt)
+          : newOnly
+            ? leads.filter((l) => l.stage === "new" && !l.archivedAt)
+            : leads.filter((l) => l.stage !== "lost" && !l.archivedAt);
     const days = RANGES.find((r) => r.id === range)?.days;
-    if (days) {
+    if (days && view !== "archived") {
       const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
       base = base.filter((l) => new Date(l.receivedAt).getTime() >= cutoff);
     }
@@ -303,6 +386,85 @@ export default function LeadsPage() {
   async function addNote(leadId: string, text: string) {
     applyLead(await addLeadNote(leadId, text), undefined, "Couldn't save note");
   }
+
+  // Archive / unarchive a batch (the API returns the refreshed list).
+  // Returns whether it worked so callers only close modals on success.
+  async function setArchived(
+    ids: string[],
+    archived: boolean,
+    msg: string
+  ): Promise<boolean> {
+    if (ids.length === 0 || archiving) return false;
+    setArchiving(true);
+    const updated = await archiveLeads(ids, archived);
+    setArchiving(false);
+    if (updated) {
+      setLeads(updated);
+      setSelected(new Set());
+      showToast(msg);
+      return true;
+    }
+    showToast("Couldn't update — please try again");
+    return false;
+  }
+
+  // "Save for a later date" — snoozes the lead; it comes back as new on the
+  // chosen date with a WhatsApp ping.
+  async function snooze(
+    lead: Lead,
+    until: string,
+    reason: string
+  ): Promise<boolean> {
+    const res = await snoozeLeadUntil(lead.id, until, reason);
+    if (res.ok && res.lead) {
+      setLeads((prev) => prev.map((l) => (l.id === res.lead!.id ? res.lead! : l)));
+      showToast(
+        `${lead.name} saved for later — back as a new lead on ${shortDate(until)} ✓`,
+        5000
+      );
+      return true;
+    }
+    showToast(res.error ?? "Couldn't save — please try again");
+    return false;
+  }
+
+  // Sweep every unchecked lead against the brand's CRM.
+  async function runCrmCheck() {
+    if (checkingCrm || !brand) return;
+    setCheckingCrm(true);
+    const res = await crmCheckAllLeads();
+    setCheckingCrm(false);
+    if (!res.ok) {
+      showToast(res.error ?? "Couldn't check — please try again");
+      return;
+    }
+    if (res.leads) setLeads(res.leads);
+    if (res.unavailable && !res.checked) {
+      showToast(
+        `Couldn't check ${brand.crmName} right now — duplicates are still caught when you push.`,
+        5000
+      );
+    } else {
+      const base = `Checked ${res.checked ?? 0} lead${(res.checked ?? 0) === 1 ? "" : "s"} — ${
+        res.found ? `${res.found} already on ${brand.crmName}` : `none already on ${brand.crmName}`
+      }`;
+      showToast(
+        res.unavailable
+          ? `${base}. Some couldn't be checked — run it again later.`
+          : `${base} ✓`,
+        6000
+      );
+    }
+  }
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
   async function book(leadId: string, at: string) {
     applyLead(
       await bookLeadAppointment(leadId, at),
@@ -359,19 +521,26 @@ export default function LeadsPage() {
         />
       </div>
 
-      {/* Active / Lost deals tabs */}
+      {/* Active / Lost / Archived tabs */}
       <div className="mt-8 flex items-center gap-1 border-b border-gray-100">
-        {(["active", "lost"] as const).map((v) => (
+        {(["active", "lost", "archived"] as const).map((v) => (
           <button
             key={v}
-            onClick={() => setView(v)}
+            onClick={() => {
+              setView(v);
+              setSelected(new Set());
+            }}
             className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium capitalize transition ${
               view === v
                 ? "border-gray-900 text-gray-900"
                 : "border-transparent text-gray-400 hover:text-gray-600"
             }`}
           >
-            {v === "active" ? "Active" : `Lost deals${lostCount ? ` (${lostCount})` : ""}`}
+            {v === "active"
+              ? "Active"
+              : v === "lost"
+                ? `Lost deals${lostCount ? ` (${lostCount})` : ""}`
+                : `Archived${archivedCount ? ` (${archivedCount})` : ""}`}
           </button>
         ))}
       </div>
@@ -406,11 +575,71 @@ export default function LeadsPage() {
                 {r.label}
               </button>
             ))}
+            <span className="mx-1 h-5 w-px bg-gray-200" aria-hidden />
+            {/* Duplicate check — "are they already on the system?" */}
+            <button
+              onClick={runCrmCheck}
+              disabled={checkingCrm}
+              className="rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 text-sm font-medium text-blue-700 transition hover:bg-blue-100 disabled:opacity-60"
+            >
+              {checkingCrm ? `Checking ${brand.crmName}…` : `Check ${brand.crmName}`}
+            </button>
+            {/* File away everything that's finished (done or lost) */}
+            {finished.length > 0 && (
+              <button
+                onClick={() =>
+                  setArchived(
+                    finished.map((l) => l.id),
+                    true,
+                    `Archived ${finished.length} finished lead${finished.length === 1 ? "" : "s"} ✓`
+                  )
+                }
+                disabled={archiving}
+                className="rounded-full border border-gray-200 px-4 py-1.5 text-sm font-medium text-gray-600 transition hover:bg-gray-50 disabled:opacity-60"
+              >
+                {archiving ? "Archiving…" : `Archive finished (${finished.length})`}
+              </button>
+            )}
           </div>
-        ) : (
+        ) : view === "lost" ? (
           <span className="text-sm text-gray-400">
             Deals you marked lost. Reopen any from its card.
           </span>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-gray-400">
+              Filed away, never deleted — tick tiles to bring them back.
+            </span>
+            {visible.length > 0 && (
+              <button
+                onClick={() =>
+                  setSelected(
+                    selected.size === visible.length
+                      ? new Set()
+                      : new Set(visible.map((l) => l.id))
+                  )
+                }
+                className="rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
+              >
+                {selected.size === visible.length ? "Deselect all" : "Select all"}
+              </button>
+            )}
+            {selected.size > 0 && (
+              <button
+                onClick={() =>
+                  setArchived(
+                    [...selected],
+                    false,
+                    `${selected.size} lead${selected.size === 1 ? "" : "s"} brought back ✓`
+                  )
+                }
+                disabled={archiving}
+                className="rounded-full bg-gray-900 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-gray-700 disabled:opacity-60"
+              >
+                {archiving ? "Restoring…" : `Unarchive ${selected.size} selected`}
+              </button>
+            )}
+          </div>
         )}
 
         <div className="relative">
@@ -481,6 +710,9 @@ export default function LeadsPage() {
                     brand={brand}
                     size={size}
                     onClick={() => setOpenId(lead.id)}
+                    selectable={view === "archived"}
+                    selected={selected.has(lead.id)}
+                    onToggleSelect={() => toggleSelect(lead.id)}
                   />
                 </div>
               ))}
@@ -491,11 +723,13 @@ export default function LeadsPage() {
           <div className="rounded-2xl border border-dashed border-gray-200 py-16 text-center text-sm text-gray-400">
             {view === "lost"
               ? "No lost deals — keep it that way. 💪"
-              : newOnly
-                ? "No new leads right now."
-                : range !== "all" && leads.length > 0
-                  ? "No leads in this time range — try All time."
-                  : "No leads yet — they'll drop in here automatically once your ads are live."}
+              : view === "archived"
+                ? "Nothing archived yet — finished leads can be filed away here."
+                : newOnly
+                  ? "No new leads right now."
+                  : range !== "all" && leads.length > 0
+                    ? "No leads in this time range — try All time."
+                    : "No leads yet — they'll drop in here automatically once your ads are live."}
           </div>
         )}
       </div>
@@ -513,6 +747,18 @@ export default function LeadsPage() {
           onBook={(at) => book(open.id, at)}
           onCancelBooking={() => cancelBooking(open.id)}
           onRexReset={() => rexReset(open)}
+          onArchive={async (archived) => {
+            const ok = await setArchived(
+              [open.id],
+              archived,
+              archived ? `${open.name} archived ✓` : `${open.name} brought back ✓`
+            );
+            if (ok) setOpenId(null);
+          }}
+          onSnooze={async (until, reason) => {
+            const ok = await snooze(open, until, reason);
+            if (ok) setOpenId(null);
+          }}
         />
       )}
 

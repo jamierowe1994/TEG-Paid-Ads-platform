@@ -62,6 +62,15 @@ const LOST_REASONS = [
   "Other",
 ];
 
+// Timing-related reasons aren't really losses — they're "not yet". These
+// offer a comeback date instead: the file is archived and resurfaces as a
+// new lead when that date arrives.
+const TIMING_REASONS = new Set([
+  "Not the right time",
+  "Just thinking about it / later",
+  "Budget / price",
+]);
+
 function GifCard({
   src,
   emoji,
@@ -109,6 +118,8 @@ export function LeadModal({
   onBook,
   onCancelBooking,
   onRexReset,
+  onArchive,
+  onSnooze,
 }: {
   lead: Lead;
   brand: Brand;
@@ -121,12 +132,20 @@ export function LeadModal({
   onCancelBooking: () => Promise<void>;
   // "They've been deleted in REX" — verify with Rex and reset the file if so.
   onRexReset?: () => Promise<void>;
+  // Archive / unarchive this file (never deletes).
+  onArchive?: (archived: boolean) => Promise<void>;
+  // "Save for a later date" — archive with a comeback date.
+  onSnooze?: (until: string, reason: string) => Promise<void>;
 }) {
   const [showTimeline, setShowTimeline] = useState(false);
   const [lostStep, setLostStep] = useState<
-    null | "ask" | "reason" | "funnel" | "done"
+    null | "ask" | "reason" | "date" | "funnel" | "done"
   >(null);
   const [savingLost, setSavingLost] = useState(false);
+  const [lostReason, setLostReason] = useState("");
+  const [snoozeDay, setSnoozeDay] = useState<Date | null>(null);
+  const [savingSnooze, setSavingSnooze] = useState(false);
+  const [archivingFile, setArchivingFile] = useState(false);
   const [panel, setPanel] = useState<null | "call" | "email">(null);
   const [callTab, setCallTab] = useState<"notes" | "schedule">("notes");
   const [noteText, setNoteText] = useState("");
@@ -222,6 +241,24 @@ export function LeadModal({
     onClose();
   }
 
+  // A timing reason + a date = not lost at all: saved for later. Picking
+  // today lands an hour from now rather than being rejected as "in the past".
+  async function saveForLater(until: Date) {
+    if (!onSnooze || savingSnooze) return;
+    const d = new Date(until);
+    if (d.getTime() <= Date.now()) d.setTime(Date.now() + 60 * 60 * 1000);
+    setSavingSnooze(true);
+    await onSnooze(d.toISOString(), lostReason || "Not the right time");
+    setSavingSnooze(false);
+  }
+
+  function monthsFromNow(n: number): Date {
+    const d = new Date();
+    d.setMonth(d.getMonth() + n);
+    d.setHours(9, 0, 0, 0);
+    return d;
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-gray-900/50 p-0 sm:items-center sm:p-6"
@@ -234,9 +271,22 @@ export function LeadModal({
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <SourceIcon source={lead.source} size={20} />
               <h2 className="text-xl font-semibold">{lead.name}</h2>
+              {/* Already on the brand's CRM — from the duplicate check or a push */}
+              {(lead.crmMatch?.found || lead.rexContactId) && (
+                <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-semibold text-blue-700">
+                  On {brand.crmName}
+                </span>
+              )}
+              {lead.archivedAt && (
+                <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-semibold text-gray-500">
+                  {lead.resurfaceAt
+                    ? `Back ${shortDate(lead.resurfaceAt)}`
+                    : "Archived"}
+                </span>
+              )}
             </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-gray-400">
               {lead.adName && <span>{lead.adName} · </span>}
@@ -612,7 +662,7 @@ export function LeadModal({
             )}
 
             {/* Mark lost / reopen */}
-            {canWork && (
+            {canWork && !lead.archivedAt && (
               <button
                 onClick={() => setLostStep("ask")}
                 className="w-full rounded-2xl border border-transparent py-2.5 text-sm font-medium text-gray-400 transition hover:border-gray-300 hover:text-gray-600"
@@ -620,9 +670,42 @@ export function LeadModal({
                 Mark as lost
               </button>
             )}
-            {lead.stage === "lost" && (
+            {lead.stage === "lost" && !lead.archivedAt && (
               <BigBtn onClick={() => onStage("new")}>Reopen lead</BigBtn>
             )}
+
+            {/* Archive — file it away (done/lost leads), or bring it back */}
+            {onArchive && lead.archivedAt && (
+              <BigBtn
+                disabled={archivingFile}
+                onClick={async () => {
+                  setArchivingFile(true);
+                  await onArchive(false);
+                  setArchivingFile(false);
+                }}
+              >
+                {archivingFile
+                  ? "Restoring…"
+                  : lead.resurfaceAt
+                    ? "Bring back now (don't wait)"
+                    : "Bring back to the funnel"}
+              </BigBtn>
+            )}
+            {onArchive &&
+              !lead.archivedAt &&
+              (lead.stage === "pushed" || lead.stage === "lost") && (
+                <button
+                  disabled={archivingFile}
+                  onClick={async () => {
+                    setArchivingFile(true);
+                    await onArchive(true);
+                    setArchivingFile(false);
+                  }}
+                  className="w-full rounded-2xl border border-transparent py-2.5 text-sm font-medium text-gray-400 transition hover:border-gray-300 hover:text-gray-600 disabled:opacity-50"
+                >
+                  {archivingFile ? "Archiving…" : "Archive this file"}
+                </button>
+              )}
           </div>
         </div>
 
@@ -697,7 +780,16 @@ export function LeadModal({
                       <button
                         key={reason}
                         disabled={savingLost}
-                        onClick={() => markLostWithReason(reason)}
+                        onClick={() => {
+                          // Timing reasons aren't losses — offer a comeback
+                          // date instead of closing the door.
+                          if (onSnooze && TIMING_REASONS.has(reason)) {
+                            setLostReason(reason);
+                            setLostStep("date");
+                          } else {
+                            markLostWithReason(reason);
+                          }
+                        }}
                         className="flex w-full items-center justify-between rounded-2xl border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-700 transition hover:border-gray-900 hover:bg-gray-50 disabled:opacity-50"
                       >
                         {reason}
@@ -705,6 +797,58 @@ export function LeadModal({
                       </button>
                     ))}
                   </div>
+                </>
+              )}
+              {lostStep === "date" && (
+                <>
+                  <h3 className="text-center text-xl font-semibold">
+                    Sounds like a &quot;not yet&quot;, not a no
+                  </h3>
+                  <p className="mt-2 text-center text-sm text-gray-500">
+                    Pick when {firstName} said they&apos;d be ready — we&apos;ll
+                    file this away and bring it back as a new lead on that day,
+                    ping included.
+                  </p>
+                  <div className="mt-4 flex flex-wrap justify-center gap-2">
+                    {[
+                      { label: "In 1 month", months: 1 },
+                      { label: "In 3 months", months: 3 },
+                      { label: "In 6 months", months: 6 },
+                    ].map((p) => (
+                      <button
+                        key={p.label}
+                        disabled={savingSnooze}
+                        onClick={() => saveForLater(monthsFromNow(p.months))}
+                        className="rounded-full border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:border-gray-900 hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-4">
+                    <InlineCalendar
+                      value={snoozeDay}
+                      accent={brand.accent}
+                      onPick={(d) => {
+                        const dt = new Date(d);
+                        dt.setHours(9, 0, 0, 0);
+                        setSnoozeDay(dt);
+                        saveForLater(dt);
+                      }}
+                    />
+                  </div>
+                  {savingSnooze && (
+                    <p className="mt-3 text-center text-sm text-gray-400">
+                      Saving…
+                    </p>
+                  )}
+                  <button
+                    disabled={savingLost || savingSnooze}
+                    onClick={() => markLostWithReason(lostReason || "Not the right time")}
+                    className="mt-3 w-full rounded-2xl py-2.5 text-sm font-medium text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                  >
+                    No date — just mark it lost
+                  </button>
                 </>
               )}
               {lostStep === "funnel" && (

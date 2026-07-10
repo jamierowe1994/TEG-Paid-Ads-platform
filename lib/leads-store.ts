@@ -5,7 +5,7 @@ import { DATA_DIR } from "./data-dir";
 import { hasDb, q } from "./db";
 import { findById } from "./users-store";
 import { sendNewLeadAlert } from "./whatsapp";
-import type { Lead, LeadStage } from "./types";
+import type { CrmMatch, Lead, LeadStage } from "./types";
 
 // Leads, server-side — Postgres on Railway, JSON locally. Each lead belongs
 // to one agent (user_id). Leads arrive from accepted referrals now, and from
@@ -32,6 +32,9 @@ interface LeadRow {
   meta_lead_id: string | null;
   rex_contact_id: string | null;
   rex_lead_id: string | null;
+  archived_at: string | Date | null;
+  resurface_at: string | Date | null;
+  crm_match: unknown;
 }
 
 function fromRow(row: LeadRow): Lead {
@@ -53,6 +56,11 @@ function fromRow(row: LeadRow): Lead {
     metaLeadId: row.meta_lead_id ?? null,
     rexContactId: row.rex_contact_id ?? null,
     rexLeadId: row.rex_lead_id ?? null,
+    archivedAt: row.archived_at ? new Date(row.archived_at).toISOString() : null,
+    resurfaceAt: row.resurface_at
+      ? new Date(row.resurface_at).toISOString()
+      : null,
+    crmMatch: (row.crm_match as CrmMatch | null) ?? null,
   };
 }
 
@@ -232,7 +240,8 @@ export async function bookAppointment(
       `UPDATE leads
           SET appointment_at = $3,
               stage = CASE WHEN stage = 'pushed' THEN 'pushed' ELSE 'converted' END,
-              history = history || $4::jsonb
+              history = history || $4::jsonb,
+              archived_at = NULL, resurface_at = NULL
         WHERE id = $2 AND user_id = $1 RETURNING *`,
       [userId, leadId, iso, JSON.stringify(append)]
     );
@@ -246,6 +255,8 @@ export async function bookAppointment(
     ...cur,
     appointmentAt: iso,
     stage: cur.stage === "pushed" ? "pushed" : "converted",
+    archivedAt: null,
+    resurfaceAt: null,
     history: [...cur.history, ...(append as Lead["history"])],
   };
   await writeAllFile(all);
@@ -262,7 +273,8 @@ export async function cancelAppointment(
   if (hasDb()) {
     const rows = await q<LeadRow>(
       `UPDATE leads SET appointment_at = NULL, stage = 'attempt1',
-              history = history || $3::jsonb
+              history = history || $3::jsonb,
+              archived_at = NULL, resurface_at = NULL
         WHERE id = $2 AND user_id = $1 RETURNING *`,
       [userId, leadId, JSON.stringify([entry])]
     );
@@ -275,6 +287,8 @@ export async function cancelAppointment(
     ...all[idx],
     appointmentAt: null,
     stage: "attempt1",
+    archivedAt: null,
+    resurfaceAt: null,
     history: [...all[idx].history, entry],
   };
   await writeAllFile(all);
@@ -298,6 +312,9 @@ export async function countNewLeads(userId: string): Promise<number> {
 
 // Move a lead to a new stage (appends to its history). Only touches leads
 // owned by userId — an agent can never modify someone else's lead.
+// Working a lead also cancels any pending "save for later" comeback and
+// un-archives it — otherwise the resurface engine would later clobber a
+// worked (even pushed!) lead back to "new".
 export async function updateLeadStage(
   userId: string,
   leadId: string,
@@ -307,7 +324,8 @@ export async function updateLeadStage(
   if (hasDb()) {
     const rows = await q<LeadRow>(
       `UPDATE leads
-         SET stage = $3, history = history || $4::jsonb
+         SET stage = $3, history = history || $4::jsonb,
+             archived_at = NULL, resurface_at = NULL
        WHERE id = $2 AND user_id = $1
        RETURNING *`,
       [userId, leadId, stage, JSON.stringify([entry])]
@@ -320,6 +338,8 @@ export async function updateLeadStage(
   all[idx] = {
     ...all[idx],
     stage,
+    archivedAt: null,
+    resurfaceAt: null,
     history: [...all[idx].history, entry],
   };
   await writeAllFile(all);
@@ -404,6 +424,147 @@ export async function findLeadByRexContactId(
     return rows[0] ? { ...fromRow(rows[0]), userId: rows[0].user_id } : undefined;
   }
   return (await readAllFile()).find((l) => l.rexContactId === rexContactId);
+}
+
+// ── Archive & snooze ───────────────────────────────────────────────────────
+
+// Archive (or unarchive) a batch of an agent's leads. Archiving files them
+// away without deleting anything; unarchiving clears any pending resurface
+// date too (bringing a lead back manually cancels the scheduled comeback).
+export async function setLeadsArchived(
+  userId: string,
+  leadIds: string[],
+  archived: boolean
+): Promise<number> {
+  if (leadIds.length === 0) return 0;
+  const now = new Date().toISOString();
+  if (hasDb()) {
+    const rows = await q<{ id: string }>(
+      archived
+        ? `UPDATE leads SET archived_at = $3
+             WHERE user_id = $1 AND id = ANY($2) RETURNING id`
+        : `UPDATE leads SET archived_at = NULL, resurface_at = NULL
+             WHERE user_id = $1 AND id = ANY($2) RETURNING id`,
+      archived ? [userId, leadIds, now] : [userId, leadIds]
+    );
+    return rows.length;
+  }
+  const all = await readAllFile();
+  let n = 0;
+  const ids = new Set(leadIds);
+  for (let i = 0; i < all.length; i++) {
+    if (all[i].userId !== userId || !ids.has(all[i].id)) continue;
+    all[i] = archived
+      ? { ...all[i], archivedAt: now }
+      : { ...all[i], archivedAt: null, resurfaceAt: null };
+    n++;
+  }
+  if (n > 0) await writeAllFile(all);
+  return n;
+}
+
+// "Save for a later date": archive the lead with a comeback date. The
+// timeline records why and when so the story is there when it resurfaces.
+export async function snoozeLead(
+  userId: string,
+  leadId: string,
+  until: string,
+  reason: string
+): Promise<Lead | undefined> {
+  const untilIso = new Date(until).toISOString();
+  const now = new Date().toISOString();
+  const label = `Saved for later — ${reason}. Coming back ${new Date(
+    untilIso
+  ).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`;
+  const entry = { stage: "nurture" as LeadStage, at: now, label };
+  if (hasDb()) {
+    const rows = await q<LeadRow>(
+      `UPDATE leads
+          SET archived_at = $3, resurface_at = $4, stage = 'nurture',
+              history = history || $5::jsonb
+        WHERE id = $2 AND user_id = $1 RETURNING *`,
+      [userId, leadId, now, untilIso, JSON.stringify([entry])]
+    );
+    return rows[0] ? fromRow(rows[0]) : undefined;
+  }
+  const all = await readAllFile();
+  const idx = all.findIndex((l) => l.id === leadId && l.userId === userId);
+  if (idx === -1) return undefined;
+  all[idx] = {
+    ...all[idx],
+    archivedAt: now,
+    resurfaceAt: untilIso,
+    stage: "nurture",
+    history: [...all[idx].history, entry],
+  };
+  await writeAllFile(all);
+  const { userId: _omit, ...lead } = all[idx];
+  return lead;
+}
+
+// Bring every due snoozed lead back to life: unarchived, stage "new", with a
+// timeline entry saying why it's back. Returns what came back (with owner)
+// so the caller can fire the new-lead alert.
+export async function resurfaceDueLeads(): Promise<
+  (Lead & { userId: string })[]
+> {
+  const now = new Date().toISOString();
+  const entry = {
+    stage: "new" as LeadStage,
+    at: now,
+    label: "Back on — the date they said they'd be ready has arrived",
+  };
+  if (hasDb()) {
+    const rows = await q<LeadRow>(
+      `UPDATE leads
+          SET archived_at = NULL, resurface_at = NULL, stage = 'new',
+              history = history || $1::jsonb
+        WHERE resurface_at IS NOT NULL AND resurface_at <= NOW()
+        RETURNING *`,
+      [JSON.stringify([entry])]
+    );
+    return rows.map((r) => ({ ...fromRow(r), userId: r.user_id }));
+  }
+  const all = await readAllFile();
+  const due: (Lead & { userId: string })[] = [];
+  for (let i = 0; i < all.length; i++) {
+    const r = all[i].resurfaceAt;
+    if (!r || r > now) continue;
+    all[i] = {
+      ...all[i],
+      archivedAt: null,
+      resurfaceAt: null,
+      stage: "new",
+      history: [...all[i].history, entry],
+    };
+    due.push(all[i]);
+  }
+  if (due.length > 0) await writeAllFile(all);
+  return due;
+}
+
+// Record the outcome of a CRM duplicate check (or a push that revealed the
+// person already existed there).
+export async function setLeadCrmMatch(
+  userId: string,
+  leadId: string,
+  match: CrmMatch
+): Promise<Lead | undefined> {
+  if (hasDb()) {
+    const rows = await q<LeadRow>(
+      `UPDATE leads SET crm_match = $3::jsonb
+         WHERE id = $2 AND user_id = $1 RETURNING *`,
+      [userId, leadId, JSON.stringify(match)]
+    );
+    return rows[0] ? fromRow(rows[0]) : undefined;
+  }
+  const all = await readAllFile();
+  const idx = all.findIndex((l) => l.id === leadId && l.userId === userId);
+  if (idx === -1) return undefined;
+  all[idx] = { ...all[idx], crmMatch: match };
+  await writeAllFile(all);
+  const { userId: _omit, ...lead } = all[idx];
+  return lead;
 }
 
 // Admin aggregate: per-user lead counts + speed-to-lead for the Performance

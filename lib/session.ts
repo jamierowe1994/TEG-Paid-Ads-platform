@@ -218,6 +218,70 @@ export function cancelLeadAppointment(leadId: string) {
   return leadAction({ leadId, action: "cancelBooking" });
 }
 
+// Archive / unarchive a batch of leads. Returns the full refreshed list.
+export async function archiveLeads(
+  leadIds: string[],
+  archived: boolean
+): Promise<Lead[] | null> {
+  try {
+    const res = await fetch("/api/leads/archive", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ leadIds, archived }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return Array.isArray(data.leads) ? (data.leads as Lead[]) : null;
+  } catch {
+    return null;
+  }
+}
+
+// "Save for a later date" — archives the lead until the given date, when it
+// resurfaces as new.
+export async function snoozeLeadUntil(
+  leadId: string,
+  until: string,
+  reason: string
+): Promise<{ ok: boolean; lead?: Lead; error?: string }> {
+  try {
+    const res = await fetch("/api/leads/snooze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ leadId, until, reason }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: data.error ?? "Couldn't save" };
+    return { ok: true, lead: data.lead as Lead };
+  } catch {
+    return { ok: false, error: "Network error — please try again" };
+  }
+}
+
+// Duplicate-check every unchecked lead against the brand's CRM. Returns the
+// refreshed list plus how many checks ran / matched.
+export async function crmCheckAllLeads(): Promise<{
+  ok: boolean;
+  checked?: number;
+  found?: number;
+  unavailable?: boolean;
+  leads?: Lead[];
+  error?: string;
+}> {
+  try {
+    const res = await fetch("/api/leads/crm-check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ all: true }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: data.error ?? "Check failed" };
+    return { ok: true, ...data };
+  } catch {
+    return { ok: false, error: "Network error — please try again" };
+  }
+}
+
 // ── Referrals (server-side, Postgres on Railway) ─────────────────────────
 export async function fetchReferrals(): Promise<Referral[]> {
   try {

@@ -90,6 +90,22 @@ export interface Lead {
   // this lead so we can mirror its downstream progress.
   rexContactId?: string | null;
   rexLeadId?: string | null;
+  // Archive: filed away (out of the working funnel) but never deleted.
+  // A lead with resurfaceAt set is "saved for later" — the background sync
+  // brings it back as new on that date (they said they'd be ready then).
+  archivedAt?: string | null;
+  resurfaceAt?: string | null;
+  // Result of checking this person against the brand's CRM (duplicate check
+  // — separate from pushing). found:false records "checked, not on there".
+  crmMatch?: CrmMatch | null;
+}
+
+export interface CrmMatch {
+  system: "rex" | "atlas";
+  checkedAt: string;
+  found: boolean;
+  id?: string | null; // the CRM's own contact id when found
+  matchedBy?: "email" | "phone" | "push" | null;
 }
 
 // Referral lifecycle:

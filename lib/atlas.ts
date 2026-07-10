@@ -103,6 +103,60 @@ export async function atlasPing(): Promise<{
   }
 }
 
+// Read-only duplicate check: is this person already in Atlas? Atlas's
+// documented surface is create-with-dedupe (409 on existing), so this lookup
+// is best-effort: if the people listing can't be filtered this way, we return
+// null ("couldn't check") rather than a false "not on there" — the push path
+// still dedupes regardless.
+export async function atlasFindPerson(
+  email: string,
+  phone: string
+): Promise<{ id: string | null; matchedBy: "email" | "phone" } | false | null> {
+  if (!atlasConfigured()) return null;
+  const tryQuery = async (
+    param: string,
+    value: string
+  ): Promise<{ id: string | null } | false | null> => {
+    try {
+      const res = await atlas(
+        `/api/v1/people?${param}=${encodeURIComponent(value)}`,
+        "GET"
+      );
+      if (!res.ok) return null; // endpoint/filter unsupported — unknown
+      const arr = Array.isArray(res.data?.data)
+        ? (res.data.data as Array<Record<string, unknown>>)
+        : null;
+      if (!arr) return null;
+      if (arr.length === 0) return false; // definitively not found
+      // Guard against the filter being silently ignored (a 200 with the
+      // default unfiltered listing): only trust the hit if the queried
+      // value actually appears somewhere in the returned record.
+      const first = arr[0];
+      const echoed = JSON.stringify(first)
+        .toLowerCase()
+        .includes(value.toLowerCase());
+      if (!echoed) return null; // can't trust this listing — unknown
+      const id =
+        (first?.personId as string) ?? (first?.id as string) ?? null;
+      return id ? { id } : null;
+    } catch {
+      return null;
+    }
+  };
+  let sawDefinitiveMiss = false;
+  if (email.trim()) {
+    const r = await tryQuery("email", email.trim());
+    if (r !== null && r !== false) return { ...r, matchedBy: "email" };
+    if (r === false) sawDefinitiveMiss = true;
+  }
+  if (phone.trim()) {
+    const r = await tryQuery("phone", phone.trim());
+    if (r !== null && r !== false) return { ...r, matchedBy: "phone" };
+    if (r === false) sawDefinitiveMiss = true;
+  }
+  return sawDefinitiveMiss ? false : null;
+}
+
 // Push one lead into Atlas: create the person, then attach its note.
 export async function pushLeadToAtlas(
   lead: Lead,
