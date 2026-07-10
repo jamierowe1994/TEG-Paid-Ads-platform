@@ -316,6 +316,7 @@ export default function AgentProfile({
           name?: string;
           status?: string;
           accountId?: string;
+          resolvedCampaignId?: string;
           error?: string;
         }>;
         accounts: Array<{
@@ -340,6 +341,11 @@ export default function AgentProfile({
             ? `✕ Campaign ${c.id}: ${c.error}`
             : `✓ Campaign "${c.name ?? c.id}" (${c.status ?? "?"}) lives in ${c.accountId ?? "unknown account"}`
         );
+        if (c.resolvedCampaignId) {
+          lines.push(
+            `⚠ The tagged ID ${c.id} is an ad set / ad, not a campaign — stats now follow its parent campaign ${c.resolvedCampaignId} automatically.`
+          );
+        }
       }
       for (const a of r.accounts) {
         lines.push(
@@ -673,7 +679,9 @@ export default function AgentProfile({
                             ? "text-red-600"
                             : line.startsWith("✓")
                               ? "text-green-700"
-                              : "text-gray-500"
+                              : line.startsWith("⚠")
+                                ? "text-amber-600"
+                                : "text-gray-500"
                         }`}
                       >
                         {line}

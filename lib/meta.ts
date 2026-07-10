@@ -200,7 +200,12 @@ export async function getCampaignsInfo(
   return Promise.all(
     ids.map(async (id) => {
       try {
-        const c = (await graph(id, { fields: "name,effective_status" })) as {
+        // If an ad set / ad id was pasted, show its PARENT CAMPAIGN's name —
+        // that's what the stats actually follow.
+        const { campaignId } = await resolveTaggedId(id);
+        const c = (await graph(campaignId, {
+          fields: "name,effective_status",
+        })) as {
           name?: string;
           effective_status?: string;
         };
@@ -212,13 +217,58 @@ export async function getCampaignsInfo(
   );
 }
 
-// A campaign's stats live in ITS OWN ad account, which isn't necessarily the
-// one configured for the brand (a business can run several accounts, and a
-// green-verified campaign from another account used to contribute silent
-// zeros). Resolve each campaign's account and group, so every query below
-// asks the right account. Unresolvable ids fall back to the brand's account.
-const campaignAccountCache = new Map<string, string>();
+function normaliseAct(raw: string | undefined): string | null {
+  if (!raw) return null;
+  return raw.startsWith("act_") ? raw : `act_${raw}`;
+}
 
+// People paste whatever ID Ads Manager happens to show — which, depending on
+// the tab, is an AD SET or AD id rather than the campaign's. Those read back
+// fine by id (name + ACTIVE status), so the tag verifies green, but filtering
+// ads/insights by campaign.id then matches nothing and the dashboard shows
+// silent zeros. Resolve every tagged id to its real parent campaign, plus the
+// ad account it lives in (which also isn't necessarily the brand's configured
+// one).
+const idResolveCache = new Map<
+  string,
+  { campaignId: string; account: string | null }
+>();
+
+async function resolveTaggedId(
+  id: string
+): Promise<{ campaignId: string; account: string | null }> {
+  const cached = idResolveCache.get(id);
+  if (cached) return cached;
+  let campaignId = id;
+  let account: string | null = null;
+  try {
+    // campaign_id only exists on ad sets and ads — asking a campaign for it
+    // errors, which is exactly how we tell them apart…
+    const o = (await graph(id, { fields: "account_id,campaign_id" })) as {
+      account_id?: string;
+      campaign_id?: string;
+    };
+    if (o.campaign_id) campaignId = o.campaign_id;
+    account = normaliseAct(o.account_id);
+  } catch {
+    try {
+      // …so fall back to reading it as the campaign it (hopefully) is.
+      const c = (await graph(id, { fields: "account_id" })) as {
+        account_id?: string;
+      };
+      account = normaliseAct(c.account_id);
+    } catch {
+      /* unreadable id — account stays null, brand fallback below */
+    }
+  }
+  const resolved = { campaignId, account };
+  idResolveCache.set(id, resolved);
+  return resolved;
+}
+
+// Group the (resolved) campaign ids by the ad account each one lives in, so
+// every query below asks the right account. Unresolvable ids fall back to the
+// brand's configured account.
 async function groupCampaignsByAccount(
   brandId: string,
   campaignIds: string[]
@@ -227,25 +277,11 @@ async function groupCampaignsByAccount(
   const groups = new Map<string, string[]>();
   await Promise.all(
     campaignIds.map(async (id) => {
-      let acct = campaignAccountCache.get(id) ?? null;
-      if (!acct) {
-        try {
-          const c = (await graph(id, { fields: "account_id" })) as {
-            account_id?: string;
-          };
-          if (c.account_id) {
-            acct = c.account_id.startsWith("act_")
-              ? c.account_id
-              : `act_${c.account_id}`;
-            campaignAccountCache.set(id, acct);
-          }
-        } catch {
-          /* fall through to the brand's account */
-        }
-      }
-      const key = acct ?? fallback;
+      const { campaignId, account } = await resolveTaggedId(id);
+      const key = account ?? fallback;
       if (!key) return;
-      groups.set(key, [...(groups.get(key) ?? []), id]);
+      const list = groups.get(key) ?? [];
+      if (!list.includes(campaignId)) groups.set(key, [...list, campaignId]);
     })
   );
   return groups;
@@ -458,6 +494,9 @@ export interface CampaignDiagnostics {
     name?: string;
     status?: string;
     accountId?: string;
+    // Set when the tagged id turned out to be an ad set / ad — this is the
+    // parent campaign we actually query with.
+    resolvedCampaignId?: string;
     error?: string;
   }>;
   accounts: Array<{
@@ -481,22 +520,23 @@ export async function diagnoseAgentCampaigns(
 ): Promise<CampaignDiagnostics> {
   const brandAccount = await accountId(brandId);
 
-  // Step 1: each campaign's identity + home account, straight from Meta.
+  // Step 1: each tagged id's identity + home account, straight from Meta —
+  // including whether the id is really a campaign or actually an ad set / ad
+  // (very easy to copy from the wrong Ads Manager tab; it verifies green but
+  // matches nothing when used as a campaign filter).
   const campaigns = await Promise.all(
     campaignIds.map(async (id) => {
+      const { campaignId, account } = await resolveTaggedId(id);
       try {
-        const c = (await graph(id, {
+        const c = (await graph(campaignId, {
           fields: "name,effective_status,account_id",
         })) as { name?: string; effective_status?: string; account_id?: string };
         return {
           id,
           name: c.name,
           status: c.effective_status,
-          accountId: c.account_id
-            ? c.account_id.startsWith("act_")
-              ? c.account_id
-              : `act_${c.account_id}`
-            : undefined,
+          accountId: normaliseAct(c.account_id) ?? account ?? undefined,
+          resolvedCampaignId: campaignId !== id ? campaignId : undefined,
         };
       } catch (e) {
         return { id, error: e instanceof Error ? e.message : "Meta error" };
@@ -511,7 +551,9 @@ export async function diagnoseAgentCampaigns(
   for (const c of campaigns) {
     const acc = c.accountId ?? brandAccount;
     if (!acc) continue;
-    groups.set(acc, [...(groups.get(acc) ?? []), c.id]);
+    const realId = c.resolvedCampaignId ?? c.id;
+    const list = groups.get(acc) ?? [];
+    if (!list.includes(realId)) groups.set(acc, [...list, realId]);
   }
 
   const accounts = await Promise.all(
