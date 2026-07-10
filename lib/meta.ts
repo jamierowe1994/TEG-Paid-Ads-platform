@@ -189,53 +189,66 @@ export function parseCampaignIds(raw: string | null | undefined): string[] {
     .filter(Boolean);
 }
 
-// The ad account a brand's stats are pulled from — exposed so callers can
-// check a campaign actually lives in it (a campaign from a DIFFERENT account
-// verifies fine by id but contributes zero stats, which is silently wrong).
-export async function configuredAdAccountId(
-  brandId: string
-): Promise<string | null> {
-  return accountId(brandId);
-}
-
 // Verify campaign ids against Meta — returns each one's real name + status so
 // the admin can SEE the link is right when they hit Save (a bad id comes back
-// as its error message instead). When `brandId` is given, also flags any
-// campaign that lives in a different ad account than the brand pulls from —
-// the silent stats-killer.
+// as its error message instead). `brandId` is accepted for back-compat but no
+// longer needed: stats follow each campaign to its own ad account now.
 export async function getCampaignsInfo(
   ids: string[],
-  brandId?: string
+  _brandId?: string
 ): Promise<Array<{ id: string; name?: string; status?: string; error?: string }>> {
-  const brandAccount = brandId ? await configuredAdAccountId(brandId) : null;
   return Promise.all(
     ids.map(async (id) => {
       try {
-        const c = (await graph(id, {
-          fields: "name,effective_status,account_id",
-        })) as {
+        const c = (await graph(id, { fields: "name,effective_status" })) as {
           name?: string;
           effective_status?: string;
-          account_id?: string;
         };
-        if (brandAccount && c.account_id) {
-          const campaignAccount = c.account_id.startsWith("act_")
-            ? c.account_id
-            : `act_${c.account_id}`;
-          if (campaignAccount !== brandAccount) {
-            return {
-              id,
-              name: c.name,
-              error: `"${c.name}" lives in ad account ${campaignAccount}, but this brand pulls stats from ${brandAccount} — its figures won't show.`,
-            };
-          }
-        }
         return { id, name: c.name, status: c.effective_status };
       } catch (e) {
         return { id, error: e instanceof Error ? e.message : "Meta error" };
       }
     })
   );
+}
+
+// A campaign's stats live in ITS OWN ad account, which isn't necessarily the
+// one configured for the brand (a business can run several accounts, and a
+// green-verified campaign from another account used to contribute silent
+// zeros). Resolve each campaign's account and group, so every query below
+// asks the right account. Unresolvable ids fall back to the brand's account.
+const campaignAccountCache = new Map<string, string>();
+
+async function groupCampaignsByAccount(
+  brandId: string,
+  campaignIds: string[]
+): Promise<Map<string, string[]>> {
+  const fallback = await accountId(brandId);
+  const groups = new Map<string, string[]>();
+  await Promise.all(
+    campaignIds.map(async (id) => {
+      let acct = campaignAccountCache.get(id) ?? null;
+      if (!acct) {
+        try {
+          const c = (await graph(id, { fields: "account_id" })) as {
+            account_id?: string;
+          };
+          if (c.account_id) {
+            acct = c.account_id.startsWith("act_")
+              ? c.account_id
+              : `act_${c.account_id}`;
+            campaignAccountCache.set(id, acct);
+          }
+        } catch {
+          /* fall through to the brand's account */
+        }
+      }
+      const key = acct ?? fallback;
+      if (!key) return;
+      groups.set(key, [...(groups.get(key) ?? []), id]);
+    })
+  );
+  return groups;
 }
 
 export interface CampaignSnapshot {
@@ -246,38 +259,48 @@ export interface CampaignSnapshot {
   datePreset: string;
 }
 
-// Per-AGENT stats: insights for just their campaign(s) within the brand's ad
-// account — this is what feeds the customer's own dashboard numbers.
+// Per-AGENT stats: insights for just their campaign(s), each queried in the
+// ad account it actually lives in — this feeds the customer's own dashboard
+// numbers. One unreachable account doesn't zero out the rest.
 export async function getCampaignSnapshot(
   brandId: string,
   campaignIds: string[],
   datePreset = "last_30d"
 ): Promise<CampaignSnapshot | null> {
-  const acc = await accountId(brandId);
-  if (!acc || campaignIds.length === 0) return null;
-
-  const insights = (await graph(`${acc}/insights`, {
-    level: "campaign",
-    fields: "impressions,clicks,spend,actions",
-    date_preset: datePreset,
-    filtering: JSON.stringify([
-      { field: "campaign.id", operator: "IN", value: campaignIds },
-    ]),
-    limit: "100",
-  })) as { data?: Array<Record<string, unknown>> };
+  if (campaignIds.length === 0) return null;
+  const groups = await groupCampaignsByAccount(brandId, campaignIds);
+  if (groups.size === 0) return null;
 
   let impressions = 0;
   let clicks = 0;
   let spend = 0;
   let leads = 0;
-  for (const row of insights.data ?? []) {
-    impressions += Number(row.impressions ?? 0);
-    clicks += Number(row.clicks ?? 0);
-    spend += Number(row.spend ?? 0);
-    leads += countLeads(
-      (row.actions as Array<{ action_type: string; value: string }>) ?? []
-    );
-  }
+  await Promise.all(
+    [...groups.entries()].map(async ([acc, ids]) => {
+      try {
+        const insights = (await graph(`${acc}/insights`, {
+          level: "campaign",
+          fields: "impressions,clicks,spend,actions",
+          date_preset: datePreset,
+          filtering: JSON.stringify([
+            { field: "campaign.id", operator: "IN", value: ids },
+          ]),
+          limit: "100",
+        })) as { data?: Array<Record<string, unknown>> };
+        for (const row of insights.data ?? []) {
+          impressions += Number(row.impressions ?? 0);
+          clicks += Number(row.clicks ?? 0);
+          spend += Number(row.spend ?? 0);
+          leads += countLeads(
+            (row.actions as Array<{ action_type: string; value: string }>) ??
+              []
+          );
+        }
+      } catch {
+        /* skip this account's contribution rather than failing the lot */
+      }
+    })
+  );
   return { impressions, clicks, spend, leads, datePreset };
 }
 
@@ -290,31 +313,44 @@ export interface AgentAd {
 
 // Every ad inside the agent's tagged campaign(s), with each creative's image
 // — feeds the overview's rotating "Current ad" tile and the All Ads gallery.
-// Best-effort: returns [] rather than throwing; a missing thumbnail just
-// leaves that ad's imageUrl null. Active ads first, capped at 12.
+// Queries each campaign's OWN ad account. Best-effort: returns [] rather than
+// throwing; a missing thumbnail just leaves that ad's imageUrl null. Active
+// ads first, capped at 12.
 export async function getAdsWithCreatives(
   brandId: string,
   campaignIds: string[]
 ): Promise<AgentAd[]> {
   try {
-    const acc = await accountId(brandId);
-    if (!acc || campaignIds.length === 0) return [];
+    if (campaignIds.length === 0) return [];
+    const groups = await groupCampaignsByAccount(brandId, campaignIds);
+    if (groups.size === 0) return [];
 
-    const ads = (await graph(`${acc}/ads`, {
-      fields: "name,effective_status,creative{id}",
-      filtering: JSON.stringify([
-        { field: "campaign.id", operator: "IN", value: campaignIds },
-      ]),
-      limit: "25",
-    })) as {
-      data?: Array<{
-        id?: string;
-        name?: string;
-        effective_status?: string;
-        creative?: { id?: string };
-      }>;
-    };
-    const list = (ads.data ?? [])
+    const perAccount = await Promise.all(
+      [...groups.entries()].map(async ([acc, ids]) => {
+        try {
+          const ads = (await graph(`${acc}/ads`, {
+            fields: "name,effective_status,creative{id}",
+            filtering: JSON.stringify([
+              { field: "campaign.id", operator: "IN", value: ids },
+            ]),
+            limit: "25",
+          })) as {
+            data?: Array<{
+              id?: string;
+              name?: string;
+              effective_status?: string;
+              creative?: { id?: string };
+            }>;
+          };
+          return ads.data ?? [];
+        } catch {
+          return [];
+        }
+      })
+    );
+
+    const list = perAccount
+      .flat()
       .filter((a) => a.id)
       .sort((a, b) =>
         a.effective_status === "ACTIVE" && b.effective_status !== "ACTIVE"
@@ -362,40 +398,51 @@ export interface AdFigures {
 }
 
 // Per-ad figures for the agent's campaigns — keyed by ad id so the gallery
-// can pair each thumbnail with its own numbers.
+// can pair each thumbnail with its own numbers. Queries each campaign's OWN
+// ad account.
 export async function getAdInsightsByAd(
   brandId: string,
   campaignIds: string[],
   datePreset = "last_30d"
 ): Promise<Record<string, AdFigures>> {
-  const acc = await accountId(brandId);
-  if (!acc || campaignIds.length === 0) return {};
-  const data = (await graph(`${acc}/insights`, {
-    level: "ad",
-    fields: "ad_id,impressions,clicks,spend,actions",
-    date_preset: datePreset,
-    filtering: JSON.stringify([
-      { field: "campaign.id", operator: "IN", value: campaignIds },
-    ]),
-    limit: "100",
-  })) as { data?: Array<Record<string, unknown>> };
+  if (campaignIds.length === 0) return {};
+  const groups = await groupCampaignsByAccount(brandId, campaignIds);
+  if (groups.size === 0) return {};
 
   const out: Record<string, AdFigures> = {};
-  for (const row of data.data ?? []) {
-    const id = String(row.ad_id ?? "");
-    if (!id) continue;
-    const leads = countLeads(
-      (row.actions as Array<{ action_type: string; value: string }>) ?? []
-    );
-    const spend = Number(row.spend ?? 0);
-    out[id] = {
-      impressions: Number(row.impressions ?? 0),
-      clicks: Number(row.clicks ?? 0),
-      spend,
-      leads,
-      cpl: leads > 0 ? spend / leads : null,
-    };
-  }
+  await Promise.all(
+    [...groups.entries()].map(async ([acc, ids]) => {
+      try {
+        const data = (await graph(`${acc}/insights`, {
+          level: "ad",
+          fields: "ad_id,impressions,clicks,spend,actions",
+          date_preset: datePreset,
+          filtering: JSON.stringify([
+            { field: "campaign.id", operator: "IN", value: ids },
+          ]),
+          limit: "100",
+        })) as { data?: Array<Record<string, unknown>> };
+        for (const row of data.data ?? []) {
+          const id = String(row.ad_id ?? "");
+          if (!id) continue;
+          const leads = countLeads(
+            (row.actions as Array<{ action_type: string; value: string }>) ??
+              []
+          );
+          const spend = Number(row.spend ?? 0);
+          out[id] = {
+            impressions: Number(row.impressions ?? 0),
+            clicks: Number(row.clicks ?? 0),
+            spend,
+            leads,
+            cpl: leads > 0 ? spend / leads : null,
+          };
+        }
+      } catch {
+        /* skip this account rather than failing the lot */
+      }
+    })
+  );
   return out;
 }
 
