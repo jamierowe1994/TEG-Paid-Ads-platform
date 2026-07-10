@@ -419,15 +419,31 @@ export default function DashboardOverview() {
                 alt={myCreatives[creativeIdx % myCreatives.length].adName}
                 className="absolute inset-0 h-full w-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/30" />
-              <div className="absolute inset-x-0 bottom-0 p-5 pb-7">
-                <p className="truncate font-semibold">
-                  {myCreatives[creativeIdx % myCreatives.length].adName}
-                </p>
-                <p className="text-xs text-white/70">
-                  £{pkg?.adSpend?.toLocaleString("en-GB")}/mo
-                </p>
-              </div>
+            </div>
+            {/* Fixed scrim — doesn't rotate with the ad: a soft blur that
+                gradates out upwards plus a dark fade, so the ad name stays
+                readable over whatever creative is behind it */}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/5 to-black/30" />
+            <div
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-32 backdrop-blur-md"
+              style={{
+                maskImage:
+                  "linear-gradient(to top, black 35%, transparent 100%)",
+                WebkitMaskImage:
+                  "linear-gradient(to top, black 35%, transparent 100%)",
+              }}
+            />
+            {/* The name fades with each rotation, above the fixed scrim */}
+            <div
+              key={`label-${creativeIdx}`}
+              className="fade-up absolute inset-x-0 bottom-0 p-5 pb-7"
+            >
+              <p className="truncate font-semibold">
+                {myCreatives[creativeIdx % myCreatives.length].adName}
+              </p>
+              <p className="text-xs text-white/70">
+                £{pkg?.adSpend?.toLocaleString("en-GB")}/mo
+              </p>
             </div>
             <div className="absolute inset-x-0 top-0 flex items-start justify-between p-5">
               <span className="rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide backdrop-blur">
