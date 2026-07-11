@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getUser, updateProfile } from "@/lib/session";
+import {
+  getUser,
+  refreshUser,
+  updateProfile,
+  disconnectMicrosoft,
+} from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
 import { packageById } from "@/lib/packages";
 import type { UserProfile } from "@/lib/types";
@@ -12,6 +17,7 @@ export default function ProfilePage() {
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
   const [toast, setToast] = useState("");
+  const [disconnecting, setDisconnecting] = useState(false);
 
   useEffect(() => {
     const u = getUser();
@@ -20,6 +26,32 @@ export default function ProfilePage() {
     setBrand(brandById(u.brandId) ?? null);
     setName(u.name);
     setMobile(u.mobile);
+    // Coming back from the Microsoft consent redirect: the cached user is
+    // stale (the connection just changed server-side) — refresh, and turn
+    // the query params into a friendly toast.
+    const params = new URLSearchParams(window.location.search);
+    const emailResult = params.get("email");
+    if (emailResult) {
+      refreshUser().then((fresh) => fresh && setUser(fresh));
+      const crm = params.get("crm");
+      const msg =
+        emailResult === "connected"
+          ? crm === "matched"
+            ? "Email connected ✓ — and matched to your CRM account"
+            : crm === "nomatch"
+              ? "Email connected ✓ (no CRM account found for this address yet)"
+              : crm === "differentemail"
+                ? "Email connected ✓ — heads up: it's a different address to the one you signed up with"
+                : "Email connected ✓"
+          : emailResult === "inuse"
+            ? "That mailbox is already connected to another account on the portal."
+            : emailResult === "notconfigured"
+              ? "Email isn't switched on for the portal yet — we're on it."
+              : "Couldn't connect your email — please try again.";
+      setToast(msg);
+      setTimeout(() => setToast(""), 6000);
+      window.history.replaceState({}, "", "/dashboard/profile");
+    }
   }, []);
 
   if (!user || !brand) return null;
@@ -118,6 +150,65 @@ export default function ProfilePage() {
             Save changes
           </button>
         </div>
+      </section>
+
+      {/* Email sending — connect the agent's own Microsoft mailbox so lead
+          emails go out as them (and land in their Sent items). */}
+      <section className="mt-6 rounded-2xl border border-gray-200 shadow-sm p-6">
+        <h2 className="font-semibold">Email sending</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Connect your work email to send lead emails straight from the
+          portal — they go out from your own address.
+        </p>
+        {user.msEmail ? (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-green-50 p-4">
+            <div>
+              <p className="text-sm font-medium text-green-800">
+                ✓ Connected as {user.msEmail}
+              </p>
+              {user.msConnectedAt && (
+                <p className="mt-0.5 text-xs text-green-700/70">
+                  since{" "}
+                  {new Date(user.msConnectedAt).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </p>
+              )}
+            </div>
+            <button
+              disabled={disconnecting}
+              onClick={async () => {
+                setDisconnecting(true);
+                const next = await disconnectMicrosoft();
+                setDisconnecting(false);
+                if (next) {
+                  setUser(next);
+                  setToast("Email disconnected");
+                  setTimeout(() => setToast(""), 3000);
+                }
+              }}
+              className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-xs font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+            >
+              {disconnecting ? "Disconnecting…" : "Disconnect"}
+            </button>
+          </div>
+        ) : (
+          <a
+            href="/api/auth/microsoft/start"
+            className="mt-4 inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
+            style={{ backgroundColor: brand.accent }}
+          >
+            <svg viewBox="0 0 21 21" className="h-4 w-4" aria-hidden>
+              <rect x="1" y="1" width="9" height="9" fill="#fff" opacity="0.9" />
+              <rect x="11" y="1" width="9" height="9" fill="#fff" opacity="0.7" />
+              <rect x="1" y="11" width="9" height="9" fill="#fff" opacity="0.7" />
+              <rect x="11" y="11" width="9" height="9" fill="#fff" opacity="0.5" />
+            </svg>
+            Connect with Microsoft
+          </a>
+        )}
       </section>
 
       <section className="mt-6 rounded-2xl border border-gray-200 shadow-sm p-6">

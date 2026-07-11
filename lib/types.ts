@@ -44,6 +44,11 @@ export interface UserProfile {
   campaignApproved?: boolean;
   campaignFeedback?: AdminNote[];
   campaignAssets?: CampaignAsset[]; // creatives the team produced for review
+  // Microsoft 365 email connection (agent grants Mail.Send via OAuth). The
+  // refresh token itself lives ONLY on the server-side StoredUser record —
+  // these two fields are the safe-to-show status.
+  msEmail?: string | null; // the connected mailbox's address
+  msConnectedAt?: string | null;
 }
 
 // Lead funnel stages. Progressive: each stage reveals the next relevant

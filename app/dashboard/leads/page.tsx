@@ -13,6 +13,7 @@ import {
   archiveLeads,
   snoozeLeadUntil,
   crmCheckAllLeads,
+  sendLeadEmail,
 } from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
 import { packageById } from "@/lib/packages";
@@ -203,6 +204,7 @@ const RANGES: { id: TimeRange; label: string; days?: number }[] = [
 
 export default function LeadsPage() {
   const [brand, setBrand] = useState<Brand | null>(null);
+  const [emailConnected, setEmailConnected] = useState(false);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [adSpend, setAdSpend] = useState(0);
   const [monthlyCost, setMonthlyCost] = useState(0);
@@ -222,6 +224,7 @@ export default function LeadsPage() {
     const u = getUser();
     if (!u) return;
     setBrand(brandById(u.brandId) ?? null);
+    setEmailConnected(!!u.msEmail);
     const pkg = packageById(u.packageId);
     setAdSpend(pkg?.adSpend ?? 0);
     setMonthlyCost(pkg?.price ?? 0);
@@ -758,6 +761,16 @@ export default function LeadsPage() {
           onSnooze={async (until, reason) => {
             const ok = await snooze(open, until, reason);
             if (ok) setOpenId(null);
+          }}
+          emailConnected={emailConnected}
+          onSendEmail={async (subject, body) => {
+            const res = await sendLeadEmail(open.id, subject, body);
+            if (res.ok && res.lead) {
+              setLeads((prev) =>
+                prev.map((l) => (l.id === res.lead!.id ? res.lead! : l))
+              );
+            }
+            return { ok: res.ok, error: res.error };
           }}
         />
       )}

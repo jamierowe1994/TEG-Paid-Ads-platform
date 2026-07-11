@@ -120,6 +120,8 @@ export function LeadModal({
   onRexReset,
   onArchive,
   onSnooze,
+  emailConnected,
+  onSendEmail,
 }: {
   lead: Lead;
   brand: Brand;
@@ -136,6 +138,13 @@ export function LeadModal({
   onArchive?: (archived: boolean) => Promise<void>;
   // "Save for a later date" — archive with a comeback date.
   onSnooze?: (until: string, reason: string) => Promise<void>;
+  // Real email sending (Microsoft mailbox connected) — absent/false keeps
+  // the draft-only behaviour.
+  emailConnected?: boolean;
+  onSendEmail?: (
+    subject: string,
+    body: string
+  ) => Promise<{ ok: boolean; error?: string }>;
 }) {
   const [showTimeline, setShowTimeline] = useState(false);
   const [lostStep, setLostStep] = useState<
@@ -169,6 +178,7 @@ export function LeadModal({
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
   const [emailToast, setEmailToast] = useState("");
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   const firstName = lead.name.split(" ")[0] || "there";
   const events = [
@@ -520,15 +530,34 @@ export function LeadModal({
             <BigBtn
               primary
               accent={brand.accent}
-              disabled={!emailSubject.trim() || !emailBody.trim()}
-              onClick={() => {
-                setEmailToast(
-                  "Draft ready ✓ — sending from the portal switches on with Azure email."
+              disabled={!emailSubject.trim() || !emailBody.trim() || sendingEmail}
+              onClick={async () => {
+                // Real send once the agent's mailbox is connected; a helpful
+                // pointer to the connect step until then.
+                if (!emailConnected || !onSendEmail) {
+                  setEmailToast(
+                    "Draft ready ✓ — connect your email (Profile → Email sending) to send from here."
+                  );
+                  setTimeout(() => setEmailToast(""), 5000);
+                  return;
+                }
+                setSendingEmail(true);
+                const res = await onSendEmail(
+                  emailSubject.trim(),
+                  emailBody.trim()
                 );
-                setTimeout(() => setEmailToast(""), 4000);
+                setSendingEmail(false);
+                if (res.ok) {
+                  setEmailSubject("");
+                  setEmailBody("");
+                  setEmailToast("Sent ✓ — from your own address (it's in your Sent items too).");
+                } else {
+                  setEmailToast(res.error ?? "Couldn't send — please try again.");
+                }
+                setTimeout(() => setEmailToast(""), 6000);
               }}
             >
-              Send email
+              {sendingEmail ? "Sending…" : "Send email"}
             </BigBtn>
             {emailToast && (
               <p className="mt-2 text-center text-xs text-gray-500">{emailToast}</p>

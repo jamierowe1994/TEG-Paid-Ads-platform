@@ -103,6 +103,26 @@ export async function atlasPing(): Promise<{
   }
 }
 
+// Is this email one of the agency's Atlas users? Used when an agent connects
+// their mailbox — pushes are attributed by email, so knowing up front whether
+// theirs will land in their own name (vs the fallback) is worth surfacing.
+// Best-effort: null = couldn't check.
+export async function atlasHasUser(email: string): Promise<boolean | null> {
+  if (!atlasConfigured() || !email.trim()) return null;
+  try {
+    const res = await atlas("/api/v1/users", "GET");
+    if (!res.ok) return null;
+    const arr = Array.isArray(res.data?.data) ? (res.data.data as unknown[]) : null;
+    if (!arr) return null;
+    const needle = email.trim().toLowerCase();
+    return arr.some((u) =>
+      JSON.stringify(u).toLowerCase().includes(needle)
+    );
+  } catch {
+    return null;
+  }
+}
+
 // Read-only duplicate check: is this person already in Atlas? Atlas's
 // documented surface is create-with-dedupe (409 on existing), so this lookup
 // is best-effort: if the people listing can't be filtered this way, we return

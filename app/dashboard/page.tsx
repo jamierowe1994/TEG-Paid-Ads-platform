@@ -12,6 +12,7 @@ import {
   addLeadNote,
   bookLeadAppointment,
   cancelLeadAppointment,
+  sendLeadEmail,
 } from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
 import { getPreviewBrandId, getPreviewAccent } from "@/lib/preview";
@@ -103,6 +104,21 @@ export default function DashboardOverview() {
     Array<{ adName: string; imageUrl: string }>
   >([]);
   const [creativeIdx, setCreativeIdx] = useState(0);
+  // "Connect your email" nudge — part of getting set up, but always
+  // skippable ("later" is remembered per user), and always available again
+  // from Profile → Email sending.
+  const [emailPromptHidden, setEmailPromptHidden] = useState(true);
+  useEffect(() => {
+    if (!user) return;
+    try {
+      setEmailPromptHidden(
+        !!localStorage.getItem(`email-prompt-later-${user.id}`)
+      );
+    } catch {
+      setEmailPromptHidden(false);
+    }
+  }, [user]);
+
   // The going-live confetti fires ONCE per user (first visit after the
   // campaign goes live), not on every page load — tracked in localStorage.
   const [celebrateLive, setCelebrateLive] = useState(false);
@@ -344,6 +360,51 @@ export default function DashboardOverview() {
           ))}
         </div>
       </div>
+
+      {/* Connect-your-email nudge — the setup step for sending lead emails
+          from the portal. Skippable, and lives on in Profile settings. */}
+      {!user.msEmail && !emailPromptHidden && (
+        <section className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-gray-200 bg-white/70 p-5 backdrop-blur-xl">
+          <div className="flex items-center gap-4">
+            <span
+              className="flex h-11 w-11 items-center justify-center rounded-2xl text-lg"
+              style={{ backgroundColor: `${brand.accent}1a` }}
+            >
+              ✉️
+            </span>
+            <div>
+              <p className="font-semibold">Connect your email</p>
+              <p className="text-sm text-gray-500">
+                Sign in with your work email once — lead emails then send from
+                your own address, and we'll link up your CRM account
+                automatically.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <a
+              href="/api/auth/microsoft/start"
+              className="rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+              style={{ backgroundColor: brand.accent }}
+            >
+              Connect with Microsoft
+            </a>
+            <button
+              onClick={() => {
+                setEmailPromptHidden(true);
+                try {
+                  localStorage.setItem(`email-prompt-later-${user.id}`, "1");
+                } catch {
+                  /* it'll just show again next visit */
+                }
+              }}
+              className="rounded-xl px-3 py-2.5 text-sm font-medium text-gray-400 hover:text-gray-600"
+            >
+              Later
+            </button>
+          </div>
+        </section>
+      )}
 
       {/* Campaign review — the customer just SEES their creatives here (no
           sign-off needed); they can send feedback if something's off. */}
@@ -935,6 +996,16 @@ export default function DashboardOverview() {
           onBook={(at) => overviewBook(openLead.id, at)}
           onCancelBooking={() => overviewCancel(openLead.id)}
           onRexReset={() => overviewRexReset(openLead)}
+          emailConnected={!!user.msEmail}
+          onSendEmail={async (subject, body) => {
+            const res = await sendLeadEmail(openLead.id, subject, body);
+            if (res.ok && res.lead) {
+              setLeads((prev) =>
+                prev.map((l) => (l.id === res.lead!.id ? res.lead! : l))
+              );
+            }
+            return { ok: res.ok, error: res.error };
+          }}
         />
       )}
     </div>

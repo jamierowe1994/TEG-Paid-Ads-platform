@@ -258,6 +258,39 @@ export async function snoozeLeadUntil(
   }
 }
 
+// Send a real email to a lead from the agent's connected Microsoft mailbox.
+export async function sendLeadEmail(
+  leadId: string,
+  subject: string,
+  body: string
+): Promise<{ ok: boolean; lead?: Lead; error?: string }> {
+  try {
+    const res = await fetch("/api/leads/email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ leadId, subject, body }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: data.error ?? "Send failed" };
+    return { ok: true, lead: data.lead as Lead };
+  } catch {
+    return { ok: false, error: "Network error — please try again" };
+  }
+}
+
+// Drop the agent's Microsoft mailbox connection.
+export async function disconnectMicrosoft(): Promise<UserProfile | null> {
+  try {
+    const res = await fetch("/api/auth/microsoft/disconnect", { method: "POST" });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.user) saveUser(data.user as UserProfile);
+    return (data.user as UserProfile) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // Duplicate-check every unchecked lead against the brand's CRM. Returns the
 // refreshed list plus how many checks ran / matched.
 export async function crmCheckAllLeads(): Promise<{

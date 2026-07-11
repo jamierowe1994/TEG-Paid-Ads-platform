@@ -13,20 +13,22 @@ import type { UserProfile } from "./types";
 
 const FILE = path.join(DATA_DIR, "users.json");
 
-// Stored record = public profile + the password hash (never sent to client).
+// Stored record = public profile + secrets that must NEVER reach a client:
+// the password hash and the Microsoft refresh token.
 export interface StoredUser extends UserProfile {
   passwordHash: string;
+  msRefreshToken?: string | null;
 }
 
-// Agent-facing: strip the password hash AND internal admin notes.
+// Agent-facing: strip the secrets AND internal admin notes.
 export function toPublic(user: StoredUser): UserProfile {
-  const { passwordHash: _pw, adminNotes: _notes, ...pub } = user;
+  const { passwordHash: _pw, msRefreshToken: _ms, adminNotes: _notes, ...pub } = user;
   return pub;
 }
 
-// Admin-facing: strip only the password hash (keeps notes, location, stage).
+// Admin-facing: strip only the secrets (keeps notes, location, stage).
 export function toAdmin(user: StoredUser): UserProfile {
-  const { passwordHash: _pw, ...rest } = user;
+  const { passwordHash: _pw, msRefreshToken: _ms, ...rest } = user;
   return rest;
 }
 
@@ -46,6 +48,9 @@ interface UserRow {
   password_hash: string;
   meta_campaign_id: string | null;
   rex_user_id: string | null;
+  ms_email: string | null;
+  ms_connected_at: string | Date | null;
+  ms_refresh_token: string | null;
   location: string | null;
   onboarding_stage: string | null;
   admin_notes: unknown;
@@ -72,6 +77,11 @@ function fromRow(row: UserRow): StoredUser {
     passwordHash: row.password_hash,
     metaCampaignId: row.meta_campaign_id,
     rexUserId: row.rex_user_id,
+    msEmail: row.ms_email ?? null,
+    msConnectedAt: row.ms_connected_at
+      ? new Date(row.ms_connected_at).toISOString()
+      : null,
+    msRefreshToken: row.ms_refresh_token ?? null,
     location: row.location,
     onboardingStage:
       (row.onboarding_stage as StoredUser["onboardingStage"]) ?? "signed_up",
@@ -172,7 +182,8 @@ export async function updateUser(
          goal = $7, package_id = $8, paid = $9, password_hash = $10,
          meta_campaign_id = $11, location = $12, onboarding_stage = $13,
          admin_notes = $14, campaign_approved = $15, campaign_feedback = $16,
-         campaign_assets = $17, rex_user_id = $18
+         campaign_assets = $17, rex_user_id = $18,
+         ms_email = $19, ms_connected_at = $20, ms_refresh_token = $21
        WHERE id = $1`,
       [
         next.id,
@@ -193,6 +204,9 @@ export async function updateUser(
         JSON.stringify(next.campaignFeedback ?? []),
         JSON.stringify(next.campaignAssets ?? []),
         next.rexUserId ?? null,
+        next.msEmail ?? null,
+        next.msConnectedAt ?? null,
+        next.msRefreshToken ?? null,
       ]
     );
     return next;
@@ -203,6 +217,82 @@ export async function updateUser(
   all[idx] = { ...all[idx], ...patch, id: all[idx].id };
   await writeAllFile(all);
   return all[idx];
+}
+
+// ── Microsoft connection (column-scoped writes) ──────────────────────────
+// These deliberately bypass updateUser's whole-record read-merge-write: a
+// full-row rewrite racing a disconnect can resurrect a "revoked" token.
+
+// Is this mailbox already connected to a DIFFERENT portal user?
+export async function findByMsEmail(
+  email: string
+): Promise<StoredUser | undefined> {
+  const needle = email.trim().toLowerCase();
+  if (!needle) return undefined;
+  if (hasDb()) {
+    const rows = await q<UserRow>(
+      "SELECT * FROM users WHERE LOWER(ms_email) = $1 LIMIT 1",
+      [needle]
+    );
+    return rows[0] ? fromRow(rows[0]) : undefined;
+  }
+  return (await readAllFile()).find(
+    (u) => (u.msEmail ?? "").toLowerCase() === needle
+  );
+}
+
+// Set or clear the whole Microsoft connection — touches ONLY the ms_ columns.
+export async function setMsConnection(
+  userId: string,
+  conn: { email: string; connectedAt: string; refreshToken: string } | null
+): Promise<void> {
+  if (hasDb()) {
+    await q(
+      `UPDATE users SET ms_email = $2, ms_connected_at = $3, ms_refresh_token = $4
+        WHERE id = $1`,
+      [
+        userId,
+        conn?.email ?? null,
+        conn?.connectedAt ?? null,
+        conn?.refreshToken ?? null,
+      ]
+    );
+    return;
+  }
+  const all = await readAllFile();
+  const idx = all.findIndex((u) => u.id === userId);
+  if (idx === -1) return;
+  all[idx] = {
+    ...all[idx],
+    msEmail: conn?.email ?? null,
+    msConnectedAt: conn?.connectedAt ?? null,
+    msRefreshToken: conn?.refreshToken ?? null,
+  };
+  await writeAllFile(all);
+}
+
+// Compare-and-swap for refresh-token rotation: only persists the new token
+// if the stored one is still the one we rotated FROM. A disconnect (NULL) or
+// a newer rotation wins — we never resurrect a revoked connection.
+export async function rotateMsRefreshToken(
+  userId: string,
+  oldToken: string,
+  newToken: string
+): Promise<boolean> {
+  if (hasDb()) {
+    const rows = await q<{ id: string }>(
+      `UPDATE users SET ms_refresh_token = $3
+        WHERE id = $1 AND ms_refresh_token = $2 RETURNING id`,
+      [userId, oldToken, newToken]
+    );
+    return rows.length > 0;
+  }
+  const all = await readAllFile();
+  const idx = all.findIndex((u) => u.id === userId);
+  if (idx === -1 || all[idx].msRefreshToken !== oldToken) return false;
+  all[idx] = { ...all[idx], msRefreshToken: newToken };
+  await writeAllFile(all);
+  return true;
 }
 
 // Admin listing — full records (with notes/location/stage), newest first.
