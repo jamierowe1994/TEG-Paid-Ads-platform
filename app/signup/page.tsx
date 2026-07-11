@@ -7,7 +7,7 @@ import { BRANDS, brandForEmail, EXPERTS_GROUP, type Brand } from "@/lib/brands";
 import { PACKAGES, packageById } from "@/lib/packages";
 import BrandMark from "@/components/BrandMark";
 import PasswordInput from "@/components/PasswordInput";
-import { signUp } from "@/lib/session";
+import { signUp, checkEmail } from "@/lib/session";
 
 // One-question-at-a-time signup. Order:
 // name → email (brand auto-detect) → password → mobile → photo → platforms
@@ -50,6 +50,10 @@ function SignupWizard() {
   );
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // Set when the entered email already has an account — the email step swaps
+  // to a "you're already with us, sign in" card instead of pressing on.
+  const [alreadyRegistered, setAlreadyRegistered] = useState(false);
+  const [checkingEmail, setCheckingEmail] = useState(false);
 
   const steps: StepId[] = useMemo(
     () => [
@@ -78,10 +82,19 @@ function SignupWizard() {
     if (stepIndex > 0) go(steps[stepIndex - 1]);
   }
 
-  function submitEmail() {
+  async function submitEmail() {
     const trimmed = email.trim().toLowerCase();
     if (!/^\S+@\S+\.\S+$/.test(trimmed)) {
       setError("That doesn't look like an email address.");
+      return;
+    }
+    if (checkingEmail) return;
+    // Catch a returning user HERE, not after they've filled the whole form.
+    setCheckingEmail(true);
+    const { exists } = await checkEmail(trimmed);
+    setCheckingEmail(false);
+    if (exists) {
+      setAlreadyRegistered(true);
       return;
     }
     const detected = brandForEmail(trimmed);
@@ -123,11 +136,22 @@ function SignupWizard() {
       packageId,
     });
     if (error) {
-      setError(error);
       setSubmitting(false);
-      // Send the user back to fix a duplicate email / weak password.
-      if (/email/i.test(error)) go("email");
-      else if (/password/i.test(error)) go("password");
+      // Send the user back to fix a duplicate email / weak password. A
+      // duplicate (they registered in another tab mid-wizard) gets the
+      // friendly "sign in instead" card rather than a bare error.
+      if (/already exists/i.test(error)) {
+        setAlreadyRegistered(true);
+        go("email");
+      } else if (/email/i.test(error)) {
+        setError(error);
+        go("email");
+      } else if (/password/i.test(error)) {
+        setError(error);
+        go("password");
+      } else {
+        setError(error);
+      }
       return;
     }
     router.push("/dashboard");
@@ -194,7 +218,7 @@ function SignupWizard() {
         )}
 
         {/* ---- Email (brand detection) ---- */}
-        {step === "email" && (
+        {step === "email" && !alreadyRegistered && (
           <div className="fade-up" key="email">
             <h1 className="text-3xl font-semibold tracking-tight">
               What's your work email, {name.split(" ")[0]}?
@@ -210,7 +234,9 @@ function SignupWizard() {
               placeholder="you@thepropertyexperts.co.uk"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && email && submitEmail()}
+              onKeyDown={(e) =>
+                e.key === "Enter" && email && !checkingEmail && submitEmail()
+              }
             />
             {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
             <div className="mt-8 flex gap-3">
@@ -222,10 +248,45 @@ function SignupWizard() {
               </button>
               <button
                 className={primaryBtn}
-                disabled={!email}
+                disabled={!email || checkingEmail}
                 onClick={submitEmail}
               >
-                Continue
+                {checkingEmail ? "Checking…" : "Continue"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ---- Already registered — recognise them and send to sign-in ---- */}
+        {step === "email" && alreadyRegistered && (
+          <div className="fade-up" key="already">
+            <h1 className="text-3xl font-semibold tracking-tight">
+              Welcome back, {name.split(" ")[0]} 👋
+            </h1>
+            <p className="mt-3 text-gray-500">
+              You&apos;ve already got an account with{" "}
+              <span className="font-medium text-gray-700">
+                {email.trim().toLowerCase()}
+              </span>
+              . No need to sign up again — just sign in.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link
+                href={`/login?email=${encodeURIComponent(
+                  email.trim().toLowerCase()
+                )}`}
+                className={primaryBtn}
+              >
+                Sign in instead
+              </Link>
+              <button
+                className="rounded-xl border border-gray-200 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                onClick={() => {
+                  setAlreadyRegistered(false);
+                  setEmail("");
+                }}
+              >
+                Use a different email
               </button>
             </div>
           </div>

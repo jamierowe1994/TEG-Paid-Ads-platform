@@ -76,6 +76,25 @@ export async function signUp(payload: {
   return { user: data.user };
 }
 
+// Is this email already registered? Lets the signup wizard catch a returning
+// user at the email step. Fails open (exists:false) on a network hiccup so a
+// blip never blocks a genuine new signup — the backend still 409s at submit.
+export async function checkEmail(
+  email: string
+): Promise<{ exists: boolean; allowed: boolean }> {
+  try {
+    const res = await fetch("/api/auth/check-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) return { exists: false, allowed: true };
+    return (await res.json()) as { exists: boolean; allowed: boolean };
+  } catch {
+    return { exists: false, allowed: true };
+  }
+}
+
 export async function logIn(
   email: string,
   password: string,

@@ -1,16 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { logIn } from "@/lib/session";
 import { EXPERTS_GROUP } from "@/lib/brands";
 import BrandMark from "@/components/BrandMark";
 import PasswordInput from "@/components/PasswordInput";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const params = useSearchParams();
+  // Prefilled when handed over from signup ("you already have an account").
+  const prefilled = params.get("email") ?? "";
+  const [email, setEmail] = useState(prefilled);
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
   const [error, setError] = useState("");
@@ -56,7 +59,7 @@ export default function LoginPage() {
           Sign in with your work email
         </p>
         <input
-          autoFocus
+          autoFocus={!prefilled}
           type="email"
           className="mt-8 w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-gray-900 focus:ring-4 focus:ring-gray-100"
           placeholder="you@thepropertyexperts.co.uk"
@@ -66,6 +69,7 @@ export default function LoginPage() {
         />
         <div className="mt-3">
           <PasswordInput
+            autoFocus={!!prefilled}
             className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-gray-900 focus:ring-4 focus:ring-gray-100"
             placeholder="Password"
             value={password}
@@ -98,5 +102,13 @@ export default function LoginPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }
