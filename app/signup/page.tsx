@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { BRANDS, brandForEmail, EXPERTS_GROUP, type Brand } from "@/lib/brands";
 import { PACKAGES, packageById } from "@/lib/packages";
@@ -23,7 +23,8 @@ type StepId =
   | "platforms"
   | "goal"
   | "package"
-  | "payment";
+  | "payment"
+  | "authenticate";
 
 const GOALS = [
   "More valuations / appraisals",
@@ -33,7 +34,6 @@ const GOALS = [
 ];
 
 function SignupWizard() {
-  const router = useRouter();
   const params = useSearchParams();
 
   const [step, setStep] = useState<StepId>("name");
@@ -67,6 +67,7 @@ function SignupWizard() {
       "goal",
       "package",
       "payment",
+      "authenticate",
     ],
     [brand]
   );
@@ -154,7 +155,11 @@ function SignupWizard() {
       }
       return;
     }
-    router.push("/dashboard");
+    // Account created + signed in — now the mandatory email authentication
+    // step. The OAuth needs a session, which we now have, so it must come
+    // after account creation.
+    setSubmitting(false);
+    go("authenticate");
   }
 
   const inputClass =
@@ -671,6 +676,46 @@ function SignupWizard() {
               </button>
             </div>
             {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
+          </div>
+        )}
+
+        {/* ---- Authenticate — mandatory: connect the work email to prove
+             it's really theirs (and switch on portal email sending) ---- */}
+        {step === "authenticate" && (
+          <div className="fade-up" key="authenticate">
+            <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-900 text-xl text-white">
+              ✉️
+            </div>
+            <h1 className="text-3xl font-semibold tracking-tight">
+              Last step, {name.split(" ")[0]} — let&apos;s verify it&apos;s you
+            </h1>
+            <p className="mt-3 text-gray-500">
+              Sign in with{" "}
+              <span className="font-medium text-gray-700">
+                {email.trim().toLowerCase()}
+              </span>{" "}
+              to confirm this inbox is really yours. It&apos;s also how
+              you&apos;ll send lead emails from the portal — they go out from
+              your own address.
+            </p>
+            <div className="mt-8">
+              <a
+                href="/api/auth/microsoft/start"
+                className="inline-flex items-center gap-2.5 rounded-xl bg-gray-900 px-6 py-3.5 text-sm font-medium text-white transition hover:bg-gray-700"
+              >
+                <svg viewBox="0 0 21 21" className="h-4 w-4" aria-hidden>
+                  <rect x="1" y="1" width="9" height="9" fill="#fff" opacity="0.9" />
+                  <rect x="11" y="1" width="9" height="9" fill="#fff" opacity="0.7" />
+                  <rect x="1" y="11" width="9" height="9" fill="#fff" opacity="0.7" />
+                  <rect x="11" y="11" width="9" height="9" fill="#fff" opacity="0.5" />
+                </svg>
+                Connect with Microsoft
+              </a>
+            </div>
+            <p className="mt-5 max-w-md text-xs text-gray-400">
+              We only ever send email as you, from your own mailbox — the portal
+              can&apos;t read your inbox.
+            </p>
           </div>
         )}
       </div>

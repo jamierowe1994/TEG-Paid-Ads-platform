@@ -612,33 +612,36 @@ export default function LeadsPage() {
               className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
                 newOnly
                   ? "text-white"
-                  : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+                  : "border border-gray-300 text-gray-700 hover:bg-gray-50"
               }`}
-              style={newOnly ? { backgroundColor: brand.accent } : undefined}
+              style={newOnly ? { backgroundColor: "#B8912F" } : undefined}
             >
               New only
             </button>
-            <span className="mx-1 h-5 w-px bg-gray-200" aria-hidden />
-            {/* Date filter — tucks a big historic import out of the way */}
+            {/* Darker separator so the New-only toggle reads apart from the
+                date group */}
+            <span className="mx-1 h-5 w-px bg-gray-400" aria-hidden />
+            {/* Date filter — tucks a big historic import out of the way. Active
+                pill is dark grey; the rest are grey outlines. */}
             {RANGES.map((r) => (
               <button
                 key={r.id}
                 onClick={() => setRange(r.id)}
                 className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
                   range === r.id
-                    ? "bg-gray-900 text-white"
-                    : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+                    ? "bg-neutral-800 text-white"
+                    : "border border-gray-300 text-gray-700 hover:bg-gray-50"
                 }`}
               >
                 {r.label}
               </button>
             ))}
-            <span className="mx-1 h-5 w-px bg-gray-200" aria-hidden />
-            {/* Duplicate check — "are they already on the system?" */}
+            <span className="mx-1 h-5 w-px bg-gray-400" aria-hidden />
+            {/* Duplicate check — clear (no fill) so it doesn't shout */}
             <button
               onClick={runCrmCheck}
               disabled={checkingCrm}
-              className="rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 text-sm font-medium text-blue-700 transition hover:bg-blue-100 disabled:opacity-60"
+              className="rounded-full border border-gray-300 px-4 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-60"
             >
               {checkingCrm ? `Checking ${brand.crmName}…` : `Check ${brand.crmName}`}
             </button>
@@ -854,7 +857,9 @@ function Stat({
   accent?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-gray-200 shadow-sm p-5">
+    // Same drop + all-around inner shadow as the Overview tiles, so the
+    // stat boxes sit forward and read as one system.
+    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.12),inset_0_1px_1px_rgba(255,255,255,0.7),inset_0_0_30px_rgba(0,0,0,0.08)]">
       <p className="text-sm text-gray-500">{label}</p>
       <p
         className="mt-2 text-3xl font-semibold tracking-tight"
