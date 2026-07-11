@@ -4,9 +4,10 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { logIn } from "@/lib/session";
-import { EXPERTS_GROUP } from "@/lib/brands";
+import { EXPERTS_GROUP, isAllowedEmailDomain } from "@/lib/brands";
 import BrandMark from "@/components/BrandMark";
 import PasswordInput from "@/components/PasswordInput";
+import DomainDenied from "@/components/DomainDenied";
 
 function LoginForm() {
   const router = useRouter();
@@ -18,11 +19,17 @@ function LoginForm() {
   const [remember, setRemember] = useState(true);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [denied, setDenied] = useState(false);
 
   async function signIn() {
     const trimmed = email.trim().toLowerCase();
     if (!/^\S+@\S+\.\S+$/.test(trimmed)) {
       setError("That doesn't look like an email address.");
+      return;
+    }
+    // Staff-only: block a non-Experts-Group email before we even try.
+    if (!isAllowedEmailDomain(trimmed)) {
+      setDenied(true);
       return;
     }
     if (!password) {
@@ -31,13 +38,35 @@ function LoginForm() {
     }
     setBusy(true);
     setError("");
-    const { error } = await logIn(trimmed, password, remember);
+    const { error, code } = await logIn(trimmed, password, remember);
     setBusy(false);
+    if (code === "domain") {
+      setDenied(true);
+      return;
+    }
     if (error) {
       setError(error);
       return;
     }
     router.push("/dashboard");
+  }
+
+  if (denied) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-white px-6 py-16">
+        <div className="w-full max-w-lg">
+          <DomainDenied
+            email={email.trim().toLowerCase()}
+            actionLabel="Use a work email"
+            onAction={() => {
+              setDenied(false);
+              setEmail("");
+              setPassword("");
+            }}
+          />
+        </div>
+      </main>
+    );
   }
 
   return (

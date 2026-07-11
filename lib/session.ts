@@ -64,14 +64,16 @@ export async function signUp(payload: {
   platforms: string[];
   goal: string;
   packageId: string;
-}): Promise<{ user?: UserProfile; error?: string }> {
+}): Promise<{ user?: UserProfile; error?: string; code?: string }> {
   const res = await fetch("/api/auth/signup", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) return { error: data.error ?? "Something went wrong" };
+  if (!res.ok) {
+    return { error: data.error ?? "Something went wrong", code: data.code };
+  }
   saveUser(data.user);
   return { user: data.user };
 }
@@ -99,14 +101,16 @@ export async function logIn(
   email: string,
   password: string,
   remember = true
-): Promise<{ user?: UserProfile; error?: string }> {
+): Promise<{ user?: UserProfile; error?: string; code?: string }> {
   const res = await fetch("/api/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password, remember }),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) return { error: data.error ?? "Something went wrong" };
+  if (!res.ok) {
+    return { error: data.error ?? "Something went wrong", code: data.code };
+  }
   saveUser(data.user);
   return { user: data.user };
 }

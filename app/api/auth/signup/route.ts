@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
       {
         error:
           "This is an internal portal for The Experts Group. Please register with your company email address (e.g. yourname@therecruitmentexperts.co.uk). If you believe this is a mistake, contact your head office.",
+        code: "domain",
       },
       { status: 403 }
     );

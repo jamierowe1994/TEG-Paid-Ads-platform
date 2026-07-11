@@ -3,10 +3,17 @@
 import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { BRANDS, brandForEmail, EXPERTS_GROUP, type Brand } from "@/lib/brands";
+import {
+  BRANDS,
+  brandForEmail,
+  isAllowedEmailDomain,
+  EXPERTS_GROUP,
+  type Brand,
+} from "@/lib/brands";
 import { PACKAGES, packageById } from "@/lib/packages";
 import BrandMark from "@/components/BrandMark";
 import PasswordInput from "@/components/PasswordInput";
+import DomainDenied from "@/components/DomainDenied";
 import { signUp, checkEmail } from "@/lib/session";
 
 // One-question-at-a-time signup. Order:
@@ -53,6 +60,8 @@ function SignupWizard() {
   // to a "you're already with us, sign in" card instead of pressing on.
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
   const [checkingEmail, setCheckingEmail] = useState(false);
+  // Set when the entered email isn't an Experts Group domain — staff only.
+  const [domainBlocked, setDomainBlocked] = useState(false);
 
   const steps: StepId[] = useMemo(
     () => [
@@ -86,6 +95,12 @@ function SignupWizard() {
       setError("That doesn't look like an email address.");
       return;
     }
+    // Staff-only portal: decline anyone who isn't on an Experts Group domain
+    // BEFORE they fill anything in (and before they could ever pay).
+    if (!isAllowedEmailDomain(trimmed)) {
+      setDomainBlocked(true);
+      return;
+    }
     if (checkingEmail) return;
     // Catch a returning user HERE, not after they've filled the whole form.
     setCheckingEmail(true);
@@ -115,7 +130,7 @@ function SignupWizard() {
     if (!brand || submitting) return;
     setSubmitting(true);
     setError("");
-    const { error } = await signUp({
+    const { error, code } = await signUp({
       name: name.trim(),
       email: email.trim().toLowerCase(),
       password,
@@ -132,7 +147,11 @@ function SignupWizard() {
       // Send the user back to fix a duplicate email / weak password. A
       // duplicate (they registered in another tab mid-wizard) gets the
       // friendly "sign in instead" card rather than a bare error.
-      if (/already exists/i.test(error)) {
+      if (code === "domain") {
+        // Server backstop caught a non-Experts-Group domain.
+        setDomainBlocked(true);
+        go("email");
+      } else if (/already exists/i.test(error)) {
         setAlreadyRegistered(true);
         go("email");
       } else if (/email/i.test(error)) {
@@ -213,8 +232,20 @@ function SignupWizard() {
           </div>
         )}
 
+        {/* ---- Declined — not an Experts Group domain ---- */}
+        {step === "email" && domainBlocked && (
+          <DomainDenied
+            email={email.trim().toLowerCase()}
+            actionLabel="Use a work email"
+            onAction={() => {
+              setDomainBlocked(false);
+              setEmail("");
+            }}
+          />
+        )}
+
         {/* ---- Email (brand detection) ---- */}
-        {step === "email" && !alreadyRegistered && (
+        {step === "email" && !alreadyRegistered && !domainBlocked && (
           <div className="fade-up" key="email">
             <h1 className="text-3xl font-semibold tracking-tight">
               What's your work email, {name.split(" ")[0]}?
