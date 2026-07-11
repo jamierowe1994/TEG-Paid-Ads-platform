@@ -29,19 +29,6 @@ import type { Lead, LeadStage } from "@/lib/types";
 // New → up to 3 contact attempts → (no answer) marketing funnel → book the
 // appointment → push to the brand's CRM (Atlas is live; others pending).
 
-// Status colour per stage — uncontacted reads as red (needs attention)
-// regardless of brand accent, so it's unmissable at a glance.
-const STAGE_COLOR: Record<LeadStage, { accent: string; bg: string; text: string }> = {
-  new: { accent: "#EF4444", bg: "#FEF2F2", text: "#DC2626" },
-  attempt1: { accent: "#F59E0B", bg: "#FFFBEB", text: "#B45309" },
-  attempt2: { accent: "#F59E0B", bg: "#FFFBEB", text: "#B45309" },
-  attempt3: { accent: "#F59E0B", bg: "#FFFBEB", text: "#B45309" },
-  nurture: { accent: "#A855F7", bg: "#FAF5FF", text: "#7E22CE" },
-  converted: { accent: "#16A34A", bg: "#F0FDF4", text: "#15803D" },
-  pushed: { accent: "#16A34A", bg: "#F0FDF4", text: "#15803D" },
-  lost: { accent: "#9CA3AF", bg: "#F9FAFB", text: "#6B7280" },
-};
-
 // Tiles per snake row (matches the sm:grid-cols-4 layout below).
 const ROW_SIZE = 4;
 
@@ -59,9 +46,72 @@ function onCrm(lead: Lead): boolean {
   return !!(lead.crmMatch?.found || lead.rexContactId);
 }
 
-// A "mini profile" tile — status colour, avatar, name, source, date and
-// stage — sized down for older rows so the snake also reads as a fade.
-// In the archive, tiles grow a selection ring (multi-select unarchive).
+// A contact value (email / phone) with a one-tap copy button. Stops the click
+// bubbling so copying never opens the lead modal.
+function CopyField({
+  kind,
+  value,
+}: {
+  kind: "email" | "phone";
+  value: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="flex items-center gap-1.5">
+      <svg
+        viewBox="0 0 24 24"
+        className="h-3.5 w-3.5 shrink-0 text-gray-400"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {kind === "email" ? (
+          <>
+            <rect x="2.5" y="4.5" width="19" height="15" rx="2" />
+            <path d="M3 6l9 7 9-7" />
+          </>
+        ) : (
+          <path d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+        )}
+      </svg>
+      <span className="min-w-0 flex-1 truncate text-[11px] text-gray-600">
+        {value}
+      </span>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          navigator.clipboard?.writeText(value).then(
+            () => {
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1200);
+            },
+            () => {}
+          );
+        }}
+        aria-label={`Copy ${kind}`}
+        className="shrink-0 rounded-md p-1 text-gray-300 transition hover:bg-gray-100 hover:text-gray-700"
+      >
+        {copied ? (
+          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-green-600" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 6L9 17l-5-5" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="9" y="9" width="11" height="11" rx="2" />
+            <path d="M5 15V5a2 2 0 012-2h10" />
+          </svg>
+        )}
+      </button>
+    </div>
+  );
+}
+
+// A "mini profile" tile — uniform faint-outlined card: where the lead came
+// from, their name, and their email + mobile with quick-copy. Sized down for
+// older rows so the snake still reads as a fade. In the archive, tiles grow a
+// selection ring (multi-select unarchive).
 function LeadTile({
   lead,
   brand,
@@ -79,24 +129,31 @@ function LeadTile({
   selected?: boolean;
   onToggleSelect?: () => void;
 }) {
-  const c = STAGE_COLOR[lead.stage] ?? STAGE_COLOR.new;
   const pad = size === "lg" ? "p-4" : size === "md" ? "p-3.5" : "p-3";
-  const avatar =
-    size === "lg" ? "h-11 w-11 text-base" : size === "md" ? "h-9 w-9 text-sm" : "h-8 w-8 text-xs";
   const nameSize = size === "lg" ? "text-sm" : "text-[13px]";
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
-      className={`relative flex w-full flex-col rounded-2xl border bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${pad} ${
+      onKeyDown={(e) => {
+        if (e.key === "Enter") onClick();
+      }}
+      className={`relative flex w-full cursor-pointer flex-col rounded-2xl bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${pad} ${
         selected
-          ? "border-gray-900 ring-2 ring-gray-900"
-          : "border-gray-200 hover:border-gray-300"
+          ? "border border-gray-900 ring-2 ring-gray-900"
+          : "border border-black/10 hover:border-black/20"
       }`}
-      style={{ borderTop: `3px solid ${c.accent}` }}
     >
-      <div className="flex items-center justify-between">
-        <SourceIcon source={lead.source} size={14} />
-        <span className="flex items-center gap-1.5 text-[10px] text-gray-400">
+      {/* Where it came from + who, with the date (and archive checkbox) */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <SourceIcon source={lead.source} size={14} />
+          <p className={`truncate font-semibold text-gray-900 ${nameSize}`}>
+            {lead.name}
+          </p>
+        </div>
+        <span className="flex shrink-0 items-center gap-1.5 text-[10px] text-gray-400">
           {shortDate(lead.receivedAt)}
           {selectable && (
             <span
@@ -125,34 +182,32 @@ function LeadTile({
           )}
         </span>
       </div>
-      <div className="mt-2.5 flex min-w-0 items-center gap-2.5">
-        <span
-          className={`flex shrink-0 items-center justify-center rounded-full font-bold text-white ${avatar}`}
-          style={{ backgroundColor: c.accent }}
-        >
-          {lead.name.charAt(0).toUpperCase()}
-        </span>
-        <p className={`truncate font-semibold text-gray-900 ${nameSize}`}>
-          {lead.name}
-        </p>
+
+      {/* Contact — quick copy for email + mobile */}
+      <div className="mt-3 space-y-1.5">
+        {lead.email ? (
+          <CopyField kind="email" value={lead.email} />
+        ) : null}
+        {lead.phone ? <CopyField kind="phone" value={lead.phone} /> : null}
+        {!lead.email && !lead.phone && (
+          <p className="text-[11px] text-gray-300">No contact details</p>
+        )}
       </div>
-      <span className="mt-2.5 flex flex-wrap items-center gap-1">
-        <span
-          className="inline-block w-fit rounded-full px-2 py-0.5 text-[10px] font-medium"
-          style={{ backgroundColor: c.bg, color: c.text }}
-        >
+
+      {/* Footer — neutral stage label + the "on CRM" flag */}
+      <div className="mt-2.5 flex flex-wrap items-center gap-1">
+        <span className="inline-block w-fit rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">
           {lead.resurfaceAt
             ? `Back ${shortDate(lead.resurfaceAt)}`
             : stageLabel(lead.stage, brand)}
         </span>
-        {/* Already on the brand's CRM — the duplicate-check pill */}
         {onCrm(lead) && (
           <span className="inline-block w-fit rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700">
             On {brand.crmName}
           </span>
         )}
-      </span>
-    </button>
+      </div>
+    </div>
   );
 }
 

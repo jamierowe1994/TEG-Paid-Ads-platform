@@ -199,6 +199,22 @@ h5 {
   }
 }
 
+/* Sent-confirmation tick — pops in with a soft overshoot. */
+@keyframes tick-pop {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 /* Landscape time slider — taller track, big grabbable thumb. Uses the
    inline accent-color for the fill; these rules shape the track + thumb. */
 .teg-time-slider {

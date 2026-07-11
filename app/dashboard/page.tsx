@@ -617,25 +617,33 @@ export default function DashboardOverview() {
               {/* Bigger, clearer rows — this stays readable for the handful of
                   leads waiting at once; beyond 4 it folds the rest into a link. */}
               <div className="mt-3 flex-1 space-y-2 overflow-hidden">
-                {untouched.slice(0, 4).map((l) => (
-                  <button
-                    key={l.id}
-                    onClick={() => setOpenLeadId(l.id)}
-                    className="flex w-full items-center gap-2.5 rounded-xl bg-red-50/80 px-2.5 py-2 text-left transition hover:bg-red-100/80"
-                  >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-500 text-sm font-bold text-white">
-                      {l.name.charAt(0).toUpperCase()}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-gray-900">
-                        {l.name}
-                      </p>
-                      <p className="truncate text-[11px] capitalize text-gray-500">
-                        via {l.source}
-                      </p>
-                    </div>
-                  </button>
-                ))}
+                {untouched.slice(0, 4).map((l) => {
+                  const dim = hoverLead !== null && hoverLead !== l.id;
+                  const active = hoverLead === l.id;
+                  return (
+                    <button
+                      key={l.id}
+                      onClick={() => setOpenLeadId(l.id)}
+                      onMouseEnter={() => setHoverLead(l.id)}
+                      onMouseLeave={() => setHoverLead(null)}
+                      className={`flex w-full items-center gap-2.5 rounded-xl bg-red-50/80 px-2.5 py-2 text-left transition duration-200 hover:bg-red-100/80 ${
+                        dim ? "opacity-40 blur-[1.5px]" : "opacity-100 blur-0"
+                      } ${active ? "scale-[1.03]" : ""}`}
+                    >
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-500 text-sm font-bold text-white">
+                        {l.name.charAt(0).toUpperCase()}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-gray-900">
+                          {l.name}
+                        </p>
+                        <p className="truncate text-[11px] capitalize text-gray-500">
+                          via {l.source}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
                 {untouched.length > 4 && (
                   <Link
                     href="/dashboard/leads"

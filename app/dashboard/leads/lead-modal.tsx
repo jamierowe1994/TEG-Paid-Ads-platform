@@ -572,33 +572,36 @@ export function LeadModal({
           </div>
         </Expand>
 
-        {/* Email panel — compose or pick a template */}
+        {/* Email panel — dark-grey card matching the sign-up process, so the
+            whole modal reads as one system. */}
         <Expand open={panel === "email"}>
-          <div className="mt-3 rounded-2xl border border-gray-200 p-4">
+          <div
+            className={`mt-3 overflow-hidden rounded-2xl bg-neutral-800 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.07),inset_0_0_34px_rgba(0,0,0,0.4)] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+              emailSent ? "p-0" : "p-4"
+            }`}
+          >
             {emailSent ? (
-              // Sent confirmation — the panel collapses itself a beat later.
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <div className="flex h-14 w-14 animate-[lost-slide_0.4s_ease] items-center justify-center rounded-full bg-green-100 text-2xl text-green-600">
+              // Sent confirmation — pops in, holds, then the panel slides shut.
+              <div className="flex flex-col items-center justify-center gap-2 py-7 text-center">
+                <div className="flex h-14 w-14 animate-[tick-pop_0.5s_cubic-bezier(0.22,1,0.36,1)] items-center justify-center rounded-full bg-green-500/20 text-2xl text-green-400">
                   ✓
                 </div>
-                <p className="mt-3 font-medium text-gray-800">
-                  Your email has been sent
-                </p>
-                <p className="mt-1 text-xs text-gray-400">
+                <p className="fade-up font-semibold text-white">Sent</p>
+                <p className="fade-up text-xs text-white/50">
                   It&apos;s in your own Sent items too.
                 </p>
               </div>
             ) : (
               <>
-                <p className="text-sm font-medium text-gray-700">
-                  ✉ <span className="text-gray-500">{lead.email}</span>
+                <p className="text-sm font-medium text-white/80">
+                  ✉ <span className="text-white/50">{lead.email}</span>
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   {EMAIL_TEMPLATES.map((t) => (
                     <button
                       key={t.name}
                       onClick={() => applyTemplate(t.subject, t.body)}
-                      className="rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
+                      className="rounded-full border border-white/20 px-3 py-1 text-xs font-medium text-white/70 transition hover:bg-white/10"
                     >
                       {t.name}
                     </button>
@@ -607,12 +610,7 @@ export function LeadModal({
                   {customTemplates.map((t) => (
                     <span
                       key={t.id}
-                      className="group inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium"
-                      style={{
-                        borderColor: `${brand.accent}55`,
-                        color: brand.accent,
-                        backgroundColor: `${brand.accent}10`,
-                      }}
+                      className="group inline-flex items-center gap-1 rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-medium text-white"
                     >
                       <button onClick={() => applyTemplate(t.subject, t.body)}>
                         {t.name}
@@ -624,7 +622,7 @@ export function LeadModal({
                           )
                         }
                         aria-label={`Delete ${t.name} template`}
-                        className="opacity-40 transition group-hover:opacity-100 hover:text-red-600"
+                        className="text-white/40 opacity-60 transition group-hover:opacity-100 hover:text-red-400"
                       >
                         ✕
                       </button>
@@ -635,14 +633,14 @@ export function LeadModal({
                   value={emailSubject}
                   onChange={(e) => setEmailSubject(e.target.value)}
                   placeholder="Subject"
-                  className="mt-3 w-full rounded-xl border border-gray-200 p-3 text-sm outline-none focus:border-gray-900"
+                  className="mt-3 w-full rounded-xl border border-white/15 bg-white/5 p-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-white/40"
                 />
                 <textarea
                   value={emailBody}
                   onChange={(e) => setEmailBody(e.target.value)}
                   rows={6}
                   placeholder="Write your email, or pick a template above…"
-                  className="mt-2 w-full rounded-xl border border-gray-200 p-3 text-sm outline-none focus:border-gray-900"
+                  className="mt-2 w-full rounded-xl border border-white/15 bg-white/5 p-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-white/40"
                 />
 
                 {/* Save the current draft as a reusable template */}
@@ -654,7 +652,7 @@ export function LeadModal({
                       onChange={(e) => setTemplateName(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && saveTemplate()}
                       placeholder="Template name (e.g. Valuation follow-up)"
-                      className="flex-1 rounded-xl border border-gray-200 p-2.5 text-xs outline-none focus:border-gray-900"
+                      className="flex-1 rounded-xl border border-white/15 bg-white/5 p-2.5 text-xs text-white outline-none placeholder:text-white/40 focus:border-white/40"
                     />
                     <button
                       onClick={saveTemplate}
@@ -669,7 +667,7 @@ export function LeadModal({
                         setNamingTemplate(false);
                         setTemplateName("");
                       }}
-                      className="rounded-xl px-2 py-2.5 text-xs font-medium text-gray-400 hover:text-gray-600"
+                      className="rounded-xl px-2 py-2.5 text-xs font-medium text-white/50 hover:text-white/80"
                     >
                       Cancel
                     </button>
@@ -679,7 +677,7 @@ export function LeadModal({
                   emailBody.trim() && (
                     <button
                       onClick={() => setNamingTemplate(true)}
-                      className="mt-2 text-xs font-medium text-gray-400 underline decoration-dotted underline-offset-2 hover:text-gray-600"
+                      className="mt-2 text-xs font-medium text-white/50 underline decoration-dotted underline-offset-2 hover:text-white/80"
                     >
                       ＋ Save as a template
                     </button>
@@ -699,7 +697,7 @@ export function LeadModal({
                   </BigBtn>
                 </div>
                 {emailToast && (
-                  <p className="mt-2 text-center text-xs text-gray-500">
+                  <p className="mt-2 text-center text-xs text-white/60">
                     {emailToast}
                   </p>
                 )}
@@ -1247,14 +1245,14 @@ function InlineCalendar({
 
 // Sweeping expand/collapse — grid-rows 0fr→1fr animates auto height.
 function Expand({ open, children }: { open: boolean; children: ReactNode }) {
-  // The 0fr→1fr grid trick animates height smoothly; a matching opacity +
-  // blur fade and a soft ease make it feel polished as it comes out. (An extra
-  // transformed inner wrapper breaks the fr height measurement, so we keep the
-  // content directly inside the clipped row.)
+  // The 0fr→1fr grid trick animates height smoothly; a matching opacity fade
+  // on the same easing keeps it clean with no jagged edges. (No blur — it
+  // flashed on close; an extra transformed inner wrapper breaks the fr height
+  // measurement, so the content sits directly inside the clipped row.)
   return (
     <div
-      className={`grid transition-all duration-[440ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
-        open ? "grid-rows-[1fr] opacity-100 blur-0" : "grid-rows-[0fr] opacity-0 blur-[2px]"
+      className={`grid transition-all duration-[460ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+        open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
       }`}
     >
       <div className="overflow-hidden">{children}</div>
