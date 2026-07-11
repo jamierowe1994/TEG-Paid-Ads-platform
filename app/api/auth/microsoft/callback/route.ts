@@ -6,7 +6,13 @@ import {
   setMsConnection,
   updateUser,
 } from "@/lib/users-store";
-import { msExchangeCode, msGetMe, msForgetUser, appOrigin } from "@/lib/microsoft";
+import {
+  msExchangeCode,
+  msGetMe,
+  msGetPhotoDataUrl,
+  msForgetUser,
+  appOrigin,
+} from "@/lib/microsoft";
 import { rexFindUserIdByEmail } from "@/lib/rex";
 import { atlasHasUser } from "@/lib/atlas";
 
@@ -75,11 +81,32 @@ export async function GET(req: NextRequest) {
       refreshToken: tokens.refresh_token,
     });
 
-    // Whether they connected the address we know them by — CRM identity only
-    // auto-matches on THEIR OWN email, otherwise signing into a shared or
-    // colleague's mailbox would quietly assign someone else's CRM identity.
+    // Whether they connected the address we know them by — CRM identity and
+    // profile enrichment only run on THEIR OWN email, otherwise signing into a
+    // shared or colleague's mailbox would pull someone else's details.
     const ownEmail =
       me.email.trim().toLowerCase() === user.email.trim().toLowerCase();
+
+    // Pull profile details straight from their work account so signup doesn't
+    // have to ask — mobile, region and headshot. Only fills what we DON'T
+    // already have, and never fabricates: an empty field on their account just
+    // stays empty here (the profile then offers to fill it in).
+    if (ownEmail) {
+      const enrich: Record<string, unknown> = {};
+      if (!user.mobile?.trim() && me.mobile) enrich.mobile = me.mobile;
+      if (!user.location?.trim() && me.region) enrich.location = me.region;
+      if (!user.photo) {
+        const photo = await msGetPhotoDataUrl(tokens.access_token!);
+        if (photo) enrich.photo = photo;
+      }
+      if (Object.keys(enrich).length > 0) {
+        try {
+          await updateUser(userId, enrich);
+        } catch {
+          /* enrichment is best-effort — never block the connection */
+        }
+      }
+    }
 
     let crm = "skipped";
     if (ownEmail) {

@@ -10,16 +10,15 @@ import PasswordInput from "@/components/PasswordInput";
 import { signUp, checkEmail } from "@/lib/session";
 
 // One-question-at-a-time signup. Order:
-// name → email (brand auto-detect) → password → mobile → photo → platforms
-// → goal → package → payment (Stripe placeholder) → create account → dashboard.
+// name → email (brand auto-detect) → password → platforms → goal → package →
+// payment (Stripe placeholder) → create account → authenticate (connect email,
+// which also pulls their mobile/region/headshot from Microsoft).
 
 type StepId =
   | "name"
   | "email"
   | "brand"
   | "password"
-  | "mobile"
-  | "photo"
   | "platforms"
   | "goal"
   | "package"
@@ -41,8 +40,8 @@ function SignupWizard() {
   const [email, setEmail] = useState("");
   const [brand, setBrand] = useState<Brand | null>(null);
   const [password, setPassword] = useState("");
-  const [mobile, setMobile] = useState("");
-  const [photo, setPhoto] = useState<string | null>(null);
+  // Mobile, region and headshot are pulled from the agent's Microsoft account
+  // at the connect step, so the wizard no longer asks for them.
   const [platforms, setPlatforms] = useState<("instagram" | "facebook")[]>([]);
   const [goal, setGoal] = useState("");
   const [packageId, setPackageId] = useState<string>(
@@ -61,8 +60,6 @@ function SignupWizard() {
       "email",
       ...(brand ? [] : (["brand"] as StepId[])),
       "password",
-      "mobile",
-      "photo",
       "platforms",
       "goal",
       "package",
@@ -114,13 +111,6 @@ function SignupWizard() {
     go(detected ? "password" : "brand");
   }
 
-  function handlePhoto(file: File | null) {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setPhoto(reader.result as string);
-    reader.readAsDataURL(file);
-  }
-
   async function completeSignup() {
     if (!brand || submitting) return;
     setSubmitting(true);
@@ -129,8 +119,9 @@ function SignupWizard() {
       name: name.trim(),
       email: email.trim().toLowerCase(),
       password,
-      mobile: mobile.trim(),
-      photo,
+      // Filled from their Microsoft account at the connect step.
+      mobile: "",
+      photo: null,
       brandId: brand.id,
       platforms,
       goal,
@@ -362,7 +353,7 @@ function SignupWizard() {
                 placeholder="Choose a password"
                 value={password}
                 onChange={setPassword}
-                onEnter={() => password.length >= 8 && go("mobile")}
+                onEnter={() => password.length >= 8 && go("platforms")}
               />
             </div>
             {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
@@ -376,109 +367,9 @@ function SignupWizard() {
               <button
                 className={primaryBtn}
                 disabled={password.length < 8}
-                onClick={() => go("mobile")}
+                onClick={() => go("platforms")}
               >
                 Continue
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ---- Mobile ---- */}
-        {step === "mobile" && (
-          <div className="fade-up" key="mobile">
-            {brand && (
-              <div
-                className="mb-6 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium"
-                style={{ backgroundColor: brand.accentSoft, color: brand.accent }}
-              >
-                <span
-                  className="h-1.5 w-1.5 rounded-full"
-                  style={{ backgroundColor: brand.accent }}
-                />
-                {brand.name}
-              </div>
-            )}
-            <h1 className="text-3xl font-semibold tracking-tight">
-              What's the best mobile number for you?
-            </h1>
-            <input
-              autoFocus
-              type="tel"
-              className={`${inputClass} mt-8`}
-              placeholder="07700 900000"
-              value={mobile}
-              onChange={(e) => setMobile(e.target.value)}
-              onKeyDown={(e) =>
-                e.key === "Enter" && mobile.trim() && go("photo")
-              }
-            />
-            <div className="mt-8 flex gap-3">
-              <button
-                className="rounded-xl border border-gray-200 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50"
-                onClick={back}
-              >
-                Back
-              </button>
-              <button
-                className={primaryBtn}
-                disabled={!mobile.trim()}
-                onClick={() => go("photo")}
-              >
-                Continue
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ---- Photo ---- */}
-        {step === "photo" && (
-          <div className="fade-up" key="photo">
-            <h1 className="text-3xl font-semibold tracking-tight">
-              Add a profile photo
-            </h1>
-            <p className="mt-3 text-gray-500">
-              This appears on your dashboard and can be used in your ad
-              creatives.
-            </p>
-            <div className="mt-8 flex items-center gap-6">
-              <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-gray-50">
-                {photo ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={photo}
-                    alt="Profile preview"
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <svg
-                    className="h-10 w-10 text-gray-300"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-5 0-9 2.5-9 6v2h18v-2c0-3.5-4-6-9-6z" />
-                  </svg>
-                )}
-              </div>
-              <label className="cursor-pointer rounded-xl border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
-                {photo ? "Change photo" : "Upload photo"}
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => handlePhoto(e.target.files?.[0] ?? null)}
-                />
-              </label>
-            </div>
-            <div className="mt-8 flex gap-3">
-              <button
-                className="rounded-xl border border-gray-200 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50"
-                onClick={back}
-              >
-                Back
-              </button>
-              <button className={primaryBtn} onClick={() => go("platforms")}>
-                {photo ? "Continue" : "Skip for now"}
               </button>
             </div>
           </div>

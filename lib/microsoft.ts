@@ -100,23 +100,68 @@ export function msExchangeCode(code: string): Promise<TokenResponse> {
   return tokenRequest({ grant_type: "authorization_code", code });
 }
 
-// The signed-in Microsoft account behind an access token.
-export async function msGetMe(
-  accessToken: string
-): Promise<{ email: string; name: string }> {
-  const res = await fetch(`${GRAPH}/me`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-    cache: "no-store",
-  });
+// The signed-in Microsoft account behind an access token — email + name plus
+// the profile fields we can pre-fill from (mobile, region), so signup doesn't
+// have to ask for what's already on their work account. All best-effort:
+// missing fields come back empty, never fabricated.
+export interface MsProfile {
+  email: string;
+  name: string;
+  mobile: string;
+  region: string; // officeLocation, else city/state
+}
+
+export async function msGetMe(accessToken: string): Promise<MsProfile> {
+  const res = await fetch(
+    `${GRAPH}/me?$select=mail,userPrincipalName,displayName,mobilePhone,businessPhones,officeLocation,city,state`,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: "no-store",
+    }
+  );
   const me = (await res.json().catch(() => ({}))) as {
     mail?: string;
     userPrincipalName?: string;
     displayName?: string;
+    mobilePhone?: string;
+    businessPhones?: string[];
+    officeLocation?: string;
+    city?: string;
+    state?: string;
   };
   if (!res.ok) throw new Error("Couldn't read the Microsoft account profile.");
   const email = me.mail ?? me.userPrincipalName ?? "";
   if (!email) throw new Error("The Microsoft account has no email address.");
-  return { email, name: me.displayName ?? "" };
+
+  const mobile =
+    (me.mobilePhone ?? "").trim() ||
+    (me.businessPhones?.find((p) => p?.trim()) ?? "").trim();
+  const region =
+    (me.officeLocation ?? "").trim() ||
+    [me.city, me.state].filter((s) => s?.trim()).join(", ");
+
+  return { email, name: me.displayName ?? "", mobile, region };
+}
+
+// The account's profile photo as a data URL, or null if they don't have one
+// (Graph 404s) or it's implausibly large. Only needs User.Read.
+export async function msGetPhotoDataUrl(
+  accessToken: string
+): Promise<string | null> {
+  try {
+    const res = await fetch(`${GRAPH}/me/photo/$value`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: "no-store",
+    });
+    if (!res.ok) return null; // 404 = no photo set
+    const buf = await res.arrayBuffer();
+    if (buf.byteLength === 0 || buf.byteLength > 3_000_000) return null;
+    const type = res.headers.get("content-type") || "image/jpeg";
+    const base64 = Buffer.from(buf).toString("base64");
+    return `data:${type};base64,${base64}`;
+  } catch {
+    return null;
+  }
 }
 
 // Short-lived access tokens per user, refreshed from the stored refresh

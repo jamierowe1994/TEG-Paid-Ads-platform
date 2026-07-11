@@ -76,11 +76,80 @@ export default function ProfilePage() {
 
   const pkg = packageById(user.packageId);
 
+  // Backup ask: whatever we couldn't pull from their Microsoft account. Mobile
+  // matters most (it drives lead alerts), so it's called out clearly.
+  const needsMobile = !user.mobile?.trim();
+  const needsPhoto = !user.photo;
+
   return (
     <div className="mx-auto max-w-2xl">
       <h1 className="text-3xl font-semibold tracking-tight">Profile</h1>
 
-      <section className="mt-8 rounded-2xl border border-gray-200 shadow-sm p-6">
+      {(needsMobile || needsPhoto) && (
+        <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+          <p className="text-sm font-semibold text-amber-900">
+            Finish setting up
+          </p>
+          <p className="mt-1 text-sm text-amber-800/80">
+            We pulled what we could from your email
+            {needsMobile && needsPhoto
+              ? " — but couldn't find a mobile number or a headshot."
+              : needsMobile
+                ? " — but couldn't find a mobile number."
+                : " — but couldn't find a headshot."}
+          </p>
+          <div className="mt-4 space-y-3">
+            {needsMobile && (
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-amber-900">
+                  Mobile number{" "}
+                  <span className="font-normal text-amber-700/70">
+                    — so you get a text the moment a lead lands
+                  </span>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="tel"
+                    value={mobile}
+                    onChange={(e) => setMobile(e.target.value)}
+                    placeholder="07700 900000"
+                    className="flex-1 rounded-lg border border-amber-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-amber-500"
+                  />
+                  <button
+                    onClick={save}
+                    disabled={!mobile.trim()}
+                    className="rounded-lg px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-40"
+                    style={{ backgroundColor: brand.accent }}
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            )}
+            {needsPhoto && (
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-amber-900">
+                  Headshot{" "}
+                  <span className="font-normal text-amber-700/70">
+                    — used on your dashboard and ad creatives
+                  </span>
+                </label>
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-amber-300 bg-white px-4 py-2.5 text-sm font-medium text-amber-900 transition hover:bg-amber-100">
+                  Upload a headshot
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handlePhoto(e.target.files?.[0] ?? null)}
+                  />
+                </label>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      <section className="mt-6 rounded-2xl border border-gray-200 shadow-sm p-6">
         <div className="flex items-center gap-5">
           <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-gray-100 text-2xl font-semibold text-gray-500">
             {user.photo ? (
