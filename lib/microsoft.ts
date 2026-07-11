@@ -31,6 +31,20 @@ export function msRedirectUri(): string {
   return process.env.AZURE_REDIRECT_URI ?? DEFAULT_REDIRECT;
 }
 
+// Our PUBLIC-facing origin, for building user-facing redirects. Behind
+// Railway's proxy the app runs on an internal localhost port, so a route's
+// own request origin (req.nextUrl.origin) resolves to http://localhost:8080 —
+// which is what was bouncing agents to a dead localhost page after connecting
+// their email. The OAuth redirect URI is by definition our public callback
+// URL, so its origin is the right base to redirect back to.
+export function appOrigin(): string {
+  try {
+    return new URL(msRedirectUri()).origin;
+  } catch {
+    return DEFAULT_REDIRECT.replace(/\/api\/.*/, "");
+  }
+}
+
 function tokenEndpoint(): string {
   return `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}/oauth2/v2.0/token`;
 }

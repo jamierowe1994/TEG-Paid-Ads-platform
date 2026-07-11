@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { Lead, LeadStage } from "@/lib/types";
 import type { Brand } from "@/lib/brands";
 import SourceIcon from "@/components/SourceIcon";
@@ -179,6 +179,32 @@ export function LeadModal({
   const [emailBody, setEmailBody] = useState("");
   const [emailToast, setEmailToast] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  // The agent's own saved email templates (personal, per browser). `{name}`
+  // in a template is swapped for the lead's first name when applied.
+  const [customTemplates, setCustomTemplates] = useState<
+    { id: string; name: string; subject: string; body: string }[]
+  >([]);
+  const [namingTemplate, setNamingTemplate] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("teg-email-templates");
+      if (raw) setCustomTemplates(JSON.parse(raw));
+    } catch {
+      /* no saved templates yet */
+    }
+  }, []);
+  function persistTemplates(
+    next: { id: string; name: string; subject: string; body: string }[]
+  ) {
+    setCustomTemplates(next);
+    try {
+      localStorage.setItem("teg-email-templates", JSON.stringify(next.slice(-30)));
+    } catch {
+      /* storage blocked — templates just won't persist */
+    }
+  }
 
   const firstName = lead.name.split(" ")[0] || "there";
   const events = [
@@ -221,6 +247,64 @@ export function LeadModal({
 
   function togglePanel(which: "call" | "email") {
     setPanel((p) => (p === which ? null : which));
+  }
+
+  // Apply a template's subject/body, swapping {name} for the lead's first
+  // name so a saved template personalises itself for each lead.
+  function applyTemplate(subject: string, body: string) {
+    const fill = (s: string) => s.replace(/\{name\}/g, firstName);
+    setEmailSubject(fill(subject));
+    setEmailBody(fill(body));
+  }
+
+  // Save the current subject/body as a reusable template. The lead's first
+  // name is turned back into the {name} token so it generalises.
+  function saveTemplate() {
+    const name = templateName.trim();
+    if (!name || !emailSubject.trim() || !emailBody.trim()) return;
+    const generalise = (s: string) =>
+      firstName && firstName !== "there"
+        ? s.split(firstName).join("{name}")
+        : s;
+    persistTemplates([
+      ...customTemplates,
+      {
+        id: Math.random().toString(36).slice(2, 9),
+        name,
+        subject: generalise(emailSubject.trim()),
+        body: generalise(emailBody.trim()),
+      },
+    ]);
+    setTemplateName("");
+    setNamingTemplate(false);
+  }
+
+  async function sendEmail() {
+    if (!emailSubject.trim() || !emailBody.trim() || sendingEmail) return;
+    // Until the mailbox is connected, keep the draft and point at the setup.
+    if (!emailConnected || !onSendEmail) {
+      setEmailToast(
+        "Draft ready ✓ — connect your email (Profile → Email sending) to send from here."
+      );
+      setTimeout(() => setEmailToast(""), 5000);
+      return;
+    }
+    setSendingEmail(true);
+    const res = await onSendEmail(emailSubject.trim(), emailBody.trim());
+    setSendingEmail(false);
+    if (res.ok) {
+      // Show the tick, then collapse the whole panel closed.
+      setEmailSubject("");
+      setEmailBody("");
+      setEmailSent(true);
+      setTimeout(() => {
+        setEmailSent(false);
+        setPanel(null);
+      }, 1800);
+    } else {
+      setEmailToast(res.error ?? "Couldn't send — please try again.");
+      setTimeout(() => setEmailToast(""), 6000);
+    }
   }
 
   async function saveNote() {
@@ -458,19 +542,13 @@ export function LeadModal({
                   </Expand>
                 </div>
 
-                {/* Time — appears once a day is chosen */}
+                {/* Time — a full-width hour slider, then 15-minute pills */}
                 {pickedDay && (
-                  <div>
-                    <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-gray-400">
-                      Time
-                    </label>
-                    <input
-                      type="time"
-                      value={pickedTime}
-                      onChange={(e) => setPickedTime(e.target.value)}
-                      className="w-full rounded-xl border border-gray-200 p-3.5 text-sm outline-none focus:border-gray-900"
-                    />
-                  </div>
+                  <TimePicker
+                    value={pickedTime}
+                    accent={brand.accent}
+                    onChange={setPickedTime}
+                  />
                 )}
 
                 <BigBtn
@@ -497,70 +575,135 @@ export function LeadModal({
         {/* Email panel — compose or pick a template */}
         <Expand open={panel === "email"}>
           <div className="mt-3 rounded-2xl border border-gray-200 p-4">
-            <p className="text-sm font-medium text-gray-700">
-              ✉ <span className="text-gray-500">{lead.email}</span>
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {EMAIL_TEMPLATES.map((t) => (
-                <button
-                  key={t.name}
-                  onClick={() => {
-                    setEmailSubject(t.subject);
-                    setEmailBody(t.body);
-                  }}
-                  className="rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
-                >
-                  {t.name}
-                </button>
-              ))}
-            </div>
-            <input
-              value={emailSubject}
-              onChange={(e) => setEmailSubject(e.target.value)}
-              placeholder="Subject"
-              className="mt-3 w-full rounded-xl border border-gray-200 p-3 text-sm outline-none focus:border-gray-900"
-            />
-            <textarea
-              value={emailBody}
-              onChange={(e) => setEmailBody(e.target.value)}
-              rows={6}
-              placeholder="Write your email, or pick a template above…"
-              className="mt-2 w-full rounded-xl border border-gray-200 p-3 text-sm outline-none focus:border-gray-900"
-            />
-            <BigBtn
-              primary
-              accent={brand.accent}
-              disabled={!emailSubject.trim() || !emailBody.trim() || sendingEmail}
-              onClick={async () => {
-                // Real send once the agent's mailbox is connected; a helpful
-                // pointer to the connect step until then.
-                if (!emailConnected || !onSendEmail) {
-                  setEmailToast(
-                    "Draft ready ✓ — connect your email (Profile → Email sending) to send from here."
-                  );
-                  setTimeout(() => setEmailToast(""), 5000);
-                  return;
-                }
-                setSendingEmail(true);
-                const res = await onSendEmail(
-                  emailSubject.trim(),
-                  emailBody.trim()
-                );
-                setSendingEmail(false);
-                if (res.ok) {
-                  setEmailSubject("");
-                  setEmailBody("");
-                  setEmailToast("Sent ✓ — from your own address (it's in your Sent items too).");
-                } else {
-                  setEmailToast(res.error ?? "Couldn't send — please try again.");
-                }
-                setTimeout(() => setEmailToast(""), 6000);
-              }}
-            >
-              {sendingEmail ? "Sending…" : "Send email"}
-            </BigBtn>
-            {emailToast && (
-              <p className="mt-2 text-center text-xs text-gray-500">{emailToast}</p>
+            {emailSent ? (
+              // Sent confirmation — the panel collapses itself a beat later.
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="flex h-14 w-14 animate-[lost-slide_0.4s_ease] items-center justify-center rounded-full bg-green-100 text-2xl text-green-600">
+                  ✓
+                </div>
+                <p className="mt-3 font-medium text-gray-800">
+                  Your email has been sent
+                </p>
+                <p className="mt-1 text-xs text-gray-400">
+                  It&apos;s in your own Sent items too.
+                </p>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm font-medium text-gray-700">
+                  ✉ <span className="text-gray-500">{lead.email}</span>
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {EMAIL_TEMPLATES.map((t) => (
+                    <button
+                      key={t.name}
+                      onClick={() => applyTemplate(t.subject, t.body)}
+                      className="rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
+                    >
+                      {t.name}
+                    </button>
+                  ))}
+                  {/* The agent's own saved templates — click to use, × to remove */}
+                  {customTemplates.map((t) => (
+                    <span
+                      key={t.id}
+                      className="group inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium"
+                      style={{
+                        borderColor: `${brand.accent}55`,
+                        color: brand.accent,
+                        backgroundColor: `${brand.accent}10`,
+                      }}
+                    >
+                      <button onClick={() => applyTemplate(t.subject, t.body)}>
+                        {t.name}
+                      </button>
+                      <button
+                        onClick={() =>
+                          persistTemplates(
+                            customTemplates.filter((x) => x.id !== t.id)
+                          )
+                        }
+                        aria-label={`Delete ${t.name} template`}
+                        className="opacity-40 transition group-hover:opacity-100 hover:text-red-600"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <input
+                  value={emailSubject}
+                  onChange={(e) => setEmailSubject(e.target.value)}
+                  placeholder="Subject"
+                  className="mt-3 w-full rounded-xl border border-gray-200 p-3 text-sm outline-none focus:border-gray-900"
+                />
+                <textarea
+                  value={emailBody}
+                  onChange={(e) => setEmailBody(e.target.value)}
+                  rows={6}
+                  placeholder="Write your email, or pick a template above…"
+                  className="mt-2 w-full rounded-xl border border-gray-200 p-3 text-sm outline-none focus:border-gray-900"
+                />
+
+                {/* Save the current draft as a reusable template */}
+                {namingTemplate ? (
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      autoFocus
+                      value={templateName}
+                      onChange={(e) => setTemplateName(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && saveTemplate()}
+                      placeholder="Template name (e.g. Valuation follow-up)"
+                      className="flex-1 rounded-xl border border-gray-200 p-2.5 text-xs outline-none focus:border-gray-900"
+                    />
+                    <button
+                      onClick={saveTemplate}
+                      disabled={!templateName.trim()}
+                      className="rounded-xl px-3 py-2.5 text-xs font-semibold text-white disabled:opacity-40"
+                      style={{ backgroundColor: brand.accent }}
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => {
+                        setNamingTemplate(false);
+                        setTemplateName("");
+                      }}
+                      className="rounded-xl px-2 py-2.5 text-xs font-medium text-gray-400 hover:text-gray-600"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  emailSubject.trim() &&
+                  emailBody.trim() && (
+                    <button
+                      onClick={() => setNamingTemplate(true)}
+                      className="mt-2 text-xs font-medium text-gray-400 underline decoration-dotted underline-offset-2 hover:text-gray-600"
+                    >
+                      ＋ Save as a template
+                    </button>
+                  )
+                )}
+
+                <div className="mt-3">
+                  <BigBtn
+                    primary
+                    accent={brand.accent}
+                    disabled={
+                      !emailSubject.trim() || !emailBody.trim() || sendingEmail
+                    }
+                    onClick={sendEmail}
+                  >
+                    {sendingEmail ? "Sending…" : "Send email"}
+                  </BigBtn>
+                </div>
+                {emailToast && (
+                  <p className="mt-2 text-center text-xs text-gray-500">
+                    {emailToast}
+                  </p>
+                )}
+              </>
             )}
           </div>
         </Expand>
@@ -923,6 +1066,90 @@ export function LeadModal({
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// Time picker — a full-width landscape slider for the hour (business hours),
+// then 15-minute increment pills. Much friendlier than the native time input.
+function TimePicker({
+  value,
+  accent,
+  onChange,
+}: {
+  value: string;
+  accent: string;
+  onChange: (t: string) => void;
+}) {
+  const START_HOUR = 7;
+  const END_HOUR = 20; // 7am–8pm covers viewings/calls
+  const [h, m] = value ? value.split(":").map(Number) : [9, 0];
+  const hour = Number.isFinite(h) ? Math.min(END_HOUR, Math.max(START_HOUR, h)) : 9;
+  const minute = [0, 15, 30, 45].includes(m) ? m : 0;
+
+  const set = (nextH: number, nextM: number) =>
+    onChange(
+      `${String(nextH).padStart(2, "0")}:${String(nextM).padStart(2, "0")}`
+    );
+
+  // Commit the default so "Book it in" enables without needing a nudge.
+  useEffect(() => {
+    if (!value) set(hour, minute);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const label = (() => {
+    const suffix = hour < 12 ? "am" : "pm";
+    const h12 = hour % 12 === 0 ? 12 : hour % 12;
+    return `${h12}:${String(minute).padStart(2, "0")} ${suffix}`;
+  })();
+
+  return (
+    <div>
+      <div className="mb-2 flex items-baseline justify-between">
+        <label className="text-xs font-medium uppercase tracking-wide text-gray-400">
+          Time
+        </label>
+        <span className="text-lg font-semibold" style={{ color: accent }}>
+          {label}
+        </span>
+      </div>
+      {/* Hour slider — full width */}
+      <input
+        type="range"
+        min={START_HOUR}
+        max={END_HOUR}
+        step={1}
+        value={hour}
+        onChange={(e) => set(Number(e.target.value), minute)}
+        className="teg-time-slider w-full"
+        style={{ accentColor: accent, color: accent }}
+      />
+      <div className="mt-1 flex justify-between text-[10px] text-gray-400">
+        <span>{START_HOUR % 12 || 12}am</span>
+        <span>12pm</span>
+        <span>{END_HOUR % 12 || 12}pm</span>
+      </div>
+      {/* Minute pills — 15-minute increments */}
+      <div className="mt-3 grid grid-cols-4 gap-2">
+        {[0, 15, 30, 45].map((mm) => {
+          const selected = mm === minute;
+          return (
+            <button
+              key={mm}
+              onClick={() => set(hour, mm)}
+              className={`rounded-xl py-2.5 text-sm font-medium transition ${
+                selected
+                  ? "text-white"
+                  : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+              }`}
+              style={selected ? { backgroundColor: accent } : undefined}
+            >
+              :{String(mm).padStart(2, "0")}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

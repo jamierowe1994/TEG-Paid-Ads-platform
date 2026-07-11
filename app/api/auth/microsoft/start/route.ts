@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
-import { msConfigured, msAuthUrl } from "@/lib/microsoft";
+import { msConfigured, msAuthUrl, appOrigin } from "@/lib/microsoft";
 
 // Kick off the "Connect your email" flow: bounce the signed-in agent to
 // Microsoft's consent screen. A random nonce rides in an httpOnly cookie and
@@ -9,11 +9,11 @@ import { msConfigured, msAuthUrl } from "@/lib/microsoft";
 export async function GET(req: NextRequest) {
   const userId = verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
   if (!userId) {
-    return NextResponse.redirect(new URL("/login", req.nextUrl.origin));
+    return NextResponse.redirect(new URL("/login", appOrigin()));
   }
   if (!msConfigured()) {
     return NextResponse.redirect(
-      new URL("/dashboard/profile?email=notconfigured", req.nextUrl.origin)
+      new URL("/dashboard/profile?email=notconfigured", appOrigin())
     );
   }
   const state = crypto.randomBytes(16).toString("hex");

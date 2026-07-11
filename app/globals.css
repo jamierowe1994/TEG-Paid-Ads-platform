@@ -199,6 +199,42 @@ h5 {
   }
 }
 
+/* Landscape time slider — taller track, big grabbable thumb. Uses the
+   inline accent-color for the fill; these rules shape the track + thumb. */
+.teg-time-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  border-radius: 9999px;
+  background: #e5e7eb;
+  outline: none;
+  cursor: pointer;
+}
+.teg-time-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  background: #fff;
+  border: 3px solid currentColor;
+  color: inherit;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  cursor: grab;
+}
+.teg-time-slider::-webkit-slider-thumb:active {
+  cursor: grabbing;
+}
+.teg-time-slider::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  background: #fff;
+  border: 3px solid currentColor;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  cursor: grab;
+}
+
 /* ── Panel reveal sequence — words fade, image expands, stat expands, each
    business pill floats up from the bottom, all staggered. Elements start
    hidden; the animations only run once the panel has `revealed`. */

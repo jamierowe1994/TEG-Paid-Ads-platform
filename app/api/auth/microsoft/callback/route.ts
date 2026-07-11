@@ -6,7 +6,7 @@ import {
   setMsConnection,
   updateUser,
 } from "@/lib/users-store";
-import { msExchangeCode, msGetMe, msForgetUser } from "@/lib/microsoft";
+import { msExchangeCode, msGetMe, msForgetUser, appOrigin } from "@/lib/microsoft";
 import { rexFindUserIdByEmail } from "@/lib/rex";
 import { atlasHasUser } from "@/lib/atlas";
 
@@ -20,12 +20,12 @@ const REX_BRANDS = new Set(["property", "lettings", "fineandcountry", "auction"]
 export async function GET(req: NextRequest) {
   const back = (params: string) =>
     NextResponse.redirect(
-      new URL(`/dashboard/profile?${params}`, req.nextUrl.origin)
+      new URL(`/dashboard/profile?${params}`, appOrigin())
     );
 
   const userId = verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
   if (!userId) {
-    return NextResponse.redirect(new URL("/login", req.nextUrl.origin));
+    return NextResponse.redirect(new URL("/login", appOrigin()));
   }
 
   // The state cookie carries `${nonce}:${userId}` — BOTH must match: the
@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
 
     const user = await findById(userId);
     if (!user) {
-      return NextResponse.redirect(new URL("/login", req.nextUrl.origin));
+      return NextResponse.redirect(new URL("/login", appOrigin()));
     }
 
     // One mailbox, one portal user — otherwise two people could quietly hold
