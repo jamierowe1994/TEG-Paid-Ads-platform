@@ -75,10 +75,12 @@ async function syncBrand(brandId: string): Promise<BrandSyncResult> {
       );
       for (const cid of resolved) routes.set(cid, a.id);
     }
-    // One agent running ads on the brand → everything is theirs, even leads
-    // whose campaign we can't read.
-    const soleAgentId = agents.length === 1 ? agents[0].id : null;
-    if (routes.size === 0 && !soleAgentId) return out;
+    // Route STRICTLY by campaign: a lead only lands in an agent's funnel if it
+    // came from a campaign they've tagged. There used to be a "sole agent gets
+    // everything" fallback, but a brand's Facebook Page hosts leads from lots
+    // of campaigns/regions, so that swept the whole Page into one agent (the
+    // 600+-lead over-capture). No tagged campaigns → nothing to route.
+    if (routes.size === 0) return out;
 
     const forms = await getLeadgenForms(brandId);
     if (!forms || forms.length === 0) return out;
@@ -88,8 +90,7 @@ async function syncBrand(brandId: string): Promise<BrandSyncResult> {
       out.forms++;
       const metaLeads = await getFormLeads(form.id, LEADS_PER_FORM, pageToken);
       for (const ml of metaLeads) {
-        const target =
-          (ml.campaignId && routes.get(ml.campaignId)) || soleAgentId;
+        const target = ml.campaignId ? routes.get(ml.campaignId) : undefined;
         if (!target) {
           out.unrouted++;
           continue;

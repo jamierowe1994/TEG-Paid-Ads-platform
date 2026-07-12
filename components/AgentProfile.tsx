@@ -62,6 +62,17 @@ export default function AgentProfile({
   const [campaignsError, setCampaignsError] = useState<string | null>(null);
   const [diagnosing, setDiagnosing] = useState(false);
   const [diagnosis, setDiagnosis] = useState<string[] | null>(null);
+  // Where this agent's leads actually came from — grouped by ad, to catch
+  // over-capture (leads from ads that aren't theirs).
+  const [breakdown, setBreakdown] = useState<{
+    total: number;
+    fromMeta: number;
+    fromOther: number;
+    taggedCampaigns: string[];
+    bySource: { source: string; count: number }[];
+    ads: { adName: string; count: number; first: string; last: string }[];
+  } | null>(null);
+  const [breakdownOpen, setBreakdownOpen] = useState(false);
   const brand = brandById(agent.brandId);
   const pkg = packageById(agent.packageId);
   const rate =
@@ -69,6 +80,20 @@ export default function AgentProfile({
       ? Math.round((summary.converted / summary.total) * 100)
       : null;
   const curStage = stageIndex(agent.onboardingStage);
+
+  async function loadBreakdown() {
+    setBreakdownOpen(true);
+    if (breakdown) return;
+    try {
+      const res = await fetch(
+        `/api/admin/lead-breakdown?userId=${encodeURIComponent(agent.id)}`,
+        { headers: { Authorization: `Bearer ${adminPassword}` } }
+      );
+      if (res.ok) setBreakdown(await res.json());
+    } catch {
+      /* leave null — the section just won't show */
+    }
+  }
 
   async function patch(body: Record<string, unknown>) {
     setSaving(true);
@@ -507,6 +532,71 @@ export default function AgentProfile({
                 <>— add a Page ID for {brand?.name} in Connections first.</>
               )}
             </p>
+          )}
+        </div>
+
+        {/* Lead sources — where this agent's leads actually came from, grouped
+            by ad. Reveals over-capture (leads from ads that aren't theirs). */}
+        <div className="mt-4 rounded-2xl border border-gray-200 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold">Lead sources</p>
+              <p className="mt-0.5 text-xs text-gray-400">
+                Break down {agent.name.split(" ")[0]}&apos;s leads by the ad
+                they came from.
+              </p>
+            </div>
+            {!breakdownOpen && (
+              <button
+                onClick={loadBreakdown}
+                className="shrink-0 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+              >
+                Show breakdown
+              </button>
+            )}
+          </div>
+          {breakdownOpen && !breakdown && (
+            <p className="mt-3 text-sm text-gray-400">Loading…</p>
+          )}
+          {breakdown && (
+            <div className="mt-3">
+              <div className="flex flex-wrap gap-4 text-sm">
+                <span>
+                  <span className="font-semibold">{breakdown.total}</span>{" "}
+                  <span className="text-gray-400">total</span>
+                </span>
+                <span>
+                  <span className="font-semibold">{breakdown.fromMeta}</span>{" "}
+                  <span className="text-gray-400">from Meta ads</span>
+                </span>
+                <span>
+                  <span className="font-semibold">{breakdown.fromOther}</span>{" "}
+                  <span className="text-gray-400">manual / referral</span>
+                </span>
+              </div>
+              {breakdown.ads.length > 1 && breakdown.fromMeta > 0 && (
+                <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  ⚠ Leads span {breakdown.ads.filter((a) => a.count && !a.adName.startsWith("(no ad")).length}{" "}
+                  different ads — if some aren&apos;t {agent.name.split(" ")[0]}
+                  &apos;s, the sync is over-capturing the whole Page.
+                </p>
+              )}
+              <ul className="mt-3 space-y-1.5">
+                {breakdown.ads.slice(0, 25).map((a) => (
+                  <li
+                    key={a.adName}
+                    className="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2 text-sm"
+                  >
+                    <span className="min-w-0 truncate text-gray-700">
+                      {a.adName}
+                    </span>
+                    <span className="shrink-0 font-semibold text-gray-900">
+                      {a.count}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
 

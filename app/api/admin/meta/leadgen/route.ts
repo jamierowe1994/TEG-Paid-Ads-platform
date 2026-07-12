@@ -4,6 +4,8 @@ import {
   getFormLeads,
   getPageAccessToken,
   mapLeadFields,
+  parseCampaignIds,
+  resolveCampaignIds,
 } from "@/lib/meta";
 import { createLead, uid } from "@/lib/leads-store";
 import { findById } from "@/lib/users-store";
@@ -49,12 +51,22 @@ export async function GET(req: NextRequest) {
 async function importForm(
   formId: string,
   agentUserId: string,
+  campaignIds: Set<string>,
   pageToken?: string
-): Promise<{ imported: number; skipped: number; total: number }> {
+): Promise<{ imported: number; skipped: number; total: number; skippedOffCampaign: number }> {
   const metaLeads = await getFormLeads(formId, 2000, pageToken);
   let imported = 0;
   let skipped = 0;
+  let skippedOffCampaign = 0;
   for (const ml of metaLeads) {
+    // Only pull a lead that came from a campaign this agent has tagged. A
+    // brand's Page hosts forms from every region/campaign; without this filter
+    // one "import all forms" pull sweeps the whole Page into one agent (the
+    // 600+-lead over-capture).
+    if (!ml.campaignId || !campaignIds.has(ml.campaignId)) {
+      skippedOffCampaign++;
+      continue;
+    }
     const { name, phone, email, extra } = mapLeadFields(ml.fields);
     const lead: Lead = {
       id: uid(),
@@ -73,7 +85,7 @@ async function importForm(
     if (inserted) imported++;
     else skipped++;
   }
-  return { imported, skipped, total: metaLeads.length };
+  return { imported, skipped, total: metaLeads.length, skippedOffCampaign };
 }
 
 // Body: { brandId, agentUserId, formId? }. Omit formId to pull every form on
@@ -102,10 +114,24 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Backfill routes STRICTLY by the agent's tagged campaigns — otherwise an
+  // "import all forms" pull captures the whole Page. No tags → nothing to pull.
+  const tagged = parseCampaignIds(agent.metaCampaignId);
+  if (tagged.length === 0) {
+    return NextResponse.json(
+      {
+        error:
+          "Tag this agent's Meta campaign(s) first — backfill only imports leads from their own campaigns.",
+      },
+      { status: 400 }
+    );
+  }
+  const campaignIds = new Set(await resolveCampaignIds(tagged));
+
   try {
     const pageToken = (await getPageAccessToken(brandId)) ?? undefined;
     if (formId) {
-      const result = await importForm(formId, agentUserId, pageToken);
+      const result = await importForm(formId, agentUserId, campaignIds, pageToken);
       return NextResponse.json({ ok: true, forms: 1, ...result });
     }
 
@@ -128,13 +154,22 @@ export async function POST(req: NextRequest) {
     let imported = 0;
     let skipped = 0;
     let total = 0;
+    let skippedOffCampaign = 0;
     for (const f of forms) {
-      const r = await importForm(f.id, agentUserId, pageToken);
+      const r = await importForm(f.id, agentUserId, campaignIds, pageToken);
       imported += r.imported;
       skipped += r.skipped;
       total += r.total;
+      skippedOffCampaign += r.skippedOffCampaign;
     }
-    return NextResponse.json({ ok: true, forms: forms.length, imported, skipped, total });
+    return NextResponse.json({
+      ok: true,
+      forms: forms.length,
+      imported,
+      skipped,
+      total,
+      skippedOffCampaign,
+    });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Meta request failed" },
