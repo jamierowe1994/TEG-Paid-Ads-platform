@@ -19,6 +19,7 @@ import { getPreviewBrandId, getPreviewAccent } from "@/lib/preview";
 import { packageById } from "@/lib/packages";
 import { ONBOARDING_STAGES, stageIndex } from "@/lib/onboarding";
 import Confetti from "@/components/Confetti";
+import Collapse from "@/components/Collapse";
 import { LeadModal } from "@/app/dashboard/leads/lead-modal";
 import type { UserProfile, Lead, LeadStage } from "@/lib/types";
 
@@ -112,6 +113,12 @@ export default function DashboardOverview() {
   // skippable ("later" is remembered per user), and always available again
   // from Profile → Email sending.
   const [emailPromptHidden, setEmailPromptHidden] = useState(true);
+  // Drives the collapse: `open` false starts the fold-away; `gone` unmounts it
+  // once the animation lands; `pendingConnect` means fold first, then head off
+  // to the Microsoft sign-in (so the box tidies away before we leave).
+  const [emailPromptOpen, setEmailPromptOpen] = useState(true);
+  const [emailPromptGone, setEmailPromptGone] = useState(false);
+  const [emailPendingConnect, setEmailPendingConnect] = useState(false);
   useEffect(() => {
     if (!user) return;
     try {
@@ -367,47 +374,59 @@ export default function DashboardOverview() {
 
       {/* Connect-your-email nudge — the setup step for sending lead emails
           from the portal. Skippable, and lives on in Profile settings. */}
-      {!user.msEmail && !emailPromptHidden && (
-        <section className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-gray-200 bg-white/70 p-5 backdrop-blur-xl">
-          <div className="flex items-center gap-4">
-            <span
-              className="flex h-11 w-11 items-center justify-center rounded-2xl text-lg"
-              style={{ backgroundColor: `${brand.accent}1a` }}
-            >
-              ✉️
-            </span>
-            <div>
-              <p className="font-semibold">Connect your email</p>
-              <p className="text-sm text-gray-500">
-                Sign in with your work email once — lead emails then send from
-                your own address, and we'll link up your CRM account
-                automatically.
-              </p>
+      {!user.msEmail && !emailPromptHidden && !emailPromptGone && (
+        <Collapse
+          open={emailPromptOpen}
+          onCollapsed={() => {
+            setEmailPromptGone(true);
+            if (emailPendingConnect) {
+              window.location.href = "/api/auth/microsoft/start";
+            } else {
+              try {
+                localStorage.setItem(`email-prompt-later-${user.id}`, "1");
+              } catch {
+                /* it'll just show again next visit */
+              }
+            }
+          }}
+        >
+          <section className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-gray-200 bg-white/70 p-5 backdrop-blur-xl">
+            <div className="flex items-center gap-4">
+              <span
+                className="flex h-11 w-11 items-center justify-center rounded-2xl text-lg"
+                style={{ backgroundColor: `${brand.accent}1a` }}
+              >
+                ✉️
+              </span>
+              <div>
+                <p className="font-semibold">Connect your email</p>
+                <p className="text-sm text-gray-500">
+                  Sign in with your work email once — lead emails then send from
+                  your own address, and we'll link up your CRM account
+                  automatically.
+                </p>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <a
-              href="/api/auth/microsoft/start"
-              className="rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
-              style={{ backgroundColor: brand.accent }}
-            >
-              Connect with Microsoft
-            </a>
-            <button
-              onClick={() => {
-                setEmailPromptHidden(true);
-                try {
-                  localStorage.setItem(`email-prompt-later-${user.id}`, "1");
-                } catch {
-                  /* it'll just show again next visit */
-                }
-              }}
-              className="rounded-xl px-3 py-2.5 text-sm font-medium text-gray-400 hover:text-gray-600"
-            >
-              Later
-            </button>
-          </div>
-        </section>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setEmailPendingConnect(true);
+                  setEmailPromptOpen(false);
+                }}
+                className="rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+                style={{ backgroundColor: brand.accent }}
+              >
+                Connect with Microsoft
+              </button>
+              <button
+                onClick={() => setEmailPromptOpen(false)}
+                className="rounded-xl px-3 py-2.5 text-sm font-medium text-gray-400 hover:text-gray-600"
+              >
+                Later
+              </button>
+            </div>
+          </section>
+        </Collapse>
       )}
 
       {/* Campaign review — the customer just SEES their creatives here (no
