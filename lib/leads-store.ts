@@ -30,6 +30,8 @@ interface LeadRow {
   notes: unknown;
   appointment_at: string | Date | null;
   meta_lead_id: string | null;
+  campaign_id: string | null;
+  ad_name: string | null;
   rex_contact_id: string | null;
   rex_lead_id: string | null;
   archived_at: string | Date | null;
@@ -54,6 +56,8 @@ function fromRow(row: LeadRow): Lead {
       ? new Date(row.appointment_at).toISOString()
       : null,
     metaLeadId: row.meta_lead_id ?? null,
+    campaignId: row.campaign_id ?? null,
+    adName: row.ad_name ?? null,
     rexContactId: row.rex_contact_id ?? null,
     rexLeadId: row.rex_lead_id ?? null,
     archivedAt: row.archived_at ? new Date(row.archived_at).toISOString() : null,
@@ -111,8 +115,8 @@ export async function createLead(
   let inserted = true;
   if (hasDb()) {
     const rows = await q<{ id: string }>(
-      `INSERT INTO leads (id, user_id, name, phone, email, source, note, stage, received_at, history, referral_id, meta_lead_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+      `INSERT INTO leads (id, user_id, name, phone, email, source, note, stage, received_at, history, referral_id, meta_lead_id, campaign_id, ad_name)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
        ON CONFLICT (user_id, meta_lead_id) WHERE meta_lead_id IS NOT NULL DO NOTHING
        RETURNING id`,
       [
@@ -128,6 +132,8 @@ export async function createLead(
         JSON.stringify(lead.history),
         lead.referralId ?? null,
         lead.metaLeadId ?? null,
+        lead.campaignId ?? null,
+        lead.adName ?? null,
       ]
     );
     inserted = rows.length > 0;
@@ -461,6 +467,29 @@ export async function setLeadsArchived(
   }
   if (n > 0) await writeAllFile(all);
   return n;
+}
+
+// Permanently remove a batch of an agent's leads. Only used by the admin
+// over-capture cleanup — normal flows archive rather than delete. Scoped to
+// the owner so a stray id can't touch someone else's data.
+export async function deleteLeads(
+  userId: string,
+  leadIds: string[]
+): Promise<number> {
+  if (leadIds.length === 0) return 0;
+  if (hasDb()) {
+    const rows = await q<{ id: string }>(
+      "DELETE FROM leads WHERE user_id = $1 AND id = ANY($2) RETURNING id",
+      [userId, leadIds]
+    );
+    return rows.length;
+  }
+  const all = await readAllFile();
+  const ids = new Set(leadIds);
+  const kept = all.filter((l) => !(l.userId === userId && ids.has(l.id)));
+  const removed = all.length - kept.length;
+  if (removed > 0) await writeAllFile(kept);
+  return removed;
 }
 
 // "Save for a later date": archive the lead with a comeback date. The

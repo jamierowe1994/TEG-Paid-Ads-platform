@@ -110,6 +110,7 @@ async function syncBrand(brandId: string): Promise<BrandSyncResult> {
           receivedAt,
           history: [{ stage: "new", at: receivedAt }],
           adName: ml.adName,
+          campaignId: ml.campaignId ?? null,
           metaLeadId: ml.id,
         };
         const inserted = await createLead(target, lead, { notify: fresh });

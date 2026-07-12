@@ -73,6 +73,20 @@ export default function AgentProfile({
     ads: { adName: string; count: number; first: string; last: string }[];
   } | null>(null);
   const [breakdownOpen, setBreakdownOpen] = useState(false);
+  // Over-capture cleanup: preview then confirm removal of off-campaign leads.
+  const [cleanup, setCleanup] = useState<{
+    total: number;
+    keep: number;
+    remove: number;
+    removeOffCampaign: number;
+    removeUnverifiable: number;
+    metaReadable: boolean;
+    byCampaign: { campaignId: string; count: number; keep: boolean }[];
+    sample: { name: string; adName: string | null; receivedAt: string }[];
+  } | null>(null);
+  const [cleanupBusy, setCleanupBusy] = useState(false);
+  const [cleanupError, setCleanupError] = useState<string | null>(null);
+  const [cleanupDone, setCleanupDone] = useState<number | null>(null);
   const brand = brandById(agent.brandId);
   const pkg = packageById(agent.packageId);
   const rate =
@@ -92,6 +106,40 @@ export default function AgentProfile({
       if (res.ok) setBreakdown(await res.json());
     } catch {
       /* leave null — the section just won't show */
+    }
+  }
+
+  // Over-capture cleanup. Preview (confirm:false) shows what would go; run
+  // (confirm:true) deletes and refreshes the breakdown.
+  async function runCleanup(confirm: boolean) {
+    setCleanupBusy(true);
+    setCleanupError(null);
+    if (confirm) setCleanupDone(null);
+    try {
+      const res = await fetch("/api/admin/lead-cleanup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${adminPassword}`,
+        },
+        body: JSON.stringify({ userId: agent.id, confirm }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setCleanupError(data.error ?? "Cleanup failed");
+        return;
+      }
+      setCleanup(data);
+      if (confirm) {
+        setCleanupDone(data.removed ?? 0);
+        // Refresh the breakdown so the counts reflect the removal.
+        setBreakdown(null);
+        setBreakdownOpen(false);
+      }
+    } catch {
+      setCleanupError("Cleanup failed — network error");
+    } finally {
+      setCleanupBusy(false);
     }
   }
 
@@ -596,6 +644,126 @@ export default function AgentProfile({
                   </li>
                 ))}
               </ul>
+
+              {/* Over-capture cleanup — strip leads that came from a campaign
+                  this agent hasn't tagged. Preview first, then confirm. */}
+              <div className="mt-4 border-t border-gray-100 pt-4">
+                <p className="text-xs font-semibold text-gray-700">
+                  Clean up off-campaign leads
+                </p>
+                <p className="mt-0.5 text-xs text-gray-400">
+                  Removes Meta leads that came from a campaign{" "}
+                  {agent.name.split(" ")[0]} isn&apos;t tagged to. Referral and
+                  manual leads are always kept.
+                </p>
+
+                {cleanupError && (
+                  <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
+                    {cleanupError}
+                  </p>
+                )}
+
+                {cleanupDone !== null && (
+                  <p className="mt-2 rounded-lg bg-green-50 px-3 py-2 text-xs text-green-700">
+                    Removed {cleanupDone} off-campaign lead
+                    {cleanupDone === 1 ? "" : "s"}. Re-open the breakdown to see
+                    the tidied list.
+                  </p>
+                )}
+
+                {!cleanup && cleanupDone === null && (
+                  <button
+                    onClick={() => runCleanup(false)}
+                    disabled={cleanupBusy}
+                    className="mt-2 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    {cleanupBusy ? "Checking…" : "Preview cleanup"}
+                  </button>
+                )}
+
+                {cleanup && cleanupDone === null && (
+                  <div className="mt-3">
+                    <div className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-700">
+                      <p>
+                        <span className="font-semibold text-gray-900">
+                          {cleanup.keep}
+                        </span>{" "}
+                        would stay ·{" "}
+                        <span className="font-semibold text-red-600">
+                          {cleanup.remove}
+                        </span>{" "}
+                        would be removed
+                        {cleanup.removeUnverifiable > 0 && (
+                          <>
+                            {" "}
+                            <span className="text-gray-400">
+                              ({cleanup.removeOffCampaign} off-campaign,{" "}
+                              {cleanup.removeUnverifiable} no longer in Meta)
+                            </span>
+                          </>
+                        )}
+                      </p>
+                      {!cleanup.metaReadable && (
+                        <p className="mt-1 text-amber-700">
+                          ⚠ Couldn&apos;t read this brand&apos;s Page from Meta —
+                          only locally-tagged leads were judged, so this preview
+                          may be incomplete.
+                        </p>
+                      )}
+                    </div>
+
+                    {cleanup.byCampaign.length > 0 && (
+                      <ul className="mt-2 space-y-1">
+                        {cleanup.byCampaign.map((c) => (
+                          <li
+                            key={c.campaignId}
+                            className="flex items-center justify-between gap-3 text-xs"
+                          >
+                            <span className="min-w-0 truncate font-mono text-gray-500">
+                              {c.campaignId}
+                            </span>
+                            <span
+                              className={
+                                c.keep
+                                  ? "shrink-0 font-medium text-green-600"
+                                  : "shrink-0 font-medium text-red-500"
+                              }
+                            >
+                              {c.count} {c.keep ? "keep" : "remove"}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                    {cleanup.remove > 0 ? (
+                      <div className="mt-3 flex items-center gap-2">
+                        <button
+                          onClick={() => runCleanup(true)}
+                          disabled={cleanupBusy}
+                          className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                        >
+                          {cleanupBusy
+                            ? "Removing…"
+                            : `Remove ${cleanup.remove} lead${cleanup.remove === 1 ? "" : "s"}`}
+                        </button>
+                        <button
+                          onClick={() => setCleanup(null)}
+                          disabled={cleanupBusy}
+                          className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-xs text-green-700">
+                        Nothing to remove — every Meta lead is on a tagged
+                        campaign.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

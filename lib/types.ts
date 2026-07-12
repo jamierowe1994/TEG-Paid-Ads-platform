@@ -84,7 +84,11 @@ export interface Lead {
   referralId?: string | null; // set when the lead came from a referral
   // Populated later by the Meta lead webhook; optional until then. The UI
   // falls back to `note` when interestedIn is absent.
-  adName?: string | null; // the ad/campaign the lead came from
+  adName?: string | null; // the ad the lead came from
+  // The Meta campaign this lead came from (from the leadgen import). Used to
+  // keep a lead scoped to the agent's tagged campaign and to detect the
+  // whole-Page over-capture. null for referral/manual leads.
+  campaignId?: string | null;
   interestedIn?: string | null; // what the lead enquired about
   // Agent-added notes (from the Call → Add notes panel).
   notes?: { at: string; text: string }[];

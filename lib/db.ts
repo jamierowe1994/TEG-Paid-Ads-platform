@@ -149,6 +149,10 @@ CREATE INDEX IF NOT EXISTS leads_rex_contact_idx ON leads(rex_contact_id);
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS resurface_at TIMESTAMPTZ;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS crm_match JSONB;
+-- The Meta campaign a lead came from (from the leadgen import). Lets us scope
+-- a lead to the agent's tagged campaign and spot cross-campaign over-capture.
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS campaign_id TEXT;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS ad_name TEXT;
 CREATE INDEX IF NOT EXISTS leads_resurface_idx ON leads(resurface_at)
   WHERE resurface_at IS NOT NULL;
 

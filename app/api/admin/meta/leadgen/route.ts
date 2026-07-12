@@ -79,6 +79,7 @@ async function importForm(
       receivedAt: new Date(ml.createdTime).toISOString(),
       history: [{ stage: "new", at: new Date(ml.createdTime).toISOString() }],
       adName: ml.adName,
+      campaignId: ml.campaignId ?? null,
       metaLeadId: ml.id,
     };
     const inserted = await createLead(agentUserId, lead, { notify: false });
