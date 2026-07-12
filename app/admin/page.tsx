@@ -622,6 +622,11 @@ export default function AdminPage() {
     setSelectedAgent((cur) => (cur && cur.id === u.id ? u : cur));
   }
 
+  // Drop a deleted agent out of the list once their profile is removed.
+  function applyAgentDelete(id: string) {
+    setUsers((prev) => prev.filter((x) => x.id !== id));
+  }
+
   async function signIn() {
     setLoading(true);
     setError("");
@@ -2432,6 +2437,7 @@ export default function AdminPage() {
           onClose={() => setSelectedAgent(null)}
           onUpdated={applyAgentUpdate}
           onLeadsImported={() => loadData(password)}
+          onDeleted={applyAgentDelete}
         />
       )}
 

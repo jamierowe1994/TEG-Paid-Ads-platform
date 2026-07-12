@@ -27,6 +27,7 @@ export default function AgentProfile({
   onClose,
   onUpdated,
   onLeadsImported,
+  onDeleted,
 }: {
   agent: UserProfile;
   summary?: { total: number; converted: number };
@@ -34,10 +35,14 @@ export default function AgentProfile({
   onClose: () => void;
   onUpdated: (u: UserProfile) => void;
   onLeadsImported?: () => void;
+  onDeleted?: (id: string) => void;
 }) {
   const [saving, setSaving] = useState(false);
-  const [noteText, setNoteText] = useState("");
   const [reset, setReset] = useState<string | null>(null);
+  // Delete profile — two-step so it can't be hit by accident.
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [assetUrl, setAssetUrl] = useState("");
   const [assetType, setAssetType] = useState<"image" | "video">("image");
   const [assetCaption, setAssetCaption] = useState("");
@@ -202,6 +207,35 @@ export default function AgentProfile({
       body: JSON.stringify({ userId: agent.id }),
     });
     if (res.ok) setReset((await res.json()).temporaryPassword);
+  }
+
+  // Permanently delete this agent (and their leads). Closes the modal and
+  // tells the parent to drop them from the list.
+  async function deleteProfile() {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${adminPassword}`,
+        },
+        body: JSON.stringify({ userId: agent.id }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setDeleteError(d.error ?? "Delete failed");
+        setDeleting(false);
+        return;
+      }
+      setConfirmDelete(false);
+      onDeleted?.(agent.id);
+      onClose();
+    } catch {
+      setDeleteError("Delete failed — network error");
+      setDeleting(false);
+    }
   }
 
   // One-click historic backfill: pulls every Instant Form lead Meta still
@@ -464,7 +498,7 @@ export default function AgentProfile({
       onClick={onClose}
     >
       <div
-        className="modal-pop max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl sm:p-8"
+        className="modal-pop max-h-[96vh] w-full max-w-5xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl sm:p-7"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -1080,64 +1114,30 @@ export default function AgentProfile({
         </div>
         </div>
 
-        {/* Notes */}
-        <div className="mt-6">
-          <p className="text-sm font-semibold">Notes</p>
-          <div className="mt-3 flex gap-2">
-            <input
-              value={noteText}
-              onChange={(e) => setNoteText(e.target.value)}
-              placeholder="Add a note…"
-              className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gray-900"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && noteText.trim()) {
-                  patch({ note: noteText.trim() });
-                  setNoteText("");
-                }
-              }}
-            />
-            <button
-              onClick={() => {
-                if (noteText.trim()) {
-                  patch({ note: noteText.trim() });
-                  setNoteText("");
-                }
-              }}
-              className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
-            >
-              Add
-            </button>
-          </div>
-          <ol className="mt-4 space-y-3">
-            {[...(agent.adminNotes ?? [])].reverse().map((n, i) => (
-              <li key={i} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
-                <p className="text-sm text-gray-700">{n.text}</p>
-                <p className="mt-1 text-xs text-gray-400">
-                  {new Date(n.at).toLocaleString("en-GB")}
-                </p>
-              </li>
-            ))}
-            {(agent.adminNotes ?? []).length === 0 && (
-              <li className="text-sm text-gray-400">No notes yet.</li>
-            )}
-          </ol>
-        </div>
-
-        {/* Reset password — deliberately last, and red: it's the one action
-            here you don't want hit by accident. */}
+        {/* Account actions — reset + delete, side by side. Both are red (the
+            two things you don't want hit by accident); delete asks first. */}
         <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-red-700">Password</p>
-              <p className="text-xs text-red-400">
-                Issue a temporary password if they&apos;re locked out.
-              </p>
-            </div>
+          <p className="text-sm font-medium text-red-700">Account actions</p>
+          <p className="mt-0.5 text-xs text-red-400">
+            Reset issues a temporary password. Delete removes{" "}
+            {agent.name.split(" ")[0]} and all their leads — this can&apos;t be
+            undone.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
             <button
               onClick={resetPassword}
               className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100"
             >
               Reset password
+            </button>
+            <button
+              onClick={() => {
+                setDeleteError(null);
+                setConfirmDelete(true);
+              }}
+              className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
+            >
+              Delete profile
             </button>
           </div>
           {reset && (
@@ -1145,8 +1145,56 @@ export default function AgentProfile({
               {reset}
             </div>
           )}
+          {deleteError && (
+            <p className="mt-2 text-xs text-red-600">{deleteError}</p>
+          )}
         </div>
       </div>
+
+      {/* "Are you sure?" pop-out — the guard against a mis-click on delete. */}
+      {confirmDelete && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 p-4 backdrop-blur-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!deleting) setConfirmDelete(false);
+          }}
+        >
+          <div
+            className="modal-pop w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-semibold text-gray-900">
+              Delete {agent.name}?
+            </h3>
+            <p className="mt-2 text-sm text-gray-500">
+              This permanently removes their profile and all{" "}
+              {summary?.total ?? 0} of their leads. This can&apos;t be undone.
+            </p>
+            {deleteError && (
+              <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
+                {deleteError}
+              </p>
+            )}
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setConfirmDelete(false)}
+                disabled={deleting}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={deleteProfile}
+                disabled={deleting}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? "Deleting…" : "Yes, delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

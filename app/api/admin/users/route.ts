@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { listUsers, findById, updateUser, toAdmin } from "@/lib/users-store";
+import {
+  listUsers,
+  findById,
+  updateUser,
+  deleteUser,
+  toAdmin,
+} from "@/lib/users-store";
 import { adminScope } from "@/lib/admin-auth";
 
 // Admin user management. Super admins see every agent; an MD sees (and can
@@ -70,4 +76,25 @@ export async function PATCH(req: NextRequest) {
   const updated = await updateUser(userId, patch);
   // Return the admin view so the client sees notes/location/stage.
   return NextResponse.json({ user: updated ? toAdmin(updated) : null });
+}
+
+// Permanently delete an agent and everything they own (leads cascade via the
+// FK). Super only — destructive, so MDs can't remove accounts.
+// Body: { userId }
+export async function DELETE(req: NextRequest) {
+  const scope = adminScope(req);
+  if (!scope || scope.role !== "super") {
+    return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  }
+  const body = await req.json().catch(() => null);
+  const userId = String(body?.userId ?? "");
+  if (!userId) {
+    return NextResponse.json({ error: "userId is required" }, { status: 400 });
+  }
+  const current = await findById(userId);
+  if (!current) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+  const ok = await deleteUser(userId);
+  return NextResponse.json({ ok });
 }
