@@ -614,7 +614,7 @@ export default function LeadsPage() {
                   ? "text-white"
                   : "border border-gray-300 text-gray-700 hover:bg-gray-50"
               }`}
-              style={newOnly ? { backgroundColor: "#B8912F" } : undefined}
+              style={newOnly ? { backgroundColor: brand.accent } : undefined}
             >
               New only
             </button>
