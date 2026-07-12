@@ -152,6 +152,9 @@ export function LeadModal({
   >(null);
   const [savingLost, setSavingLost] = useState(false);
   const [lostReason, setLostReason] = useState("");
+  // The reason picked on the "add to marketing funnel" step — required before
+  // the add button appears.
+  const [nurtureReason, setNurtureReason] = useState("");
   const [snoozeDay, setSnoozeDay] = useState<Date | null>(null);
   const [savingSnooze, setSavingSnooze] = useState(false);
   const [archivingFile, setArchivingFile] = useState(false);
@@ -333,6 +336,18 @@ export function LeadModal({
     onStage("lost");
     setSavingLost(false);
     onClose();
+  }
+
+  // Add to the marketing funnel WITH the reason it didn't convert — required
+  // before this can run (the button only shows once a reason is picked).
+  async function addToNurture() {
+    if (!nurtureReason || savingLost) return;
+    setSavingLost(true);
+    await onAddNote(`Added to marketing funnel — ${nurtureReason}`);
+    onStage("nurture");
+    setSavingLost(false);
+    setLostStep("done");
+    setTimeout(onClose, 1600);
   }
 
   // A timing reason + a date = not lost at all: saved for later. Picking
@@ -838,7 +853,11 @@ export function LeadModal({
             {/* Mark lost / reopen */}
             {canWork && !lead.archivedAt && (
               <button
-                onClick={() => setLostStep("ask")}
+                onClick={() => {
+                  setNurtureReason("");
+                  setLostReason("");
+                  setLostStep("ask");
+                }}
                 className="w-full rounded-2xl border border-transparent py-2.5 text-sm font-medium text-gray-400 transition hover:border-gray-300 hover:text-gray-600"
               >
                 Mark as lost
@@ -883,19 +902,20 @@ export function LeadModal({
           </div>
         </div>
 
-        {/* Mark-as-lost flow — swipes over the modal: sad → funnel → done */}
+        {/* Mark-as-lost flow — fills the same footprint as the lead modal
+            behind it (wide landscape card), swaps content per step. */}
         {lostStep && (
           <div
-            className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 p-4"
+            className="fixed inset-0 z-[60] flex items-end justify-center bg-gray-900/50 p-0 sm:items-center sm:p-6"
             onClick={() => setLostStep(null)}
           >
             <div
-              className="relative w-full max-w-md rounded-3xl bg-white p-6 sm:p-7"
+              className="modal-pop relative flex max-h-[92vh] min-h-[60vh] w-full max-w-3xl flex-col overflow-y-auto rounded-t-3xl bg-white p-6 sm:rounded-3xl sm:p-8"
               onClick={(e) => e.stopPropagation()}
             >
               <button
                 onClick={() => setLostStep(null)}
-                className="absolute right-5 top-5 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                className="absolute right-5 top-5 z-10 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
                 aria-label="Cancel"
               >
                 <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
@@ -904,10 +924,10 @@ export function LeadModal({
               </button>
               <div
                 key={lostStep}
-                className="animate-[lost-slide_0.35s_cubic-bezier(0.22,1,0.36,1)]"
+                className="flex flex-1 animate-[lost-slide_0.35s_cubic-bezier(0.22,1,0.36,1)] flex-col justify-center"
               >
               {lostStep === "ask" && (
-                <>
+                <div className="mx-auto w-full max-w-md">
                   <GifCard
                     src={LOST_GIF}
                     emoji="🥲"
@@ -938,10 +958,10 @@ export function LeadModal({
                       No, just mark it lost
                     </button>
                   </div>
-                </>
+                </div>
               )}
               {lostStep === "reason" && (
-                <>
+                <div className="mx-auto w-full max-w-md">
                   <h3 className="text-center text-xl font-semibold">
                     What happened with {firstName}?
                   </h3>
@@ -971,10 +991,10 @@ export function LeadModal({
                       </button>
                     ))}
                   </div>
-                </>
+                </div>
               )}
               {lostStep === "date" && (
-                <>
+                <div className="mx-auto w-full max-w-lg">
                   <h3 className="text-center text-xl font-semibold">
                     Sounds like a &quot;not yet&quot;, not a no
                   </h3>
@@ -1023,36 +1043,75 @@ export function LeadModal({
                   >
                     No date — just mark it lost
                   </button>
-                </>
+                </div>
               )}
               {lostStep === "funnel" && (
-                <>
-                  <GifCard
-                    src={FUNNEL_GIF}
-                    emoji="🙌"
-                    tint="linear-gradient(135deg,#f0fdf4,#dcfce7)"
-                  />
-                  <h3 className="mt-5 text-center text-xl font-semibold">
-                    Not lost — just nurtured
-                  </h3>
-                  <p className="mt-2 text-center text-sm text-gray-500">
-                    {firstName} will get our marketing sequence and could come
-                    back around when the timing's right.
-                  </p>
-                  <div className="mt-5">
-                    <BigBtn
-                      primary
-                      accent={brand.accent}
-                      onClick={() => {
-                        onStage("nurture");
-                        setLostStep("done");
-                        setTimeout(onClose, 1600);
-                      }}
-                    >
-                      Add them ✓
-                    </BigBtn>
+                <div className="grid gap-6 sm:grid-cols-2 sm:gap-8">
+                  {/* Left — not lost, just nurtured (the add button appears
+                      once a reason is chosen on the right) */}
+                  <div className="flex flex-col justify-center">
+                    <GifCard
+                      src={FUNNEL_GIF}
+                      emoji="🙌"
+                      tint="linear-gradient(135deg,#f0fdf4,#dcfce7)"
+                    />
+                    <h3 className="mt-5 text-xl font-semibold">
+                      Not lost — just nurtured
+                    </h3>
+                    <p className="mt-2 text-sm text-gray-500">
+                      {firstName} will get our marketing sequence and could come
+                      back around when the timing&apos;s right.
+                    </p>
+                    {nurtureReason && (
+                      <div className="fade-up mt-5">
+                        <BigBtn
+                          primary
+                          accent={brand.accent}
+                          disabled={savingLost}
+                          onClick={addToNurture}
+                        >
+                          {savingLost ? "Adding…" : "Add to marketing funnel ✓"}
+                        </BigBtn>
+                      </div>
+                    )}
                   </div>
-                </>
+                  {/* Right — pick why it didn't convert (required) */}
+                  <div className="flex flex-col justify-center">
+                    <p className="text-sm font-medium text-gray-800">
+                      First — why didn&apos;t it convert?
+                    </p>
+                    <p className="mt-1 text-xs text-gray-400">
+                      We log the reason before nurturing so we learn what to fix.
+                    </p>
+                    <div className="mt-4 space-y-2">
+                      {LOST_REASONS.map((reason) => {
+                        const selected = nurtureReason === reason;
+                        return (
+                          <button
+                            key={reason}
+                            onClick={() => setNurtureReason(reason)}
+                            className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-medium transition ${
+                              selected
+                                ? "text-white"
+                                : "border-gray-200 text-gray-700 hover:border-gray-900 hover:bg-gray-50"
+                            }`}
+                            style={
+                              selected
+                                ? {
+                                    backgroundColor: brand.accent,
+                                    borderColor: brand.accent,
+                                  }
+                                : undefined
+                            }
+                          >
+                            {reason}
+                            {selected && <span>✓</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
               )}
               {lostStep === "done" && (
                 <div className="flex flex-col items-center justify-center py-12">
