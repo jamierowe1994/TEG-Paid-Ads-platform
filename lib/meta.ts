@@ -151,7 +151,7 @@ export async function getSnapshotFor(
 
   const insights = (await graph(`${acc}/insights`, {
     fields: "impressions,clicks,spend,cpc,ctr,actions",
-    date_preset: datePreset,
+    ...presetParams(datePreset),
   })) as { data?: Array<Record<string, unknown>> };
 
   const row = insights.data?.[0] ?? {};
@@ -320,7 +320,7 @@ export async function getCampaignSnapshot(
         const insights = (await graph(`${acc}/insights`, {
           level: "campaign",
           fields: "impressions,clicks,spend,actions",
-          date_preset: datePreset,
+          ...presetParams(datePreset),
           filtering: JSON.stringify([
             { field: "campaign.id", operator: "IN", value: ids },
           ]),
@@ -455,7 +455,7 @@ export async function getAdInsightsByAd(
         const data = (await graph(`${acc}/insights`, {
           level: "ad",
           fields: "ad_id,impressions,clicks,spend,actions",
-          date_preset: datePreset,
+          ...presetParams(datePreset),
           filtering: JSON.stringify([
             { field: "campaign.id", operator: "IN", value: ids },
           ]),
@@ -626,8 +626,34 @@ export const META_DATE_PRESETS = [
 
 const VALID_PRESETS = new Set(META_DATE_PRESETS.map((p) => p.id));
 
+// The partner API (the portal's "My Ads" view) offers a slightly wider window
+// set than the admin dropdown: "this month" (a native Meta preset) and "60
+// days" (Meta has no 60-day preset — served as a custom time_range below).
+const CUSTOM_RANGE_DAYS: Record<string, number> = { last_60d: 60 };
+const PARTNER_PRESETS = new Set<string>([
+  ...VALID_PRESETS,
+  "this_month",
+  ...Object.keys(CUSTOM_RANGE_DAYS),
+]);
+
 export function sanitizePreset(p: string | null | undefined): string {
-  return p && VALID_PRESETS.has(p as never) ? p : "last_30d";
+  return p && PARTNER_PRESETS.has(p) ? p : "last_30d";
+}
+
+// Insight query params for a preset: either a native Meta `date_preset`, or a
+// computed `time_range` for windows Meta has no preset for (e.g. last 60 days).
+// Custom ranges end yesterday, matching Meta's own "last N days" windows.
+export function presetParams(preset: string): Record<string, string> {
+  const days = CUSTOM_RANGE_DAYS[preset];
+  if (!days) return { date_preset: preset };
+  const DAY = 86_400_000;
+  const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+  return {
+    time_range: JSON.stringify({
+      since: iso(Date.now() - days * DAY),
+      until: iso(Date.now() - DAY),
+    }),
+  };
 }
 
 export interface AdRow {
