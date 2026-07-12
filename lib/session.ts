@@ -392,6 +392,32 @@ export async function fetchReferrals(): Promise<Referral[]> {
   }
 }
 
+// Agents you could refer to at a brand (name/photo/area/tenure) — for the
+// referral directory. Empty when a brand has no agents in the system yet.
+export interface ReferralAgent {
+  id: string;
+  name: string;
+  photo: string | null;
+  location: string;
+  since: string;
+}
+
+export async function fetchReferralAgents(
+  brandId: string
+): Promise<ReferralAgent[]> {
+  try {
+    const res = await fetch(
+      `/api/referrals/agents?brand=${encodeURIComponent(brandId)}`,
+      { cache: "no-store" }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data.agents) ? (data.agents as ReferralAgent[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function sendReferral(payload: {
   toBrandId: string;
   leadName: string;

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   getUser,
   fetchReferrals,
+  fetchReferralAgents,
   sendReferral,
   actOnReferral,
 } from "@/lib/session";
@@ -40,70 +41,116 @@ function money(n: number) {
   return `£${n.toLocaleString("en-GB")}`;
 }
 
-// ── Demo agent directory ─────────────────────────────────────────────────────
-// A stand-in for the real business/coverage database that's coming. Each agent
-// belongs to a brand and covers an area; the "closest available agent" match
-// keyword-checks the typed location against these, skipping the referrer's own
-// brand (you can't refer within your own business). Swap this array for the
-// live directory once it's connected and the flow stays identical.
-interface DemoAgent {
+// ── Agent directory ──────────────────────────────────────────────────────────
+// Agents you can refer to at a brand. Real agents come from the users table
+// (via /api/referrals/agents) so you see their actual photo + how long they've
+// been with the business. Brands with no agents in the system yet fall back to
+// the demo directory below — a stand-in for the coverage database that's
+// coming, at which point bios/availability/distance all come from there too.
+interface RefAgent {
   id: string;
   name: string;
-  brandId: BrandId;
-  area: string; // human-readable coverage
-  keywords: string[]; // matched against the typed location
-  available: boolean;
+  photo: string | null; // real headshot, or null → initials avatar
+  area: string; // where they cover
+  since: string; // ISO — how long with the business
+  bio: string;
 }
 
-const DEMO_AGENTS: DemoAgent[] = [
-  {
-    id: "steve-rodgers",
-    name: "Steve Rodgers",
-    brandId: "property",
-    area: "Liverpool & Merseyside",
-    keywords: ["liverpool", "merseyside", "wirral", "l1", "l2", "l3"],
-    available: true,
-  },
-  {
-    id: "priya-shah",
-    name: "Priya Shah",
-    brandId: "lettings",
-    area: "Greater Manchester",
-    keywords: ["manchester", "salford", "stockport", "m1", "m2"],
-    available: true,
-  },
-  {
-    id: "tom-barker",
-    name: "Tom Barker",
-    brandId: "mortgage",
-    area: "Leeds & West Yorkshire",
-    keywords: ["leeds", "wakefield", "bradford", "ls1", "yorkshire"],
-    available: true,
-  },
-  {
-    id: "aisha-khan",
-    name: "Aisha Khan",
-    brandId: "commercial",
-    area: "Birmingham & the Midlands",
-    keywords: ["birmingham", "midlands", "coventry", "b1", "wolverhampton"],
-    available: true,
-  },
-];
+// Per-brand demo agents (used only when a brand has no real agents yet).
+const DEMO_AGENTS: Partial<Record<BrandId, RefAgent[]>> = {
+  property: [
+    {
+      id: "demo-kayleigh-p",
+      name: "Kayleigh Wright",
+      photo: null,
+      area: "Liverpool & Merseyside",
+      since: "2024-02-01",
+      bio: "Kayleigh looks after residential sales across Liverpool and the Wirral — quick to call new valuations and great with first-time sellers.",
+    },
+    {
+      id: "demo-marcus-p",
+      name: "Marcus Bell",
+      photo: null,
+      area: "St Helens & Warrington",
+      since: "2023-06-01",
+      bio: "Marcus covers the St Helens and Warrington patch, with a strong track record on family homes.",
+    },
+  ],
+  lettings: [
+    {
+      id: "demo-kayleigh-l",
+      name: "Kayleigh Wright",
+      photo: null,
+      area: "Liverpool & Merseyside",
+      since: "2024-02-01",
+      bio: "Kayleigh helps landlords let faster across Liverpool — fast turnarounds and a full book of tenants ready to move.",
+    },
+  ],
+  mortgage: [
+    {
+      id: "demo-tom-m",
+      name: "Tom Barker",
+      photo: null,
+      area: "Leeds & West Yorkshire",
+      since: "2022-09-01",
+      bio: "Tom is a whole-of-market adviser covering Leeds and West Yorkshire, brilliant with tricky cases and self-employed clients.",
+    },
+  ],
+  commercial: [
+    {
+      id: "demo-aisha-c",
+      name: "Aisha Khan",
+      photo: null,
+      area: "Birmingham & the Midlands",
+      since: "2023-01-01",
+      bio: "Aisha handles commercial units across Birmingham and the wider Midlands — offices, retail and industrial.",
+    },
+  ],
+  fineandcountry: [
+    {
+      id: "demo-oliver-f",
+      name: "Oliver Grant",
+      photo: null,
+      area: "Cheshire",
+      since: "2021-11-01",
+      bio: "Oliver specialises in premium and country homes across Cheshire.",
+    },
+  ],
+  auction: [
+    {
+      id: "demo-dan-a",
+      name: "Dan Foster",
+      photo: null,
+      area: "North West",
+      since: "2023-03-01",
+      bio: "Dan runs residential and investment lots across the North West auction calendar.",
+    },
+  ],
+};
 
-// Pick the closest available agent for a typed location, never matching the
-// referrer's own brand. Keyword hit wins; otherwise fall back to the first
-// available agent ("nearest we could find").
-function findClosestAgent(
-  location: string,
-  ownBrandId: BrandId
-): DemoAgent | null {
-  const pool = DEMO_AGENTS.filter(
-    (a) => a.available && a.brandId !== ownBrandId
-  );
-  if (pool.length === 0) return null;
+// "since Jul 2024" / "3 years" style tenure from a start date.
+function tenure(since: string): string {
+  const start = new Date(since);
+  const months =
+    (Date.now() - start.getTime()) / (1000 * 60 * 60 * 24 * 30.44);
+  if (months < 12) {
+    const m = Math.max(1, Math.round(months));
+    return `${m} month${m === 1 ? "" : "s"} with the team`;
+  }
+  const years = Math.floor(months / 12);
+  return `${years} year${years === 1 ? "" : "s"} with the team`;
+}
+
+// Rank agents by how well the typed location matches their patch — a keyword
+// hit floats to the top; the rest stay in order as the "close-by" list.
+function rankByLocation(agents: RefAgent[], location: string): RefAgent[] {
   const q = location.trim().toLowerCase();
-  const hit = pool.find((a) => a.keywords.some((k) => q.includes(k)));
-  return hit ?? pool[0];
+  if (!q) return agents;
+  return [...agents].sort((a, b) => {
+    const am = a.area.toLowerCase().split(/[\s,&]+/).some((w) => w && q.includes(w));
+    const bm = b.area.toLowerCase().split(/[\s,&]+/).some((w) => w && q.includes(w));
+    return am === bm ? 0 : am ? -1 : 1;
+  });
 }
 
 // ── Progress model ──────────────────────────────────────────────────────────
@@ -144,8 +191,8 @@ export default function ReferralsPage() {
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [tab, setTab] = useState<"send" | "received">("send");
   const [preview, setPreview] = useState<Brand | null>(null);
-  const [formBrand, setFormBrand] = useState<Brand | null>(null);
-  const [wizardOpen, setWizardOpen] = useState(false);
+  // The brand we're referring INTO — opens the location → agent → details flow.
+  const [wizardBrand, setWizardBrand] = useState<Brand | null>(null);
   const [open, setOpen] = useState<Referral | null>(null);
   const [toast, setToast] = useState("");
 
@@ -190,7 +237,7 @@ export default function ReferralsPage() {
   }
   function startRefer(b: Brand) {
     setPreview(null);
-    setFormBrand(b);
+    setWizardBrand(b);
   }
 
   if (!brand) return null;
@@ -238,34 +285,7 @@ export default function ReferralsPage() {
       {/* SEND — advertisement tiles, then the referrals you've sent */}
       {tab === "send" && (
         <>
-          {/* Hero — location-first "refer a lead": we find the closest
-              available agent across the group and route it to them */}
-          <section
-            className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-gray-200 p-6 text-white shadow-sm"
-            style={{
-              background: `radial-gradient(120% 140% at 0% 0%, ${brand.accent}, ${brand.accent}cc 55%, rgba(0,0,0,0.6))`,
-            }}
-          >
-            <div className="max-w-lg">
-              <h2 className="text-xl font-semibold">Got a lead for another business?</h2>
-              <p className="mt-1 text-sm text-white/80">
-                Tell us where they&apos;re based and we&apos;ll match them to the
-                closest available agent across The Experts Group — then send it
-                straight to them.
-              </p>
-            </div>
-            <button
-              onClick={() => setWizardOpen(true)}
-              className="shrink-0 rounded-xl bg-white px-6 py-3 text-sm font-semibold text-gray-900 transition hover:opacity-90"
-            >
-              Refer a lead →
-            </button>
-          </section>
-
-          <p className="mt-8 text-sm font-medium text-gray-500">
-            Or pick a business to refer to directly
-          </p>
-          <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {otherBrands.map((b) => (
               <BrandTile key={b.id} brand={b} onOpen={() => openPreview(b)} />
             ))}
@@ -317,26 +337,13 @@ export default function ReferralsPage() {
         />
       )}
 
-      {formBrand && (
-        <ReferForm
-          toBrand={formBrand}
-          fromBrand={brand}
-          onClose={() => setFormBrand(null)}
-          onSent={async (name) => {
-            setFormBrand(null);
-            setTab("send");
-            await reload();
-            flash(`Referral sent to ${name} ✓`);
-          }}
-        />
-      )}
-
-      {wizardOpen && (
+      {wizardBrand && (
         <ReferWizard
+          toBrand={wizardBrand}
           fromBrand={brand}
-          onClose={() => setWizardOpen(false)}
+          onClose={() => setWizardBrand(null)}
           onSent={async (agentName) => {
-            setWizardOpen(false);
+            setWizardBrand(null);
             setTab("send");
             await reload();
             flash(`Referral sent to ${agentName} ✓`);
@@ -515,7 +522,49 @@ function Field({
   );
 }
 
-function ReferForm({
+// ── Refer-a-lead wizard: brand chosen → location → agent → lead details ──────
+function AgentAvatar({
+  name,
+  photo,
+  accent,
+  size = 44,
+}: {
+  name: string;
+  photo: string | null;
+  accent: string;
+  size?: number;
+}) {
+  if (photo) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={photo}
+        alt={name}
+        className="shrink-0 rounded-full object-cover"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+  return (
+    <span
+      className="flex shrink-0 items-center justify-center rounded-full font-bold text-white"
+      style={{
+        width: size,
+        height: size,
+        backgroundColor: accent,
+        fontSize: size * 0.4,
+      }}
+    >
+      {name
+        .split(" ")
+        .map((w) => w[0])
+        .join("")
+        .slice(0, 2)}
+    </span>
+  );
+}
+
+function ReferWizard({
   toBrand,
   fromBrand,
   onClose,
@@ -524,8 +573,15 @@ function ReferForm({
   toBrand: Brand;
   fromBrand: Brand;
   onClose: () => void;
-  onSent: (brandName: string) => void;
+  onSent: (agentName: string) => void;
 }) {
+  const [step, setStep] = useState<
+    "location" | "matching" | "agent" | "details" | "done"
+  >("location");
+  const [location, setLocation] = useState("");
+  const [pool, setPool] = useState<RefAgent[]>(DEMO_AGENTS[toBrand.id] ?? []);
+  const [ranked, setRanked] = useState<RefAgent[]>([]);
+  const [agent, setAgent] = useState<RefAgent | null>(null);
   const [leadName, setLeadName] = useState("");
   const [leadPhone, setLeadPhone] = useState("");
   const [leadEmail, setLeadEmail] = useState("");
@@ -533,7 +589,44 @@ function ReferForm({
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
 
+  // Real agents at this brand (their true photo + tenure); fall back to the
+  // demo directory when the brand has nobody in the system yet.
+  useEffect(() => {
+    fetchReferralAgents(toBrand.id).then((real) => {
+      if (real.length > 0) {
+        setPool(
+          real.map((a) => ({
+            id: a.id,
+            name: a.name,
+            photo: a.photo,
+            area: a.location || "their patch",
+            since: a.since,
+            bio: `${a.name.split(" ")[0]} covers ${
+              a.location || "the local area"
+            } for ${toBrand.name}.`,
+          }))
+        );
+      } else {
+        setPool(DEMO_AGENTS[toBrand.id] ?? []);
+      }
+    });
+  }, [toBrand.id, toBrand.name]);
+
+  function findAgent() {
+    if (pool.length === 0) {
+      setError("No agents listed for this business yet.");
+      return;
+    }
+    setError("");
+    const order = rankByLocation(pool, location);
+    setRanked(order);
+    setAgent(order[0]);
+    setStep("matching");
+    setTimeout(() => setStep("agent"), 900);
+  }
+
   async function submit() {
+    if (!agent) return;
     if (!leadName.trim()) {
       setError("Enter the lead's name.");
       return;
@@ -545,177 +638,11 @@ function ReferForm({
       leadName: leadName.trim(),
       leadPhone: leadPhone.trim(),
       leadEmail: leadEmail.trim(),
-      note: note.trim(),
-      // The fee is fixed by the brand — agents can't set their own.
-      feeAmount: toBrand.referralFee,
-      dueDate: null,
-    });
-    setSending(false);
-    if (error) {
-      setError(error);
-      return;
-    }
-    onSent(toBrand.name);
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/30 p-6 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center gap-3">
-          <BrandBadge brand={toBrand} size={40} />
-          <div>
-            <h2 className="text-lg font-semibold leading-tight">
-              Refer to {toBrand.shortName}
-            </h2>
-            <p className="text-xs text-gray-400">
-              You earn {money(toBrand.referralFee)} when it converts
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-5 space-y-4">
-          <Field label="Lead name">
-            <input
-              className={inputCls}
-              value={leadName}
-              onChange={(e) => setLeadName(e.target.value)}
-              placeholder="Full name"
-              autoFocus
-            />
-          </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Contact number">
-              <input
-                className={inputCls}
-                value={leadPhone}
-                onChange={(e) => setLeadPhone(e.target.value)}
-                placeholder="07700 900000"
-              />
-            </Field>
-            <Field label="Email">
-              <input
-                className={inputCls}
-                value={leadEmail}
-                onChange={(e) => setLeadEmail(e.target.value)}
-                placeholder="name@email.com"
-              />
-            </Field>
-          </div>
-          <Field label="Note (optional)">
-            <textarea
-              className={`${inputCls} resize-none`}
-              rows={3}
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Any context that helps them close it"
-            />
-          </Field>
-        </div>
-
-        {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
-
-        <div className="mt-6 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="rounded-lg px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={submit}
-            disabled={sending}
-            className="rounded-lg px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-40"
-            style={{ backgroundColor: fromBrand.accent }}
-          >
-            {sending ? "Sending…" : "Send referral"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Refer-a-lead wizard: location → closest agent → lead details ─────────────
-function AgentAvatar({ agent, size = 44 }: { agent: DemoAgent; size?: number }) {
-  const b = brandById(agent.brandId);
-  return (
-    <span
-      className="flex shrink-0 items-center justify-center rounded-full font-bold text-white"
-      style={{
-        width: size,
-        height: size,
-        backgroundColor: b?.accent ?? "#111827",
-        fontSize: size * 0.4,
-      }}
-    >
-      {agent.name
-        .split(" ")
-        .map((w) => w[0])
-        .join("")
-        .slice(0, 2)}
-    </span>
-  );
-}
-
-function ReferWizard({
-  fromBrand,
-  onClose,
-  onSent,
-}: {
-  fromBrand: Brand;
-  onClose: () => void;
-  onSent: (agentName: string) => void;
-}) {
-  const [step, setStep] = useState<
-    "location" | "matching" | "agent" | "details" | "done"
-  >("location");
-  const [location, setLocation] = useState("");
-  const [agent, setAgent] = useState<DemoAgent | null>(null);
-  const [leadName, setLeadName] = useState("");
-  const [leadPhone, setLeadPhone] = useState("");
-  const [leadEmail, setLeadEmail] = useState("");
-  const [note, setNote] = useState("");
-  const [error, setError] = useState("");
-  const [sending, setSending] = useState(false);
-
-  function findAgent() {
-    if (!location.trim()) {
-      setError("Type where the lead is based.");
-      return;
-    }
-    setError("");
-    const match = findClosestAgent(location, fromBrand.id);
-    setAgent(match);
-    setStep("matching");
-    // A brief "searching" beat, then reveal the matched agent.
-    setTimeout(() => setStep(match ? "agent" : "location"), 900);
-  }
-
-  async function submit() {
-    if (!agent) return;
-    if (!leadName.trim()) {
-      setError("Enter the lead's name.");
-      return;
-    }
-    const toBrand = brandById(agent.brandId);
-    setSending(true);
-    setError("");
-    const { error } = await sendReferral({
-      toBrandId: agent.brandId,
-      leadName: leadName.trim(),
-      leadPhone: leadPhone.trim(),
-      leadEmail: leadEmail.trim(),
       // Stamp who it's for so the recipient business knows the agent.
       note:
         `For ${agent.name} · ${agent.area}` +
         (note.trim() ? ` — ${note.trim()}` : ""),
-      feeAmount: toBrand?.referralFee ?? 0,
+      feeAmount: toBrand.referralFee,
       dueDate: null,
     });
     setSending(false);
@@ -727,8 +654,8 @@ function ReferWizard({
     setTimeout(() => onSent(agent.name.split(" ")[0]), 1400);
   }
 
-  const agentBrand = agent ? brandById(agent.brandId) : null;
   const firstName = agent?.name.split(" ")[0] ?? "them";
+  const others = ranked.filter((a) => a.id !== agent?.id);
 
   return (
     <div
@@ -742,14 +669,28 @@ function ReferWizard({
         {/* Location */}
         {step === "location" && (
           <div className="fade-up">
-            <h2 className="text-xl font-semibold">Where&apos;s your referral based?</h2>
-            <p className="mt-1.5 text-sm text-gray-500">
-              A town or postcode is enough — we&apos;ll find the closest
-              available agent to send them to.
+            <div className="flex items-center gap-3">
+              <BrandBadge brand={toBrand} size={40} />
+              <div>
+                <h2 className="text-lg font-semibold leading-tight">
+                  Refer to {toBrand.shortName}
+                </h2>
+                <p className="text-xs text-gray-400">
+                  You earn {money(toBrand.referralFee)} when it converts
+                </p>
+              </div>
+            </div>
+            <h3 className="mt-6 text-lg font-semibold">
+              Where&apos;s your referral based?
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              A town or postcode is enough — we&apos;ll match them to the closest
+              {" "}
+              {toBrand.shortName} agent.
             </p>
             <input
               autoFocus
-              className={`${inputCls} mt-5`}
+              className={`${inputCls} mt-4`}
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && findAgent()}
@@ -793,60 +734,96 @@ function ReferWizard({
           <div className="flex flex-col items-center justify-center py-14 text-center">
             <div
               className="h-12 w-12 animate-spin rounded-full border-4 border-gray-200"
-              style={{ borderTopColor: fromBrand.accent }}
+              style={{ borderTopColor: toBrand.accent }}
             />
             <p className="mt-5 font-medium text-gray-700">
-              Finding the closest available agent…
+              Finding the closest {toBrand.shortName} agent…
             </p>
             <p className="mt-1 text-sm text-gray-400">near {location}</p>
           </div>
         )}
 
-        {/* Matched agent */}
+        {/* Matched agent — profile preview */}
         {step === "agent" && agent && (
           <div className="fade-up">
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
               Closest available agent
             </p>
-            <div className="mt-3 flex items-center gap-4 rounded-2xl border border-gray-200 p-4">
-              <AgentAvatar agent={agent} size={52} />
-              <div className="min-w-0">
-                <p className="font-semibold">{agent.name}</p>
-                <p className="text-sm text-gray-500">{agentBrand?.name}</p>
-                <p className="mt-0.5 text-xs text-gray-400">
-                  Covers {agent.area}
-                </p>
+            <div className="mt-3 rounded-2xl border border-gray-200 p-4">
+              <div className="flex items-start gap-4">
+                <div className="min-w-0 flex-1">
+                  <p className="text-lg font-semibold">{agent.name}</p>
+                  <p className="text-sm text-gray-500">
+                    {toBrand.name} · Covers {agent.area}
+                  </p>
+                  <p className="mt-0.5 text-xs text-gray-400">
+                    {tenure(agent.since)}
+                  </p>
+                  <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-1 text-[11px] font-semibold text-green-600">
+                    ● Available now
+                  </span>
+                </div>
+                {/* Photo on the right */}
+                <AgentAvatar
+                  name={agent.name}
+                  photo={agent.photo}
+                  accent={toBrand.accent}
+                  size={72}
+                />
               </div>
-              <span className="ml-auto flex shrink-0 items-center gap-1 rounded-full bg-green-50 px-2.5 py-1 text-[11px] font-semibold text-green-600">
-                ● Available
-              </span>
+              <p className="mt-3 border-t border-gray-100 pt-3 text-sm leading-relaxed text-gray-600">
+                {agent.bio}
+              </p>
             </div>
-            <div
-              className="mt-3 flex items-center justify-between rounded-xl px-4 py-3 text-white"
-              style={{ backgroundColor: agentBrand?.accent }}
+
+            <button
+              onClick={() => setStep("details")}
+              className="mt-4 w-full rounded-xl py-3 text-sm font-semibold text-white transition hover:opacity-90"
+              style={{ backgroundColor: toBrand.accent }}
             >
-              <span className="text-sm text-white/80">
-                You earn when it converts
-              </span>
-              <span className="text-lg font-semibold">
-                {money(agentBrand?.referralFee ?? 0)}
-              </span>
-            </div>
-            <div className="mt-6 flex justify-between gap-3">
-              <button
-                onClick={() => setStep("location")}
-                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50"
-              >
-                ← Search again
-              </button>
-              <button
-                onClick={() => setStep("details")}
-                className="rounded-lg px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90"
-                style={{ backgroundColor: agentBrand?.accent }}
-              >
-                Refer to {firstName}
-              </button>
-            </div>
+              Refer to {firstName}
+            </button>
+
+            {/* See other close-by agents */}
+            {others.length > 0 && (
+              <div className="mt-5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  Other close-by agents
+                </p>
+                <div className="mt-2 space-y-2">
+                  {others.map((o) => (
+                    <button
+                      key={o.id}
+                      onClick={() => setAgent(o)}
+                      className="flex w-full items-center gap-3 rounded-xl border border-gray-200 p-3 text-left transition hover:border-gray-900 hover:bg-gray-50"
+                    >
+                      <AgentAvatar
+                        name={o.name}
+                        photo={o.photo}
+                        accent={toBrand.accent}
+                        size={36}
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{o.name}</p>
+                        <p className="truncate text-xs text-gray-400">
+                          Covers {o.area}
+                        </p>
+                      </div>
+                      <span className="ml-auto text-xs font-medium text-gray-400">
+                        Pick →
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={() => setStep("location")}
+              className="mt-4 text-sm font-medium text-gray-400 hover:text-gray-600"
+            >
+              ← Change location
+            </button>
           </div>
         )}
 
@@ -854,13 +831,18 @@ function ReferWizard({
         {step === "details" && agent && (
           <div className="fade-up">
             <div className="flex items-center gap-3">
-              <AgentAvatar agent={agent} size={40} />
+              <AgentAvatar
+                name={agent.name}
+                photo={agent.photo}
+                accent={toBrand.accent}
+                size={40}
+              />
               <div>
                 <h2 className="text-lg font-semibold leading-tight">
                   Refer to {agent.name}
                 </h2>
                 <p className="text-xs text-gray-400">
-                  {agentBrand?.name} · {agent.area}
+                  {toBrand.name} · {agent.area}
                 </p>
               </div>
             </div>
@@ -914,7 +896,7 @@ function ReferWizard({
                 onClick={submit}
                 disabled={sending}
                 className="rounded-lg px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-40"
-                style={{ backgroundColor: agentBrand?.accent }}
+                style={{ backgroundColor: toBrand.accent }}
               >
                 {sending ? "Sending…" : `Send referral to ${firstName}`}
               </button>
