@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ user: toPublic(user) });
 }
 
-// Update editable profile fields (name, mobile, photo).
+// Update editable profile fields (name, mobile, location, photo).
 export async function PATCH(req: NextRequest) {
   const id = await currentUserId(req);
   if (!id) return NextResponse.json({ user: null }, { status: 401 });
@@ -24,6 +24,7 @@ export async function PATCH(req: NextRequest) {
   const patch: Record<string, unknown> = {};
   if (typeof body.name === "string") patch.name = body.name.trim();
   if (typeof body.mobile === "string") patch.mobile = body.mobile.trim();
+  if (typeof body.location === "string") patch.location = body.location.trim();
   if (typeof body.photo === "string" || body.photo === null)
     patch.photo = body.photo;
 

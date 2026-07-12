@@ -118,6 +118,7 @@ export async function logIn(
 export async function updateProfile(patch: {
   name?: string;
   mobile?: string;
+  location?: string;
   photo?: string | null;
 }): Promise<UserProfile | null> {
   const res = await fetch("/api/auth/me", {
@@ -296,6 +297,48 @@ export async function sendLeadEmail(
     const data = await res.json().catch(() => ({}));
     if (!res.ok) return { ok: false, error: data.error ?? "Send failed" };
     return { ok: true, lead: data.lead as Lead };
+  } catch {
+    return { ok: false, error: "Network error — please try again" };
+  }
+}
+
+// Request (or resume) cancellation of the subscription.
+export async function cancelSubscription(
+  cancel: boolean
+): Promise<UserProfile | null> {
+  try {
+    const res = await fetch("/api/auth/cancel-subscription", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cancel }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.user) saveUser(data.user as UserProfile);
+    return (data.user as UserProfile) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// Permanently delete the account — confirm must match the account email.
+export async function deleteAccount(
+  confirm: string
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch("/api/auth/delete-account", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirm }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: data.error ?? "Couldn't delete" };
+    try {
+      window.localStorage.removeItem(USER_KEY);
+    } catch {
+      /* ignore */
+    }
+    return { ok: true };
   } catch {
     return { ok: false, error: "Network error — please try again" };
   }

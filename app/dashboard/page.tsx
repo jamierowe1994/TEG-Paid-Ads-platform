@@ -86,6 +86,10 @@ export default function DashboardOverview() {
   const [reviewStatus, setReviewStatus] = useState("");
   const [openStep, setOpenStep] = useState<number | null>(null);
   const [hoverLead, setHoverLead] = useState<string | null>(null);
+  // Separate hover state for the Uncontacted tile so it never links up with
+  // Recent leads (a lead can appear in both — hovering one must not blur the
+  // matching row in the other box).
+  const [hoverUncontacted, setHoverUncontacted] = useState<string | null>(null);
   const [openWeek, setOpenWeek] = useState<number | null>(null);
   const [leadsLoaded, setLeadsLoaded] = useState(false);
   const [openLeadId, setOpenLeadId] = useState<string | null>(null);
@@ -618,14 +622,15 @@ export default function DashboardOverview() {
                   leads waiting at once; beyond 4 it folds the rest into a link. */}
               <div className="mt-3 flex-1 space-y-2 overflow-hidden">
                 {untouched.slice(0, 4).map((l) => {
-                  const dim = hoverLead !== null && hoverLead !== l.id;
-                  const active = hoverLead === l.id;
+                  const dim =
+                    hoverUncontacted !== null && hoverUncontacted !== l.id;
+                  const active = hoverUncontacted === l.id;
                   return (
                     <button
                       key={l.id}
                       onClick={() => setOpenLeadId(l.id)}
-                      onMouseEnter={() => setHoverLead(l.id)}
-                      onMouseLeave={() => setHoverLead(null)}
+                      onMouseEnter={() => setHoverUncontacted(l.id)}
+                      onMouseLeave={() => setHoverUncontacted(null)}
                       className={`flex w-full items-center gap-2.5 rounded-xl bg-red-50/80 px-2.5 py-2 text-left transition duration-200 hover:bg-red-100/80 ${
                         dim ? "opacity-40 blur-[1.5px]" : "opacity-100 blur-0"
                       } ${active ? "scale-[1.03]" : ""}`}

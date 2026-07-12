@@ -49,6 +49,9 @@ export interface UserProfile {
   // these two fields are the safe-to-show status.
   msEmail?: string | null; // the connected mailbox's address
   msConnectedAt?: string | null;
+  // Set when the agent asks to cancel their subscription — the plan stays
+  // active until the period end; clearing it resumes.
+  cancelRequestedAt?: string | null;
 }
 
 // Lead funnel stages. Progressive: each stage reveals the next relevant

@@ -51,6 +51,7 @@ interface UserRow {
   ms_email: string | null;
   ms_connected_at: string | Date | null;
   ms_refresh_token: string | null;
+  cancel_requested_at: string | Date | null;
   location: string | null;
   onboarding_stage: string | null;
   admin_notes: unknown;
@@ -82,6 +83,9 @@ function fromRow(row: UserRow): StoredUser {
       ? new Date(row.ms_connected_at).toISOString()
       : null,
     msRefreshToken: row.ms_refresh_token ?? null,
+    cancelRequestedAt: row.cancel_requested_at
+      ? new Date(row.cancel_requested_at).toISOString()
+      : null,
     location: row.location,
     onboardingStage:
       (row.onboarding_stage as StoredUser["onboardingStage"]) ?? "signed_up",
@@ -292,6 +296,46 @@ export async function rotateMsRefreshToken(
   if (idx === -1 || all[idx].msRefreshToken !== oldToken) return false;
   all[idx] = { ...all[idx], msRefreshToken: newToken };
   await writeAllFile(all);
+  return true;
+}
+
+// ── Subscription / account ───────────────────────────────────────────────
+
+// Flag (or clear) a cancellation request — column-scoped so it never clobbers
+// a concurrent profile edit. `at = null` resumes the subscription.
+export async function setCancelRequested(
+  userId: string,
+  at: string | null
+): Promise<StoredUser | undefined> {
+  if (hasDb()) {
+    await q("UPDATE users SET cancel_requested_at = $2 WHERE id = $1", [
+      userId,
+      at,
+    ]);
+    return findById(userId);
+  }
+  const all = await readAllFile();
+  const idx = all.findIndex((u) => u.id === userId);
+  if (idx === -1) return undefined;
+  all[idx] = { ...all[idx], cancelRequestedAt: at };
+  await writeAllFile(all);
+  return all[idx];
+}
+
+// Permanently delete an account and everything it owns (leads cascade via the
+// FK). Used by the agent's own "delete my account" action.
+export async function deleteUser(userId: string): Promise<boolean> {
+  if (hasDb()) {
+    const rows = await q<{ id: string }>(
+      "DELETE FROM users WHERE id = $1 RETURNING id",
+      [userId]
+    );
+    return rows.length > 0;
+  }
+  const all = await readAllFile();
+  const next = all.filter((u) => u.id !== userId);
+  if (next.length === all.length) return false;
+  await writeAllFile(next);
   return true;
 }
 
