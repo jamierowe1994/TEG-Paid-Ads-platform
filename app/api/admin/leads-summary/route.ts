@@ -1,13 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { summariseLeadsByUser } from "@/lib/leads-store";
+import { listUsers } from "@/lib/users-store";
+import { adminScope } from "@/lib/admin-auth";
 
-// Admin-only: per-user lead totals + conversions, for the Performance tab's
-// brand comparison. (The admin UI joins these to users client-side.)
+// Per-user lead totals + conversions. Super sees every agent; an MD only their
+// own brand's.
 export async function GET(req: NextRequest) {
-  const auth = req.headers.get("authorization") ?? "";
-  const password = process.env.ADMIN_PASSWORD ?? "experts-admin";
-  if (auth !== `Bearer ${password}`) {
+  const scope = adminScope(req);
+  if (!scope) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
-  return NextResponse.json(await summariseLeadsByUser());
+  const summary = await summariseLeadsByUser();
+  if (scope.role === "md") {
+    const mine = new Set(
+      (await listUsers())
+        .filter((u) => u.brandId === scope.brandId)
+        .map((u) => u.id)
+    );
+    return NextResponse.json(summary.filter((s) => mine.has(s.userId)));
+  }
+  return NextResponse.json(summary);
 }

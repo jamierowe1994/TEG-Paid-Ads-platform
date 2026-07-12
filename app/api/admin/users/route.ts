@@ -1,27 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listUsers, findById, updateUser, toAdmin } from "@/lib/users-store";
+import { adminScope } from "@/lib/admin-auth";
 
-// Admin-only user management. Gated by the admin password sent as a bearer
-// token — replace with real admin auth later.
+// Admin user management. Super admins see every agent; an MD sees (and can
+// edit) only agents in their own brand.
 
-function authorised(req: NextRequest): boolean {
-  const auth = req.headers.get("authorization") ?? "";
-  const password = process.env.ADMIN_PASSWORD ?? "experts-admin";
-  return auth === `Bearer ${password}`;
-}
-
-// List every signed-up agent (public profiles, no password hashes).
+// List signed-up agents — all for super, brand-scoped for an MD.
 export async function GET(req: NextRequest) {
-  if (!authorised(req)) {
+  const scope = adminScope(req);
+  if (!scope) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
-  return NextResponse.json(await listUsers());
+  const all = await listUsers();
+  const visible =
+    scope.role === "md" ? all.filter((u) => u.brandId === scope.brandId) : all;
+  return NextResponse.json(visible);
 }
 
 // Update admin-managed fields on an agent, or add an internal note.
 // Body: { userId, metaCampaignId?, location?, onboardingStage?, note? }
 export async function PATCH(req: NextRequest) {
-  if (!authorised(req)) {
+  const scope = adminScope(req);
+  if (!scope) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
   const body = await req.json().catch(() => null);
@@ -29,6 +29,10 @@ export async function PATCH(req: NextRequest) {
   const current = await findById(userId);
   if (!current) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+  // An MD can only touch their own brand's agents.
+  if (scope.role === "md" && current.brandId !== scope.brandId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const patch: Record<string, unknown> = {};

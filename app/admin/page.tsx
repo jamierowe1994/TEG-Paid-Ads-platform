@@ -268,8 +268,14 @@ function agoDur(ms: number): string {
 }
 
 export default function AdminPage() {
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authed, setAuthed] = useState(false);
+  // "super" → the full dashboard below; "md" → the stripped brand view.
+  const [role, setRole] = useState<"super" | "md" | null>(null);
+  const [mdToken, setMdToken] = useState("");
+  const [mdBrandId, setMdBrandId] = useState<string | null>(null);
+  const [adminName, setAdminName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<Tab>("overview");
@@ -619,25 +625,89 @@ export default function AdminPage() {
   async function signIn() {
     setLoading(true);
     setError("");
-    const ok = await loadData(password).catch(() => false);
-    setLoading(false);
-    if (ok) {
-      setAuthed(true);
-      sessionStorage.setItem("teg_admin", password);
-    } else {
-      setError("Wrong password.");
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? "Sign in failed.");
+        return;
+      }
+      if (data.role === "super") {
+        const ok = await loadData(data.token).catch(() => false);
+        if (!ok) {
+          setError("Couldn't load the admin data — try again.");
+          return;
+        }
+        setPassword(data.token);
+        setRole("super");
+        setAuthed(true);
+        sessionStorage.setItem(
+          "teg_admin_v2",
+          JSON.stringify({ token: data.token, role: "super", email: data.email })
+        );
+      } else {
+        setMdToken(data.token);
+        setMdBrandId(data.brandId);
+        setAdminName(data.name ?? "");
+        setRole("md");
+        setAuthed(true);
+        sessionStorage.setItem(
+          "teg_admin_v2",
+          JSON.stringify({
+            token: data.token,
+            role: "md",
+            brandId: data.brandId,
+            name: data.name,
+            email: data.email,
+          })
+        );
+      }
+    } finally {
+      setLoading(false);
     }
   }
 
+  function signOut() {
+    sessionStorage.removeItem("teg_admin_v2");
+    setAuthed(false);
+    setRole(null);
+    setPassword("");
+    setMdToken("");
+    setMdBrandId(null);
+  }
+
   useEffect(() => {
-    const saved = sessionStorage.getItem("teg_admin");
-    if (!saved) return;
-    loadData(saved).then((ok) => {
-      if (ok) {
-        setPassword(saved);
+    const raw = sessionStorage.getItem("teg_admin_v2");
+    if (!raw) return;
+    try {
+      const s = JSON.parse(raw) as {
+        token: string;
+        role: "super" | "md";
+        brandId?: string;
+        name?: string;
+      };
+      if (s.role === "super") {
+        loadData(s.token).then((ok) => {
+          if (ok) {
+            setPassword(s.token);
+            setRole("super");
+            setAuthed(true);
+          }
+        });
+      } else {
+        setMdToken(s.token);
+        setMdBrandId(s.brandId ?? null);
+        setAdminName(s.name ?? "");
+        setRole("md");
         setAuthed(true);
       }
-    });
+    } catch {
+      /* corrupt session — ignore */
+    }
   }, []);
 
   // Filtered + sorted agents for the CRM table.
@@ -745,13 +815,21 @@ export default function AdminPage() {
             Admin sign in
           </h1>
           <p className="mt-2 text-center text-sm text-gray-500">
-            Enter your admin password to continue
+            Sign in with your work email
           </p>
-          <div className="mt-8">
-            <PasswordInput
+          <div className="mt-8 space-y-3">
+            <input
               autoFocus
+              type="email"
               className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-gray-900 focus:ring-4 focus:ring-gray-100"
-              placeholder="Admin password"
+              placeholder="you@theexpertsgroup.co.uk"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && signIn()}
+            />
+            <PasswordInput
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none transition focus:border-gray-900 focus:ring-4 focus:ring-gray-100"
+              placeholder="Password"
               value={password}
               onChange={setPassword}
               onEnter={signIn}
@@ -760,7 +838,7 @@ export default function AdminPage() {
           {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
           <button
             onClick={signIn}
-            disabled={loading || !password}
+            disabled={loading || !password || !email}
             className="mt-4 w-full rounded-xl bg-gray-900 py-3 text-sm font-medium text-white transition hover:bg-gray-700 disabled:opacity-50"
           >
             {loading ? "Checking…" : "Sign in"}
@@ -773,6 +851,19 @@ export default function AdminPage() {
           </Link>
         </div>
       </main>
+    );
+  }
+
+  // Managing-director view — a clean, brand-scoped overview. No connections,
+  // no other businesses.
+  if (role === "md" && mdBrandId) {
+    return (
+      <MdDashboard
+        token={mdToken}
+        brandId={mdBrandId}
+        name={adminName}
+        onSignOut={signOut}
+      />
     );
   }
 
@@ -833,11 +924,7 @@ export default function AdminPage() {
 
         <div className="p-4">
           <button
-            onClick={() => {
-              sessionStorage.removeItem("teg_admin");
-              setAuthed(false);
-              setPassword("");
-            }}
+            onClick={signOut}
             className="w-full rounded-lg border border-gray-200 py-1.5 text-xs font-medium text-gray-500 transition hover:bg-gray-50 hover:text-gray-900"
           >
             Sign out
@@ -2744,6 +2831,291 @@ function AdminStat({
       <p className="text-sm text-gray-500">{label}</p>
       <p className="mt-2 text-3xl font-semibold tracking-tight">{value}</p>
       {note && <p className="mt-1 text-xs text-gray-400">{note}</p>}
+    </div>
+  );
+}
+
+// ── Managing-director dashboard ──────────────────────────────────────────────
+// A clean, brand-scoped overview for a business's MD: their team, their leads
+// and how the ads are performing at a high level. Every call uses the
+// brand-scoped admin routes, so an MD only ever sees their own business.
+function MdDashboard({
+  token,
+  brandId,
+  name,
+  onSignOut,
+}: {
+  token: string;
+  brandId: string;
+  name: string;
+  onSignOut: () => void;
+}) {
+  const brand = brandById(brandId);
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [summaries, setSummaries] = useState<LeadSummary[]>([]);
+  const [activity, setActivity] = useState<ActivityData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const headers = { Authorization: `Bearer ${token}` };
+    Promise.all([
+      fetch("/api/admin/users", { headers }),
+      fetch("/api/admin/leads-summary", { headers }),
+      fetch("/api/admin/activity", { headers }),
+    ]).then(async ([us, ls, ac]) => {
+      if (cancelled) return;
+      if (us.ok) setUsers(await us.json());
+      if (ls.ok) setSummaries(await ls.json());
+      if (ac.ok) setActivity(await ac.json());
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  const byUser = useMemo(
+    () => new Map(summaries.map((s) => [s.userId, s])),
+    [summaries]
+  );
+
+  const totals = useMemo(() => {
+    let leads = 0;
+    let converted = 0;
+    let spend = 0;
+    let speedSum = 0;
+    let speedN = 0;
+    for (const u of users) {
+      const s = byUser.get(u.id);
+      leads += s?.total ?? 0;
+      converted += s?.converted ?? 0;
+      spend += packageById(u.packageId)?.adSpend ?? 0;
+      if (s?.speedMs != null && s.speedSamples > 0) {
+        speedSum += s.speedMs * s.speedSamples;
+        speedN += s.speedSamples;
+      }
+    }
+    return {
+      leads,
+      converted,
+      spend,
+      rate: leads > 0 ? Math.round((converted / leads) * 100) : 0,
+      speed: speedN > 0 ? speedSum / speedN : null,
+    };
+  }, [users, byUser]);
+
+  if (!brand) return null;
+  const attention = activity?.attention ?? [];
+  const recentLeads = (activity?.leads ?? []).slice(0, 12);
+
+  const card =
+    "rounded-2xl border border-gray-200 bg-white p-5 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.12),inset_0_1px_1px_rgba(255,255,255,0.7),inset_0_0_30px_rgba(0,0,0,0.06)]";
+
+  const stats = [
+    { label: "Team", value: String(users.length) },
+    { label: "Leads", value: String(totals.leads) },
+    { label: "Conversion", value: `${totals.rate}%` },
+    {
+      label: "Speed to lead",
+      value: totals.speed === null ? "—" : fmtDuration(totals.speed),
+    },
+    {
+      label: "Monthly ad spend",
+      value: `£${totals.spend.toLocaleString("en-GB")}`,
+    },
+  ];
+
+  return (
+    <div className="min-h-screen" style={{ background: "#f6f6f7" }}>
+      {/* Header band in the brand's own colour */}
+      <header
+        className="px-6 py-8 text-white sm:px-10"
+        style={{
+          background: `radial-gradient(120% 160% at 0% 0%, ${brand.accent}, ${brand.accent}cc 55%, rgba(0,0,0,0.55))`,
+        }}
+      >
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-white/70">
+              Managing director
+            </p>
+            <h1 className="mt-1 text-3xl font-semibold tracking-tight">
+              {brand.name}
+            </h1>
+            <p className="mt-1 text-sm text-white/80">
+              {name ? `Welcome back, ${name.split(" ")[0]}. ` : ""}
+              Here&apos;s how your business is doing.
+            </p>
+          </div>
+          <button
+            onClick={onSignOut}
+            className="shrink-0 rounded-lg bg-white/15 px-4 py-2 text-sm font-medium text-white backdrop-blur transition hover:bg-white/25"
+          >
+            Sign out
+          </button>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-5xl px-6 py-8 sm:px-10">
+        {loading ? (
+          <p className="py-20 text-center text-sm text-gray-400">Loading…</p>
+        ) : (
+          <>
+            {/* Headline stats */}
+            <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
+              {stats.map((s) => (
+                <div key={s.label} className={card}>
+                  <p className="text-sm text-gray-500">{s.label}</p>
+                  <p
+                    className="mt-2 text-3xl font-semibold tracking-tight"
+                    style={
+                      s.label === "Conversion"
+                        ? { color: brand.accent }
+                        : undefined
+                    }
+                  >
+                    {s.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Needs attention */}
+            {attention.length > 0 && (
+              <section className="mt-8">
+                <h2 className="text-lg font-semibold">Needs attention</h2>
+                <p className="mt-1 text-sm text-gray-500">
+                  Leads going unanswered or cold across your team.
+                </p>
+                <div className="mt-4 space-y-2">
+                  {attention.slice(0, 8).map((a, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between rounded-xl border border-gray-200 bg-white p-4"
+                    >
+                      <div>
+                        <p className="text-sm font-medium">{a.leadName}</p>
+                        <p className="text-xs text-gray-400">
+                          {a.agentName} ·{" "}
+                          {a.kind === "unanswered"
+                            ? "Not yet contacted"
+                            : "No activity recently"}
+                        </p>
+                      </div>
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                          a.kind === "unanswered"
+                            ? "bg-red-50 text-red-600"
+                            : "bg-amber-50 text-amber-600"
+                        }`}
+                      >
+                        {fmtDuration(a.ageMs)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Team */}
+            <section className="mt-8">
+              <h2 className="text-lg font-semibold">Your team</h2>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {users.map((u) => {
+                  const s = byUser.get(u.id);
+                  return (
+                    <div key={u.id} className={card}>
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-100 text-sm font-semibold text-gray-500">
+                          {u.photo ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={u.photo}
+                              alt={u.name}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            u.name.charAt(0).toUpperCase()
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold">{u.name}</p>
+                          <p className="truncate text-xs text-gray-400">
+                            {u.location || packageById(u.packageId)?.name}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-4 flex items-center justify-between text-sm">
+                        <div>
+                          <p className="text-xs text-gray-400">Leads</p>
+                          <p className="font-semibold">{s?.total ?? 0}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-400">Converted</p>
+                          <p className="font-semibold">{s?.converted ?? 0}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-gray-400">Speed</p>
+                          <p className="font-semibold">
+                            {s?.speedMs != null ? fmtDuration(s.speedMs) : "—"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {users.length === 0 && (
+                  <p className="text-sm text-gray-400">
+                    No agents signed up under {brand.name} yet.
+                  </p>
+                )}
+              </div>
+            </section>
+
+            {/* Recent leads */}
+            <section className="mt-8">
+              <h2 className="text-lg font-semibold">Recent leads</h2>
+              <div className="mt-4 overflow-hidden rounded-2xl border border-gray-200 bg-white">
+                {recentLeads.length === 0 ? (
+                  <p className="p-6 text-center text-sm text-gray-400">
+                    Leads will appear here as they come in.
+                  </p>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-400">
+                      <tr>
+                        <th className="px-4 py-3 font-medium">Lead</th>
+                        <th className="px-4 py-3 font-medium">Agent</th>
+                        <th className="px-4 py-3 font-medium">Stage</th>
+                        <th className="px-4 py-3 font-medium">Source</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentLeads.map((l) => (
+                        <tr key={l.id} className="border-t border-gray-100">
+                          <td className="px-4 py-3 font-medium">{l.leadName}</td>
+                          <td className="px-4 py-3 text-gray-500">
+                            {l.agentName}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                              {LEAD_STAGE_LABEL[l.stage] ?? l.stage}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 capitalize text-gray-500">
+                            {l.source}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </section>
+          </>
+        )}
+      </main>
     </div>
   );
 }

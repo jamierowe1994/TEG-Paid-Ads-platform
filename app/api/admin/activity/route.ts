@@ -1,24 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listAllLeads } from "@/lib/leads-store";
 import { listUsers } from "@/lib/users-store";
-
-function authorised(req: NextRequest): boolean {
-  const auth = req.headers.get("authorization") ?? "";
-  const password = process.env.ADMIN_PASSWORD ?? "experts-admin";
-  return auth === `Bearer ${password}`;
-}
+import { adminScope } from "@/lib/admin-auth";
 
 const DAY = 86400000;
 
-// Admin activity: a chronological feed of recent lead/signup events across the
-// whole group, plus an "attention needed" list of leads going unanswered or
-// cold — so the team can keep on top of every client.
+// Admin activity: a chronological feed of recent lead/signup events, plus an
+// "attention needed" list of leads going unanswered or cold. Super sees the
+// whole group; an MD sees only their own brand.
 export async function GET(req: NextRequest) {
-  if (!authorised(req)) {
+  const scope = adminScope(req);
+  if (!scope) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
-  const [leads, users] = await Promise.all([listAllLeads(), listUsers()]);
+  const [allLeads, allUsers] = await Promise.all([listAllLeads(), listUsers()]);
+  const users =
+    scope.role === "md"
+      ? allUsers.filter((u) => u.brandId === scope.brandId)
+      : allUsers;
   const userMap = new Map(users.map((u) => [u.id, u]));
+  // Leads only for visible users (an MD never sees another brand's leads).
+  const leads = allLeads.filter((l) => userMap.has(l.userId));
   const now = Date.now();
 
   type Ev = {
