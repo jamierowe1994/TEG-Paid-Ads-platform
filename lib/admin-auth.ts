@@ -41,6 +41,16 @@ const DEFAULT_DIRECTORY: AdminEntry[] = [
     role: "super",
     name: "James Rowe",
   },
+  {
+    email: "howard.russell@theexpertsgroup.co.uk",
+    role: "super",
+    name: "Howard Russell",
+  },
+  {
+    email: "hayley.cox@theexpertsgroup.co.uk",
+    role: "super",
+    name: "Hayley Cox",
+  },
   // Placeholder MD for dev/testing the stripped view — real MDs come from
   // ADMIN_DIRECTORY once their emails are confirmed.
   {
