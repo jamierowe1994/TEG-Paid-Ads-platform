@@ -264,7 +264,8 @@ export default function LeadsPage() {
   const [adSpend, setAdSpend] = useState(0);
   const [monthlyCost, setMonthlyCost] = useState(0);
   const [newOnly, setNewOnly] = useState(false);
-  const [range, setRange] = useState<TimeRange>("all");
+  // Default to this week — the freshest leads are the ones that matter most.
+  const [range, setRange] = useState<TimeRange>("7d");
   const [sort, setSort] = useState<SortOrder>("newest");
   const [filterOpen, setFilterOpen] = useState(false);
   const [toast, setToast] = useState("");

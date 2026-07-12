@@ -111,40 +111,47 @@ export default function AllAdsPage() {
           </p>
         </div>
       ) : (
-        <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {ads.map((ad) => (
             <button
               key={ad.id}
               onClick={() => setOpen(ad)}
-              className="group relative aspect-square overflow-hidden rounded-3xl border border-white/10 text-left text-white shadow-[0_2px_8px_-2px_rgba(0,0,0,0.14)] transition hover:-translate-y-0.5 hover:shadow-lg"
-              style={{
-                background: `radial-gradient(120% 120% at 15% 0%, ${brand.accent}, ${brand.accent}99 55%, rgba(0,0,0,0.6))`,
-              }}
+              className="group rounded-2xl border border-gray-200 bg-white p-2 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
             >
-              {ad.imageUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={ad.imageUrl}
-                  alt={ad.name}
-                  className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/5 to-black/25" />
-              <span
-                className={`absolute right-3 top-3 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide backdrop-blur ${
-                  ad.status === "ACTIVE"
-                    ? "bg-green-500/90"
-                    : "bg-white/25 text-white/90"
-                }`}
+              {/* Image sits above, framed by the card's white margin */}
+              <div
+                className="relative aspect-square overflow-hidden rounded-xl"
+                style={{
+                  background: `radial-gradient(120% 120% at 15% 0%, ${brand.accent}, ${brand.accent}99 55%, rgba(0,0,0,0.55))`,
+                }}
               >
-                {ad.status === "ACTIVE" ? "● Live" : ad.status.toLowerCase()}
-              </span>
-              <div className="absolute inset-x-0 bottom-0 p-4">
-                <p className="truncate text-sm font-semibold">{ad.name}</p>
+                {ad.imageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={ad.imageUrl}
+                    alt={ad.name}
+                    className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                  />
+                )}
+                {/* Live/status badge — tucked inside the white-framed image */}
+                <span
+                  className={`absolute right-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide backdrop-blur ${
+                    ad.status === "ACTIVE"
+                      ? "bg-green-500/90 text-white"
+                      : "bg-black/40 text-white/90"
+                  }`}
+                >
+                  {ad.status === "ACTIVE" ? "● Live" : ad.status.toLowerCase()}
+                </span>
+              </div>
+              {/* Name + figures in the white tab underneath */}
+              <div className="px-1 pb-0.5 pt-2">
+                <p className="truncate text-sm font-semibold text-gray-900">
+                  {ad.name}
+                </p>
                 {ad.figures && (
-                  <p className="text-xs text-white/70">
-                    {ad.figures.leads} lead{ad.figures.leads === 1 ? "" : "s"} ·
-                    £
+                  <p className="mt-0.5 text-xs text-gray-400">
+                    {ad.figures.leads} lead{ad.figures.leads === 1 ? "" : "s"} · £
                     {ad.figures.spend.toLocaleString("en-GB", {
                       maximumFractionDigits: 0,
                     })}
@@ -163,25 +170,38 @@ export default function AllAdsPage() {
           onClick={() => setOpen(null)}
         >
           <div
-            className="modal-pop max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white shadow-2xl"
+            className="modal-pop max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-3 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            {open.imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={open.imageUrl}
-                alt={open.name}
-                className="aspect-video w-full object-cover"
-              />
-            ) : (
-              <div
-                className="aspect-video w-full"
-                style={{
-                  background: `radial-gradient(120% 120% at 15% 0%, ${brand.accent}, rgba(0,0,0,0.6))`,
-                }}
-              />
-            )}
-            <div className="p-6">
+            {/* The whole creative, squared, with a white margin all the way
+                round — object-contain so nothing's cropped out. */}
+            <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-gray-50">
+              {open.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={open.imageUrl}
+                  alt={open.name}
+                  className="absolute inset-0 h-full w-full object-contain"
+                />
+              ) : (
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background: `radial-gradient(120% 120% at 15% 0%, ${brand.accent}, rgba(0,0,0,0.6))`,
+                  }}
+                />
+              )}
+              <button
+                onClick={() => setOpen(null)}
+                className="absolute right-2 top-2 rounded-lg bg-white/80 p-1 text-gray-500 backdrop-blur hover:bg-white"
+                aria-label="Close"
+              >
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-3 sm:p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-semibold leading-tight">
@@ -192,15 +212,6 @@ export default function AllAdsPage() {
                     {open.status === "ACTIVE" ? "live now" : open.status.toLowerCase()}
                   </p>
                 </div>
-                <button
-                  onClick={() => setOpen(null)}
-                  className="rounded-lg p-1 text-gray-400 hover:bg-gray-100"
-                  aria-label="Close"
-                >
-                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                    <path d="M6 6l12 12M18 6L6 18" />
-                  </svg>
-                </button>
               </div>
 
               {open.figures ? (
