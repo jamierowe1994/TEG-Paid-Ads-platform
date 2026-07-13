@@ -51,10 +51,11 @@ const DEFAULT_DIRECTORY: AdminEntry[] = [
     role: "super",
     name: "Hayley Cox",
   },
-  // Placeholder MD for dev/testing the stripped view — real MDs come from
-  // ADMIN_DIRECTORY once their emails are confirmed.
+  // The Letting Experts' MD. (More MDs can be added here, or via the
+  // ADMIN_DIRECTORY env var — but note that setting ADMIN_DIRECTORY REPLACES
+  // this whole list, so it must include the super admins above too.)
   {
-    email: "susan.liles@thelettingexperts.co.uk",
+    email: "susan@thelettingexperts.co.uk",
     role: "md",
     brandId: "lettings",
     name: "Susan Liles",
