@@ -786,6 +786,40 @@ function sumInsightMetric(
   return (row?.values ?? []).reduce((t, v) => t + Number(v.value ?? 0), 0);
 }
 
+// Net Page follower growth over a window. Follower-insight metric names differ
+// by Graph version, so try the modern "follows" set first, then legacy "fan"
+// (page-like) metrics, then a gross-adds-only fallback; each failed set just
+// falls through to the next (an invalid metric errors the whole call).
+async function fbFollowerGrowth(
+  pid: string,
+  since: string,
+  until: string,
+  pageToken?: string
+): Promise<number | null> {
+  const attempts: Array<[string, string | null]> = [
+    ["page_daily_follows_unique", "page_daily_unfollows_unique"],
+    ["page_fan_adds_unique", "page_fan_removes_unique"],
+    ["page_daily_follows_unique", null],
+    ["page_fan_adds_unique", null],
+  ];
+  for (const [addM, remM] of attempts) {
+    try {
+      const ins = (await graph(
+        `${pid}/insights`,
+        { metric: remM ? `${addM},${remM}` : addM, period: "day", since, until },
+        pageToken
+      )) as { data?: Array<{ name?: string; values?: Array<{ value?: number }> }> };
+      if (!ins.data || ins.data.length === 0) continue;
+      const adds = sumInsightMetric(ins.data, addM);
+      const removes = remM ? sumInsightMetric(ins.data, remM) : 0;
+      return adds - removes;
+    } catch {
+      /* metric set not available in this Graph version — try the next */
+    }
+  }
+  return null;
+}
+
 export async function getSocialSnapshot(
   brandId: string,
   datePreset = "last_30d"
@@ -837,25 +871,9 @@ export async function getSocialSnapshot(
     out.facebook.followers = Number(page.followers_count ?? page.fan_count ?? 0);
     out.facebook.handle = page.name ?? null;
 
-    // Net new Page follows over the window (best-effort; metric availability
-    // varies by API version — null if Meta won't serve it).
-    try {
-      const ins = (await graph(
-        `${pid}/insights`,
-        {
-          metric: "page_fan_adds_unique,page_fan_removes_unique",
-          period: "day",
-          since,
-          until,
-        },
-        pageToken
-      )) as { data?: Array<{ name?: string; values?: Array<{ value?: number }> }> };
-      out.facebook.gained =
-        sumInsightMetric(ins.data, "page_fan_adds_unique") -
-        sumInsightMetric(ins.data, "page_fan_removes_unique");
-    } catch {
-      out.facebook.gained = null;
-    }
+    // Net new Page follows over the window (metric names vary by Graph
+    // version — the helper tries each in turn, null if none serve).
+    out.facebook.gained = await fbFollowerGrowth(pid, since, until, pageToken);
 
     // ── Instagram (linked business account) ──
     const ig = page.instagram_business_account;

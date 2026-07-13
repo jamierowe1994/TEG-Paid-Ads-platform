@@ -2904,14 +2904,18 @@ function PlatformCell({
         </div>
         {!data.configured ? (
           <p className="mt-0.5 text-xs text-amber-600">Not linked</p>
+        ) : data.error || data.followers == null ? (
+          <p className="mt-0.5 text-xs text-amber-600">Page needs access</p>
         ) : (
           <div className="mt-1 flex items-baseline gap-4">
             <span className="text-2xl font-semibold tracking-tight">
               {fmtCount(data.followers)}
             </span>
             <span className={`text-sm font-medium ${gainedColor}`}>
-              {fmtGained(data.gained)}{" "}
-              <span className="text-xs font-normal text-gray-400">{windowLabel}</span>
+              {data.gained == null ? "" : fmtGained(data.gained)}{" "}
+              <span className="text-xs font-normal text-gray-400">
+                {data.gained == null ? "" : windowLabel}
+              </span>
             </span>
           </div>
         )}
