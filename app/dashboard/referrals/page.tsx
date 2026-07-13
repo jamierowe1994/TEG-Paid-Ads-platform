@@ -11,7 +11,7 @@ import {
 } from "@/lib/session";
 import { BRANDS, brandById, type Brand, type BrandId } from "@/lib/brands";
 import LocationPicker from "@/components/LocationPicker";
-import { distanceKm } from "@/lib/google-maps";
+import { distanceKm, geocodeAddress } from "@/lib/google-maps";
 import type { Referral, LeadStage } from "@/lib/types";
 
 // Referrals portal. The main area "advertises" every Experts Group business
@@ -630,24 +630,38 @@ function ReferWizard({
   // Real agents at this brand (their true photo + tenure); fall back to the
   // demo directory when the brand has nobody in the system yet.
   useEffect(() => {
-    fetchReferralAgents(toBrand.id).then((real) => {
-      if (real.length > 0) {
-        setPool(
-          real.map((a) => ({
-            id: a.id,
-            name: a.name,
-            photo: a.photo,
-            area: a.location || "their patch",
-            since: a.since,
-            bio: `${a.name.split(" ")[0]} covers ${
-              a.location || "the local area"
-            } for ${toBrand.name}.`,
-          }))
-        );
-      } else {
-        setPool(DEMO_AGENTS[toBrand.id] ?? []);
+    let cancelled = false;
+    fetchReferralAgents(toBrand.id).then(async (real) => {
+      if (real.length === 0) {
+        if (!cancelled) setPool(DEMO_AGENTS[toBrand.id] ?? []);
+        return;
       }
+      const base: RefAgent[] = real.map((a) => ({
+        id: a.id,
+        name: a.name,
+        photo: a.photo,
+        area: a.location || "their patch",
+        since: a.since,
+        bio: `${a.name.split(" ")[0]} covers ${
+          a.location || "the local area"
+        } for ${toBrand.name}.`,
+      }));
+      if (!cancelled) setPool(base);
+      // Geocode each real agent's patch (client-side, cached) so the closest
+      // match is by true distance, not just a keyword hit. Best-effort — no
+      // key or no match just leaves them on the keyword path.
+      const withCoords = await Promise.all(
+        base.map(async (a) => {
+          if (!a.area || a.area === "their patch") return a;
+          const c = await geocodeAddress(a.area);
+          return c ? { ...a, lat: c.lat, lng: c.lng } : a;
+        })
+      );
+      if (!cancelled) setPool(withCoords);
     });
+    return () => {
+      cancelled = true;
+    };
   }, [toBrand.id, toBrand.name]);
 
   function findAgent() {

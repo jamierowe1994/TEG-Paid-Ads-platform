@@ -43,6 +43,45 @@ export function loadGoogleMaps(): Promise<GoogleMaps> | null {
   return mapsPromise;
 }
 
+// Geocode a free-text place (an agent's patch) to coordinates, client-side,
+// using the same referrer-restricted key. Cached per address so a wizard open
+// only ever geocodes each agent once. Returns null with no key / no match, so
+// callers fall back to keyword matching.
+const geoCache = new Map<string, { lat: number; lng: number } | null>();
+
+export async function geocodeAddress(
+  address: string
+): Promise<{ lat: number; lng: number } | null> {
+  const q = address.trim();
+  if (!q) return null;
+  if (geoCache.has(q)) return geoCache.get(q) ?? null;
+  const p = loadGoogleMaps();
+  if (!p) return null;
+  try {
+    const g = await p;
+    const geocoder = new g.Geocoder();
+    const result = await new Promise<{ lat: number; lng: number } | null>(
+      (resolve) => {
+        geocoder.geocode(
+          { address: q, componentRestrictions: { country: "gb" } },
+          (res: unknown[], status: string) => {
+            const loc = (
+              res?.[0] as { geometry?: { location?: { lat(): number; lng(): number } } }
+            )?.geometry?.location;
+            resolve(
+              status === "OK" && loc ? { lat: loc.lat(), lng: loc.lng() } : null
+            );
+          }
+        );
+      }
+    );
+    geoCache.set(q, result);
+    return result;
+  } catch {
+    return null;
+  }
+}
+
 // Haversine distance in km — used to rank agents by how close their patch is
 // to the picked pin.
 export function distanceKm(
