@@ -130,7 +130,7 @@ export default function AllAdsPage() {
                   <img
                     src={ad.imageUrl}
                     alt={ad.name}
-                    className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                    className="absolute inset-0 h-full w-full object-contain transition duration-300 group-hover:scale-105"
                   />
                 )}
                 {/* Live/status badge — tucked inside the white-framed image */}

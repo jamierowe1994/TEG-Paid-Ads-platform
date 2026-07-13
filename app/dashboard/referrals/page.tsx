@@ -10,6 +10,8 @@ import {
   actOnReferral,
 } from "@/lib/session";
 import { BRANDS, brandById, type Brand, type BrandId } from "@/lib/brands";
+import LocationPicker from "@/components/LocationPicker";
+import { distanceKm } from "@/lib/google-maps";
 import type { Referral, LeadStage } from "@/lib/types";
 
 // Referrals portal. The main area "advertises" every Experts Group business
@@ -54,6 +56,8 @@ interface RefAgent {
   area: string; // where they cover
   since: string; // ISO — how long with the business
   bio: string;
+  lat?: number; // patch centre — lets us rank by real distance to the pin
+  lng?: number;
 }
 
 // Per-brand demo agents (used only when a brand has no real agents yet).
@@ -66,6 +70,8 @@ const DEMO_AGENTS: Partial<Record<BrandId, RefAgent[]>> = {
       area: "Liverpool & Merseyside",
       since: "2024-02-01",
       bio: "Kayleigh looks after residential sales across Liverpool and the Wirral — quick to call new valuations and great with first-time sellers.",
+      lat: 53.4084,
+      lng: -2.9916,
     },
     {
       id: "demo-marcus-p",
@@ -74,6 +80,8 @@ const DEMO_AGENTS: Partial<Record<BrandId, RefAgent[]>> = {
       area: "St Helens & Warrington",
       since: "2023-06-01",
       bio: "Marcus covers the St Helens and Warrington patch, with a strong track record on family homes.",
+      lat: 53.4534,
+      lng: -2.7376,
     },
   ],
   lettings: [
@@ -84,6 +92,8 @@ const DEMO_AGENTS: Partial<Record<BrandId, RefAgent[]>> = {
       area: "Liverpool & Merseyside",
       since: "2024-02-01",
       bio: "Kayleigh helps landlords let faster across Liverpool — fast turnarounds and a full book of tenants ready to move.",
+      lat: 53.4084,
+      lng: -2.9916,
     },
   ],
   mortgage: [
@@ -94,6 +104,8 @@ const DEMO_AGENTS: Partial<Record<BrandId, RefAgent[]>> = {
       area: "Leeds & West Yorkshire",
       since: "2022-09-01",
       bio: "Tom is a whole-of-market adviser covering Leeds and West Yorkshire, brilliant with tricky cases and self-employed clients.",
+      lat: 53.8008,
+      lng: -1.5491,
     },
   ],
   commercial: [
@@ -104,6 +116,8 @@ const DEMO_AGENTS: Partial<Record<BrandId, RefAgent[]>> = {
       area: "Birmingham & the Midlands",
       since: "2023-01-01",
       bio: "Aisha handles commercial units across Birmingham and the wider Midlands — offices, retail and industrial.",
+      lat: 52.4862,
+      lng: -1.8904,
     },
   ],
   fineandcountry: [
@@ -114,6 +128,8 @@ const DEMO_AGENTS: Partial<Record<BrandId, RefAgent[]>> = {
       area: "Cheshire",
       since: "2021-11-01",
       bio: "Oliver specialises in premium and country homes across Cheshire.",
+      lat: 53.1934,
+      lng: -2.8931,
     },
   ],
   auction: [
@@ -124,6 +140,8 @@ const DEMO_AGENTS: Partial<Record<BrandId, RefAgent[]>> = {
       area: "North West",
       since: "2023-03-01",
       bio: "Dan runs residential and investment lots across the North West auction calendar.",
+      lat: 53.4808,
+      lng: -2.2426,
     },
   ],
 };
@@ -141,9 +159,28 @@ function tenure(since: string): string {
   return `${years} year${years === 1 ? "" : "s"} with the team`;
 }
 
-// Rank agents by how well the typed location matches their patch — a keyword
-// hit floats to the top; the rest stay in order as the "close-by" list.
-function rankByLocation(agents: RefAgent[], location: string): RefAgent[] {
+// Rank agents by proximity to the referral. When we have a map pin, sort by
+// real distance to each agent's patch centre (closest first). Otherwise fall
+// back to a keyword match on the typed location — a hit floats to the top.
+function rankByLocation(
+  agents: RefAgent[],
+  location: string,
+  coords?: { lat: number; lng: number } | null
+): RefAgent[] {
+  if (coords && agents.some((a) => a.lat != null && a.lng != null)) {
+    const far = Number.POSITIVE_INFINITY;
+    return [...agents].sort((a, b) => {
+      const da =
+        a.lat != null && a.lng != null
+          ? distanceKm(coords, { lat: a.lat, lng: a.lng })
+          : far;
+      const db =
+        b.lat != null && b.lng != null
+          ? distanceKm(coords, { lat: b.lat, lng: b.lng })
+          : far;
+      return da - db;
+    });
+  }
   const q = location.trim().toLowerCase();
   if (!q) return agents;
   return [...agents].sort((a, b) => {
@@ -579,6 +616,7 @@ function ReferWizard({
     "location" | "matching" | "agent" | "details" | "done"
   >("location");
   const [location, setLocation] = useState("");
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [pool, setPool] = useState<RefAgent[]>(DEMO_AGENTS[toBrand.id] ?? []);
   const [ranked, setRanked] = useState<RefAgent[]>([]);
   const [agent, setAgent] = useState<RefAgent | null>(null);
@@ -618,7 +656,7 @@ function ReferWizard({
       return;
     }
     setError("");
-    const order = rankByLocation(pool, location);
+    const order = rankByLocation(pool, location, coords);
     setRanked(order);
     setAgent(order[0]);
     setStep("matching");
@@ -688,28 +726,18 @@ function ReferWizard({
               {" "}
               {toBrand.shortName} agent.
             </p>
-            <input
-              autoFocus
-              className={`${inputCls} mt-4`}
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && findAgent()}
-              placeholder="e.g. Liverpool, or L1 8JQ"
-            />
-            <div className="mt-3 flex flex-wrap gap-2">
-              {["Liverpool", "Manchester", "Leeds", "Birmingham"].map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setLocation(c)}
-                  className="rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
-                >
-                  {c}
-                </button>
-              ))}
+            <div className="mt-4">
+              <LocationPicker
+                accent={fromBrand.accent}
+                value={location}
+                onChange={({ label, lat, lng }) => {
+                  setLocation(label);
+                  if (lat != null && lng != null) setCoords({ lat, lng });
+                  else setCoords(null);
+                }}
+                onEnter={findAgent}
+              />
             </div>
-            <p className="mt-3 text-xs text-gray-400">
-              📍 Map pin &amp; auto-locate coming soon — for now just type it in.
-            </p>
             {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
             <div className="mt-6 flex justify-end gap-3">
               <button
