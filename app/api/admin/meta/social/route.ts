@@ -1,21 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllSocials, getSocialSnapshot, sanitizePreset } from "@/lib/meta";
-
-function authorised(req: NextRequest): boolean {
-  const auth = req.headers.get("authorization") ?? "";
-  const password = process.env.ADMIN_PASSWORD ?? "experts-admin";
-  return auth === `Bearer ${password}`;
-}
+import { adminScope } from "@/lib/admin-auth";
 
 // Organic socials snapshot — Facebook Page + linked Instagram followers, plus
-// followers gained over the chosen window. GET ?brand=<id>&preset=<...> for one
-// brand, or no brand for every Page-configured brand.
+// followers gained over the chosen window. Both admin tiers can call it:
+//   • super → any brand (?brand=<id>), or all Page-configured brands (no brand)
+//   • md    → locked to their own brand (the ?brand param is ignored)
 export async function GET(req: NextRequest) {
-  if (!authorised(req)) {
+  const scope = adminScope(req);
+  if (!scope) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
-  const brandId = req.nextUrl.searchParams.get("brand");
   const preset = sanitizePreset(req.nextUrl.searchParams.get("preset"));
+  // An MD only ever sees their own brand, whatever the query says.
+  const brandId =
+    scope.role === "md" ? scope.brandId : req.nextUrl.searchParams.get("brand");
   try {
     if (brandId) {
       const social = await getSocialSnapshot(brandId, preset);

@@ -1720,9 +1720,6 @@ export default function AdminPage() {
                 note="Referrals that turned into business elsewhere"
               />
             </section>
-
-            {/* ── Brand socials — organic followers + growth ── */}
-            <BrandSocials preset={metaPreset} adminPassword={password} />
           </>
         )}
 
@@ -2930,14 +2927,17 @@ const FB_ICON =
 const IG_ICON =
   "M12 8.2A3.8 3.8 0 1012 15.8 3.8 3.8 0 0012 8.2zm0 6.3a2.5 2.5 0 110-5 2.5 2.5 0 010 5zM17 5.6a.9.9 0 100 1.8.9.9 0 000-1.8zM12 4.6c2.4 0 2.7 0 3.7.06 2.5.1 3.6 1.3 3.7 3.7.05 1 .06 1.3.06 3.7s0 2.7-.06 3.7c-.1 2.4-1.2 3.6-3.7 3.7-1 .05-1.3.06-3.7.06s-2.7 0-3.7-.06c-2.5-.1-3.6-1.3-3.7-3.7C4.6 14.7 4.6 14.4 4.6 12s0-2.7.06-3.7c.1-2.4 1.2-3.6 3.7-3.7 1-.05 1.3-.06 3.7-.06zM12 3.3c-2.4 0-2.8 0-3.7.05C4.9 3.5 3.5 4.9 3.4 8.3c-.05.9-.05 1.3-.05 3.7s0 2.8.05 3.7c.1 3.4 1.5 4.8 4.9 4.9.9.05 1.3.05 3.7.05s2.8 0 3.7-.05c3.4-.1 4.8-1.5 4.9-4.9.05-.9.05-1.3.05-3.7s0-2.8-.05-3.7c-.1-3.4-1.5-4.8-4.9-4.9-.9-.05-1.3-.05-3.7-.05z";
 
-function BrandSocials({
-  preset,
-  adminPassword,
+// Socials snapshot for one brand — Facebook + Instagram followers and growth,
+// with a timescale dropdown. Used on the MD dashboard (brand-scoped token).
+function MdSocials({
+  brandId,
+  token,
 }: {
-  preset: string;
-  adminPassword: string;
+  brandId: string;
+  token: string;
 }) {
-  const [socials, setSocials] = useState<SocialDto[] | null>(null);
+  const [preset, setPreset] = useState("last_30d");
+  const [social, setSocial] = useState<SocialDto | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const windowLabel = DATE_PRESETS.find((p) => p.id === preset)?.label ?? "";
@@ -2946,17 +2946,17 @@ function BrandSocials({
     let cancelled = false;
     setLoading(true);
     setError("");
-    fetch(`/api/admin/meta/social?preset=${preset}`, {
-      headers: { Authorization: `Bearer ${adminPassword}` },
+    fetch(`/api/admin/meta/social?brand=${brandId}&preset=${preset}`, {
+      headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
       .then(({ ok, j }) => {
         if (cancelled) return;
         if (!ok) {
           setError(j.error ?? "Failed to load socials");
-          setSocials(null);
+          setSocial(null);
         } else {
-          setSocials(j.socials ?? []);
+          setSocial(j.social ?? null);
         }
       })
       .catch(() => !cancelled && setError("Network error"))
@@ -2964,15 +2964,29 @@ function BrandSocials({
     return () => {
       cancelled = true;
     };
-  }, [preset, adminPassword]);
+  }, [brandId, preset, token]);
 
   return (
-    <section className="mt-10">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-lg font-semibold">Brand socials</h2>
-        <p className="text-xs text-gray-400">
-          Followers now · growth over {windowLabel || "the window"}
-        </p>
+    <section className="mt-8">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold">Socials</h2>
+          <p className="mt-1 text-sm text-gray-500">
+            Followers now · growth over the selected window
+          </p>
+        </div>
+        <select
+          value={preset}
+          onChange={(e) => setPreset(e.target.value)}
+          className="rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 shadow-sm outline-none transition hover:border-gray-300 focus:border-gray-400"
+          aria-label="Timescale"
+        >
+          {DATE_PRESETS.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       {loading ? (
@@ -2983,54 +2997,22 @@ function BrandSocials({
         <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           {error}
         </div>
-      ) : !socials || socials.length === 0 ? (
-        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-700">
-          <p className="font-medium">No brand Pages configured for socials yet.</p>
-          <p className="mt-1">
-            Set a <code>META_PAGE_&lt;BRAND&gt;</code> (or the Page in
-            Connections) and grant the token{" "}
-            <code>pages_read_engagement</code> + <code>instagram_basic</code>{" "}
-            (+ <code>instagram_manage_insights</code> for growth).
-          </p>
+      ) : social ? (
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <PlatformCell
+            label="Facebook"
+            icon={FB_ICON}
+            data={social.facebook}
+            windowLabel={windowLabel}
+          />
+          <PlatformCell
+            label="Instagram"
+            icon={IG_ICON}
+            data={social.instagram}
+            windowLabel={windowLabel}
+          />
         </div>
-      ) : (
-        <div className="mt-4 grid gap-4 lg:grid-cols-2">
-          {socials.map((s) => {
-            const b = brandById(s.brandId);
-            return (
-              <div
-                key={s.brandId}
-                className="rounded-2xl border border-gray-200 bg-white p-5"
-              >
-                <div className="mb-3 flex items-center gap-2.5">
-                  <BrandMark
-                    name={b?.name ?? s.brandId}
-                    accent={b?.accent ?? "#111827"}
-                    logo={b?.logo}
-                    size={24}
-                    rounded="rounded-none"
-                  />
-                  <p className="font-medium">{b?.shortName ?? s.brandId}</p>
-                </div>
-                <div className="space-y-3">
-                  <PlatformCell
-                    label="Facebook"
-                    icon={FB_ICON}
-                    data={s.facebook}
-                    windowLabel={windowLabel}
-                  />
-                  <PlatformCell
-                    label="Instagram"
-                    icon={IG_ICON}
-                    data={s.instagram}
-                    windowLabel={windowLabel}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      ) : null}
     </section>
   );
 }
@@ -3180,6 +3162,9 @@ function MdDashboard({
                 </div>
               ))}
             </div>
+
+            {/* Socials — high-level followers + growth for this brand */}
+            <MdSocials brandId={brandId} token={token} />
 
             {/* Needs attention */}
             {attention.length > 0 && (
