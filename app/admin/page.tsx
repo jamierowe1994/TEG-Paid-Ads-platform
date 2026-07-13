@@ -1720,6 +1720,9 @@ export default function AdminPage() {
                 note="Referrals that turned into business elsewhere"
               />
             </section>
+
+            {/* ── Brand socials — organic followers + growth ── */}
+            <BrandSocials preset={metaPreset} adminPassword={password} />
           </>
         )}
 
@@ -2838,6 +2841,193 @@ function AdminStat({
       <p className="mt-2 text-3xl font-semibold tracking-tight">{value}</p>
       {note && <p className="mt-1 text-xs text-gray-400">{note}</p>}
     </div>
+  );
+}
+
+// ── Brand socials — organic followers + growth per brand ──────────────────
+interface SocialPlatformDto {
+  configured: boolean;
+  followers: number | null;
+  gained: number | null;
+  handle: string | null;
+  error?: string;
+}
+interface SocialDto {
+  brandId: string;
+  facebook: SocialPlatformDto;
+  instagram: SocialPlatformDto;
+}
+
+function fmtCount(n: number | null): string {
+  return n == null ? "—" : n.toLocaleString("en-GB");
+}
+function fmtGained(n: number | null): string {
+  if (n == null) return "—";
+  return `${n > 0 ? "+" : ""}${n.toLocaleString("en-GB")}`;
+}
+
+function PlatformCell({
+  label,
+  icon,
+  data,
+  windowLabel,
+}: {
+  label: string;
+  icon: string;
+  data: SocialPlatformDto;
+  windowLabel: string;
+}) {
+  const gainedColor =
+    data.gained == null
+      ? "text-gray-400"
+      : data.gained > 0
+        ? "text-green-600"
+        : data.gained < 0
+          ? "text-red-600"
+          : "text-gray-500";
+  return (
+    <div className="flex items-center gap-4 rounded-xl border border-gray-100 p-4">
+      <div
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-900 text-white"
+        aria-hidden
+      >
+        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+          <path d={icon} />
+        </svg>
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline gap-2">
+          <p className="text-sm font-medium">{label}</p>
+          {data.handle ? (
+            <p className="truncate text-xs text-gray-400">{data.handle}</p>
+          ) : null}
+        </div>
+        {!data.configured ? (
+          <p className="mt-0.5 text-xs text-amber-600">Not linked</p>
+        ) : (
+          <div className="mt-1 flex items-baseline gap-4">
+            <span className="text-2xl font-semibold tracking-tight">
+              {fmtCount(data.followers)}
+            </span>
+            <span className={`text-sm font-medium ${gainedColor}`}>
+              {fmtGained(data.gained)}{" "}
+              <span className="text-xs font-normal text-gray-400">{windowLabel}</span>
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Minimal glyph paths (Facebook "f", Instagram camera) — filled.
+const FB_ICON =
+  "M13 22v-9h3l.5-3.5H13V7.3c0-1 .3-1.7 1.8-1.7H16.6V2.4C16.3 2.4 15.2 2.3 14 2.3c-2.6 0-4.3 1.6-4.3 4.5v2.7H6.6V13h3.1v9H13z";
+const IG_ICON =
+  "M12 8.2A3.8 3.8 0 1012 15.8 3.8 3.8 0 0012 8.2zm0 6.3a2.5 2.5 0 110-5 2.5 2.5 0 010 5zM17 5.6a.9.9 0 100 1.8.9.9 0 000-1.8zM12 4.6c2.4 0 2.7 0 3.7.06 2.5.1 3.6 1.3 3.7 3.7.05 1 .06 1.3.06 3.7s0 2.7-.06 3.7c-.1 2.4-1.2 3.6-3.7 3.7-1 .05-1.3.06-3.7.06s-2.7 0-3.7-.06c-2.5-.1-3.6-1.3-3.7-3.7C4.6 14.7 4.6 14.4 4.6 12s0-2.7.06-3.7c.1-2.4 1.2-3.6 3.7-3.7 1-.05 1.3-.06 3.7-.06zM12 3.3c-2.4 0-2.8 0-3.7.05C4.9 3.5 3.5 4.9 3.4 8.3c-.05.9-.05 1.3-.05 3.7s0 2.8.05 3.7c.1 3.4 1.5 4.8 4.9 4.9.9.05 1.3.05 3.7.05s2.8 0 3.7-.05c3.4-.1 4.8-1.5 4.9-4.9.05-.9.05-1.3.05-3.7s0-2.8-.05-3.7c-.1-3.4-1.5-4.8-4.9-4.9-.9-.05-1.3-.05-3.7-.05z";
+
+function BrandSocials({
+  preset,
+  adminPassword,
+}: {
+  preset: string;
+  adminPassword: string;
+}) {
+  const [socials, setSocials] = useState<SocialDto[] | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const windowLabel = DATE_PRESETS.find((p) => p.id === preset)?.label ?? "";
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError("");
+    fetch(`/api/admin/meta/social?preset=${preset}`, {
+      headers: { Authorization: `Bearer ${adminPassword}` },
+    })
+      .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
+      .then(({ ok, j }) => {
+        if (cancelled) return;
+        if (!ok) {
+          setError(j.error ?? "Failed to load socials");
+          setSocials(null);
+        } else {
+          setSocials(j.socials ?? []);
+        }
+      })
+      .catch(() => !cancelled && setError("Network error"))
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [preset, adminPassword]);
+
+  return (
+    <section className="mt-10">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-lg font-semibold">Brand socials</h2>
+        <p className="text-xs text-gray-400">
+          Followers now · growth over {windowLabel || "the window"}
+        </p>
+      </div>
+
+      {loading ? (
+        <div className="mt-4 py-8 text-center text-sm text-gray-400">
+          Loading socials…
+        </div>
+      ) : error ? (
+        <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {error}
+        </div>
+      ) : !socials || socials.length === 0 ? (
+        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-700">
+          <p className="font-medium">No brand Pages configured for socials yet.</p>
+          <p className="mt-1">
+            Set a <code>META_PAGE_&lt;BRAND&gt;</code> (or the Page in
+            Connections) and grant the token{" "}
+            <code>pages_read_engagement</code> + <code>instagram_basic</code>{" "}
+            (+ <code>instagram_manage_insights</code> for growth).
+          </p>
+        </div>
+      ) : (
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          {socials.map((s) => {
+            const b = brandById(s.brandId);
+            return (
+              <div
+                key={s.brandId}
+                className="rounded-2xl border border-gray-200 bg-white p-5"
+              >
+                <div className="mb-3 flex items-center gap-2.5">
+                  <BrandMark
+                    name={b?.name ?? s.brandId}
+                    accent={b?.accent ?? "#111827"}
+                    logo={b?.logo}
+                    size={24}
+                    rounded="rounded-none"
+                  />
+                  <p className="font-medium">{b?.shortName ?? s.brandId}</p>
+                </div>
+                <div className="space-y-3">
+                  <PlatformCell
+                    label="Facebook"
+                    icon={FB_ICON}
+                    data={s.facebook}
+                    windowLabel={windowLabel}
+                  />
+                  <PlatformCell
+                    label="Instagram"
+                    icon={IG_ICON}
+                    data={s.instagram}
+                    windowLabel={windowLabel}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
   );
 }
 
