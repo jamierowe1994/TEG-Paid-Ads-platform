@@ -735,6 +735,165 @@ export async function pingAll(): Promise<{
   return { tokenSet: metaTokenSet(), brands };
 }
 
+// ── Organic socials snapshot (Page + Instagram followers) ──────────────────
+// Separate from ads Insights: reads the brand's Facebook Page follower count +
+// its linked Instagram business account, plus "followers gained" over a window.
+// Needs the System User to have the Page asset AND the token to carry
+// `pages_read_engagement` + `instagram_basic` (+ `instagram_manage_insights`
+// for the IG "gained" series). Everything degrades gracefully — a missing Page,
+// missing IG link, or missing permission returns nulls, never throws.
+
+export interface SocialPlatform {
+  configured: boolean; // the account exists / is linked
+  followers: number | null; // current total
+  gained: number | null; // net new over the window (null if unavailable)
+  handle: string | null;
+  error?: string;
+}
+
+export interface SocialSnapshot {
+  brandId: string;
+  datePreset: string;
+  facebook: SocialPlatform;
+  instagram: SocialPlatform;
+}
+
+// Insight windows use since/until dates (not date_preset). Ends yesterday, to
+// match how the ads windows behave.
+function presetSinceUntil(preset: string): { since: string; until: string } {
+  const DAY = 86_400_000;
+  const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+  const until = iso(Date.now() - DAY);
+  if (preset === "this_month") {
+    const now = new Date();
+    return { since: iso(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)), until };
+  }
+  const days: Record<string, number> = {
+    last_7d: 7,
+    last_14d: 14,
+    last_30d: 30,
+    last_60d: 60,
+    last_90d: 90,
+  };
+  return { since: iso(Date.now() - (days[preset] ?? 30) * DAY), until };
+}
+
+function sumInsightMetric(
+  data: Array<{ name?: string; values?: Array<{ value?: number }> }> | undefined,
+  name?: string
+): number {
+  const row = name ? data?.find((d) => d.name === name) : data?.[0];
+  return (row?.values ?? []).reduce((t, v) => t + Number(v.value ?? 0), 0);
+}
+
+export async function getSocialSnapshot(
+  brandId: string,
+  datePreset = "last_30d"
+): Promise<SocialSnapshot> {
+  const blank = (): SocialPlatform => ({
+    configured: false,
+    followers: null,
+    gained: null,
+    handle: null,
+  });
+  const out: SocialSnapshot = {
+    brandId,
+    datePreset,
+    facebook: blank(),
+    instagram: blank(),
+  };
+
+  const pid = await pageId(brandId);
+  if (!token() || !pid) return out; // no Page configured for this brand
+
+  const { since, until } = presetSinceUntil(datePreset);
+  let pageToken: string | undefined;
+  try {
+    pageToken = (await getPageAccessToken(brandId)) ?? undefined;
+  } catch {
+    /* fall back to the system token — may still work for public fields */
+  }
+
+  // ── Facebook Page ──
+  out.facebook.configured = true;
+  try {
+    const page = (await graph(
+      pid,
+      {
+        fields:
+          "name,followers_count,fan_count,instagram_business_account{id,username,followers_count}",
+      },
+      pageToken
+    )) as {
+      name?: string;
+      followers_count?: number;
+      fan_count?: number;
+      instagram_business_account?: {
+        id?: string;
+        username?: string;
+        followers_count?: number;
+      };
+    };
+    out.facebook.followers = Number(page.followers_count ?? page.fan_count ?? 0);
+    out.facebook.handle = page.name ?? null;
+
+    // Net new Page follows over the window (best-effort; metric availability
+    // varies by API version — null if Meta won't serve it).
+    try {
+      const ins = (await graph(
+        `${pid}/insights`,
+        {
+          metric: "page_fan_adds_unique,page_fan_removes_unique",
+          period: "day",
+          since,
+          until,
+        },
+        pageToken
+      )) as { data?: Array<{ name?: string; values?: Array<{ value?: number }> }> };
+      out.facebook.gained =
+        sumInsightMetric(ins.data, "page_fan_adds_unique") -
+        sumInsightMetric(ins.data, "page_fan_removes_unique");
+    } catch {
+      out.facebook.gained = null;
+    }
+
+    // ── Instagram (linked business account) ──
+    const ig = page.instagram_business_account;
+    if (ig?.id) {
+      out.instagram.configured = true;
+      out.instagram.followers =
+        ig.followers_count != null ? Number(ig.followers_count) : null;
+      out.instagram.handle = ig.username ? `@${ig.username}` : null;
+
+      // IG "follower_count" insight = new followers per day (capped at ~30 days
+      // by Meta, and needs ≥100 followers) — sum = gained over the window.
+      try {
+        const igIns = (await graph(
+          `${ig.id}/insights`,
+          { metric: "follower_count", period: "day", since, until },
+          pageToken
+        )) as { data?: Array<{ values?: Array<{ value?: number }> }> };
+        out.instagram.gained = sumInsightMetric(igIns.data);
+      } catch {
+        out.instagram.gained = null;
+      }
+    }
+  } catch (e) {
+    out.facebook.error = e instanceof Error ? e.message : "Meta request failed";
+  }
+
+  return out;
+}
+
+// Socials for every Page-configured brand (health probe + admin overview).
+export async function getAllSocials(): Promise<SocialSnapshot[]> {
+  const map = await getBrandMetaMap();
+  const ids = BRANDS.map((b) => b.id).filter(
+    (id) => !!(map[id]?.pageId || process.env[`META_PAGE_${id.toUpperCase()}`])
+  );
+  return Promise.all(ids.map((id) => getSocialSnapshot(id)));
+}
+
 // ── Instant Form lead retrieval (one-off historic backfill) ────────────────
 // Separate from the Insights API above: this reads Meta's own stored lead
 // records (name/phone/email) for a brand's Page — only works for native

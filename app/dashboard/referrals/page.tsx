@@ -190,6 +190,16 @@ function rankByLocation(
   });
 }
 
+// Whole miles from the picked pin to an agent's patch — null unless we have
+// both a pin and the agent's coordinates.
+function distanceMiles(
+  coords: { lat: number; lng: number } | null | undefined,
+  a: RefAgent
+): number | null {
+  if (!coords || a.lat == null || a.lng == null) return null;
+  return Math.round(distanceKm(coords, { lat: a.lat, lng: a.lng }) * 0.621371);
+}
+
 // ── Progress model ──────────────────────────────────────────────────────────
 // The milestones we can honestly drive today from status + mirrored stage.
 // Further granularity (on market / sold) will light up once the CRM feeds
@@ -707,7 +717,6 @@ function ReferWizard({
   }
 
   const firstName = agent?.name.split(" ")[0] ?? "them";
-  const others = ranked.filter((a) => a.id !== agent?.id);
 
   return (
     <div
@@ -715,7 +724,7 @@ function ReferWizard({
       onClick={onClose}
     >
       <div
-        className="modal-pop max-h-[90vh] w-full max-w-md overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl sm:p-7"
+        className="modal-pop max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl sm:p-7"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Location */}
@@ -785,87 +794,113 @@ function ReferWizard({
           </div>
         )}
 
-        {/* Matched agent — profile preview */}
+        {/* Matched agent — split screen: close-by list left, featured right */}
         {step === "agent" && agent && (
           <div className="fade-up">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-              Closest available agent
-            </p>
-            <div className="mt-3 rounded-2xl border border-gray-200 p-4">
-              <div className="flex items-start gap-4">
-                <div className="min-w-0 flex-1">
-                  <p className="text-lg font-semibold">{agent.name}</p>
-                  <p className="text-sm text-gray-500">
-                    {toBrand.name} · Covers {agent.area}
-                  </p>
-                  <p className="mt-0.5 text-xs text-gray-400">
-                    {tenure(agent.since)}
-                  </p>
-                  <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-1 text-[11px] font-semibold text-green-600">
-                    ● Available now
-                  </span>
-                </div>
-                {/* Photo on the right */}
-                <AgentAvatar
-                  name={agent.name}
-                  photo={agent.photo}
-                  accent={toBrand.accent}
-                  size={72}
-                />
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold leading-tight">
+                  Closest {toBrand.shortName} agents
+                </h2>
+                <p className="text-xs text-gray-400">
+                  {location ? `near ${location}` : "ranked by who's closest"}
+                </p>
               </div>
-              <p className="mt-3 border-t border-gray-100 pt-3 text-sm leading-relaxed text-gray-600">
-                {agent.bio}
-              </p>
+              <button
+                onClick={() => setStep("location")}
+                className="shrink-0 text-xs font-medium text-gray-400 hover:text-gray-600"
+              >
+                ← Change location
+              </button>
             </div>
 
-            <button
-              onClick={() => setStep("details")}
-              className="mt-4 w-full rounded-xl py-3 text-sm font-semibold text-white transition hover:opacity-90"
-              style={{ backgroundColor: toBrand.accent }}
-            >
-              Refer to {firstName}
-            </button>
-
-            {/* See other close-by agents */}
-            {others.length > 0 && (
-              <div className="mt-5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                  Other close-by agents
-                </p>
-                <div className="mt-2 space-y-2">
-                  {others.map((o) => (
+            <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,0.8fr)_1.2fr]">
+              {/* LEFT — everyone close by, tap to feature. Distances shown when
+                  we've got a pin to measure from. */}
+              <div className="space-y-2 sm:order-1 sm:max-h-[52vh] sm:overflow-y-auto sm:pr-1">
+                {ranked.map((o) => {
+                  const active = o.id === agent.id;
+                  const miles = distanceMiles(coords, o);
+                  return (
                     <button
                       key={o.id}
                       onClick={() => setAgent(o)}
-                      className="flex w-full items-center gap-3 rounded-xl border border-gray-200 p-3 text-left transition hover:border-gray-900 hover:bg-gray-50"
+                      className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition ${
+                        active
+                          ? "border-gray-900 bg-gray-50"
+                          : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                      }`}
                     >
                       <AgentAvatar
                         name={o.name}
                         photo={o.photo}
                         accent={toBrand.accent}
-                        size={36}
+                        size={40}
                       />
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{o.name}</p>
                         <p className="truncate text-xs text-gray-400">
                           Covers {o.area}
                         </p>
                       </div>
-                      <span className="ml-auto text-xs font-medium text-gray-400">
-                        Pick →
-                      </span>
+                      {miles != null && (
+                        <span
+                          className="shrink-0 text-xs font-semibold"
+                          style={{ color: toBrand.accent }}
+                        >
+                          {miles} mi
+                        </span>
+                      )}
                     </button>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
-            )}
 
-            <button
-              onClick={() => setStep("location")}
-              className="mt-4 text-sm font-medium text-gray-400 hover:text-gray-600"
-            >
-              ← Change location
-            </button>
+              {/* RIGHT — the featured agent, with the refer button at the base */}
+              <div className="flex flex-col rounded-2xl border border-gray-200 p-4 sm:order-2">
+                <div className="flex items-start gap-4">
+                  <AgentAvatar
+                    name={agent.name}
+                    photo={agent.photo}
+                    accent={toBrand.accent}
+                    size={72}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-lg font-semibold leading-tight">
+                      {agent.name}
+                    </p>
+                    <p className="mt-0.5 text-sm text-gray-500">
+                      {toBrand.name} · Covers {agent.area}
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-400">
+                      {tenure(agent.since)}
+                    </p>
+                    <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-1 text-[11px] font-semibold text-green-600">
+                      ● Available now
+                    </span>
+                  </div>
+                </div>
+
+                {distanceMiles(coords, agent) != null && (
+                  <p className="mt-3 flex items-center gap-1.5 text-sm text-gray-500">
+                    <span>📍</span> About {distanceMiles(coords, agent)} miles
+                    from {location || "your lead"}
+                  </p>
+                )}
+
+                <p className="mt-3 border-t border-gray-100 pt-3 text-sm leading-relaxed text-gray-600">
+                  {agent.bio}
+                </p>
+
+                <button
+                  onClick={() => setStep("details")}
+                  className="mt-4 w-full rounded-xl py-3 text-sm font-semibold text-white transition hover:opacity-90 sm:mt-auto"
+                  style={{ backgroundColor: toBrand.accent }}
+                >
+                  Refer to {firstName}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

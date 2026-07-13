@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { hasDb, q } from "@/lib/db";
-import { pingAll } from "@/lib/meta";
+import { pingAll, getAllSocials } from "@/lib/meta";
 import { linkedinStatus } from "@/lib/linkedin";
 import { whatsappStatus } from "@/lib/whatsapp";
 import { rexPing } from "@/lib/rex";
@@ -52,6 +52,13 @@ export async function GET(req: NextRequest) {
   // just whether the token + account work + the account name).
   if (req.nextUrl.searchParams.has("meta")) {
     body.meta = await pingAll();
+  }
+
+  // /api/health?social=1 pulls the organic followers snapshot for every
+  // Page-configured brand — the fastest way to confirm the Page/Instagram
+  // permissions are granted (nulls/errors here = scope or config still missing).
+  if (req.nextUrl.searchParams.has("social")) {
+    body.social = await getAllSocials();
   }
 
   // /api/health?linkedin=1 reports whether a LinkedIn token is stored + valid
