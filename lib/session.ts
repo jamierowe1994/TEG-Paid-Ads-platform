@@ -321,6 +321,25 @@ export async function cancelSubscription(
   }
 }
 
+// Change your own password — must supply the current one to prove it's you.
+export async function changePassword(
+  current: string,
+  next: string
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch("/api/auth/change-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ current, next }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: data.error ?? "Couldn't change password" };
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Network error — please try again" };
+  }
+}
+
 // Permanently delete the account — confirm must match the account email.
 export async function deleteAccount(
   confirm: string

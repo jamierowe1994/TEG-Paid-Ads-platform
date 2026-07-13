@@ -9,6 +9,7 @@ import {
   disconnectMicrosoft,
   cancelSubscription,
   deleteAccount,
+  changePassword,
 } from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
 import { packageById } from "@/lib/packages";
@@ -56,6 +57,12 @@ export default function ProfilePage() {
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  // Change password
+  const [pwCurrent, setPwCurrent] = useState("");
+  const [pwNew, setPwNew] = useState("");
+  const [pwConfirm, setPwConfirm] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwError, setPwError] = useState("");
 
   useEffect(() => {
     const u = getUser();
@@ -136,6 +143,30 @@ export default function ProfilePage() {
           : "Subscription resumed ✓"
       );
       setTimeout(() => setToast(""), 3500);
+    }
+  }
+
+  async function submitPassword() {
+    setPwError("");
+    if (pwNew.length < 8) {
+      setPwError("Your new password must be at least 8 characters.");
+      return;
+    }
+    if (pwNew !== pwConfirm) {
+      setPwError("The two new passwords don't match.");
+      return;
+    }
+    setPwSaving(true);
+    const res = await changePassword(pwCurrent, pwNew);
+    setPwSaving(false);
+    if (res.ok) {
+      setPwCurrent("");
+      setPwNew("");
+      setPwConfirm("");
+      setToast("Password changed ✓");
+      setTimeout(() => setToast(""), 3000);
+    } else {
+      setPwError(res.error ?? "Couldn't change password.");
     }
   }
 
@@ -388,6 +419,53 @@ export default function ProfilePage() {
                 Connect with Microsoft
               </a>
             )}
+          </section>
+
+          {/* Change password — self-service, needs the current one first */}
+          <section className={CARD}>
+            <h2 className="font-semibold">Change password</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Set a new password for signing in. You&apos;ll need your current
+              one to confirm it&apos;s you.
+            </p>
+            <div className="mt-4 space-y-3">
+              <input
+                type="password"
+                autoComplete="current-password"
+                className={inputClass}
+                value={pwCurrent}
+                onChange={(e) => setPwCurrent(e.target.value)}
+                placeholder="Current password"
+              />
+              <input
+                type="password"
+                autoComplete="new-password"
+                className={inputClass}
+                value={pwNew}
+                onChange={(e) => setPwNew(e.target.value)}
+                placeholder="New password (at least 8 characters)"
+              />
+              <input
+                type="password"
+                autoComplete="new-password"
+                className={inputClass}
+                value={pwConfirm}
+                onChange={(e) => setPwConfirm(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && submitPassword()}
+                placeholder="Confirm new password"
+              />
+            </div>
+            {pwError && <p className="mt-2 text-sm text-red-600">{pwError}</p>}
+            <button
+              onClick={submitPassword}
+              disabled={
+                pwSaving || !pwCurrent || !pwNew || !pwConfirm
+              }
+              className="mt-4 rounded-lg px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-40"
+              style={{ backgroundColor: brand.accent }}
+            >
+              {pwSaving ? "Saving…" : "Update password"}
+            </button>
           </section>
         </div>
 
