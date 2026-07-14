@@ -325,6 +325,16 @@ export default function AdminPage() {
   const [drillBrand, setDrillBrand] = useState<string | null>(null);
   const [activity, setActivity] = useState<ActivityData | null>(null);
   const [referrals, setReferrals] = useState<Referral[]>([]);
+  // "Forgot password" asks waiting on a temporary password from the team.
+  const [pwRequests, setPwRequests] = useState<
+    {
+      email: string;
+      createdAt: string;
+      userId: string | null;
+      name: string | null;
+      brandId: string | null;
+    }[]
+  >([]);
   const [selected, setSelected] = useState<FeedbackItem | null>(null);
   const [openLead, setOpenLead] = useState<ActivityLead | null>(null);
   const [nudging, setNudging] = useState<string | null>(null);
@@ -351,7 +361,7 @@ export default function AdminPage() {
 
   async function loadData(pass: string): Promise<boolean> {
     const headers = { Authorization: `Bearer ${pass}` };
-    const [fb, us, ev, ls, mt, li, at, ac, rf, rx] = await Promise.all([
+    const [fb, us, ev, ls, mt, li, at, ac, rf, rx, pw] = await Promise.all([
       fetch("/api/feedback", { headers }),
       fetch("/api/admin/users", { headers }),
       fetch("/api/track", { headers }),
@@ -362,6 +372,7 @@ export default function AdminPage() {
       fetch("/api/admin/activity", { headers }),
       fetch("/api/admin/referrals", { headers }),
       fetch("/api/health?rex=1&whatsapp=1", { headers }),
+      fetch("/api/admin/password-requests", { headers }),
     ]);
     if (!fb.ok || !us.ok || !ev.ok || !ls.ok) return false;
     setFeedback(await fb.json());
@@ -373,6 +384,7 @@ export default function AdminPage() {
     setAtlas(at.ok ? await at.json() : null);
     setActivity(ac.ok ? await ac.json() : null);
     setReferrals(rf.ok ? await rf.json() : []);
+    setPwRequests(pw.ok ? (await pw.json()).requests ?? [] : []);
     if (rx.ok) {
       const health = await rx.json();
       setRex(health.rex ?? null);
@@ -1363,6 +1375,73 @@ export default function AdminPage() {
                 note={bestBrand ? "Demo leads until Meta is live" : "Needs lead data"}
               />
             </div>
+
+            {/* Locked out — "forgot password" asks from the login page. There's
+                no reset email yet, so the team issues a temporary password from
+                the agent's own record. */}
+            {pwRequests.length > 0 && (
+              <section className="mt-10 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                <h2 className="text-sm font-semibold text-amber-900">
+                  Locked out — waiting on a password{" "}
+                  <span className="font-normal text-amber-700/70">
+                    {pwRequests.length}
+                  </span>
+                </h2>
+                <p className="mt-0.5 text-xs text-amber-800/70">
+                  Open the agent, hit <strong>Reset password</strong>, and pass
+                  them the temporary one — then clear it here.
+                </p>
+                <ul className="mt-3 space-y-2">
+                  {pwRequests.map((r) => (
+                    <li
+                      key={r.email}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white px-3.5 py-2.5"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-gray-900">
+                          {r.name ?? r.email}
+                        </p>
+                        <p className="truncate text-xs text-gray-400">
+                          {r.name ? `${r.email} · ` : ""}
+                          asked {new Date(r.createdAt).toLocaleString("en-GB")}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        {r.userId && (
+                          <button
+                            onClick={() => {
+                              const u = users.find((x) => x.id === r.userId);
+                              if (u) setSelectedAgent(u);
+                            }}
+                            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+                          >
+                            Open agent
+                          </button>
+                        )}
+                        <button
+                          onClick={async () => {
+                            await fetch("/api/admin/password-requests", {
+                              method: "POST",
+                              headers: {
+                                "Content-Type": "application/json",
+                                Authorization: `Bearer ${password}`,
+                              },
+                              body: JSON.stringify({ email: r.email }),
+                            });
+                            setPwRequests((prev) =>
+                              prev.filter((x) => x.email !== r.email)
+                            );
+                          }}
+                          className="rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-700"
+                        >
+                          Done
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
             {/* Signups — filterable, click a row for the full record */}
             <section className="mt-10">

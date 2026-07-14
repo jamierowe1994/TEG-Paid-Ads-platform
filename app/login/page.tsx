@@ -20,6 +20,46 @@ function LoginForm() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [denied, setDenied] = useState(false);
+  // Forgot password — logs an ask for the team (no reset email yet).
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotBusy, setForgotBusy] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotError, setForgotError] = useState("");
+
+  async function requestReset() {
+    const trimmed = email.trim().toLowerCase();
+    setForgotError("");
+    if (!/^\S+@\S+\.\S+$/.test(trimmed)) {
+      setForgotError("Enter your work email above first.");
+      return;
+    }
+    if (!isAllowedEmailDomain(trimmed)) {
+      setDenied(true);
+      return;
+    }
+    setForgotBusy(true);
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmed }),
+      });
+      if (res.status === 403) {
+        setDenied(true);
+        return;
+      }
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setForgotError(d.error ?? "Couldn't send that — please try again.");
+        return;
+      }
+      setForgotSent(true);
+    } catch {
+      setForgotError("Network error — please try again.");
+    } finally {
+      setForgotBusy(false);
+    }
+  }
 
   async function signIn() {
     const trimmed = email.trim().toLowerCase();
@@ -106,15 +146,64 @@ function LoginForm() {
             onEnter={signIn}
           />
         </div>
-        <label className="mt-4 flex cursor-pointer select-none items-center gap-2.5 text-sm text-gray-600">
-          <input
-            type="checkbox"
-            checked={remember}
-            onChange={(e) => setRemember(e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 accent-gray-900"
-          />
-          Keep me signed in for a month
-        </label>
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <label className="flex cursor-pointer select-none items-center gap-2.5 text-sm text-gray-600">
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 accent-gray-900"
+            />
+            Keep me signed in for a month
+          </label>
+          <button
+            type="button"
+            onClick={() => {
+              setForgotOpen((v) => !v);
+              setForgotError("");
+            }}
+            className="shrink-0 text-sm font-medium text-gray-400 underline decoration-dotted underline-offset-2 hover:text-gray-700"
+          >
+            Forgot password?
+          </button>
+        </div>
+
+        {/* Forgot password — no reset email yet (no system mailbox), so this
+            raises it with the team, who issue a temporary password. */}
+        {forgotOpen && (
+          <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
+            {forgotSent ? (
+              <div className="flex items-start gap-2.5">
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-600 text-[11px] text-white">
+                  ✓
+                </span>
+                <p className="text-sm text-gray-600">
+                  Thanks — we&apos;ve let the team know. They&apos;ll send you a
+                  temporary password shortly.
+                </p>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-gray-600">
+                  Pop your work email in the box above and we&apos;ll ask the
+                  team to send you a temporary password.
+                </p>
+                {forgotError && (
+                  <p className="mt-2 text-sm text-red-500">{forgotError}</p>
+                )}
+                <button
+                  type="button"
+                  onClick={requestReset}
+                  disabled={forgotBusy}
+                  className="mt-3 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-700 disabled:opacity-50"
+                >
+                  {forgotBusy ? "Sending…" : "Request a reset"}
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
         {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
         <button
           onClick={signIn}

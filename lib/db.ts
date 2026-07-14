@@ -65,6 +65,15 @@ CREATE TABLE IF NOT EXISTS feedback (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- "I've forgotten my password" asks from the login page. Keyed by email so a
+-- repeat ask refreshes the existing row rather than piling up. The team clears
+-- one by issuing a temporary password from the agent's profile.
+CREATE TABLE IF NOT EXISTS password_requests (
+  email      TEXT PRIMARY KEY,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  handled_at TIMESTAMPTZ
+);
+
 CREATE TABLE IF NOT EXISTS signup_events (
   email      TEXT PRIMARY KEY,
   name       TEXT NOT NULL DEFAULT '',
