@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BRANDS, brandById, type Brand } from "@/lib/brands";
+import Collapse from "@/components/Collapse";
 import { packageById, PACKAGES } from "@/lib/packages";
 import { stageLabel } from "@/lib/onboarding";
 import BrandMark from "@/components/BrandMark";
@@ -291,6 +292,8 @@ export default function AdminPage() {
   const [ghl, setGhl] = useState<
     Record<string, { configured: boolean; ok: boolean; error?: string }>
   >({});
+  const [ghlOpen, setGhlOpen] = useState(false);
+  const connectedGhl = BRANDS.filter((b) => ghl[b.id]?.ok).length;
   const [rex, setRex] = useState<RexStatus | null>(null);
   const [whatsapp, setWhatsapp] = useState<{
     configured: boolean;
@@ -2184,71 +2187,110 @@ export default function AdminPage() {
             {/* GoHighLevel — the nurture funnel for lost leads. Each brand has
                 its own sub-account, so each needs its own token + location. */}
             <section className="mt-10">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold">
-                  GoHighLevel{" "}
-                  <span className="text-sm font-normal text-gray-400">
-                    nurture funnel
+              {/* Click to open — each brand has its own GHL sub-account, so the
+                  detail is a per-brand list tucked behind the header. */}
+              <button
+                onClick={() => setGhlOpen((v) => !v)}
+                className="flex w-full items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-5 py-4 text-left transition hover:bg-gray-50"
+              >
+                <div className="min-w-0">
+                  <h2 className="text-lg font-semibold">
+                    GoHighLevel{" "}
+                    <span className="text-sm font-normal text-gray-400">
+                      nurture funnel
+                    </span>
+                  </h2>
+                  <p className="mt-0.5 text-xs text-gray-400">
+                    One sub-account per brand — open to see which are live.
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500">
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        connectedGhl === BRANDS.length
+                          ? "bg-green-500"
+                          : connectedGhl > 0
+                            ? "bg-amber-400"
+                            : "bg-gray-300"
+                      }`}
+                    />
+                    {connectedGhl} of {BRANDS.length} connected
                   </span>
-                </h2>
-                <span className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <span
-                    className={`h-1.5 w-1.5 rounded-full ${
-                      BRANDS.some((b) => ghl[b.id]?.ok)
-                        ? "bg-green-500"
-                        : "bg-gray-300"
+                  <svg
+                    className={`h-4 w-4 text-gray-400 transition-transform duration-300 ${
+                      ghlOpen ? "rotate-180" : ""
                     }`}
-                  />
-                  {BRANDS.filter((b) => ghl[b.id]?.ok).length} of {BRANDS.length}{" "}
-                  connected
-                </span>
-              </div>
-              <p className="mt-1 max-w-2xl text-xs text-gray-500">
-                Only leads an agent sends to the marketing funnel after three
-                no-answers land here — they arrive tagged{" "}
-                <code className="rounded bg-gray-100 px-1">nurture</code> and{" "}
-                <code className="rounded bg-gray-100 px-1">brand:&lt;id&gt;</code>
-                . Leads are never pushed to GoHighLevel as a CRM.
-              </p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {BRANDS.map((b) => {
-                  const s = ghl[b.id];
-                  return (
-                    <div
-                      key={b.id}
-                      className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4"
-                    >
-                      <BrandMark
-                        name={b.name}
-                        accent={b.accent}
-                        logo={b.logo}
-                        size={30}
-                      />
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{b.name}</p>
-                        <p className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-400">
-                          <span
-                            className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                              s?.ok
-                                ? "bg-green-500"
-                                : s?.configured
-                                  ? "bg-red-500"
-                                  : "bg-amber-400"
-                            }`}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
+                  </svg>
+                </div>
+              </button>
+
+              <Collapse open={ghlOpen}>
+                <div className="pt-3">
+                  <p className="max-w-2xl text-xs text-gray-500">
+                    Only leads an agent sends to the marketing funnel after three
+                    no-answers land here — they arrive tagged{" "}
+                    <code className="rounded bg-gray-100 px-1">nurture</code> and{" "}
+                    <code className="rounded bg-gray-100 px-1">
+                      brand:&lt;id&gt;
+                    </code>
+                    . Leads are never pushed to GoHighLevel as a CRM.
+                  </p>
+                  <div className="mt-3 overflow-hidden rounded-2xl border border-gray-200 bg-white">
+                    {BRANDS.map((b, i) => {
+                      const s = ghl[b.id];
+                      return (
+                        <div
+                          key={b.id}
+                          className={`flex items-center gap-3 p-4 ${
+                            i > 0 ? "border-t border-gray-100" : ""
+                          }`}
+                        >
+                          <BrandMark
+                            name={b.name}
+                            accent={b.accent}
+                            logo={b.logo}
+                            size={30}
                           />
-                          <span className="truncate">
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">
+                              {b.name}
+                            </p>
+                            <p className="mt-0.5 truncate text-xs text-gray-400">
+                              {s?.ok
+                                ? "Sending lost leads to this brand's funnel"
+                                : s?.configured
+                                  ? (s.error ?? "Connection failed")
+                                  : `Add GHL_TOKEN_${b.id.toUpperCase()} + GHL_LOCATION_${b.id.toUpperCase()} in Railway`}
+                            </p>
+                          </div>
+                          <span
+                            className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                              s?.ok
+                                ? "bg-green-50 text-green-700"
+                                : s?.configured
+                                  ? "bg-red-50 text-red-600"
+                                  : "bg-gray-100 text-gray-400"
+                            }`}
+                          >
                             {s?.ok
-                              ? "Connected"
+                              ? "● Connected"
                               : s?.configured
-                                ? (s.error ?? "Connection failed")
-                                : `Add GHL_TOKEN_${b.id.toUpperCase()} + GHL_LOCATION_${b.id.toUpperCase()}`}
+                                ? "Failing"
+                                : "Not set up"}
                           </span>
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </Collapse>
             </section>
 
             {/* Rex CRM (Property / Lettings / Fine & Country / Auction) */}
