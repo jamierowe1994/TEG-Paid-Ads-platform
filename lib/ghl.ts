@@ -84,7 +84,10 @@ function splitName(full: string): { firstName: string | null; lastName: string |
 }
 
 // Health check for the admin Connections tab — a cheap read that proves the
-// token + location are valid and GHL is reachable.
+// token + location are valid and GHL is reachable. Deliberately a contacts
+// read rather than /locations/{id}: it keeps the Private Integration down to
+// the contacts scopes we genuinely need, instead of also demanding
+// locations.readonly just to answer "are we connected?".
 export async function ghlPing(brandId?: string): Promise<{
   configured: boolean;
   ok: boolean;
@@ -93,7 +96,7 @@ export async function ghlPing(brandId?: string): Promise<{
   if (!ghlConfigured(brandId)) return { configured: false, ok: false };
   try {
     const res = await ghl(
-      `/locations/${ghlLocationId(brandId)}`,
+      `/contacts/?locationId=${encodeURIComponent(ghlLocationId(brandId))}&limit=1`,
       "GET",
       undefined,
       brandId
