@@ -41,7 +41,7 @@ export const EXPERTS_GROUP = {
   accent: "#E31F36", // Experts Group red
   accentDark: "#C11A2E",
   accentSoft: "#FEF2F2",
-  logo: "/brand-logos/group.png",
+  logo: "/brand-logos/group-black.png",
 };
 
 export const BRANDS: Brand[] = [
