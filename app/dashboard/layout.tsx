@@ -284,28 +284,25 @@ export default function DashboardLayout({
         } as React.CSSProperties
       }
     >
-      {/* Ambient glow — soft accent blobs that slowly drift/swirl behind the
-          glass tiles, sweeping diagonally from the right down to the lower-left.
-          -z-10 so the tiles' backdrop-blur picks it up and refracts it. */}
+      {/* Ambient glow — soft accent light anchored in the bottom-right corner,
+          radiating up and to the left across the page. It gently breathes out
+          from the corner rather than wandering. -z-10 so the tiles'
+          backdrop-blur picks it up and refracts it. */}
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
         <div
           className="glow-blob glow-a"
           style={{
-            bottom: "-32%",
-            right: "-28%",
-            width: "130%",
-            height: "130%",
-            background: `radial-gradient(circle at 50% 52%, ${brand.accent}${GLOW_ALPHA[brand.id] ?? "24"}, transparent 66%)`,
+            inset: 0,
+            borderRadius: 0,
+            background: `radial-gradient(120% 120% at 100% 100%, ${brand.accent}${GLOW_ALPHA[brand.id] ?? "24"}, transparent 58%)`,
           }}
         />
         <div
           className="glow-blob glow-b"
           style={{
-            bottom: "-12%",
-            right: "-6%",
-            width: "88%",
-            height: "92%",
-            background: `radial-gradient(circle at 50% 50%, ${brand.accent}14, transparent 68%)`,
+            inset: 0,
+            borderRadius: 0,
+            background: `radial-gradient(75% 75% at 100% 100%, ${brand.accent}14, transparent 60%)`,
           }}
         />
       </div>

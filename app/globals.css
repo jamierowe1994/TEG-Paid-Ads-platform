@@ -493,8 +493,9 @@ h5 {
    glass, covering the area with a gentle wave. ── */
 .glow-blob {
   position: absolute;
-  border-radius: 9999px;
   filter: blur(120px);
+  /* Grow from the bottom-right corner so the glow always emanates from there. */
+  transform-origin: bottom right;
   will-change: transform;
 }
 .glow-a {
@@ -503,26 +504,22 @@ h5 {
 .glow-b {
   animation: glow-wander-b 54s ease-in-out infinite alternate;
 }
+/* Subtle breathe — the origin stays pinned to the corner, only the reach
+   swells and eases back. */
 @keyframes glow-wander-a {
   0% {
-    transform: translate3d(0, 0, 0) scale(1);
-  } /* bottom-right */
-  50% {
-    transform: translate3d(-6%, -46%, 0) scale(1.08);
-  } /* up to top-right */
+    transform: scale(1);
+  }
   100% {
-    transform: translate3d(-50%, -8%, 0) scale(1.04);
-  } /* over to bottom-left */
+    transform: scale(1.14);
+  }
 }
 @keyframes glow-wander-b {
   0% {
-    transform: translate3d(-4%, -6%, 0) scale(1.04);
-  }
-  50% {
-    transform: translate3d(2%, -34%, 0) scale(0.94);
+    transform: scale(1.08);
   }
   100% {
-    transform: translate3d(-38%, 2%, 0) scale(1.1);
+    transform: scale(0.92);
   }
 }
 @media (prefers-reduced-motion: reduce) {
