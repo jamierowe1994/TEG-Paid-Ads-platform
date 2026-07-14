@@ -120,6 +120,7 @@ export function LeadModal({
   onRexReset,
   onArchive,
   onSnooze,
+  onFollowUp,
   emailConnected,
   onSendEmail,
 }: {
@@ -138,6 +139,9 @@ export function LeadModal({
   onArchive?: (archived: boolean) => Promise<void>;
   // "Save for a later date" — archive with a comeback date.
   onSnooze?: (until: string, reason: string) => Promise<void>;
+  // Set (or clear, with null) the day this lead is next due in Follow-ups.
+  // Keeps the lead's stage — it just rests until then.
+  onFollowUp?: (at: string | null) => Promise<void>;
   // Real email sending (Microsoft mailbox connected) — absent/false keeps
   // the draft-only behaviour.
   emailConnected?: boolean;
@@ -157,6 +161,13 @@ export function LeadModal({
   const [nurtureReason, setNurtureReason] = useState("");
   const [snoozeDay, setSnoozeDay] = useState<Date | null>(null);
   const [savingSnooze, setSavingSnooze] = useState(false);
+  // Sending the third-strike lead to the marketing funnel — the tick confirms
+  // it actually went.
+  const [sendingFunnel, setSendingFunnel] = useState(false);
+  const [funnelSent, setFunnelSent] = useState(false);
+  // "Follow up on…" — the reminder date picker.
+  const [followUpOpen, setFollowUpOpen] = useState(false);
+  const [savingFollowUp, setSavingFollowUp] = useState(false);
   const [archivingFile, setArchivingFile] = useState(false);
   const [panel, setPanel] = useState<null | "call" | "email">(null);
   const [callTab, setCallTab] = useState<"notes" | "schedule">("notes");
@@ -222,6 +233,11 @@ export function LeadModal({
   const booked = !!lead.appointmentAt;
 
   const canWork = !["pushed", "lost"].includes(lead.stage);
+  // Set and still in the future → the lead is resting until that day.
+  const restingUntil =
+    lead.followUpAt && new Date(lead.followUpAt).getTime() > Date.now()
+      ? new Date(lead.followUpAt)
+      : null;
   const attemptNext: Partial<Record<LeadStage, LeadStage>> = {
     new: "attempt1",
     attempt1: "attempt2",
@@ -770,33 +786,128 @@ export function LeadModal({
             Next step
           </p>
           <div className="mt-2 space-y-2">
-            {/* Log the next contact attempt */}
+            {/* Log the next contact attempt — the lead then rests until
+                tomorrow and comes back in Follow-ups. */}
             {attemptNext[lead.stage] && (
               <BigBtn onClick={() => onStage(attemptNext[lead.stage]!)}>
                 Log contact attempt{" "}
                 {lead.stage === "new" ? "1" : lead.stage === "attempt1" ? "2" : "3"}
               </BigBtn>
             )}
-
-            {/* After 3 attempts, offer the marketing funnel */}
-            {lead.stage === "attempt3" && (
-              <BigBtn onClick={() => onStage("nurture")}>
-                No answer — send to marketing funnel
-              </BigBtn>
+            {attemptNext[lead.stage] && (
+              <p className="pt-0.5 text-center text-[11px] text-gray-400">
+                We&apos;ll rest {firstName} until tomorrow, then bring them back
+                in your follow-ups.
+              </p>
             )}
 
-            {/* Book the appointment — opens the schedule tab to pick a date */}
-            {canWork && lead.stage !== "converted" && (
+            {/* Three tries, no answer — the funnel is the only way on from
+                here, so it's the only button we show. */}
+            {lead.stage === "attempt3" && !funnelSent && (
               <BigBtn
-                primary
-                accent={brand.accent}
-                onClick={() => {
-                  setPanel("call");
-                  setCallTab("schedule");
+                onClick={async () => {
+                  if (sendingFunnel) return;
+                  setSendingFunnel(true);
+                  await Promise.resolve(onStage("nurture"));
+                  setSendingFunnel(false);
+                  setFunnelSent(true);
                 }}
               >
-                {brand.conversionVerb}
+                {sendingFunnel
+                  ? "Sending…"
+                  : "No answer — send to marketing funnel"}
               </BigBtn>
+            )}
+            {funnelSent && (
+              <div className="flex items-center justify-center gap-2.5 rounded-xl bg-green-50 py-3.5 text-sm font-semibold text-green-700">
+                <span className="flex h-6 w-6 animate-[tick-pop_0.5s_cubic-bezier(0.22,1,0.36,1)] items-center justify-center rounded-full bg-green-600 text-xs text-white">
+                  ✓
+                </span>
+                {firstName} is in the marketing funnel
+              </div>
+            )}
+
+            {/* Book the appointment — hidden after the third try, where the
+                funnel is deliberately the only option. */}
+            {canWork &&
+              lead.stage !== "converted" &&
+              lead.stage !== "attempt3" && (
+                <BigBtn
+                  primary
+                  accent={brand.accent}
+                  onClick={() => {
+                    setPanel("call");
+                    setCallTab("schedule");
+                  }}
+                >
+                  {brand.conversionVerb}
+                </BigBtn>
+              )}
+
+            {/* Follow up on a day of your choosing — the lead rests until then
+                and comes back in Follow-ups. Never changes its stage. */}
+            {onFollowUp && canWork && !funnelSent && (
+              <div>
+                {restingUntil ? (
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-gray-50 px-3.5 py-3 text-sm">
+                    <span className="text-gray-500">
+                      💤 Resting until{" "}
+                      <span className="font-medium text-gray-800">
+                        {restingUntil.toLocaleDateString("en-GB", {
+                          weekday: "short",
+                          day: "numeric",
+                          month: "short",
+                        })}
+                      </span>
+                    </span>
+                    <button
+                      disabled={savingFollowUp}
+                      onClick={async () => {
+                        setSavingFollowUp(true);
+                        await onFollowUp(null);
+                        setSavingFollowUp(false);
+                      }}
+                      className="text-xs font-medium text-gray-400 underline decoration-dotted underline-offset-2 hover:text-gray-700 disabled:opacity-50"
+                    >
+                      {savingFollowUp ? "Bringing back…" : "Bring back now"}
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setFollowUpOpen((v) => !v)}
+                      className="flex w-full items-center justify-between rounded-xl border border-gray-200 px-3.5 py-3 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
+                    >
+                      Follow up on a day…
+                      <svg
+                        className={`h-4 w-4 transition-transform ${followUpOpen ? "rotate-180" : ""}`}
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
+                      </svg>
+                    </button>
+                    <Expand open={followUpOpen}>
+                      <div className="pt-2">
+                        <InlineCalendar
+                          value={null}
+                          accent={brand.accent}
+                          onPick={async (d) => {
+                            const dt = new Date(d);
+                            dt.setHours(8, 0, 0, 0);
+                            setSavingFollowUp(true);
+                            await onFollowUp(dt.toISOString());
+                            setSavingFollowUp(false);
+                            setFollowUpOpen(false);
+                          }}
+                        />
+                      </div>
+                    </Expand>
+                  </>
+                )}
+              </div>
             )}
 
             {/* Booked → summary + push, with manage (rearrange/cancel) */}

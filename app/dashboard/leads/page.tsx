@@ -12,6 +12,7 @@ import {
   cancelLeadAppointment,
   archiveLeads,
   snoozeLeadUntil,
+  setLeadFollowUp,
   crmCheckAllLeads,
   sendLeadEmail,
 } from "@/lib/session";
@@ -820,6 +821,14 @@ export default function LeadsPage() {
           onSnooze={async (until, reason) => {
             const ok = await snooze(open, until, reason);
             if (ok) setOpenId(null);
+          }}
+          onFollowUp={async (at) => {
+            const res = await setLeadFollowUp(open.id, at);
+            if (res.ok) {
+              const fresh = await fetchLeads();
+              setLeads(fresh);
+              if (at) setOpenId(null); // it's resting now — close the file
+            }
           }}
           emailConnected={emailConnected}
           onSendEmail={async (subject, body) => {

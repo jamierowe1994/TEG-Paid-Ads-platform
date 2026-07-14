@@ -13,6 +13,7 @@ import {
   bookLeadAppointment,
   cancelLeadAppointment,
   sendLeadEmail,
+  setLeadFollowUp,
 } from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
 import { getPreviewBrandId, getPreviewAccent } from "@/lib/preview";
@@ -280,7 +281,26 @@ export default function DashboardOverview() {
   const converted = leads.filter(
     (l) => l.stage === "converted" || l.stage === "pushed"
   ).length;
-  const untouched = leads.filter((l) => l.stage === "new");
+  // A lead with a follow-up date in the future is resting — out of both boxes
+  // until the day it's due back.
+  const resting = (l: Lead) =>
+    !!l.followUpAt && new Date(l.followUpAt).getTime() > Date.now();
+  // Everything still being worked: not filed away, not finished with.
+  const working = leads.filter(
+    (l) =>
+      !l.archivedAt &&
+      l.stage !== "converted" &&
+      l.stage !== "pushed" &&
+      l.stage !== "lost" &&
+      l.stage !== "nurture"
+  );
+  // Uncontacted — brand new, nobody's tried them yet.
+  const untouched = working.filter((l) => l.stage === "new" && !resting(l));
+  // Follow-ups — attempts that have come back round, and anything whose
+  // reminder has fallen due. Soonest-due first.
+  const followUps = working
+    .filter((l) => l.stage !== "new" && !resting(l))
+    .sort((a, b) => a.receivedAt.localeCompare(b.receivedAt));
 
   // Ad spend running total. Real Meta spend for the agent's own campaign(s)
   // when the admin has tagged them; otherwise paced against the monthly cap
@@ -681,11 +701,12 @@ export default function DashboardOverview() {
           )}
         </div>
 
-        {/* Recent leads */}
+        {/* Follow-ups — leads due back today: an attempt that's come round
+            again, or a reminder that's fallen due. */}
         <div className={`${g.className} aspect-square p-5`} style={g.style}>
           <div className="flex h-full flex-col">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold">Recent leads</h2>
+              <h2 className="text-sm font-semibold">Follow-ups</h2>
               <Link
                 href="/dashboard/leads"
                 className="text-xs font-medium hover:underline"
@@ -695,31 +716,60 @@ export default function DashboardOverview() {
               </Link>
             </div>
             <div className="mt-3 flex-1 space-y-1">
-              {leads.slice(0, 3).map((lead) => {
+              {followUps.slice(0, 4).map((lead) => {
                 const dim = hoverLead !== null && hoverLead !== lead.id;
                 const active = hoverLead === lead.id;
+                const attempt =
+                  lead.stage === "attempt1"
+                    ? 1
+                    : lead.stage === "attempt2"
+                      ? 2
+                      : lead.stage === "attempt3"
+                        ? 3
+                        : null;
                 return (
                   <button
                     key={lead.id}
                     onClick={() => setOpenLeadId(lead.id)}
                     onMouseEnter={() => setHoverLead(lead.id)}
                     onMouseLeave={() => setHoverLead(null)}
-                    className={`-mx-2 block w-full rounded-lg px-2 py-1 text-left transition duration-200 ${
+                    className={`-mx-2 flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left transition duration-200 ${
                       dim ? "opacity-40 blur-[1.5px]" : "opacity-100 blur-0"
                     } ${active ? "scale-[1.04] bg-white/50" : ""}`}
                   >
-                    <p className="truncate text-sm font-medium">{lead.name}</p>
-                    <p className="truncate text-[11px] capitalize text-gray-400">
-                      {lead.stage === "converted" || lead.stage === "pushed"
-                        ? brand.conversionLabel
-                        : `via ${lead.source}`}
-                    </p>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{lead.name}</p>
+                      <p className="truncate text-[11px] text-gray-400">
+                        {attempt === 3
+                          ? "3 tries — ready for the funnel"
+                          : attempt
+                            ? `${attempt} ${attempt === 1 ? "try" : "tries"} so far — try again`
+                            : "Due for a follow-up"}
+                      </p>
+                    </div>
+                    {attempt && (
+                      <span
+                        className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold text-white"
+                        style={{ backgroundColor: brand.accent }}
+                      >
+                        {attempt}/3
+                      </span>
+                    )}
                   </button>
                 );
               })}
-              {leads.length === 0 && (
+              {followUps.length > 4 && (
+                <Link
+                  href="/dashboard/leads"
+                  className="block pt-0.5 text-center text-xs font-medium text-gray-400 hover:text-gray-700"
+                >
+                  +{followUps.length - 4} more →
+                </Link>
+              )}
+              {leadsLoaded && followUps.length === 0 && (
                 <p className="text-xs text-gray-400">
-                  Leads appear here once ads are live.
+                  Nothing to chase today — anything you&apos;ve tried comes back
+                  here tomorrow.
                 </p>
               )}
             </div>
@@ -1028,6 +1078,14 @@ export default function DashboardOverview() {
           onBook={(at) => overviewBook(openLead.id, at)}
           onCancelBooking={() => overviewCancel(openLead.id)}
           onRexReset={() => overviewRexReset(openLead)}
+          onFollowUp={async (at) => {
+            const res = await setLeadFollowUp(openLead.id, at);
+            if (res.ok) {
+              const fresh = await fetchLeads();
+              setLeads(fresh);
+              if (at) setOpenLeadId(null); // resting now — close the file
+            }
+          }}
           emailConnected={!!user.msEmail}
           onSendEmail={async (subject, body) => {
             const res = await sendLeadEmail(openLead.id, subject, body);

@@ -36,6 +36,7 @@ interface LeadRow {
   rex_lead_id: string | null;
   archived_at: string | Date | null;
   resurface_at: string | Date | null;
+  follow_up_at: string | Date | null;
   crm_match: unknown;
 }
 
@@ -63,6 +64,9 @@ function fromRow(row: LeadRow): Lead {
     archivedAt: row.archived_at ? new Date(row.archived_at).toISOString() : null,
     resurfaceAt: row.resurface_at
       ? new Date(row.resurface_at).toISOString()
+      : null,
+    followUpAt: row.follow_up_at
+      ? new Date(row.follow_up_at).toISOString()
       : null,
     crmMatch: (row.crm_match as CrmMatch | null) ?? null,
   };
@@ -331,7 +335,7 @@ export async function updateLeadStage(
     const rows = await q<LeadRow>(
       `UPDATE leads
          SET stage = $3, history = history || $4::jsonb,
-             archived_at = NULL, resurface_at = NULL
+             archived_at = NULL, resurface_at = NULL, follow_up_at = NULL
        WHERE id = $2 AND user_id = $1
        RETURNING *`,
       [userId, leadId, stage, JSON.stringify([entry])]
@@ -346,7 +350,46 @@ export async function updateLeadStage(
     stage,
     archivedAt: null,
     resurfaceAt: null,
+    followUpAt: null,
     history: [...all[idx].history, entry],
+  };
+  await writeAllFile(all);
+  const { userId: _omit, ...lead } = all[idx];
+  return lead;
+}
+
+// Set (or clear) when a lead is next due back in Follow-ups. Deliberately does
+// NOT touch the stage — a logged attempt keeps its attempt1/2/3 stage while
+// hiding until the date, and a reminder never tips a lead into nurture.
+export async function setLeadFollowUp(
+  userId: string,
+  leadId: string,
+  at: string | null,
+  label?: string
+): Promise<Lead | undefined> {
+  const iso = at ? new Date(at).toISOString() : null;
+  const current = await getLead(userId, leadId);
+  if (!current) return undefined;
+  // The timeline entry keeps the lead's real stage — a follow-up records when
+  // it's due back, it never moves the lead.
+  const entry = label
+    ? [{ stage: current.stage, at: new Date().toISOString(), label }]
+    : [];
+  if (hasDb()) {
+    const rows = await q<LeadRow>(
+      `UPDATE leads SET follow_up_at = $3, history = history || $4::jsonb
+         WHERE id = $2 AND user_id = $1 RETURNING *`,
+      [userId, leadId, iso, JSON.stringify(entry)]
+    );
+    return rows[0] ? fromRow(rows[0]) : undefined;
+  }
+  const all = await readAllFile();
+  const idx = all.findIndex((l) => l.id === leadId && l.userId === userId);
+  if (idx === -1) return undefined;
+  all[idx] = {
+    ...all[idx],
+    followUpAt: iso,
+    history: [...all[idx].history, ...entry],
   };
   await writeAllFile(all);
   const { userId: _omit, ...lead } = all[idx];

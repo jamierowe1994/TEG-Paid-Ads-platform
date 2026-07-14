@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
-import { listLeadsForUser, updateLeadStage } from "@/lib/leads-store";
+import {
+  listLeadsForUser,
+  updateLeadStage,
+  setLeadFollowUp,
+} from "@/lib/leads-store";
 import { syncReferralFromLead } from "@/lib/referrals-store";
 import { findById } from "@/lib/users-store";
 import { pushLeadToGhl, ghlConfigured } from "@/lib/ghl";
@@ -44,9 +48,25 @@ export async function PATCH(req: NextRequest) {
   if (!leadId || !STAGES.includes(stage)) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
-  const lead = await updateLeadStage(userId, leadId, stage);
+  let lead = await updateLeadStage(userId, leadId, stage);
   if (!lead) {
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+  }
+
+  // A logged contact attempt rests the lead until tomorrow — it drops out of
+  // the working boxes and comes back in Follow-ups the next day for the next
+  // try. The stage stays put, so this never touches the nurture funnel.
+  if (stage === "attempt1" || stage === "attempt2" || stage === "attempt3") {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(8, 0, 0, 0);
+    lead =
+      (await setLeadFollowUp(
+        userId,
+        leadId,
+        tomorrow.toISOString(),
+        "Resting until tomorrow — back in your follow-ups"
+      )) ?? lead;
   }
   // If this lead came from a referral, mirror the progress back to the
   // referrer so they can see what happened to the lead they sent.

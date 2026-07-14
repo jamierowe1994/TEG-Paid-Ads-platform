@@ -321,6 +321,25 @@ export async function cancelSubscription(
   }
 }
 
+// Set (or clear, with at = null) when a lead is next due back in Follow-ups.
+export async function setLeadFollowUp(
+  leadId: string,
+  at: string | null
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch("/api/leads/follow-up", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ leadId, at }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: data.error ?? "Couldn't set the follow-up" };
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Network error — please try again" };
+  }
+}
+
 // Change your own password — must supply the current one to prove it's you.
 export async function changePassword(
   current: string,

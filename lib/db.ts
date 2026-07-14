@@ -153,6 +153,13 @@ ALTER TABLE leads ADD COLUMN IF NOT EXISTS crm_match JSONB;
 -- a lead to the agent's tagged campaign and spot cross-campaign over-capture.
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS campaign_id TEXT;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS ad_name TEXT;
+-- When this lead should come back into the Follow-ups box. Set a day ahead
+-- each time a contact attempt is logged, or to a date the agent picks as a
+-- reminder. Distinct from resurface_at (the nurture/"save for later" snooze):
+-- a follow-up hides the lead WITHOUT changing its stage.
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS follow_up_at TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS leads_follow_up_idx ON leads(follow_up_at)
+  WHERE follow_up_at IS NOT NULL;
 CREATE INDEX IF NOT EXISTS leads_resurface_idx ON leads(resurface_at)
   WHERE resurface_at IS NOT NULL;
 

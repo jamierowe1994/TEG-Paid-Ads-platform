@@ -107,6 +107,12 @@ export interface Lead {
   // brings it back as new on that date (they said they'd be ready then).
   archivedAt?: string | null;
   resurfaceAt?: string | null;
+  // When this lead is next due in the Follow-ups box. Set a day ahead on each
+  // logged contact attempt, or to a date the agent picks as a reminder. Until
+  // it falls due the lead is hidden from Uncontacted/Follow-ups. Unlike
+  // resurfaceAt this does NOT change the lead's stage (so a follow-up can
+  // never tip a lead into the nurture funnel by accident).
+  followUpAt?: string | null;
   // Result of checking this person against the brand's CRM (duplicate check
   // — separate from pushing). found:false records "checked, not on there".
   crmMatch?: CrmMatch | null;
