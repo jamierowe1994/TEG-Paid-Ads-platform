@@ -14,6 +14,11 @@ import { ghlPing } from "@/lib/ghl";
 // With the admin password as a bearer token it also returns row counts, so
 // you can confirm signups are landing in Postgres without opening the DB.
 
+// The integration probes below expose real detail — Rex account ids, the
+// WhatsApp number, token expiry, CRM errors — so they are ADMIN ONLY. Only the
+// bare store/connected check is public, so an uptime monitor still works.
+const PROBES = ["linkedin", "whatsapp", "rex", "ghl"] as const;
+
 export async function GET(req: NextRequest) {
   const usingDb = hasDb();
 
@@ -36,7 +41,15 @@ export async function GET(req: NextRequest) {
 
   const auth = req.headers.get("authorization") ?? "";
   const password = process.env.ADMIN_PASSWORD ?? "experts-admin";
-  if (auth === `Bearer ${password}` && usingDb && connected) {
+  const isAdmin = auth === `Bearer ${password}`;
+
+  // Asking for any integration probe without the admin password gets nothing.
+  const wantsProbe = PROBES.some((p) => req.nextUrl.searchParams.has(p));
+  if (wantsProbe && !isAdmin) {
+    return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  }
+
+  if (isAdmin && usingDb && connected) {
     const [users, feedback, leads] = await Promise.all([
       q<{ n: string }>("SELECT COUNT(*)::text AS n FROM users"),
       q<{ n: string }>("SELECT COUNT(*)::text AS n FROM feedback"),
@@ -79,9 +92,12 @@ export async function GET(req: NextRequest) {
     body.rex = await rexPing();
   }
 
-  // /api/health?ghl=1 confirms the GoHighLevel token + location are valid.
-  if (req.nextUrl.searchParams.has("ghl")) {
-    body.ghl = await ghlPing();
+  // /api/health?ghl=<brandId> checks that brand's own sub-account credentials
+  // (GHL_TOKEN_<BRAND>/GHL_LOCATION_<BRAND>); ?ghl=1 checks the shared pair.
+  const ghlParam = req.nextUrl.searchParams.get("ghl");
+  if (ghlParam !== null) {
+    const brand = ghlParam && ghlParam !== "1" ? ghlParam : undefined;
+    body.ghl = { brand: brand ?? "(shared)", ...(await ghlPing(brand)) };
   }
 
   return NextResponse.json(body);
