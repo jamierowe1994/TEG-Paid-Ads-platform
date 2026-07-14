@@ -2262,13 +2262,30 @@ export default function AdminPage() {
                             <p className="truncate text-sm font-medium">
                               {b.name}
                             </p>
-                            <p className="mt-0.5 truncate text-xs text-gray-400">
+                            {/* A failing brand shows GoHighLevel's own words in
+                                full — that message is the whole diagnosis, so
+                                never truncate it. */}
+                            <p
+                              className={`mt-0.5 text-xs ${
+                                s?.configured && !s.ok
+                                  ? "text-red-600"
+                                  : "text-gray-400"
+                              }`}
+                            >
                               {s?.ok
                                 ? "Sending lost leads to this brand's funnel"
                                 : s?.configured
                                   ? (s.error ?? "Connection failed")
                                   : `Add GHL_TOKEN_${b.id.toUpperCase()} + GHL_LOCATION_${b.id.toUpperCase()} in Railway`}
                             </p>
+                            {s?.configured && !s.ok && (
+                              <p className="mt-1 text-[11px] text-gray-400">
+                                Each brand needs its own token, made inside{" "}
+                                <span className="font-medium">its own</span>{" "}
+                                sub-account — a token from another brand
+                                can&apos;t reach this location.
+                              </p>
+                            )}
                           </div>
                           <span
                             className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
