@@ -15,12 +15,23 @@ import type { Lead } from "./types";
 const BASE = "https://services.leadconnectorhq.com";
 const VERSION = process.env.GHL_API_VERSION ?? "2021-07-28";
 
-export function ghlConfigured(): boolean {
-  return !!process.env.GHL_API_TOKEN && !!process.env.GHL_LOCATION_ID;
+// Credentials resolve per-brand first, then fall back to a single group-wide
+// pair — so you can run ONE GoHighLevel account for everyone (just set
+// GHL_API_TOKEN + GHL_LOCATION_ID) OR a separate sub-account per brand (set
+// GHL_TOKEN_<BRAND> + GHL_LOCATION_<BRAND>, e.g. GHL_TOKEN_MORTGAGE /
+// GHL_LOCATION_MORTGAGE). No code change either way.
+function ghlToken(brandId?: string): string | undefined {
+  const perBrand =
+    brandId && process.env[`GHL_TOKEN_${brandId.toUpperCase()}`];
+  return (perBrand || process.env.GHL_API_TOKEN) ?? undefined;
 }
-
-function locationId(): string {
-  return process.env.GHL_LOCATION_ID ?? "";
+function ghlLocationId(brandId?: string): string {
+  const perBrand =
+    brandId && process.env[`GHL_LOCATION_${brandId.toUpperCase()}`];
+  return (perBrand || process.env.GHL_LOCATION_ID) ?? "";
+}
+export function ghlConfigured(brandId?: string): boolean {
+  return !!ghlToken(brandId) && !!ghlLocationId(brandId);
 }
 
 interface GhlResponse {
@@ -32,12 +43,13 @@ interface GhlResponse {
 async function ghl(
   path: string,
   method: "GET" | "POST" | "PUT",
-  body?: unknown
+  body?: unknown,
+  brandId?: string
 ): Promise<GhlResponse> {
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers: {
-      Authorization: `Bearer ${process.env.GHL_API_TOKEN}`,
+      Authorization: `Bearer ${ghlToken(brandId)}`,
       Version: VERSION,
       "Content-Type": "application/json",
       Accept: "application/json",
@@ -73,14 +85,19 @@ function splitName(full: string): { firstName: string | null; lastName: string |
 
 // Health check for the admin Connections tab — a cheap read that proves the
 // token + location are valid and GHL is reachable.
-export async function ghlPing(): Promise<{
+export async function ghlPing(brandId?: string): Promise<{
   configured: boolean;
   ok: boolean;
   error?: string;
 }> {
-  if (!ghlConfigured()) return { configured: false, ok: false };
+  if (!ghlConfigured(brandId)) return { configured: false, ok: false };
   try {
-    const res = await ghl(`/locations/${locationId()}`, "GET");
+    const res = await ghl(
+      `/locations/${ghlLocationId(brandId)}`,
+      "GET",
+      undefined,
+      brandId
+    );
     if (!res.ok) return { configured: true, ok: false, error: ghlError(res) };
     return { configured: true, ok: true };
   } catch (e) {
@@ -97,9 +114,10 @@ export async function ghlPing(): Promise<{
 // false = definitively not there.
 export async function ghlFindContact(
   email: string,
-  phone: string
+  phone: string,
+  brandId?: string
 ): Promise<{ id: string | null; matchedBy: "email" | "phone" } | false | null> {
-  if (!ghlConfigured()) return null;
+  if (!ghlConfigured(brandId)) return null;
   const tryQuery = async (
     param: "email" | "number",
     value: string,
@@ -108,9 +126,11 @@ export async function ghlFindContact(
     try {
       const res = await ghl(
         `/contacts/search/duplicate?locationId=${encodeURIComponent(
-          locationId()
+          ghlLocationId(brandId)
         )}&${param}=${encodeURIComponent(value)}`,
-        "GET"
+        "GET",
+        undefined,
+        brandId
       );
       if (!res.ok) return null; // unsupported / error — unknown
       const contact = res.data?.contact as Record<string, unknown> | undefined;
@@ -147,9 +167,10 @@ export interface GhlPushResult {
 // funnel, never for the normal CRM push.
 export async function pushLeadToGhl(
   lead: Lead,
-  tags: string[] = []
+  tags: string[] = [],
+  brandId?: string
 ): Promise<GhlPushResult> {
-  if (!ghlConfigured()) {
+  if (!ghlConfigured(brandId)) {
     throw new Error(
       "GoHighLevel isn't connected yet (missing GHL_API_TOKEN / GHL_LOCATION_ID)."
     );
@@ -163,16 +184,21 @@ export async function pushLeadToGhl(
   const { firstName, lastName } = splitName(lead.name);
   // Upsert dedupes on email/phone within the location, so re-pushing the same
   // lead updates rather than duplicates.
-  const res = await ghl("/contacts/upsert", "POST", {
-    locationId: locationId(),
-    firstName,
-    lastName,
-    name: lead.name?.trim() || undefined,
-    email: lead.email?.trim() || undefined,
-    phone: lead.phone?.trim() || undefined,
-    tags: tags.length ? tags : undefined,
-    source: "The Experts Group portal",
-  });
+  const res = await ghl(
+    "/contacts/upsert",
+    "POST",
+    {
+      locationId: ghlLocationId(brandId),
+      firstName,
+      lastName,
+      name: lead.name?.trim() || undefined,
+      email: lead.email?.trim() || undefined,
+      phone: lead.phone?.trim() || undefined,
+      tags: tags.length ? tags : undefined,
+      source: "The Experts Group portal",
+    },
+    brandId
+  );
   if (!res.ok) throw new Error(ghlError(res));
 
   const contact = res.data?.contact as Record<string, unknown> | undefined;
@@ -185,7 +211,12 @@ export async function pushLeadToGhl(
   let noteAttached = false;
   const note = lead.note?.trim();
   if (note) {
-    const n = await ghl(`/contacts/${contactId}/notes`, "POST", { body: note });
+    const n = await ghl(
+      `/contacts/${contactId}/notes`,
+      "POST",
+      { body: note },
+      brandId
+    );
     noteAttached = n.ok;
   }
 

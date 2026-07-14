@@ -7,10 +7,13 @@ function authorised(req: NextRequest): boolean {
   return auth === `Bearer ${password}`;
 }
 
-// GET: GoHighLevel connection status for the admin Connections tab.
+// GET: GoHighLevel connection status for the admin Connections tab. Pass
+// ?brand=<id> to check that brand's own sub-account (falls back to the shared
+// group credentials otherwise).
 export async function GET(req: NextRequest) {
   if (!authorised(req)) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
-  return NextResponse.json(await ghlPing());
+  const brandId = req.nextUrl.searchParams.get("brand") ?? undefined;
+  return NextResponse.json(await ghlPing(brandId));
 }
