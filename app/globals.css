@@ -529,6 +529,39 @@ h5 {
   }
 }
 
+/* Waving hand on the dashboard greeting — waves a couple of times each time
+   the page loads, then rests. */
+.wave-hand {
+  display: inline-block;
+  transform-origin: 72% 78%;
+  animation: hand-wave 2.1s ease-in-out 0.35s 2;
+}
+@keyframes hand-wave {
+  0%,
+  55%,
+  100% {
+    transform: rotate(0deg);
+  }
+  10%,
+  30% {
+    transform: rotate(15deg);
+  }
+  20% {
+    transform: rotate(-9deg);
+  }
+  40% {
+    transform: rotate(-5deg);
+  }
+  50% {
+    transform: rotate(11deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wave-hand {
+    animation: none;
+  }
+}
+
 /* ── Scroll reveal (used by <Reveal>) ───────────────────────────────── */
 .reveal {
   opacity: 0;

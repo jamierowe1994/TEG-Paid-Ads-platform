@@ -341,7 +341,10 @@ export default function DashboardOverview() {
             })}
           </p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-            Morning, {user.name.split(" ")[0]} 👋
+            Morning, {user.name.split(" ")[0]}{" "}
+            <span className="wave-hand" role="img" aria-label="waving hand">
+              👋
+            </span>
           </h1>
         </div>
 
@@ -654,9 +657,6 @@ export default function DashboardOverview() {
                         dim ? "opacity-40 blur-[1.5px]" : "opacity-100 blur-0"
                       } ${active ? "scale-[1.03]" : ""}`}
                     >
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-500 text-sm font-bold text-white">
-                        {l.name.charAt(0).toUpperCase()}
-                      </span>
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-gray-900">
                           {l.name}
