@@ -113,7 +113,7 @@ export interface Lead {
 }
 
 export interface CrmMatch {
-  system: "rex" | "atlas";
+  system: "rex" | "atlas" | "ghl";
   checkedAt: string;
   found: boolean;
   id?: string | null; // the CRM's own contact id when found

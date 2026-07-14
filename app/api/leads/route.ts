@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
 import { listLeadsForUser, updateLeadStage } from "@/lib/leads-store";
 import { syncReferralFromLead } from "@/lib/referrals-store";
+import { findById } from "@/lib/users-store";
+import { pushLeadToGhl, ghlConfigured } from "@/lib/ghl";
 import type { LeadStage } from "@/lib/types";
 
 // The signed-in agent's leads. Server-side now (Postgres on Railway) — the
@@ -51,5 +53,18 @@ export async function PATCH(req: NextRequest) {
   if (lead.referralId) {
     await syncReferralFromLead(lead.id, stage);
   }
+
+  // Entering the marketing/nurture funnel is the ONE moment a lead flows into
+  // GoHighLevel — tagged so a nurture workflow there can pick it up. Best-
+  // effort: a GHL hiccup (or no config) must never fail the stage change.
+  if (stage === "nurture" && ghlConfigured()) {
+    try {
+      const user = await findById(userId);
+      await pushLeadToGhl(lead, ["nurture", `brand:${user?.brandId ?? "unknown"}`]);
+    } catch {
+      /* the lead is already in the nurture stage; GHL sync is best-effort */
+    }
+  }
+
   return NextResponse.json(lead);
 }

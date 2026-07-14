@@ -4,6 +4,7 @@ import { pingAll, getAllSocials } from "@/lib/meta";
 import { linkedinStatus } from "@/lib/linkedin";
 import { whatsappStatus } from "@/lib/whatsapp";
 import { rexPing } from "@/lib/rex";
+import { ghlPing } from "@/lib/ghl";
 
 // Deployment health check — visit /api/health on the live site to see which
 // store the app is actually using. If it says "file-fallback" in production,
@@ -76,6 +77,11 @@ export async function GET(req: NextRequest) {
   // id it can see — the fastest way to find REX_ACCOUNT_ID.
   if (req.nextUrl.searchParams.has("rex")) {
     body.rex = await rexPing();
+  }
+
+  // /api/health?ghl=1 confirms the GoHighLevel token + location are valid.
+  if (req.nextUrl.searchParams.has("ghl")) {
+    body.ghl = await ghlPing();
   }
 
   return NextResponse.json(body);
