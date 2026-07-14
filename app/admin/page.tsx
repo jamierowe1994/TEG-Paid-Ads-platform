@@ -287,6 +287,10 @@ export default function AdminPage() {
   const [meta, setMeta] = useState<MetaStatus | null>(null);
   const [linkedin, setLinkedin] = useState<LinkedInStatus | null>(null);
   const [atlas, setAtlas] = useState<AtlasStatus | null>(null);
+  // GoHighLevel nurture funnel status, per brand (each has its own sub-account).
+  const [ghl, setGhl] = useState<
+    Record<string, { configured: boolean; ok: boolean; error?: string }>
+  >({});
   const [rex, setRex] = useState<RexStatus | null>(null);
   const [whatsapp, setWhatsapp] = useState<{
     configured: boolean;
@@ -385,6 +389,18 @@ export default function AdminPage() {
     setActivity(ac.ok ? await ac.json() : null);
     setReferrals(rf.ok ? await rf.json() : []);
     setPwRequests(pw.ok ? (await pw.json()).requests ?? [] : []);
+    // Each brand has its own GoHighLevel sub-account, so check them one by one.
+    // An unconfigured brand answers instantly without touching GHL.
+    Promise.all(
+      BRANDS.map(async (b) => {
+        try {
+          const r = await fetch(`/api/admin/ghl?brand=${b.id}`, { headers });
+          return [b.id, r.ok ? await r.json() : { configured: false, ok: false }] as const;
+        } catch {
+          return [b.id, { configured: false, ok: false }] as const;
+        }
+      })
+    ).then((entries) => setGhl(Object.fromEntries(entries)));
     if (rx.ok) {
       const health = await rx.json();
       setRex(health.rex ?? null);
@@ -2162,6 +2178,76 @@ export default function AdminPage() {
                   funnel — the person is created with their note attached, in the
                   recruiter&apos;s own name. Nothing to configure per brand.
                 </p>
+              </div>
+            </section>
+
+            {/* GoHighLevel — the nurture funnel for lost leads. Each brand has
+                its own sub-account, so each needs its own token + location. */}
+            <section className="mt-10">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold">
+                  GoHighLevel{" "}
+                  <span className="text-sm font-normal text-gray-400">
+                    nurture funnel
+                  </span>
+                </h2>
+                <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      BRANDS.some((b) => ghl[b.id]?.ok)
+                        ? "bg-green-500"
+                        : "bg-gray-300"
+                    }`}
+                  />
+                  {BRANDS.filter((b) => ghl[b.id]?.ok).length} of {BRANDS.length}{" "}
+                  connected
+                </span>
+              </div>
+              <p className="mt-1 max-w-2xl text-xs text-gray-500">
+                Only leads an agent sends to the marketing funnel after three
+                no-answers land here — they arrive tagged{" "}
+                <code className="rounded bg-gray-100 px-1">nurture</code> and{" "}
+                <code className="rounded bg-gray-100 px-1">brand:&lt;id&gt;</code>
+                . Leads are never pushed to GoHighLevel as a CRM.
+              </p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {BRANDS.map((b) => {
+                  const s = ghl[b.id];
+                  return (
+                    <div
+                      key={b.id}
+                      className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4"
+                    >
+                      <BrandMark
+                        name={b.name}
+                        accent={b.accent}
+                        logo={b.logo}
+                        size={30}
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{b.name}</p>
+                        <p className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-400">
+                          <span
+                            className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                              s?.ok
+                                ? "bg-green-500"
+                                : s?.configured
+                                  ? "bg-red-500"
+                                  : "bg-amber-400"
+                            }`}
+                          />
+                          <span className="truncate">
+                            {s?.ok
+                              ? "Connected"
+                              : s?.configured
+                                ? (s.error ?? "Connection failed")
+                                : `Add GHL_TOKEN_${b.id.toUpperCase()} + GHL_LOCATION_${b.id.toUpperCase()}`}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </section>
 
