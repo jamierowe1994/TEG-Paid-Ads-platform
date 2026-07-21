@@ -64,6 +64,7 @@ export async function signUp(payload: {
   platforms: string[];
   goal: string;
   packageId: string;
+  accountType?: "paid" | "referral";
 }): Promise<{ user?: UserProfile; error?: string; code?: string }> {
   const res = await fetch("/api/auth/signup", {
     method: "POST",
@@ -142,6 +143,21 @@ export async function updateProfileChecked(patch: {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(patch),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return { ok: false, error: data?.error };
+  if (data.user) saveUser(data.user);
+  return { ok: true, user: data.user };
+}
+
+// Upgrade a referrals-only account to Paid Ads (demo-mode unlock for now).
+export async function upgradeAccount(
+  packageId: string
+): Promise<{ ok: boolean; user?: UserProfile; error?: string }> {
+  const res = await fetch("/api/auth/upgrade", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ packageId }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) return { ok: false, error: data?.error };

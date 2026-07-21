@@ -59,6 +59,7 @@ interface UserRow {
   campaign_feedback: unknown;
   campaign_assets: unknown;
   microsite_url: string | null;
+  account_type: string | null;
 }
 
 function fromRow(row: UserRow): StoredUser {
@@ -101,6 +102,8 @@ function fromRow(row: UserRow): StoredUser {
       ? row.campaign_assets
       : []) as StoredUser["campaignAssets"],
     micrositeUrl: row.microsite_url ?? null,
+    accountType:
+      (row.account_type as StoredUser["accountType"]) ?? "paid",
   };
 }
 
@@ -146,8 +149,8 @@ export async function createUser(user: StoredUser): Promise<void> {
       `INSERT INTO users
          (id, name, email, mobile, photo, brand_id, platforms, goal,
           package_id, paid, created_at, password_hash, meta_campaign_id,
-          location, onboarding_stage, admin_notes)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+          location, onboarding_stage, admin_notes, account_type)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
       [
         user.id,
         user.name,
@@ -165,6 +168,7 @@ export async function createUser(user: StoredUser): Promise<void> {
         user.location ?? null,
         user.onboardingStage ?? "signed_up",
         JSON.stringify(user.adminNotes ?? []),
+        user.accountType ?? "paid",
       ]
     );
     return;
@@ -190,7 +194,7 @@ export async function updateUser(
          admin_notes = $14, campaign_approved = $15, campaign_feedback = $16,
          campaign_assets = $17, rex_user_id = $18,
          ms_email = $19, ms_connected_at = $20, ms_refresh_token = $21,
-         microsite_url = $22
+         microsite_url = $22, account_type = $23
        WHERE id = $1`,
       [
         next.id,
@@ -215,6 +219,7 @@ export async function updateUser(
         next.msConnectedAt ?? null,
         next.msRefreshToken ?? null,
         next.micrositeUrl ?? null,
+        next.accountType ?? "paid",
       ]
     );
     return next;

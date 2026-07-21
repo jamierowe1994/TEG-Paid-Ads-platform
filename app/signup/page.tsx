@@ -25,12 +25,15 @@ type StepId =
   | "name"
   | "email"
   | "brand"
+  | "interest"
   | "password"
   | "platforms"
   | "goal"
   | "package"
   | "payment"
   | "authenticate";
+
+type AccountType = "paid" | "referral";
 
 const GOALS = [
   "More valuations / appraisals",
@@ -54,6 +57,9 @@ function SignupWizard() {
   const [packageId, setPackageId] = useState<string>(
     packageById(params.get("package"))?.id ?? ""
   );
+  // Which half of the portal they're signing up for. Chosen on the "interest"
+  // step; "referral" gives the free, referrals-only account.
+  const [accountType, setAccountType] = useState<AccountType | "">("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   // Set when the entered email already has an account — the email step swaps
@@ -63,20 +69,18 @@ function SignupWizard() {
   // Set when the entered email isn't an Experts Group domain — staff only.
   const [domainBlocked, setDomainBlocked] = useState(false);
 
-  const steps: StepId[] = useMemo(
-    () => [
+  const steps: StepId[] = useMemo(() => {
+    const base: StepId[] = [
       "name",
       "email",
       ...(brand ? [] : (["brand"] as StepId[])),
+      "interest",
       "password",
-      "platforms",
-      "goal",
-      "package",
-      "payment",
-      "authenticate",
-    ],
-    [brand]
-  );
+    ];
+    // Referrals-only accounts skip the paid-ads setup (platforms → payment).
+    if (accountType === "referral") return [...base, "authenticate"];
+    return [...base, "platforms", "goal", "package", "payment", "authenticate"];
+  }, [brand, accountType]);
   const stepIndex = steps.indexOf(step);
   const progress = ((stepIndex + 1) / steps.length) * 100;
 
@@ -122,8 +126,8 @@ function SignupWizard() {
         brandId: detected?.id ?? null,
       }),
     }).catch(() => {});
-    // Known domain → set a password. Unknown → ask which business first.
-    go(detected ? "password" : "brand");
+    // Known domain → ask what they're after. Unknown → pick their business first.
+    go(detected ? "interest" : "brand");
   }
 
   async function completeSignup() {
@@ -141,6 +145,7 @@ function SignupWizard() {
       platforms,
       goal,
       packageId,
+      accountType: accountType === "referral" ? "referral" : "paid",
     });
     if (error) {
       setSubmitting(false);
@@ -335,7 +340,7 @@ function SignupWizard() {
                   key={b.id}
                   onClick={() => {
                     setBrand(b);
-                    go("password");
+                    go("interest");
                   }}
                   className="flex items-center gap-3 rounded-xl border border-gray-200 px-5 py-4 text-left transition hover:border-gray-900"
                 >
@@ -346,6 +351,66 @@ function SignupWizard() {
                   <span className="font-medium">{b.name}</span>
                 </button>
               ))}
+            </div>
+            <button
+              className="mt-8 rounded-xl border border-gray-200 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50"
+              onClick={back}
+            >
+              Back
+            </button>
+          </div>
+        )}
+
+        {/* ---- Interest: paid ads vs referrals ---- */}
+        {step === "interest" && (
+          <div className="fade-up" key="interest">
+            <h1 className="text-3xl font-semibold tracking-tight">
+              What are you after, {name.split(" ")[0]}?
+            </h1>
+            <p className="mt-3 text-gray-500">
+              The Experts Group portal does two things. Pick where you want to
+              start — you can always add the other later.
+            </p>
+            <div className="mt-8 grid gap-4 sm:grid-cols-2">
+              <button
+                onClick={() => {
+                  setAccountType("paid");
+                  go("password");
+                }}
+                className="group rounded-2xl border-2 border-gray-200 p-6 text-left transition hover:border-gray-900"
+              >
+                <div className="text-2xl">📣</div>
+                <h2 className="mt-3 text-lg font-semibold">Paid Ads</h2>
+                <p className="mt-1.5 text-sm text-gray-500">
+                  We build and run your paid social campaigns and track every
+                  lead. Includes referrals too.
+                </p>
+                <span className="mt-4 inline-block text-sm font-medium text-gray-900 group-hover:underline">
+                  Set up paid ads →
+                </span>
+              </button>
+              <button
+                onClick={() => {
+                  setAccountType("referral");
+                  go("password");
+                }}
+                className="group rounded-2xl border-2 border-gray-200 p-6 text-left transition hover:border-gray-900"
+              >
+                <div className="text-2xl">🤝</div>
+                <h2 className="mt-3 text-lg font-semibold">
+                  Referrals{" "}
+                  <span className="align-middle text-xs font-medium text-green-600">
+                    Free
+                  </span>
+                </h2>
+                <p className="mt-1.5 text-sm text-gray-500">
+                  Pass leads to other Experts Group businesses and earn on every
+                  one that converts. No ad spend.
+                </p>
+                <span className="mt-4 inline-block text-sm font-medium text-gray-900 group-hover:underline">
+                  Just referrals →
+                </span>
+              </button>
             </div>
             <button
               className="mt-8 rounded-xl border border-gray-200 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50"
@@ -384,7 +449,11 @@ function SignupWizard() {
                 placeholder="Choose a password"
                 value={password}
                 onChange={setPassword}
-                onEnter={() => password.length >= 8 && go("platforms")}
+                onEnter={() => {
+                  if (password.length < 8) return;
+                  if (accountType === "referral") completeSignup();
+                  else go("platforms");
+                }}
               />
             </div>
             {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
@@ -397,10 +466,16 @@ function SignupWizard() {
               </button>
               <button
                 className={primaryBtn}
-                disabled={password.length < 8}
-                onClick={() => go("platforms")}
+                disabled={password.length < 8 || submitting}
+                onClick={() =>
+                  accountType === "referral" ? completeSignup() : go("platforms")
+                }
               >
-                Continue
+                {accountType === "referral"
+                  ? submitting
+                    ? "Creating account…"
+                    : "Create my free account"
+                  : "Continue"}
               </button>
             </div>
           </div>

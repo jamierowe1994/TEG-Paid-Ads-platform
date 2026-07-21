@@ -7,13 +7,14 @@ import {
   refreshUser,
   updateProfile,
   updateProfileChecked,
+  upgradeAccount,
   disconnectMicrosoft,
   cancelSubscription,
   deleteAccount,
   changePassword,
 } from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
-import { packageById } from "@/lib/packages";
+import { packageById, PACKAGES } from "@/lib/packages";
 import type { UserProfile } from "@/lib/types";
 
 // Card styling shared across the page — darker outline + drop shadow + the
@@ -53,6 +54,9 @@ export default function ProfilePage() {
   const [microsite, setMicrosite] = useState("");
   const [savingMicrosite, setSavingMicrosite] = useState(false);
   const [micrositeError, setMicrositeError] = useState("");
+  const [upgradePkg, setUpgradePkg] = useState("growth");
+  const [upgrading, setUpgrading] = useState(false);
+  const [upgradeError, setUpgradeError] = useState("");
   const [toast, setToast] = useState("");
   const [disconnecting, setDisconnecting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -213,6 +217,22 @@ export default function ProfilePage() {
   const pkg = packageById(user.packageId);
   const cancelled = !!user.cancelRequestedAt;
   const nextBill = nextBillingDate(user.createdAt);
+  const isReferral = user.accountType === "referral";
+
+  async function doUpgrade() {
+    if (upgrading || !user) return;
+    setUpgradeError("");
+    setUpgrading(true);
+    const res = await upgradeAccount(upgradePkg);
+    setUpgrading(false);
+    if (res.ok && res.user) {
+      setUser(res.user);
+      setToast("You're on Paid Ads now — everything's unlocked ✓");
+      setTimeout(() => setToast(""), 4000);
+    } else {
+      setUpgradeError(res.error ?? "Couldn't upgrade — please try again.");
+    }
+  }
 
   // Backup ask: whatever we couldn't pull from their Microsoft account. Mobile
   // matters most (it drives lead alerts), so it's called out clearly.
@@ -235,15 +255,86 @@ export default function ProfilePage() {
           </p>
         </div>
         <div className="rounded-2xl border border-gray-300 bg-white px-5 py-3 text-right shadow-[0_2px_8px_-2px_rgba(0,0,0,0.12),inset_0_0_20px_rgba(0,0,0,0.06)]">
-          <p className="text-2xl font-semibold tracking-tight">
-            £{pkg?.price}
-            <span className="text-sm font-normal text-gray-400">/mo</span>
-          </p>
-          <p className="mt-0.5 text-xs text-gray-500">
-            {cancelled ? "Ends" : "Next bill"} {fmtDate(nextBill)}
-          </p>
+          {isReferral ? (
+            <>
+              <p className="text-lg font-semibold tracking-tight">Referrals</p>
+              <p className="mt-0.5 text-xs font-semibold text-green-600">
+                Free plan
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-2xl font-semibold tracking-tight">
+                £{pkg?.price}
+                <span className="text-sm font-normal text-gray-400">/mo</span>
+              </p>
+              <p className="mt-0.5 text-xs text-gray-500">
+                {cancelled ? "Ends" : "Next bill"} {fmtDate(nextBill)}
+              </p>
+            </>
+          )}
         </div>
       </div>
+
+      {/* Referrals-only → prominent upgrade to Paid Ads (demo-mode unlock). */}
+      {isReferral && (
+        <section
+          className="mt-6 rounded-2xl border-2 p-6"
+          style={{ borderColor: `${brand.accent}66`, backgroundColor: brand.accentSoft }}
+        >
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">📣</span>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-semibold">Upgrade to Paid Ads</h2>
+              <p className="mt-1 text-sm text-gray-600">
+                You&apos;re on the free Referrals plan. Add Paid Ads to unlock
+                your dashboard, leads funnel and campaigns — we build and run
+                your paid social and track every lead.
+              </p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                {PACKAGES.map((p) => {
+                  const sel = upgradePkg === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => setUpgradePkg(p.id)}
+                      className={`rounded-xl border-2 bg-white p-4 text-left transition ${
+                        sel ? "" : "border-gray-200 hover:border-gray-300"
+                      }`}
+                      style={sel ? { borderColor: brand.accent } : undefined}
+                    >
+                      <p className="font-semibold">{p.name}</p>
+                      <p className="mt-1 text-lg font-bold">
+                        £{p.price}
+                        <span className="text-xs font-normal text-gray-400">/mo</span>
+                      </p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        £{p.adSpend} ad spend
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={doUpgrade}
+                disabled={upgrading}
+                className="mt-4 rounded-xl px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+                style={{ backgroundColor: brand.accent }}
+              >
+                {upgrading
+                  ? "Upgrading…"
+                  : `Upgrade to ${packageById(upgradePkg)?.name ?? "Paid Ads"} — go live`}
+              </button>
+              <p className="mt-2 text-xs text-gray-400">
+                Demo mode — no card charged yet. Secure card payment slots in here.
+              </p>
+              {upgradeError && (
+                <p className="mt-2 text-sm text-red-500">{upgradeError}</p>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       {(needsMobile || needsPhoto) && (
         <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">

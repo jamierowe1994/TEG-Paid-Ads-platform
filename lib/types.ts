@@ -27,6 +27,11 @@ export interface UserProfile {
   goal: string;
   packageId: "starter" | "growth" | "scale";
   paid: boolean; // set true by the Stripe webhook once payments are live
+  // Which half of the portal this account has. "paid" = the full paid-ads
+  // system (which includes referrals); "referral" = the free, referrals-only
+  // tier — the rest of the portal is locked until they upgrade. Absent on
+  // older accounts, which are treated as "paid".
+  accountType?: "paid" | "referral";
   createdAt: string;
   // The Meta campaign this agent's ads run under — set by the admin, used to
   // pull per-agent stats/leads once Meta is connected.

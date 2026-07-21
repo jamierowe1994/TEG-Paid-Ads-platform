@@ -22,13 +22,15 @@ const STAGE_TOAST: Record<string, string> = {
   live: "🎉 Your ads are live!",
 };
 
-const NAV = [
-  { href: "/dashboard", label: "Overview", icon: "M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10" },
-  { href: "/dashboard/leads", label: "Leads", icon: "M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4z" },
+// `paidOnly` items are locked for referrals-only accounts (they show a padlock
+// and can't be opened until the agent upgrades to Paid Ads).
+const NAV: { href: string; label: string; icon: string; paidOnly?: boolean }[] = [
+  { href: "/dashboard", label: "Overview", paidOnly: true, icon: "M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10" },
+  { href: "/dashboard/leads", label: "Leads", paidOnly: true, icon: "M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4z" },
   { href: "/dashboard/referrals", label: "Referrals", icon: "M8 7h12m0 0l-4-4m4 4l-4 4M16 17H4m0 0l4 4m-4-4l4-4" },
   // Grow — hidden for now, bringing it back later.
   // { href: "/dashboard/grow", label: "Grow", icon: "M3 17l6-6 4 4 8-8M21 7v6M21 7h-6" },
-  { href: "/dashboard/ads", label: "All Ads", icon: "M4 5h16a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1zm2 11l4-5 3 3 2-2 3 4M9 9.5a.5.5 0 11-1 0 .5.5 0 011 0z" },
+  { href: "/dashboard/ads", label: "All Ads", paidOnly: true, icon: "M4 5h16a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1zm2 11l4-5 3 3 2-2 3 4M9 9.5a.5.5 0 11-1 0 .5.5 0 011 0z" },
   { href: "/dashboard/profile", label: "Profile", icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
 ];
 
@@ -119,6 +121,14 @@ export default function DashboardLayout({
       setChecked(true);
     });
   }, [router]);
+
+  // Referrals-only accounts can't reach the paid-ads pages — bounce them to
+  // the referrals hub if they land on (or navigate to) a locked route.
+  useEffect(() => {
+    if (!checked || !user || user.accountType !== "referral") return;
+    const locked = NAV.some((n) => n.href === pathname && n.paidOnly);
+    if (locked) router.replace("/dashboard/referrals");
+  }, [checked, user, pathname, router]);
 
   // Notification dots + campaign-stage toast — refresh on navigation and on a
   // light interval.
@@ -329,6 +339,38 @@ export default function DashboardLayout({
         <nav className="mt-8 flex-1 space-y-0.5 px-3">
           {NAV.map((item) => {
             const active = pathname === item.href;
+            const locked = user.accountType === "referral" && item.paidOnly;
+            const icon = (
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.8}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                viewBox="0 0 24 24"
+                style={active && !locked ? { color: brand.accent } : undefined}
+              >
+                <path d={item.icon} />
+              </svg>
+            );
+            if (locked) {
+              return (
+                <button
+                  key={item.href}
+                  onClick={() => router.push("/dashboard/profile")}
+                  title="Upgrade to Paid Ads to unlock"
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-300 transition hover:text-gray-500"
+                >
+                  {icon}
+                  {item.label}
+                  <svg className="ml-auto h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" aria-label="Locked">
+                    <rect x="5" y="11" width="14" height="9" rx="2" />
+                    <path d="M8 11V8a4 4 0 018 0v3" strokeLinecap="round" />
+                  </svg>
+                </button>
+              );
+            }
             return (
               <Link
                 key={item.href}
@@ -340,18 +382,7 @@ export default function DashboardLayout({
                 }`}
                 style={active ? { backgroundColor: brand.accentSoft } : undefined}
               >
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.8}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  viewBox="0 0 24 24"
-                  style={active ? { color: brand.accent } : undefined}
-                >
-                  <path d={item.icon} />
-                </svg>
+                {icon}
                 {item.label}
                 {dotFor(item.href) && (
                   <span

@@ -53,13 +53,25 @@ function onCrm(lead: Lead): boolean {
 function CopyField({
   kind,
   value,
+  name,
 }: {
   kind: "email" | "phone";
   value: string;
+  name?: string;
 }) {
   const [copied, setCopied] = useState(false);
+  const noun = kind === "email" ? "email" : "mobile";
+  const tip = name ? `Copy ${name}'s ${noun}` : `Copy ${noun}`;
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="group relative flex items-center gap-1.5">
+      {/* Personalised tooltip, tucked to the top-right corner at a slight
+          angle so it never covers the number the agent is reading. */}
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute -top-6 right-1 z-30 origin-bottom-right -rotate-6 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-[10px] font-semibold text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100"
+      >
+        {tip}
+      </span>
       <svg
         viewBox="0 0 24 24"
         className="h-3.5 w-3.5 shrink-0 text-gray-400"
@@ -78,7 +90,7 @@ function CopyField({
           <path d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
         )}
       </svg>
-      <span className="min-w-0 flex-1 truncate text-[11px] text-gray-600">
+      <span className="min-w-0 flex-1 truncate text-center text-[11px] text-gray-600">
         {value}
       </span>
       <button
@@ -92,7 +104,7 @@ function CopyField({
             () => {}
           );
         }}
-        aria-label={`Copy ${kind}`}
+        aria-label={tip}
         className="shrink-0 rounded-md p-1 text-gray-300 transition hover:bg-gray-100 hover:text-gray-700"
       >
         {copied ? (
@@ -188,9 +200,11 @@ function LeadTile({
       {/* Contact — quick copy for email + mobile */}
       <div className="mt-3 space-y-1.5">
         {lead.email ? (
-          <CopyField kind="email" value={lead.email} />
+          <CopyField kind="email" value={lead.email} name={lead.name.split(" ")[0]} />
         ) : null}
-        {lead.phone ? <CopyField kind="phone" value={lead.phone} /> : null}
+        {lead.phone ? (
+          <CopyField kind="phone" value={lead.phone} name={lead.name.split(" ")[0]} />
+        ) : null}
         {!lead.email && !lead.phone && (
           <p className="text-[11px] text-gray-300">No contact details</p>
         )}

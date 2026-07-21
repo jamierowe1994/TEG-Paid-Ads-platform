@@ -61,6 +61,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // "referral" = the free, referrals-only tier; "paid" = the full paid-ads
+  // system. Anything else defaults to paid.
+  const accountType = body.accountType === "referral" ? "referral" : "paid";
+
   const user: StoredUser = {
     id: uid(),
     name,
@@ -71,8 +75,10 @@ export async function POST(req: NextRequest) {
     platforms: Array.isArray(body.platforms) ? body.platforms : [],
     goal: String(body.goal ?? ""),
     packageId: packageById(body.packageId)?.id ?? "starter",
-    // TODO(stripe): set true only via the Stripe webhook after payment
-    paid: true,
+    // TODO(stripe): set true only via the Stripe webhook after payment.
+    // Referral-only accounts are free, so they're never "paid".
+    paid: accountType === "paid",
+    accountType,
     createdAt: new Date().toISOString(),
     passwordHash: hashPassword(password),
     location: null,
