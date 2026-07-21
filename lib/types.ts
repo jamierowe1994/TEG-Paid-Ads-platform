@@ -120,6 +120,13 @@ export interface Lead {
   // Result of checking this person against the brand's CRM (duplicate check
   // — separate from pushing). found:false records "checked, not on there".
   crmMatch?: CrmMatch | null;
+  // The lead's property/home address, entered by the agent (optionally via
+  // Google Places). Geocoded to a postcode + coordinates so it can be pushed
+  // to the CRM (REX) and used for mapping. All optional — filled when known.
+  address?: string | null;
+  postcode?: string | null;
+  lat?: number | null;
+  lng?: number | null;
 }
 
 export interface CrmMatch {

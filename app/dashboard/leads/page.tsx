@@ -15,6 +15,7 @@ import {
   setLeadFollowUp,
   crmCheckAllLeads,
   sendLeadEmail,
+  updateLeadFields as updateLeadFieldsApi,
 } from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
 import { packageById } from "@/lib/packages";
@@ -836,6 +837,14 @@ export default function LeadsPage() {
               setLeads(fresh);
               if (at) setOpenId(null); // it's resting now — close the file
             }
+          }}
+          onUpdateFields={async (fields) => {
+            const updated = await updateLeadFieldsApi(open.id, fields);
+            if (updated)
+              setLeads((prev) =>
+                prev.map((l) => (l.id === updated.id ? updated : l))
+              );
+            return updated;
           }}
           emailConnected={emailConnected}
           onSendEmail={async (subject, body) => {

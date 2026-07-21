@@ -258,6 +258,21 @@ export function bookLeadAppointment(leadId: string, at: string) {
 export function cancelLeadAppointment(leadId: string) {
   return leadAction({ leadId, action: "cancelBooking" });
 }
+// Inline edits to a lead's own fields (name / contact / address).
+export function updateLeadFields(
+  leadId: string,
+  fields: {
+    name?: string;
+    phone?: string;
+    email?: string;
+    address?: string | null;
+    postcode?: string | null;
+    lat?: number | null;
+    lng?: number | null;
+  }
+) {
+  return leadAction({ leadId, action: "update", fields });
+}
 
 // Archive / unarchive a batch of leads. Returns the full refreshed list.
 export async function archiveLeads(

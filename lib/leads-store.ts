@@ -38,6 +38,10 @@ interface LeadRow {
   resurface_at: string | Date | null;
   follow_up_at: string | Date | null;
   crm_match: unknown;
+  address: string | null;
+  postcode: string | null;
+  lat: number | null;
+  lng: number | null;
 }
 
 function fromRow(row: LeadRow): Lead {
@@ -69,6 +73,10 @@ function fromRow(row: LeadRow): Lead {
       ? new Date(row.follow_up_at).toISOString()
       : null,
     crmMatch: (row.crm_match as CrmMatch | null) ?? null,
+    address: row.address ?? null,
+    postcode: row.postcode ?? null,
+    lat: row.lat ?? null,
+    lng: row.lng ?? null,
   };
 }
 
@@ -226,6 +234,50 @@ export async function addLeadNote(
   const idx = all.findIndex((l) => l.id === leadId && l.userId === userId);
   if (idx === -1) return undefined;
   all[idx] = { ...all[idx], notes: [...(all[idx].notes ?? []), entry] };
+  await writeAllFile(all);
+  const { userId: _omit, ...lead } = all[idx];
+  return lead;
+}
+
+// Edit the lead's own detail fields inline (name/contact/address). The address
+// carries a geocoded postcode + coordinates so it can be pushed to the CRM.
+// Only whitelisted columns are ever written.
+type EditableLeadFields = Partial<
+  Pick<Lead, "name" | "phone" | "email" | "address" | "postcode" | "lat" | "lng">
+>;
+const EDITABLE_COLS: Record<string, string> = {
+  name: "name",
+  phone: "phone",
+  email: "email",
+  address: "address",
+  postcode: "postcode",
+  lat: "lat",
+  lng: "lng",
+};
+export async function updateLeadFields(
+  userId: string,
+  leadId: string,
+  patch: EditableLeadFields
+): Promise<Lead | undefined> {
+  const entries = Object.entries(patch).filter(
+    ([k, v]) => k in EDITABLE_COLS && v !== undefined
+  );
+  if (!entries.length) return getLead(userId, leadId);
+  if (hasDb()) {
+    const sets = entries
+      .map(([k], i) => `${EDITABLE_COLS[k]} = $${i + 3}`)
+      .join(", ");
+    const vals = entries.map(([, v]) => v);
+    const rows = await q<LeadRow>(
+      `UPDATE leads SET ${sets} WHERE id = $2 AND user_id = $1 RETURNING *`,
+      [userId, leadId, ...vals]
+    );
+    return rows[0] ? fromRow(rows[0]) : undefined;
+  }
+  const all = await readAllFile();
+  const idx = all.findIndex((l) => l.id === leadId && l.userId === userId);
+  if (idx === -1) return undefined;
+  all[idx] = { ...all[idx], ...Object.fromEntries(entries) };
   await writeAllFile(all);
   const { userId: _omit, ...lead } = all[idx];
   return lead;

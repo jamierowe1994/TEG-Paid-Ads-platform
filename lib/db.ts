@@ -168,6 +168,10 @@ ALTER TABLE leads ADD COLUMN IF NOT EXISTS ad_name TEXT;
 -- reminder. Distinct from resurface_at (the nurture/"save for later" snooze):
 -- a follow-up hides the lead WITHOUT changing its stage.
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS follow_up_at TIMESTAMPTZ;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS address TEXT;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS postcode TEXT;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION;
 CREATE INDEX IF NOT EXISTS leads_follow_up_idx ON leads(follow_up_at)
   WHERE follow_up_at IS NOT NULL;
 CREATE INDEX IF NOT EXISTS leads_resurface_idx ON leads(resurface_at)

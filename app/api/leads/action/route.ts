@@ -4,12 +4,20 @@ import {
   addLeadNote,
   bookAppointment,
   cancelAppointment,
+  updateLeadFields,
 } from "@/lib/leads-store";
+
+// Normalise a free-text UK postcode; empty/invalid → null.
+function cleanPostcode(raw: unknown): string | null {
+  const s = String(raw ?? "").trim().toUpperCase().replace(/\s+/g, " ");
+  return s || null;
+}
 
 // Per-lead actions from the detail modal:
 //   { leadId, action: "note", text }         — add an agent note
 //   { leadId, action: "book", at }           — book/rearrange an appointment
 //   { leadId, action: "cancelBooking" }      — cancel the appointment
+//   { leadId, action: "update", fields }     — edit name/contact/address inline
 export async function POST(req: NextRequest) {
   const userId = verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
   if (!userId) {
@@ -33,6 +41,19 @@ export async function POST(req: NextRequest) {
     lead = await bookAppointment(userId, leadId, at);
   } else if (action === "cancelBooking") {
     lead = await cancelAppointment(userId, leadId);
+  } else if (action === "update") {
+    const f = body?.fields ?? {};
+    const patch: Record<string, unknown> = {};
+    if (typeof f.name === "string") patch.name = f.name.trim();
+    if (typeof f.phone === "string") patch.phone = f.phone.trim();
+    if (typeof f.email === "string") patch.email = f.email.trim();
+    if (typeof f.address === "string" || f.address === null)
+      patch.address = f.address ? String(f.address).trim() : null;
+    if (typeof f.postcode === "string" || f.postcode === null)
+      patch.postcode = cleanPostcode(f.postcode);
+    if (typeof f.lat === "number" || f.lat === null) patch.lat = f.lat;
+    if (typeof f.lng === "number" || f.lng === null) patch.lng = f.lng;
+    lead = await updateLeadFields(userId, leadId, patch);
   } else {
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   }
