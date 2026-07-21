@@ -197,9 +197,16 @@ function LeadTile({
 
       {/* Footer — neutral stage label + the "on CRM" flag */}
       <div className="mt-2.5 flex flex-wrap items-center gap-1">
-        <span className="inline-block w-fit rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">
+        <span
+          className="inline-block w-fit rounded-full px-2 py-0.5 text-[10px] font-medium"
+          style={
+            lead.resurfaceAt
+              ? { backgroundColor: "#fff7ed", color: "#c2410c" }
+              : { backgroundColor: "#f3f4f6", color: "#6b7280" }
+          }
+        >
           {lead.resurfaceAt
-            ? `Back ${shortDate(lead.resurfaceAt)}`
+            ? `🔥 Warm · ${shortDate(lead.resurfaceAt)}`
             : stageLabel(lead.stage, brand)}
         </span>
         {onCrm(lead) && (

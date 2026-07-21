@@ -58,6 +58,7 @@ interface UserRow {
   campaign_approved: boolean | null;
   campaign_feedback: unknown;
   campaign_assets: unknown;
+  microsite_url: string | null;
 }
 
 function fromRow(row: UserRow): StoredUser {
@@ -99,6 +100,7 @@ function fromRow(row: UserRow): StoredUser {
     campaignAssets: (Array.isArray(row.campaign_assets)
       ? row.campaign_assets
       : []) as StoredUser["campaignAssets"],
+    micrositeUrl: row.microsite_url ?? null,
   };
 }
 
@@ -187,7 +189,8 @@ export async function updateUser(
          meta_campaign_id = $11, location = $12, onboarding_stage = $13,
          admin_notes = $14, campaign_approved = $15, campaign_feedback = $16,
          campaign_assets = $17, rex_user_id = $18,
-         ms_email = $19, ms_connected_at = $20, ms_refresh_token = $21
+         ms_email = $19, ms_connected_at = $20, ms_refresh_token = $21,
+         microsite_url = $22
        WHERE id = $1`,
       [
         next.id,
@@ -211,6 +214,7 @@ export async function updateUser(
         next.msEmail ?? null,
         next.msConnectedAt ?? null,
         next.msRefreshToken ?? null,
+        next.micrositeUrl ?? null,
       ]
     );
     return next;

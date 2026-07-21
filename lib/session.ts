@@ -120,6 +120,7 @@ export async function updateProfile(patch: {
   mobile?: string;
   location?: string;
   photo?: string | null;
+  micrositeUrl?: string | null;
 }): Promise<UserProfile | null> {
   const res = await fetch("/api/auth/me", {
     method: "PATCH",
@@ -130,6 +131,22 @@ export async function updateProfile(patch: {
   const { user } = await res.json();
   if (user) saveUser(user);
   return user ?? null;
+}
+
+// Like updateProfile but surfaces the server's validation message — used by
+// the micro-site field, which rejects anything that isn't a real link.
+export async function updateProfileChecked(patch: {
+  micrositeUrl?: string | null;
+}): Promise<{ ok: boolean; user?: UserProfile; error?: string }> {
+  const res = await fetch("/api/auth/me", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return { ok: false, error: data?.error };
+  if (data.user) saveUser(data.user);
+  return { ok: true, user: data.user };
 }
 
 export async function signOut() {
@@ -438,16 +455,24 @@ export interface ReferralAgent {
   photo: string | null;
   location: string;
   since: string;
+  // Present when the agent comes from the Team Hub directory and could be
+  // geocoded — lets the wizard rank by real distance without a Google key.
+  lat?: number;
+  lng?: number;
+  territory?: string[];
+  distanceMiles?: number | null;
 }
 
 export async function fetchReferralAgents(
-  brandId: string
+  brandId: string,
+  near?: string
 ): Promise<ReferralAgent[]> {
   try {
-    const res = await fetch(
-      `/api/referrals/agents?brand=${encodeURIComponent(brandId)}`,
-      { cache: "no-store" }
-    );
+    const qs = new URLSearchParams({ brand: brandId });
+    if (near && near.trim()) qs.set("near", near.trim());
+    const res = await fetch(`/api/referrals/agents?${qs.toString()}`, {
+      cache: "no-store",
+    });
     if (!res.ok) return [];
     const data = await res.json();
     return Array.isArray(data.agents) ? (data.agents as ReferralAgent[]) : [];

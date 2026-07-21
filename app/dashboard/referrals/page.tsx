@@ -12,6 +12,7 @@ import {
 import { BRANDS, brandById, type Brand, type BrandId } from "@/lib/brands";
 import LocationPicker from "@/components/LocationPicker";
 import { distanceKm, geocodeAddress } from "@/lib/google-maps";
+import { geocodeUk } from "@/lib/geo-uk";
 import type { Referral, LeadStage } from "@/lib/types";
 
 // Referrals portal. The main area "advertises" every Experts Group business
@@ -149,6 +150,7 @@ const DEMO_AGENTS: Partial<Record<BrandId, RefAgent[]>> = {
 // "since Jul 2024" / "3 years" style tenure from a start date.
 function tenure(since: string): string {
   const start = new Date(since);
+  if (!since || Number.isNaN(start.getTime())) return "On the team";
   const months =
     (Date.now() - start.getTime()) / (1000 * 60 * 60 * 24 * 30.44);
   if (months < 12) {
@@ -158,6 +160,10 @@ function tenure(since: string): string {
   const years = Math.floor(months / 12);
   return `${years} year${years === 1 ? "" : "s"} with the team`;
 }
+
+// The furthest a partner can be from the referral and still be offered. Keeps
+// the shortlist local — a 200-mile-away agent is no use to anyone.
+const MAX_REFERRAL_MILES = 50;
 
 // Rank agents by proximity to the referral. When we have a map pin, sort by
 // real distance to each agent's patch centre (closest first). Otherwise fall
@@ -655,13 +661,17 @@ function ReferWizard({
         bio: `${a.name.split(" ")[0]} covers ${
           a.location || "the local area"
         } for ${toBrand.name}.`,
+        // The Team Hub directory already geocodes each partner server-side.
+        lat: a.lat,
+        lng: a.lng,
       }));
       if (!cancelled) setPool(base);
-      // Geocode each real agent's patch (client-side, cached) so the closest
-      // match is by true distance, not just a keyword hit. Best-effort — no
-      // key or no match just leaves them on the keyword path.
+      // Fill in coordinates only for agents the server couldn't geocode (e.g.
+      // an area name with no postcode) — best-effort via Google, cached. No key
+      // or no match just leaves them on the keyword path.
       const withCoords = await Promise.all(
         base.map(async (a) => {
+          if (a.lat != null && a.lng != null) return a;
           if (!a.area || a.area === "their patch") return a;
           const c = await geocodeAddress(a.area);
           return c ? { ...a, lat: c.lat, lng: c.lng } : a;
@@ -674,16 +684,43 @@ function ReferWizard({
     };
   }, [toBrand.id, toBrand.name]);
 
-  function findAgent() {
+  async function findAgent() {
     if (pool.length === 0) {
       setError("No agents listed for this business yet.");
       return;
     }
     setError("");
-    const order = rankByLocation(pool, location, coords);
-    setRanked(order);
-    setAgent(order[0]);
     setStep("matching");
+    // Prefer the map-pin coords; otherwise geocode the typed location via
+    // postcodes.io (works for a postcode/outcode with no Google key), so the
+    // ranking is by real distance whenever we possibly can.
+    let refCoords = coords;
+    if (!refCoords && location.trim()) {
+      refCoords = await geocodeUk(location);
+      if (refCoords) setCoords(refCoords); // so the distance readout shows too
+    }
+    const order = rankByLocation(pool, location, refCoords);
+    // Cap the shortlist to partners within 50 miles when we have a location
+    // fix — nobody wants to be shown an agent 200 miles away. Partners we
+    // couldn't place (no geo data yet — e.g. a brand still being set up) have
+    // no distance, so they're kept rather than hidden, and referrals still work.
+    let shortlist = order;
+    if (refCoords) {
+      const withinRange = order.filter((a) => {
+        const d = distanceMiles(refCoords, a);
+        return d == null || d <= MAX_REFERRAL_MILES;
+      });
+      if (withinRange.length === 0) {
+        setError(
+          `No ${toBrand.shortName} partner within ${MAX_REFERRAL_MILES} miles of that location yet.`
+        );
+        setStep("location");
+        return;
+      }
+      shortlist = withinRange;
+    }
+    setRanked(shortlist);
+    setAgent(shortlist[0]);
     setTimeout(() => setStep("agent"), 900);
   }
 

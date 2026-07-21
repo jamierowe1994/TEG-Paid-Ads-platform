@@ -6,6 +6,7 @@ import {
   getUser,
   refreshUser,
   updateProfile,
+  updateProfileChecked,
   disconnectMicrosoft,
   cancelSubscription,
   deleteAccount,
@@ -49,6 +50,9 @@ export default function ProfilePage() {
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
   const [location, setLocation] = useState("");
+  const [microsite, setMicrosite] = useState("");
+  const [savingMicrosite, setSavingMicrosite] = useState(false);
+  const [micrositeError, setMicrositeError] = useState("");
   const [toast, setToast] = useState("");
   const [disconnecting, setDisconnecting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -72,6 +76,7 @@ export default function ProfilePage() {
     setName(u.name);
     setMobile(u.mobile);
     setLocation(u.location ?? "");
+    setMicrosite(u.micrositeUrl ?? "");
     // Coming back from the Microsoft consent redirect: the cached user is
     // stale (the connection just changed server-side) — refresh, and turn
     // the query params into a friendly toast.
@@ -83,6 +88,7 @@ export default function ProfilePage() {
           setUser(fresh);
           setMobile(fresh.mobile);
           setLocation(fresh.location ?? "");
+          setMicrosite(fresh.micrositeUrl ?? "");
         }
       });
       const crm = params.get("crm");
@@ -118,6 +124,28 @@ export default function ProfilePage() {
     if (next) setUser(next);
     setToast("Profile saved ✓");
     setTimeout(() => setToast(""), 2500);
+  }
+
+  // Save (or clear) the micro-site link. The server normalises it and rejects
+  // anything that isn't a real web address, so we surface that message.
+  async function saveMicrosite() {
+    if (!user || savingMicrosite) return;
+    setMicrositeError("");
+    setSavingMicrosite(true);
+    const res = await updateProfileChecked({
+      micrositeUrl: microsite.trim() || null,
+    });
+    setSavingMicrosite(false);
+    if (res.ok) {
+      if (res.user) {
+        setUser(res.user);
+        setMicrosite(res.user.micrositeUrl ?? "");
+      }
+      setToast(microsite.trim() ? "Micro-site saved ✓" : "Micro-site removed ✓");
+      setTimeout(() => setToast(""), 2500);
+    } else {
+      setMicrositeError(res.error ?? "Couldn't save that link — please check it.");
+    }
   }
 
   function handlePhoto(file: File | null) {
@@ -280,6 +308,88 @@ export default function ProfilePage() {
           </div>
         </section>
       )}
+
+      {/* Micro-site — the agent's landing page. Presented as a prominent
+          onboarding ask when empty (they land here right after verifying their
+          email); once set it shows the live link and lets them change it. */}
+      <section
+        className={`mt-6 rounded-2xl p-5 ${
+          user.micrositeUrl ? CARD : "border"
+        }`}
+        style={
+          user.micrositeUrl
+            ? undefined
+            : {
+                borderColor: `${brand.accent}55`,
+                backgroundColor: brand.accentSoft,
+              }
+        }
+      >
+        <div className="flex items-start gap-3">
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-lg"
+            style={{ backgroundColor: `${brand.accent}1a` }}
+          >
+            🔗
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="font-semibold">
+              {user.micrositeUrl
+                ? "Your micro-site"
+                : "What's the URL to your micro-site?"}
+            </h2>
+            <p className="mt-1 text-sm text-gray-600">
+              Paste the link to your personal landing page. We tag it to your
+              profile and use it across your ads — you can change it any time.
+            </p>
+
+            {user.micrositeUrl && (
+              <a
+                href={user.micrositeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex max-w-full items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm font-medium transition hover:bg-gray-100"
+                style={{ color: brand.accent }}
+              >
+                <span className="truncate">{user.micrositeUrl}</span>
+                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H18v4.5M18 6l-8.5 8.5M15 13.5V18a1.5 1.5 0 01-1.5 1.5H6A1.5 1.5 0 014.5 18V10.5A1.5 1.5 0 016 9h4.5" />
+                </svg>
+              </a>
+            )}
+
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <input
+                type="url"
+                inputMode="url"
+                value={microsite}
+                onChange={(e) => {
+                  setMicrosite(e.target.value);
+                  setMicrositeError("");
+                }}
+                onKeyDown={(e) => e.key === "Enter" && saveMicrosite()}
+                placeholder="yourname.experts.co.uk"
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-gray-900 sm:flex-1"
+              />
+              <button
+                onClick={saveMicrosite}
+                disabled={savingMicrosite}
+                className="shrink-0 rounded-lg px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
+                style={{ backgroundColor: brand.accent }}
+              >
+                {savingMicrosite
+                  ? "Saving…"
+                  : user.micrositeUrl
+                    ? "Update link"
+                    : "Save link"}
+              </button>
+            </div>
+            {micrositeError && (
+              <p className="mt-2 text-sm text-red-500">{micrositeError}</p>
+            )}
+          </div>
+        </div>
+      </section>
 
       {/* Two columns — profile on the left, billing on the right */}
       <div className="mt-6 grid gap-6 lg:grid-cols-2">

@@ -13,6 +13,7 @@ import {
 import { brandById, type Brand } from "@/lib/brands";
 import { getPreviewBrandId, getPreviewAccent } from "@/lib/preview";
 import type { UserProfile, Lead, Referral } from "@/lib/types";
+import HelpCentre from "@/components/HelpCentre";
 
 // Toast copy when the admin advances a customer's campaign stage.
 const STAGE_TOAST: Record<string, string> = {
@@ -569,12 +570,17 @@ export default function DashboardLayout({
       {/* ── Main ── */}
       <main className="ml-[240px] px-8 pb-10 pt-[176px]">{children}</main>
 
-      {/* Campaign-stage toast — bigger white card with a black outline */}
+      {/* Campaign-stage toast — bigger white card with a black outline.
+          Sits above the Help Centre launcher so the two never overlap. */}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-sm animate-[fade-up_0.3s_ease] rounded-2xl border-2 border-gray-900 bg-white px-6 py-5 text-[15px] font-semibold text-gray-900 shadow-2xl">
+        <div className="fixed bottom-24 right-6 z-50 max-w-sm animate-[fade-up_0.3s_ease] rounded-2xl border-2 border-gray-900 bg-white px-6 py-5 text-[15px] font-semibold text-gray-900 shadow-2xl">
           {toast}
         </div>
       )}
+
+      {/* Help Centre — floating button, searchable articles, and the
+          speed-to-lead nudges that pop out of it when idle. */}
+      <HelpCentre />
     </div>
   );
 }

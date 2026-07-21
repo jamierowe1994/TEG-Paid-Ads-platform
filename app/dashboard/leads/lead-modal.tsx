@@ -406,9 +406,16 @@ export function LeadModal({
                 </span>
               )}
               {lead.archivedAt && (
-                <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-semibold text-gray-500">
+                <span
+                  className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
+                  style={
+                    lead.resurfaceAt
+                      ? { backgroundColor: "#fff7ed", color: "#c2410c" }
+                      : { backgroundColor: "#f3f4f6", color: "#6b7280" }
+                  }
+                >
                   {lead.resurfaceAt
-                    ? `Back ${shortDate(lead.resurfaceAt)}`
+                    ? `🔥 Warm · back ${shortDate(lead.resurfaceAt)}`
                     : "Archived"}
                 </span>
               )}
@@ -1049,7 +1056,7 @@ export function LeadModal({
                   </h3>
                   <p className="mt-2 text-center text-sm text-gray-500">
                     Don't close the door just yet — want to keep {firstName}{" "}
-                    warm with our marketing follow-ups?
+                    in the loop with our marketing follow-ups?
                   </p>
                   <p className="mt-4 text-center text-sm font-medium text-gray-800">
                     Add {firstName} to a marketing funnel?
@@ -1106,19 +1113,29 @@ export function LeadModal({
               )}
               {lostStep === "date" && (
                 <div className="mx-auto w-full max-w-lg">
-                  <h3 className="text-center text-xl font-semibold">
-                    Sounds like a &quot;not yet&quot;, not a no
+                  <GifCard
+                    src=""
+                    emoji="🔥"
+                    tint="linear-gradient(135deg,#fff7ed,#ffedd5)"
+                  />
+                  <h3 className="mt-5 text-center text-xl font-semibold">
+                    Keep {firstName} warm?
                   </h3>
                   <p className="mt-2 text-center text-sm text-gray-500">
-                    Pick when {firstName} said they&apos;d be ready — we&apos;ll
-                    file this away and bring it back as a new lead on that day,
-                    ping included.
+                    Not a no — just a &quot;not yet&quot;. Pick when they said
+                    they&apos;d be ready and we&apos;ll keep {firstName} warm,
+                    then bring them back as a fresh lead on the day — with a
+                    nudge to call.
                   </p>
-                  <div className="mt-4 flex flex-wrap justify-center gap-2">
+                  <p className="mt-5 text-center text-xs font-medium uppercase tracking-wide text-gray-400">
+                    Bring {firstName} back in
+                  </p>
+                  <div className="mt-3 flex flex-wrap justify-center gap-2">
                     {[
-                      { label: "In 1 month", months: 1 },
-                      { label: "In 3 months", months: 3 },
-                      { label: "In 6 months", months: 6 },
+                      { label: "1 month", months: 1 },
+                      { label: "3 months", months: 3 },
+                      { label: "6 months", months: 6 },
+                      { label: "12 months", months: 12 },
                     ].map((p) => (
                       <button
                         key={p.label}
@@ -1130,7 +1147,10 @@ export function LeadModal({
                       </button>
                     ))}
                   </div>
-                  <div className="mt-4">
+                  <p className="mt-5 text-center text-xs font-medium uppercase tracking-wide text-gray-400">
+                    …or pick the exact date
+                  </p>
+                  <div className="mt-3">
                     <InlineCalendar
                       value={snoozeDay}
                       accent={brand.accent}
@@ -1144,7 +1164,7 @@ export function LeadModal({
                   </div>
                   {savingSnooze && (
                     <p className="mt-3 text-center text-sm text-gray-400">
-                      Saving…
+                      Keeping warm…
                     </p>
                   )}
                   <button

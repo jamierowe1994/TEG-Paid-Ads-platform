@@ -1,17 +1,43 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { BRANDS } from "@/lib/brands";
 import { getPreviewAccent, getPreviewBrandId, setPreview } from "@/lib/preview";
 
-// Floating feedback button (bottom-right, every page). Clicking it opens a
-// little menu: "Send feedback" (draw + note → /api/feedback) or "Preview
-// brand colours" (a temporary tool to preview each brand's theme and tweak
-// an accent — stored locally, applied on reload).
+// Floating feedback button (bottom-LEFT). This is an internal reviewer tool
+// ("Send feedback" → /api/feedback, and "Preview brand colours"), so it's
+// hidden from real customers — the customer-facing Help Centre owns the
+// bottom-right corner now. It shows only in internal contexts: on /admin, when
+// a brand-colour preview is active, or once someone opts in with ?internal=1
+// (which sticks in localStorage). Visit any page with ?internal=1 to bring it
+// back anywhere.
+
+const INTERNAL_KEY = "teg_internal";
+
+function useIsInternal(): boolean {
+  const pathname = usePathname();
+  const [internal, setInternal] = useState(false);
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("internal") === "1") {
+        localStorage.setItem(INTERNAL_KEY, "1");
+      }
+      const flagged = localStorage.getItem(INTERNAL_KEY) === "1";
+      const previewing = !!getPreviewBrandId() || !!getPreviewAccent();
+      setInternal(pathname.startsWith("/admin") || flagged || previewing);
+    } catch {
+      setInternal(pathname.startsWith("/admin"));
+    }
+  }, [pathname]);
+  return internal;
+}
 
 type Mode = "closed" | "drawing" | "note" | "sending" | "done";
 
 export default function FeedbackWidget() {
+  const internal = useIsInternal();
   const [mode, setMode] = useState<Mode>("closed");
   const [menuOpen, setMenuOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
@@ -179,6 +205,10 @@ export default function FeedbackWidget() {
       setMode("note");
     }
   }
+
+  // Internal reviewer tool only — hidden for real customers. (All hooks above
+  // still run so the rules of hooks hold; we just render nothing.)
+  if (!internal) return null;
 
   return (
     <div id="feedback-widget-root">
@@ -352,7 +382,7 @@ export default function FeedbackWidget() {
             aria-hidden
             onClick={() => setMenuOpen(false)}
           />
-          <div className="fixed bottom-20 right-6 z-[95] w-56 overflow-hidden rounded-2xl border border-gray-200 bg-white p-1.5 shadow-2xl">
+          <div className="fixed bottom-20 left-6 z-[95] w-56 overflow-hidden rounded-2xl border border-gray-200 bg-white p-1.5 shadow-2xl">
             <button
               onClick={() => {
                 setMenuOpen(false);
@@ -379,8 +409,8 @@ export default function FeedbackWidget() {
       {mode === "closed" && !themeOpen && (
         <button
           onClick={() => setMenuOpen((v) => !v)}
-          title="Options"
-          className="fixed bottom-6 right-6 z-[95] flex h-12 w-12 items-center justify-center rounded-full bg-gray-900 text-white shadow-lg transition hover:scale-105 hover:bg-gray-700"
+          title="Internal: feedback & brand preview"
+          className="fixed bottom-6 left-6 z-[95] flex h-12 w-12 items-center justify-center rounded-full bg-gray-900 text-white shadow-lg transition hover:scale-105 hover:bg-gray-700"
         >
           <svg
             className="h-5 w-5"

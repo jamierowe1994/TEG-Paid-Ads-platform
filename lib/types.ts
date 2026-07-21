@@ -52,6 +52,10 @@ export interface UserProfile {
   // Set when the agent asks to cancel their subscription — the plan stays
   // active until the period end; clearing it resumes.
   cancelRequestedAt?: string | null;
+  // The agent's micro-site — a personal landing page they paste in after
+  // signup. Stored normalised (with a protocol). Used behind the scenes and
+  // shown on the profile; can be updated any time.
+  micrositeUrl?: string | null;
 }
 
 // Lead funnel stages. Progressive: each stage reveals the next relevant
