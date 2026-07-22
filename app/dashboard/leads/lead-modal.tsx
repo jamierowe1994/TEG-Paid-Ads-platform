@@ -5,6 +5,7 @@ import type { Lead, LeadStage } from "@/lib/types";
 import type { Brand } from "@/lib/brands";
 import SourceIcon from "@/components/SourceIcon";
 import { geocodeUk, extractPostcode } from "@/lib/geo-uk";
+import { lostReasonsFor, warmReasonsFor } from "@/lib/lost-reasons";
 
 export function stageLabel(stage: LeadStage, brand: Brand): string {
   switch (stage) {
@@ -60,21 +61,6 @@ function apptLabel(iso: string): string {
 
 const LOST_GIF = "/images/Sad%20Michael%20Scott%20GIF.gif";
 const FUNNEL_GIF = "/images/Leonardo%20Dicaprio%20Kinda%20GIF.gif";
-
-const LOST_REASONS = [
-  "Couldn't make contact",
-  "Not the right time",
-  "Just thinking about it / later",
-  "Went with someone else",
-  "Budget / price",
-  "Not interested",
-  "Other",
-];
-const TIMING_REASONS = new Set([
-  "Not the right time",
-  "Just thinking about it / later",
-  "Budget / price",
-]);
 
 function GifCard({ src, emoji, tint }: { src: string; emoji: string; tint: string }) {
   return (
@@ -139,6 +125,9 @@ export function LeadModal({
   ) => Promise<{ ok: boolean; error?: string }>;
 }) {
   const accent = brand.accent;
+  // Lost reasons are tailored per brand; the "warm" subset offers Keep Warm.
+  const lostReasons = lostReasonsFor(brand.id);
+  const warmReasons = warmReasonsFor(brand.id);
   const firstName = lead.name.split(" ")[0] || "there";
   const canWork = !["pushed", "lost"].includes(lead.stage);
   const booked = !!lead.appointmentAt;
@@ -679,8 +668,8 @@ export function LeadModal({
                   <h3 className="text-center text-xl font-semibold">What happened with {firstName}?</h3>
                   <p className="mt-2 text-center text-sm text-gray-500">A quick reason helps us learn what&apos;s converting and what isn&apos;t.</p>
                   <div className="mt-5 space-y-2">
-                    {LOST_REASONS.map((reason) => (
-                      <button key={reason} disabled={savingLost} onClick={() => { if (onSnooze && TIMING_REASONS.has(reason)) { setLostReason(reason); setLostStep("date"); } else markLostWithReason(reason); }} className="flex w-full items-center justify-between rounded-2xl border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-700 transition hover:border-gray-900 hover:bg-gray-50 disabled:opacity-50">
+                    {lostReasons.map((reason) => (
+                      <button key={reason} disabled={savingLost} onClick={() => { if (onSnooze && warmReasons.has(reason)) { setLostReason(reason); setLostStep("date"); } else markLostWithReason(reason); }} className="flex w-full items-center justify-between rounded-2xl border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-700 transition hover:border-gray-900 hover:bg-gray-50 disabled:opacity-50">
                         {reason}<span className="text-gray-300">→</span>
                       </button>
                     ))}
@@ -718,7 +707,7 @@ export function LeadModal({
                     <p className="text-sm font-medium text-gray-800">First — why didn&apos;t it convert?</p>
                     <p className="mt-1 text-xs text-gray-400">We log the reason before nurturing so we learn what to fix.</p>
                     <div className="mt-4 space-y-2">
-                      {LOST_REASONS.map((reason) => {
+                      {lostReasons.map((reason) => {
                         const selected = nurtureReason === reason;
                         return (
                           <button key={reason} onClick={() => setNurtureReason(reason)} className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-medium transition ${selected ? "text-white" : "border-gray-200 text-gray-700 hover:border-gray-900 hover:bg-gray-50"}`} style={selected ? { backgroundColor: accent, borderColor: accent } : undefined}>
