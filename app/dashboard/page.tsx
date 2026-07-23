@@ -147,6 +147,39 @@ export default function DashboardOverview() {
     }
   }, [user]);
 
+  // Once the campaign is live the tracker has done its job: after the
+  // confetti, the tile folds in on itself and slides off to the right, and
+  // the grid relaxes to three columns so the other boxes get the room.
+  // `trackerLeaving` plays the exit; `trackerGone` unmounts it (persisted, so
+  // it stays away on future visits).
+  const [trackerLeaving, setTrackerLeaving] = useState(false);
+  const [trackerGone, setTrackerGone] = useState(false);
+  useEffect(() => {
+    if (!user || user.onboardingStage !== "live") return;
+    const key = `tracker-away-${user.id}`;
+    try {
+      if (localStorage.getItem(key)) {
+        setTrackerGone(true);
+        return;
+      }
+    } catch {
+      /* storage blocked — play the animation every time, better than never */
+    }
+    // Let the confetti land first, then wave the tile off.
+    const t = setTimeout(() => setTrackerLeaving(true), 3200);
+    return () => clearTimeout(t);
+  }, [user]);
+  function trackerExitDone() {
+    setTrackerGone(true);
+    if (user) {
+      try {
+        localStorage.setItem(`tracker-away-${user.id}`, "1");
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
   async function submitFeedback() {
     const text = feedbackText.trim();
     if (!text) return;
@@ -527,7 +560,11 @@ export default function DashboardOverview() {
       )}
 
       {/* Bento — square glaze tiles, Onboarding Tracker spans both rows */}
-      <section className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section
+        className={`mt-8 grid grid-cols-1 gap-4 overflow-x-clip sm:grid-cols-2 ${
+          trackerGone ? "lg:grid-cols-3" : "lg:grid-cols-4"
+        }`}
+      >
         {/* Current ad — the REAL live creatives straight from Meta when the
             campaign's tagged, rotating through every ad (10s each); the
             personalised mock until then. */}
@@ -673,7 +710,7 @@ export default function DashboardOverview() {
                       onClick={() => setOpenLeadId(l.id)}
                       onMouseEnter={() => setHoverUncontacted(l.id)}
                       onMouseLeave={() => setHoverUncontacted(null)}
-                      className={`flex w-full items-center gap-2.5 rounded-xl bg-red-50/80 px-2.5 py-2 text-left transition duration-200 hover:bg-red-100/80 ${
+                      className={`flex w-full items-center gap-2.5 rounded-xl bg-white/40 px-2.5 py-2 text-left transition duration-200 hover:bg-white/60 ${
                         dim ? "opacity-40 blur-[1.5px]" : "opacity-100 blur-0"
                       } ${active ? "scale-[1.03]" : ""}`}
                     >
@@ -777,10 +814,19 @@ export default function DashboardOverview() {
         </div>
 
         {/* Onboarding Tracker — glazed outer with a dark inner card holding the
-            sign-up steps (a rectangle within a rectangle), spans both rows */}
+            sign-up steps (a rectangle within a rectangle), spans both rows.
+            Once live it collapses in and slides off to the right for good. */}
+        {!trackerGone && (
         <div
-          className={`${g.className} flex flex-col lg:col-start-4 lg:row-span-2 lg:row-start-1`}
+          className={`${g.className} flex flex-col lg:col-start-4 lg:row-span-2 lg:row-start-1 transition-all duration-700 ease-in ${
+            trackerLeaving
+              ? "translate-x-[130%] scale-90 opacity-0"
+              : "translate-x-0 scale-100 opacity-100"
+          }`}
           style={g.style}
+          onTransitionEnd={(e) => {
+            if (trackerLeaving && e.propertyName === "transform") trackerExitDone();
+          }}
         >
           <div className="px-5 pt-5">
             <div className="flex items-start justify-between">
@@ -933,6 +979,7 @@ export default function DashboardOverview() {
             </div>
           </div>
         </div>
+        )}
 
         {/* Ad spend running total — the glance-and-go view of budget left */}
         <div className={`${g.className} aspect-square p-5`} style={g.style}>

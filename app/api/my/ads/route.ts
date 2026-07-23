@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
-import { findById } from "@/lib/users-store";
+import { requirePaidUser } from "@/lib/api-guard";
 import {
   getAdsWithCreatives,
   getAdInsightsByAd,
@@ -13,14 +12,10 @@ import {
 // each with its creative image and its own figures for the chosen range.
 // { configured: false } until the campaign link exists.
 export async function GET(req: NextRequest) {
-  const userId = verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  }
-  const user = await findById(userId);
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  }
+  const guard = await requirePaidUser(req);
+  if (guard.error) return guard.error;
+  const user = guard.user;
+  const userId = user.id;
 
   const campaignIds = parseCampaignIds(user.metaCampaignId);
   if (!metaTokenSet() || campaignIds.length === 0) {

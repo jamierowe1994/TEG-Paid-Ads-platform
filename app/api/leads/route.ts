@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
+import { requirePaidUser } from "@/lib/api-guard";
 import {
   listLeadsForUser,
   updateLeadStage,
@@ -24,24 +24,17 @@ const STAGES: LeadStage[] = [
   "lost",
 ];
 
-function userIdFrom(req: NextRequest): string | null {
-  return verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
-}
-
 export async function GET(req: NextRequest) {
-  const userId = userIdFrom(req);
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  }
-  return NextResponse.json(await listLeadsForUser(userId));
+  const guard = await requirePaidUser(req);
+  if (guard.error) return guard.error;
+  return NextResponse.json(await listLeadsForUser(guard.user.id));
 }
 
 // Move a lead through the funnel: { leadId, stage }
 export async function PATCH(req: NextRequest) {
-  const userId = userIdFrom(req);
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  }
+  const guard = await requirePaidUser(req);
+  if (guard.error) return guard.error;
+  const userId = guard.user.id;
   const body = await req.json().catch(() => null);
   const leadId = String(body?.leadId ?? "");
   const stage = String(body?.stage ?? "") as LeadStage;

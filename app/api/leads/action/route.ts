@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
+import { requirePaidUser } from "@/lib/api-guard";
 import {
   addLeadNote,
   bookAppointment,
@@ -19,10 +19,9 @@ function cleanPostcode(raw: unknown): string | null {
 //   { leadId, action: "cancelBooking" }      — cancel the appointment
 //   { leadId, action: "update", fields }     — edit name/contact/address inline
 export async function POST(req: NextRequest) {
-  const userId = verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  }
+  const guard = await requirePaidUser(req);
+  if (guard.error) return guard.error;
+  const userId = guard.user.id;
   const body = await req.json().catch(() => null);
   const leadId = String(body?.leadId ?? "");
   const action = String(body?.action ?? "");

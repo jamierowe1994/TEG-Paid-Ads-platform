@@ -1098,24 +1098,6 @@ export default function AgentProfile({
             }
           />
           <ReadRow label="Goal" value={agent.goal || "—"} />
-          <div className="flex items-start justify-between gap-4 text-sm">
-            <span className="text-gray-400">Micro-site</span>
-            {agent.micrositeUrl ? (
-              <a
-                href={agent.micrositeUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="max-w-[65%] truncate text-right font-medium text-blue-600 hover:underline"
-                title={agent.micrositeUrl}
-              >
-                {agent.micrositeUrl.replace(/^https?:\/\//, "")}
-              </a>
-            ) : (
-              <span className="max-w-[65%] text-right font-medium text-gray-800">
-                —
-              </span>
-            )}
-          </div>
           <EditRow
             label="Location"
             defaultValue={agent.location ?? ""}

@@ -33,6 +33,19 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Base44 (the group's source of truth) has told us this person left — the
+  // account still exists for lead-history purposes but can't sign in.
+  if (user.deactivatedAt) {
+    return NextResponse.json(
+      {
+        error:
+          "This account has been deactivated. If that's a mistake, contact the team.",
+        code: "deactivated",
+      },
+      { status: 403 }
+    );
+  }
+
   const remember = body?.remember !== false; // default on
   const res = NextResponse.json({ user: toPublic(user) });
   res.cookies.set(

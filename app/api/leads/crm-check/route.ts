@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
+import { requirePaidUser } from "@/lib/api-guard";
 import {
   getLead,
   listLeadsForUser,
   setLeadCrmMatch,
 } from "@/lib/leads-store";
-import { findById } from "@/lib/users-store";
 import { rexFindContact, rexConfigured } from "@/lib/rex";
 import { atlasFindPerson, atlasConfigured } from "@/lib/atlas";
 import type { CrmMatch, Lead } from "@/lib/types";
@@ -45,14 +44,10 @@ async function checkOne(
 }
 
 export async function POST(req: NextRequest) {
-  const userId = verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  }
-  const user = await findById(userId);
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  }
+  const guard = await requirePaidUser(req);
+  if (guard.error) return guard.error;
+  const user = guard.user;
+  const userId = user.id;
 
   const isRex = REX_BRANDS.has(user.brandId);
   if (isRex && !rexConfigured()) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
+import { requirePaidUser } from "@/lib/api-guard";
 import {
   getLead,
   updateLeadStage,
@@ -23,10 +23,9 @@ const REX_BRANDS = new Set([
 // Push a lead into the brand's CRM: Atlas for Recruitment, Rex for
 // Property/Lettings/Fine & Country/Auction. Body: { leadId }.
 export async function POST(req: NextRequest) {
-  const userId = verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  }
+  const guard = await requirePaidUser(req);
+  if (guard.error) return guard.error;
+  const userId = guard.user.id;
   const body = await req.json().catch(() => null);
   const leadId = String(body?.leadId ?? "");
   if (!leadId) {

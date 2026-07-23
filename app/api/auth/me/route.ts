@@ -30,6 +30,9 @@ export async function GET(req: NextRequest) {
   if (!id) return NextResponse.json({ user: null }, { status: 401 });
   const user = await findById(id);
   if (!user) return NextResponse.json({ user: null }, { status: 401 });
+  // Deactivated (left the group, per Base44): the session dies here.
+  if (user.deactivatedAt)
+    return NextResponse.json({ user: null }, { status: 401 });
   return NextResponse.json({ user: toPublic(user) });
 }
 

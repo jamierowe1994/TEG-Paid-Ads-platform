@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
+import { requirePaidUser } from "@/lib/api-guard";
 import { getLead, addLeadNote } from "@/lib/leads-store";
 import { findById } from "@/lib/users-store";
 import {
@@ -14,10 +14,9 @@ import {
 // on the lead's notes so the timeline tells the story.
 // Body: { leadId, subject, body }
 export async function POST(req: NextRequest) {
-  const userId = verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  }
+  const guard = await requirePaidUser(req);
+  if (guard.error) return guard.error;
+  const userId = guard.user.id;
   const payload = await req.json().catch(() => null);
   const leadId = String(payload?.leadId ?? "");
   const subject = String(payload?.subject ?? "").trim();

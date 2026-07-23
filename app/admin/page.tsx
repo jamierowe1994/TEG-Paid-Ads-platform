@@ -8,6 +8,7 @@ import { packageById, PACKAGES } from "@/lib/packages";
 import { stageLabel } from "@/lib/onboarding";
 import BrandMark from "@/components/BrandMark";
 import AgentProfile from "@/components/AgentProfile";
+import AccountImport from "@/components/AccountImport";
 import PasswordInput from "@/components/PasswordInput";
 import type { UserProfile, Referral } from "@/lib/types";
 
@@ -1394,6 +1395,10 @@ export default function AdminPage() {
                 note={bestBrand ? "Demo leads until Meta is live" : "Needs lead data"}
               />
             </div>
+
+            {/* One-time launch import — pre-provision referrals-only accounts
+                for the whole group from a CSV. Super admin only. */}
+            {role === "super" && <AccountImport pass={password} />}
 
             {/* Locked out — "forgot password" asks from the login page. There's
                 no reset email yet, so the team issues a temporary password from

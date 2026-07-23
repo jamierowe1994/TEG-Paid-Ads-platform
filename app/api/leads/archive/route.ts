@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
+import { requirePaidUser } from "@/lib/api-guard";
 import { setLeadsArchived, listLeadsForUser } from "@/lib/leads-store";
 
 // Archive / unarchive a batch of the signed-in agent's leads.
 // Body: { leadIds: string[], archived: boolean }
 export async function POST(req: NextRequest) {
-  const userId = verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  }
+  const guard = await requirePaidUser(req);
+  if (guard.error) return guard.error;
+  const userId = guard.user.id;
   const body = await req.json().catch(() => null);
   const leadIds = Array.isArray(body?.leadIds)
     ? (body.leadIds as unknown[]).map(String).filter(Boolean)

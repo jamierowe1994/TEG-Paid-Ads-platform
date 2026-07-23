@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
+import { requirePaidUser } from "@/lib/api-guard";
 import { getLead, resetLeadFromRex } from "@/lib/leads-store";
 import { findById } from "@/lib/users-store";
 import { brandById } from "@/lib/brands";
@@ -11,10 +11,9 @@ import { rexConfigured, rexContactActive } from "@/lib/rex";
 // its pre-push state so they can be pushed again; if they're still active in
 // Rex, refuse and say so. Body: { leadId }.
 export async function POST(req: NextRequest) {
-  const userId = verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-  }
+  const guard = await requirePaidUser(req);
+  if (guard.error) return guard.error;
+  const userId = guard.user.id;
   const body = await req.json().catch(() => null);
   const leadId = String(body?.leadId ?? "");
   if (!leadId) {

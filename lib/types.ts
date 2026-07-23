@@ -32,6 +32,12 @@ export interface UserProfile {
   // tier — the rest of the portal is locked until they upgrade. Absent on
   // older accounts, which are treated as "paid".
   accountType?: "paid" | "referral";
+  // Pre-provisioned accounts (bulk import) sign in with the shared launch
+  // password and MUST set their own before using the portal.
+  mustResetPassword?: boolean;
+  // Set when Base44 (the source of truth for who's in the group) tells us the
+  // person has left. A deactivated account can't sign in.
+  deactivatedAt?: string | null;
   createdAt: string;
   // The Meta campaign this agent's ads run under — set by the admin, used to
   // pull per-agent stats/leads once Meta is connected.
