@@ -53,6 +53,15 @@ body {
     overflow-x: hidden;
     max-width: 100%;
   }
+
+  /* Stop the browser zooming in when a field is focused (it does this whenever
+     the field's font is under 16px). This is the single biggest cause of the
+     "jerky, zooms in" feel when typing on mobile — pin every field to 16px. */
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
 }
 
 /* Lenis smooth scroll */

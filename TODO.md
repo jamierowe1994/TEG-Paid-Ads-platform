@@ -137,9 +137,20 @@ desktop (≥1024px) renders byte-identically (existing markup scoped with `lg:`)
   cover it; three-dots menu gained a Log out item; killed all horizontal
   "play" (overflow-x hidden <lg); viewport-fit=cover added. Desktop verified
   unchanged.
-- ⬜ Still to do: responsive pass on the inner pages themselves (Overview
-  tiles, Leads funnel/board, lead modal, Profile, admin) — the shell is
-  mobile now but individual page content still needs tightening for phones.
+- 🔶 Inner-page mobile pass — in progress:
+  · ✅ (23 Jul) Overview: stats drop icons + shrink so they don't spill off
+    the right; "Connect email" is a slim toast (not the big banner); Current
+    ad hidden; Uncontacted is the first tile; glaze tiles are content-height
+    (not full-screen squares) so far less scrolling.
+  · ✅ (23 Jul) Lead modal on mobile: opens as the bottom sheet; decluttered
+    to ~one page via a "More details" toggle (hides phone/email/location/
+    enquiry/activity by default); Email button becomes a **WhatsApp** button
+    (opens wa.me directly); background scroll locked so only the sheet moves
+    (no more "freak out"); fixed a horizontal-overflow bug (grid-cols-1).
+  · ✅ (23 Jul) Global mobile smoothness: inputs pinned to 16px so focusing a
+    field no longer zooms/janks the page.
+  · ⬜ Still to do: Leads funnel/board page, Profile, admin on mobile.
+  Desktop verified unchanged throughout.
 
 ## 10. Micro-site data from base44 (later) ⬜
 Micro-site capture removed from the portal UI (Jul 2026). Eventually pull the

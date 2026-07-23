@@ -401,11 +401,13 @@ export default function DashboardOverview() {
           </h1>
         </div>
 
-        <div className="flex items-end gap-7 sm:gap-9">
+        {/* Mobile: no icons, smaller numbers, tighter gaps so all four fit on
+            the row without spilling off the right. Desktop unchanged. */}
+        <div className="flex items-end gap-4 lg:gap-9">
           {stats.map((s) => (
             <div key={s.label} className="flex items-center gap-2.5">
               <svg
-                className="h-5 w-5 shrink-0"
+                className="hidden h-5 w-5 shrink-0 lg:block"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth={1.8}
@@ -418,10 +420,10 @@ export default function DashboardOverview() {
                 {s.label === "Impressions" && <circle cx="12" cy="12" r="3" />}
               </svg>
               <div>
-                <p className="text-3xl font-semibold leading-none tracking-tight">
+                <p className="text-lg font-semibold leading-none tracking-tight lg:text-3xl">
                   {s.value}
                 </p>
-                <p className="mt-1 text-xs text-gray-500">{s.label}</p>
+                <p className="mt-1 text-[11px] text-gray-500 lg:text-xs">{s.label}</p>
               </div>
             </div>
           ))}
@@ -429,7 +431,44 @@ export default function DashboardOverview() {
       </div>
 
       {/* Connect-your-email nudge — the setup step for sending lead emails
-          from the portal. Skippable, and lives on in Profile settings. */}
+          from the portal. Skippable, and lives on in Profile settings.
+          Desktop: the full banner. Mobile: a slim toast (below), out of the
+          way. */}
+      {!user.msEmail && !emailPromptHidden && !emailPromptGone && (
+        <div className="lg:hidden">
+          <div className="mt-4 flex items-center gap-3 rounded-2xl border border-gray-200 bg-white/80 px-3.5 py-2.5 backdrop-blur">
+            <span className="text-base">✉️</span>
+            <p className="min-w-0 flex-1 text-[13px] leading-snug text-gray-600">
+              Connect your email to send from your own address.
+            </p>
+            <button
+              onClick={() => {
+                window.location.href = "/api/auth/microsoft/start";
+              }}
+              className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold text-white"
+              style={{ backgroundColor: brand.accent }}
+            >
+              Connect
+            </button>
+            <button
+              onClick={() => {
+                setEmailPromptHidden(true);
+                try {
+                  localStorage.setItem(`email-prompt-later-${user.id}`, "1");
+                } catch {
+                  /* it'll just show again next visit */
+                }
+              }}
+              aria-label="Dismiss"
+              className="shrink-0 text-gray-300 hover:text-gray-500"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
       {!user.msEmail && !emailPromptHidden && !emailPromptGone && (
         <Collapse
           open={emailPromptOpen}
@@ -446,7 +485,7 @@ export default function DashboardOverview() {
             }
           }}
         >
-          <section className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-gray-200 bg-white/70 p-5 backdrop-blur-xl">
+          <section className="mt-6 hidden flex-wrap items-center justify-between gap-4 rounded-3xl border border-gray-200 bg-white/70 p-5 backdrop-blur-xl lg:flex">
             <div className="flex items-center gap-4">
               <span
                 className="flex h-11 w-11 items-center justify-center rounded-2xl text-lg"
@@ -569,7 +608,7 @@ export default function DashboardOverview() {
             campaign's tagged, rotating through every ad (10s each); the
             personalised mock until then. */}
         {myCreatives.length > 0 ? (
-          <div className="relative aspect-square overflow-hidden rounded-3xl border border-white/10 text-white shadow-[0_2px_8px_-2px_rgba(0,0,0,0.14)]">
+          <div className="relative hidden aspect-square overflow-hidden rounded-3xl border border-white/10 text-white shadow-[0_2px_8px_-2px_rgba(0,0,0,0.14)] lg:block">
             {/* keyed on the index so each rotation fades in */}
             <div key={creativeIdx} className="fade-up absolute inset-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -630,7 +669,7 @@ export default function DashboardOverview() {
           </div>
         ) : (
           <div
-            className="relative aspect-square overflow-hidden rounded-3xl border border-white/10 p-5 text-white shadow-[0_2px_8px_-2px_rgba(0,0,0,0.14),inset_0_0_60px_rgba(0,0,0,0.35)]"
+            className="relative hidden aspect-square overflow-hidden rounded-3xl border border-white/10 p-5 text-white shadow-[0_2px_8px_-2px_rgba(0,0,0,0.14),inset_0_0_60px_rgba(0,0,0,0.35)] lg:block"
             style={{
               background: `radial-gradient(120% 120% at 15% 0%, ${brand.accent}, ${brand.accent}cc 45%, rgba(0,0,0,0.55)), ${brand.accent}`,
             }}
@@ -678,7 +717,7 @@ export default function DashboardOverview() {
 
         {/* Leads uncontacted — celebrates (in black) with a confetti pop once
             the leads have loaded and there are none to action */}
-        <div className={`${g.className} aspect-square p-5`} style={g.style}>
+        <div className={`${g.className} p-5 lg:aspect-square`} style={g.style}>
           {leadsLoaded && untouched.length === 0 ? (
             <div className="relative flex h-full flex-col items-center justify-center text-center">
               <Confetti fire />
@@ -740,7 +779,7 @@ export default function DashboardOverview() {
 
         {/* Follow-ups — leads due back today: an attempt that's come round
             again, or a reminder that's fallen due. */}
-        <div className={`${g.className} aspect-square p-5`} style={g.style}>
+        <div className={`${g.className} p-5 lg:aspect-square`} style={g.style}>
           <div className="flex h-full flex-col">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold">Follow-ups</h2>
@@ -982,7 +1021,7 @@ export default function DashboardOverview() {
         )}
 
         {/* Ad spend running total — the glance-and-go view of budget left */}
-        <div className={`${g.className} aspect-square p-5`} style={g.style}>
+        <div className={`${g.className} p-5 lg:aspect-square`} style={g.style}>
           <div className="flex h-full flex-col justify-between">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold">Ad spend</h2>

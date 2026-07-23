@@ -139,6 +139,9 @@ export function LeadModal({
   const [followAsk, setFollowAsk] = useState(false);
   const [savingFollow, setSavingFollow] = useState(false);
   const [showInterested, setShowInterested] = useState(false);
+  // Mobile only: the extra context (contact facts, interested-in, activity) is
+  // hidden by default to keep the sheet to ~one screen, revealed on demand.
+  const [mobileDetails, setMobileDetails] = useState(false);
   const [busy, setBusy] = useState(false);
 
   // Timeline.
@@ -183,6 +186,26 @@ export function LeadModal({
   const [nurtureReason, setNurtureReason] = useState("");
   const [snoozeDay, setSnoozeDay] = useState<Date | null>(null);
   const [savingSnooze, setSavingSnooze] = useState(false);
+
+  // Lock the page behind the sheet while it's open, so on mobile you can only
+  // scroll/swipe the sheet itself — the background can't drift and "freak out".
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  // A tel/WhatsApp-ready number: strip spaces/punctuation; assume UK if it
+  // starts 0 (drop the 0, prefix 44). WhatsApp deep-links need digits only.
+  const waNumber = (() => {
+    const raw = (lead.phone ?? "").replace(/[^\d+]/g, "");
+    if (!raw) return "";
+    if (raw.startsWith("+")) return raw.slice(1);
+    if (raw.startsWith("0")) return "44" + raw.slice(1);
+    return raw;
+  })();
 
   const EMAIL_TEMPLATES = [
     { name: "First touch", subject: "Following up on your enquiry", body: `Hi ${firstName},\n\nThanks for getting in touch — I'd love to help. When's a good time for a quick chat this week?\n\nBest,` },
@@ -333,12 +356,31 @@ export function LeadModal({
           </button>
         </div>
 
-        {/* Body — two columns */}
-        <div className="grid flex-1 gap-7 overflow-y-auto px-7 py-6 sm:px-8 lg:grid-cols-[1.6fr_1fr]">
+        {/* Body — one column on mobile (grid-cols-1 bounds the track so nothing
+            overflows sideways), two columns on desktop. */}
+        <div className="grid flex-1 grid-cols-1 gap-7 overflow-x-hidden overflow-y-auto px-7 py-6 sm:px-8 lg:grid-cols-[1.6fr_1fr]">
           {/* MAIN */}
           <div className="min-w-0">
-            {/* Editable facts */}
-            <div className="grid gap-3 sm:grid-cols-2">
+            {/* Mobile: a single "More details" toggle reveals the contact facts,
+                enquiry and activity — hidden by default to keep it to one page.
+                Desktop always shows everything, so the toggle is hidden there. */}
+            <button
+              onClick={() => setMobileDetails((v) => !v)}
+              className="mb-4 flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-200 py-2 text-[13px] font-medium text-gray-500 lg:hidden"
+            >
+              {mobileDetails ? "Hide details" : "More details"}
+              <svg
+                className={`h-4 w-4 transition-transform ${mobileDetails ? "rotate-180" : ""}`}
+                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
+              </svg>
+            </button>
+
+            {/* Editable facts — hidden on mobile unless "More details" is open */}
+            <div
+              className={`gap-3 sm:grid-cols-2 lg:grid ${mobileDetails ? "grid" : "hidden"}`}
+            >
               <InlineField
                 label="Phone"
                 icon={<PhoneIcon />}
@@ -358,8 +400,10 @@ export function LeadModal({
               <AddressField lead={lead} onSave={onUpdateFields} />
             </div>
 
-            {/* Interested in */}
-            <div className="mt-4 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50">
+            {/* Interested in — hidden on mobile unless "More details" is open */}
+            <div
+              className={`mt-4 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 lg:block ${mobileDetails ? "block" : "hidden"}`}
+            >
               <button
                 onClick={() => setShowInterested((v) => !v)}
                 className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
@@ -395,7 +439,31 @@ export function LeadModal({
             </div>
             <div className="mt-3 grid grid-cols-3 gap-3">
               <Tool active={panel === "call"} accent={accent} onClick={() => togglePanel("call")} icon={<PhoneIcon />} label="Call" />
-              <Tool active={panel === "email"} accent={accent} onClick={() => togglePanel("email")} icon={<MailIcon />} label="Email" />
+              {/* Mobile: WhatsApp them directly (opens their chat). Desktop: the
+                  email composer. */}
+              <a
+                href={waNumber ? `https://wa.me/${waNumber}` : undefined}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => {
+                  if (!waNumber) e.preventDefault();
+                }}
+                aria-disabled={!waNumber}
+                className={`flex flex-col items-center gap-2 rounded-2xl border border-gray-200 py-4 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 lg:hidden ${
+                  waNumber ? "" : "pointer-events-none opacity-40"
+                }`}
+              >
+                <WhatsAppIcon /> WhatsApp
+              </a>
+              <button
+                onClick={() => togglePanel("email")}
+                className={`hidden flex-col items-center gap-2 rounded-2xl border py-4 text-sm font-semibold transition lg:flex ${
+                  panel === "email" ? "text-white" : "border-gray-200 text-gray-700 hover:bg-gray-50"
+                }`}
+                style={panel === "email" ? { backgroundColor: accent, borderColor: accent } : undefined}
+              >
+                <MailIcon /> Email
+              </button>
               <Tool active={panel === "sched"} accent={accent} onClick={() => togglePanel("sched")} icon={<CalIcon />} label="Schedule" />
             </div>
 
@@ -564,8 +632,10 @@ export function LeadModal({
 
           {/* RIGHT RAIL */}
           <div className="space-y-5">
-            {/* Activity */}
-            <div className="rounded-2xl border border-gray-200">
+            {/* Activity — hidden on mobile unless "More details" is open */}
+            <div
+              className={`rounded-2xl border border-gray-200 lg:block ${mobileDetails ? "block" : "hidden"}`}
+            >
               <div className="flex items-center gap-2 px-4 pb-2 pt-4">
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Activity</span>
                 <span className="ml-auto text-[11px] font-medium text-gray-400">{events.length} events</span>
@@ -889,6 +959,9 @@ function MailIcon() {
 }
 function CalIcon() {
   return (<svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M8 2v3M16 2v3M3.5 9h17M5 4.5h14A1.5 1.5 0 0120.5 6v13A1.5 1.5 0 0119 20.5H5A1.5 1.5 0 013.5 19V6A1.5 1.5 0 015 4.5z" /></svg>);
+}
+function WhatsAppIcon() {
+  return (<svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="currentColor"><path d="M17.5 14.4c-.3-.15-1.8-.9-2.05-1-.28-.1-.48-.15-.68.15-.2.3-.78 1-.96 1.2-.18.2-.35.22-.65.08-.3-.15-1.27-.47-2.42-1.5-.9-.8-1.5-1.78-1.67-2.08-.18-.3-.02-.46.13-.6.14-.14.3-.36.45-.54.15-.18.2-.3.3-.5.1-.2.05-.38-.02-.53-.08-.15-.68-1.63-.93-2.23-.24-.58-.49-.5-.68-.51h-.58c-.2 0-.53.08-.8.38-.28.3-1.05 1.03-1.05 2.5s1.08 2.9 1.23 3.1c.15.2 2.12 3.24 5.14 4.54.72.31 1.28.5 1.71.63.72.23 1.38.2 1.9.12.58-.09 1.8-.74 2.05-1.45.25-.71.25-1.32.18-1.45-.07-.13-.27-.2-.57-.35zM12.05 21.5h-.02a9.4 9.4 0 01-4.8-1.32l-.34-.2-3.57.94.95-3.48-.22-.36a9.42 9.42 0 01-1.44-5.02c0-5.2 4.24-9.44 9.46-9.44a9.4 9.4 0 016.68 2.77 9.38 9.38 0 012.76 6.68c0 5.2-4.24 9.44-9.46 9.44zm8.04-17.5A11.36 11.36 0 0012.05.5C5.8.5.73 5.57.73 11.8c0 2 .52 3.95 1.52 5.67L.63 23.5l6.18-1.62a11.33 11.33 0 005.23 1.33h.01c6.24 0 11.32-5.07 11.32-11.3 0-3.02-1.18-5.86-3.28-8z" /></svg>);
 }
 function PinIcon() {
   return (<svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M12 21s-6.5-5.8-6.5-11a6.5 6.5 0 1113 0c0 5.2-6.5 11-6.5 11z" /><circle cx="12" cy="10" r="2.3" /></svg>);
