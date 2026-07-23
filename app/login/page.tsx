@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { logIn } from "@/lib/session";
@@ -24,10 +24,9 @@ function LoginForm() {
   // started". Prefilled hand-off from signup skips straight to the form. The
   // desktop layout ignores this entirely.
   const [started, setStarted] = useState(!!prefilled);
+  // Deliberately NOT auto-focusing the email on mobile — people should see the
+  // sheet settle before the keyboard opens, so they tap in themselves.
   const mobileEmailRef = useRef<HTMLInputElement | null>(null);
-  useEffect(() => {
-    if (started && !prefilled) mobileEmailRef.current?.focus();
-  }, [started, prefilled]);
   // Forgot password — logs an ask for the team (no reset email yet).
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotBusy, setForgotBusy] = useState(false);
@@ -234,22 +233,80 @@ function LoginForm() {
         </div>
       </main>
 
-      {/* ══ MOBILE (<lg) — welcome intro that folds into the form ══ */}
-      <div className="fixed inset-0 overflow-hidden bg-white lg:hidden">
-        {/* The form sits underneath; the welcome layer folds up to reveal it. */}
-        <div className="flex h-full flex-col justify-end px-6 pb-10">
-          <div className="mb-2 flex items-center gap-2.5">
-            <BrandMark
-              name={EXPERTS_GROUP.name}
-              accent={EXPERTS_GROUP.accent}
-              logo={EXPERTS_GROUP.logo}
-              size={30}
-            />
-            <span className="text-sm font-semibold">The Experts Group</span>
-          </div>
-          <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
-            Welcome back
+      {/* ══ MOBILE (<lg) — swirling welcome, form slides up as a bottom sheet ══ */}
+      <div className="fixed inset-0 overflow-hidden bg-[#e7e8ea] lg:hidden">
+        {/* Swirling metallic background — two slow, counter-rotating conic
+            sheens under a blur, evoking brushed chrome. */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div
+            className="absolute left-1/2 top-1/2 h-[160vmax] w-[160vmax] -translate-x-1/2 -translate-y-1/2 animate-[spin_28s_linear_infinite] blur-2xl"
+            style={{
+              background:
+                "conic-gradient(from 0deg at 50% 50%, #f4f5f7, #cfd2d8, #ffffff, #d7dae0, #eef0f3, #c7cbd2, #fafbfc, #d1d4da, #f4f5f7)",
+              opacity: 0.9,
+            }}
+          />
+          <div
+            className="absolute left-1/2 top-1/2 h-[130vmax] w-[130vmax] -translate-x-1/2 -translate-y-1/2 animate-[spin_44s_linear_infinite_reverse] blur-3xl"
+            style={{
+              background:
+                "conic-gradient(from 120deg at 50% 50%, transparent, #b9bec8aa, transparent, #ffffffcc, transparent, #aeb3bdaa, transparent)",
+              opacity: 0.7,
+            }}
+          />
+          {/* Vignette + brand whisper for depth */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background: `radial-gradient(120% 90% at 50% 0%, transparent 40%, rgba(20,22,28,0.18) 100%), radial-gradient(50% 35% at 80% 12%, ${EXPERTS_GROUP.accent}12, transparent 70%)`,
+            }}
+          />
+        </div>
+
+        {/* Welcome copy — anchored low, no icon. Fades back a touch when the
+            sign-in sheet is up so the sheet is the focus. */}
+        <div
+          className={`absolute inset-x-0 bottom-0 px-7 pb-44 transition-opacity duration-500 ${
+            started ? "opacity-40" : "opacity-100"
+          }`}
+        >
+          <h1 className="text-[34px] font-semibold leading-[1.08] tracking-tight text-gray-900 drop-shadow-sm">
+            Welcome to
+            <br />
+            The Experts Group
           </h1>
+          <p className="mt-3 max-w-[17rem] text-[15px] leading-relaxed text-gray-700">
+            Your leads, referrals and campaigns — all in one place.
+          </p>
+        </div>
+
+        {/* Get started — pinned to the bottom; hides as the sheet rises. */}
+        <div
+          className={`absolute inset-x-0 bottom-0 px-6 pb-10 transition-all duration-300 ${
+            started ? "pointer-events-none translate-y-4 opacity-0" : "opacity-100"
+          }`}
+        >
+          <button
+            onClick={() => setStarted(true)}
+            className="w-full rounded-2xl bg-gray-900 py-4 text-[15px] font-semibold text-white shadow-xl transition active:scale-[0.99]"
+          >
+            Get started
+          </button>
+        </div>
+
+        {/* Sign-in sheet — slides gently up from the bottom, over the swirl.
+            No auto-focus, so people see the page before the keyboard opens. */}
+        <div
+          className={`absolute inset-x-0 bottom-0 rounded-t-[28px] bg-white px-6 pb-10 pt-6 shadow-[0_-8px_40px_-8px_rgba(0,0,0,0.35)] transition-transform duration-[550ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+            started ? "translate-y-0" : "translate-y-full"
+          }`}
+          aria-hidden={!started}
+        >
+          {/* grab handle */}
+          <div className="mx-auto mb-5 h-1.5 w-10 rounded-full bg-gray-200" />
+          <h2 className="text-2xl font-semibold tracking-tight text-gray-900">
+            Welcome back
+          </h2>
           <p className="mt-1.5 text-sm text-gray-500">
             Sign in to your Experts Group account
           </p>
@@ -314,54 +371,6 @@ function LoginForm() {
           </div>
 
           {forgotPanel}
-        </div>
-
-        {/* Welcome intro — a clean light backdrop that folds up on "Get
-            started" to reveal the form beneath. */}
-        <div
-          className={`absolute inset-0 flex flex-col justify-end transition-all duration-500 ease-in-out ${
-            started
-              ? "pointer-events-none -translate-y-full opacity-0"
-              : "translate-y-0 opacity-100"
-          }`}
-          style={{
-            background:
-              "radial-gradient(130% 90% at 15% 10%, #ffffff 0%, #eef0f2 40%, #e4e6ea 70%, #d9dce1 100%)",
-          }}
-          aria-hidden={started}
-        >
-          {/* Soft brand-tinted sheen for a premium, non-flat backdrop */}
-          <div
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background: `radial-gradient(60% 40% at 85% 20%, ${EXPERTS_GROUP.accent}14, transparent 70%), radial-gradient(50% 40% at 20% 80%, ${EXPERTS_GROUP.accent}0d, transparent 70%)`,
-            }}
-          />
-          <div className="relative px-6 pb-10">
-            <div className="mb-4 flex items-center gap-2.5">
-              <BrandMark
-                name={EXPERTS_GROUP.name}
-                accent={EXPERTS_GROUP.accent}
-                logo={EXPERTS_GROUP.logo}
-                size={36}
-                rounded="rounded-xl"
-              />
-            </div>
-            <h1 className="text-[32px] font-semibold leading-[1.1] tracking-tight text-gray-900">
-              Welcome to
-              <br />
-              The Experts Group
-            </h1>
-            <p className="mt-3 max-w-[18rem] text-[15px] leading-relaxed text-gray-600">
-              Welcome back. Sign into your Experts Group account here.
-            </p>
-            <button
-              onClick={() => setStarted(true)}
-              className="mt-7 w-full rounded-2xl bg-gray-900 py-4 text-[15px] font-semibold text-white shadow-lg transition active:scale-[0.99]"
-            >
-              Get started
-            </button>
-          </div>
         </div>
       </div>
     </>

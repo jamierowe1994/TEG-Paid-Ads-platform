@@ -45,6 +45,16 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Mobile only: kill any horizontal "play" (sideways rubber-band / drift) so the
+   page can't be nudged left/right. Desktop (≥1024px) is untouched. */
+@media (max-width: 1023px) {
+  html,
+  body {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+}
+
 /* Lenis smooth scroll */
 html.lenis,
 html.lenis body {

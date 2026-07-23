@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Montserrat } from "next/font/google";
 import "./globals.css";
 import FeedbackWidget from "@/components/FeedbackWidget";
@@ -17,6 +17,14 @@ export const metadata: Metadata = {
   title: "The Experts Group — Paid Ads Portal",
   description:
     "Paid advertising portal for The Experts Group agents — Property, Lettings, Mortgage, Recruitment, Commercial, Fine & Country and The Auction Company.",
+};
+
+// viewport-fit=cover lets the mobile bottom nav honour the safe-area inset and
+// sit correctly against the browser chrome. No effect on desktop.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

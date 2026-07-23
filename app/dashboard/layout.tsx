@@ -133,6 +133,35 @@ export default function DashboardLayout({
     return () => window.removeEventListener("resize", on);
   }, []);
 
+  // How many pixels of the layout viewport are hidden below the *visual*
+  // viewport's bottom edge — i.e. covered by Chrome's bottom URL bar (or the
+  // keyboard). The mobile bottom nav shifts up by this so it's always visible
+  // and never slides under the browser chrome. Desktop never reads it.
+  const [bottomInset, setBottomInset] = useState(0);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    let raf = 0;
+    const update = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const hidden = Math.max(
+          0,
+          Math.round(window.innerHeight - vv.height - vv.offsetTop)
+        );
+        setBottomInset(hidden);
+      });
+    };
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      cancelAnimationFrame(raf);
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, []);
+
   useEffect(() => {
     refreshUser().then((u) => {
       if (!u) {
@@ -564,6 +593,20 @@ export default function DashboardLayout({
               </svg>
               Profile
             </button>
+            <div className="my-1 border-t border-gray-100" />
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                signOut();
+                router.push("/");
+              }}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-gray-700 active:bg-gray-50"
+            >
+              <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12H3m0 0l4-4m-4 4l4 4M13 4h5a2 2 0 012 2v12a2 2 0 01-2 2h-5" />
+              </svg>
+              Log out
+            </button>
           </div>
         </>
       )}
@@ -911,8 +954,17 @@ export default function DashboardLayout({
         )}
       </main>
 
-      {/* ══ MOBILE bottom nav (<lg): Overview · Leads · Referrals · All Ads ══ */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex h-[68px] items-stretch border-t border-gray-100 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
+      {/* ══ MOBILE bottom nav (<lg): Overview · Leads · Referrals · All Ads ══
+          Pinned to the *visual* viewport bottom (shifts up by bottomInset) so
+          Chrome's bottom URL bar can never slide over it. z-[90] keeps it above
+          page content and overlays; solid white so nothing shows through. */}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-[90] flex h-[68px] items-stretch border-t border-gray-100 bg-white pb-[env(safe-area-inset-bottom)] lg:hidden"
+        style={{
+          transform: `translateY(-${bottomInset}px)`,
+          willChange: "transform",
+        }}
+      >
         {NAV.slice(0, 4).map((item) => {
           const active = pathname === item.href;
           const locked = isReferralOnly && item.paidOnly;

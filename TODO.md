@@ -130,10 +130,16 @@ desktop (≥1024px) renders byte-identically (existing markup scoped with `lg:`)
   floating Help launcher hidden on mobile, opened from the menu instead;
   full-screen mobile search sheet + notifications sheet. Desktop chrome
   (sidebar, header, help button) fully preserved — verified at 1280px.
+- ✅ (23 Jul) Mobile login v2 + shell polish: swirling brushed-chrome welcome
+  (no icon), sign-in slides up as a bottom-sheet "pop-up footer" over the
+  swirl (no keyboard auto-open); bottom nav is now solid + pinned to the
+  *visual* viewport (visualViewport API) so Chrome's bottom URL bar can't
+  cover it; three-dots menu gained a Log out item; killed all horizontal
+  "play" (overflow-x hidden <lg); viewport-fit=cover added. Desktop verified
+  unchanged.
 - ⬜ Still to do: responsive pass on the inner pages themselves (Overview
   tiles, Leads funnel/board, lead modal, Profile, admin) — the shell is
   mobile now but individual page content still needs tightening for phones.
-  Deferred deliberately (mobile + Rex embed will evolve with the platform).
 
 ## 10. Micro-site data from base44 (later) ⬜
 Micro-site capture removed from the portal UI (Jul 2026). Eventually pull the
