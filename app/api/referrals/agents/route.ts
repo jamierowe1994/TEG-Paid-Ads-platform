@@ -3,9 +3,10 @@ import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
 import { findById, listUsers } from "@/lib/users-store";
 import {
   activePartnersForBrand,
-  locationNames,
+  locationDetails,
   teamHubConfigured,
   type TeamHubPartner,
+  type TeamHubLocation,
 } from "@/lib/team-hub";
 import {
   geocodeUk,
@@ -28,9 +29,15 @@ import {
 // The furthest a partner can be from the referral and still be offered.
 const MAX_MILES = 50;
 
-// A representative coordinate for a partner: centroid of their geocodable
-// territory outward codes, else the postcode from their home address.
-async function partnerCoord(p: TeamHubPartner): Promise<LatLng | null> {
+// A representative coordinate for a partner. Property/Lettings partners carry
+// their own territory outward codes; Fine & Country partners instead cover a
+// Location (office), so we position them from that office's postcode. Falls
+// back to their home-address postcode.
+async function partnerCoord(
+  p: TeamHubPartner,
+  locMap: Map<string, TeamHubLocation>
+): Promise<LatLng | null> {
+  // 1) Territory postcodes (Property / Lettings).
   const codes = p.territoryPostcodes.filter((c) => isOutcode(c) || extractPostcode(c));
   if (codes.length) {
     const pts = await Promise.all(
@@ -42,19 +49,45 @@ async function partnerCoord(p: TeamHubPartner): Promise<LatLng | null> {
     const c = centroid(pts);
     if (c) return c;
   }
+  // 2) Their Location office (Fine & Country) — full office postcode first,
+  //    else the centroid of the office's district outward codes.
+  const loc = p.locationId ? locMap.get(p.locationId) : null;
+  if (loc) {
+    if (loc.officePostcode) {
+      const c = await geocodePostcode(loc.officePostcode);
+      if (c) return c;
+    }
+    if (loc.districtCodes.length) {
+      const pts = await Promise.all(
+        loc.districtCodes.slice(0, 12).map((c) => geocodeOutcode(c))
+      );
+      const c = centroid(pts);
+      if (c) return c;
+    }
+  }
+  // 3) Home address postcode.
   const home = extractPostcode(p.homeAddress);
   if (home) return geocodePostcode(home);
   return null;
 }
 
 // Human coverage text for display + a keyword-ranking fallback.
-function displayArea(p: TeamHubPartner, locMap: Map<string, string>): string {
+function displayArea(
+  p: TeamHubPartner,
+  locMap: Map<string, TeamHubLocation>
+): string {
   if (p.territoryPostcodes.length) {
     const shown = p.territoryPostcodes.slice(0, 5).join(", ");
     const more = p.territoryPostcodes.length - 5;
     return more > 0 ? `${shown} +${more} more` : shown;
   }
-  if (p.locationId && locMap.get(p.locationId)) return locMap.get(p.locationId)!;
+  const loc = p.locationId ? locMap.get(p.locationId) : null;
+  if (loc?.name) return loc.name;
+  if (loc?.districtCodes.length) {
+    const shown = loc.districtCodes.slice(0, 5).join(", ");
+    const more = loc.districtCodes.length - 5;
+    return more > 0 ? `${shown} +${more} more` : shown;
+  }
   const home = p.homeAddress?.split(",").slice(-2, -1)[0]?.trim();
   return home || "their patch";
 }
@@ -81,12 +114,13 @@ export async function GET(req: NextRequest) {
         brandId as Parameters<typeof activePartnersForBrand>[0]
       );
       if (partners.length) {
-        const locMap = await locationNames(
+        const locMap = await locationDetails(
           partners.filter((p) => p.locationId).map((p) => p.locationId!)
         );
         let agents = await Promise.all(
           partners.map(async (p) => {
-            const coord = await partnerCoord(p);
+            const coord = await partnerCoord(p, locMap);
+            const loc = p.locationId ? locMap.get(p.locationId) : null;
             return {
               id: p.id,
               name: p.name,
@@ -95,7 +129,11 @@ export async function GET(req: NextRequest) {
               since: p.dateSigned ?? "",
               lat: coord?.lat,
               lng: coord?.lng,
-              territory: p.territoryPostcodes,
+              // Coverage codes for the UI: a partner's own territory, else the
+              // office's district codes (Fine & Country).
+              territory: p.territoryPostcodes.length
+                ? p.territoryPostcodes
+                : loc?.districtCodes ?? [],
               distanceMiles: null as number | null,
             };
           })

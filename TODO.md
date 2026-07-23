@@ -78,11 +78,24 @@ running and leads keep arriving against a deactivated account. Need a
 per-brand fallback address (MD or whoever handles incoming leads) that
 catches those leads so nothing is missed. Think through the full logistics.
 
-## 6. Brand-aware "closest agent" matching ⬜
-How referral routing finds the nearest agent differs by brand:
-- Property Experts + Lettings Experts → match on **territory postcodes**
-  (list to be provided) against the searched address/area.
-- Fine & Country + Recruitment Experts → match on **location** instead.
+## 6. Brand-aware "closest agent" matching ✅ (23 Jul) + bug fix
+Probed the Team Hub (Base44). Confirmed the split from the real data:
+Property (66/73) & Lettings (22/24) carry territory postcodes; Fine & Country
+(81/81) carry a location_id → a Location (office) that holds postcodes; the
+Recruitment brand has NEITHER populated.
+Built:
+- Property/Lettings → rank by their territory outward codes (as intended).
+- Fine & Country → rank by the partner's Location office: full office postcode
+  first, else the centroid of the office's district codes; display shows the
+  office name. Verified: near KT13, Weybridge office 0mi → Guildford 10mi.
+- **Bug fix**: territory_postcodes / Location postcodes come back as
+  {code, level} OBJECTS, not strings. The old code cast them to string[] and
+  crashed in `isOutcode` (s.trim), which the route swallowed and fell back to
+  portal users — so Property/Lettings matching was silently broken in
+  production (Team Hub never actually used). Now flattened to code strings.
+- ⬜ Recruitment: no territory or location data in Base44 yet, so its partners
+  can't be distance-ranked — they list unranked ("their patch") until someone
+  populates location_id (or territory) on TRE TeamMembers in the Team Hub.
 
 ## 7. Stripe ⬜
 Account exists — wire it in: taking payment for packages/ad spend, and the

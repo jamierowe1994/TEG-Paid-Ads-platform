@@ -1,5 +1,6 @@
 import "server-only";
 import type { BrandId } from "./brands";
+import { extractPostcode } from "./geo-uk";
 
 // Client for the TEG Team Hub Database API (the group-wide people/partner
 // directory, a separate Base44 app). Used to find the partners at a brand so a
@@ -126,8 +127,18 @@ export async function activePartnersForBrand(
         firstName: first,
         name: `${first} ${last}`.trim() || "Partner",
         jobTitle: (r.job_title as string) || null,
+        // Territory postcodes arrive as {code, level} objects (same shape as
+        // Location.postcodes) — flatten to the outward-code strings the geo
+        // helpers expect. Tolerates plain strings too, just in case.
         territoryPostcodes: Array.isArray(r.territory_postcodes)
-          ? (r.territory_postcodes as string[])
+          ? (r.territory_postcodes as unknown[])
+              .map((c) =>
+                typeof c === "string"
+                  ? c
+                  : String((c as { code?: string })?.code ?? "")
+              )
+              .map((s) => s.trim())
+              .filter(Boolean)
           : [],
         homeAddress: (r.home_address as string) || null,
         locationId: (r.location_id as string) || null,
@@ -136,18 +147,49 @@ export async function activePartnersForBrand(
     });
 }
 
-// Resolve Location ids → human area names (display + geocode fallback). Best
-// effort: on any error the caller just gets an empty map.
-export async function locationNames(ids: string[]): Promise<Map<string, string>> {
+// A Team Hub Location (an office/branch). Fine & Country partners cover a
+// Location rather than carrying their own territory postcodes, so this is how
+// we position them: the office's full postcode (most precise), or the centroid
+// of its district outward codes.
+export interface TeamHubLocation {
+  id: string;
+  name: string;
+  officePostcode: string | null; // full postcode pulled from office_address
+  districtCodes: string[]; // outward codes from the postcodes[] array
+}
+
+// Resolve Location ids → name + geocoding hints (display + distance ranking).
+// Best effort: on any error the caller just gets an empty map.
+export async function locationDetails(
+  ids: string[]
+): Promise<Map<string, TeamHubLocation>> {
   const uniq = [...new Set(ids.filter(Boolean))];
   if (!uniq.length) return new Map();
   try {
-    const rows: { id: string; name: string }[] = await call("search", "Location", {
+    const rows: Record<string, unknown>[] = await call("search", "Location", {
       query: { id: { $in: uniq } },
       limit: 500,
-      fields: ["id", "name"],
+      fields: ["id", "name", "postcodes", "office_address"],
     });
-    return new Map((rows || []).map((r) => [String(r.id), String(r.name ?? "")]));
+    return new Map(
+      (rows || []).map((r) => {
+        const codes = Array.isArray(r.postcodes)
+          ? (r.postcodes as { code?: string }[])
+              .map((p) => String(p?.code ?? "").trim())
+              .filter(Boolean)
+          : [];
+        const id = String(r.id);
+        return [
+          id,
+          {
+            id,
+            name: String(r.name ?? ""),
+            officePostcode: extractPostcode(String(r.office_address ?? "")),
+            districtCodes: codes,
+          } as TeamHubLocation,
+        ];
+      })
+    );
   } catch {
     return new Map();
   }
