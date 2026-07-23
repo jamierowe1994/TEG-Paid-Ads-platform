@@ -154,13 +154,15 @@ export interface CrmMatch {
 //              stage mirrors back here so the referrer can watch progress
 //  converted — the deal converted; the referral fee is now owed
 //  paid      — the referral fee has been paid out
-//  declined  — the receiving business declined it
+//  declined  — the receiving business declined it upfront
+//  lost      — accepted, but the lead didn't convert (marked lost in the funnel)
 export type ReferralStatus =
   | "pending"
   | "accepted"
   | "converted"
   | "paid"
-  | "declined";
+  | "declined"
+  | "lost";
 
 export interface Referral {
   id: string;

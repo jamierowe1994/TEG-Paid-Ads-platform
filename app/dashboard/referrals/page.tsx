@@ -38,6 +38,7 @@ const STATUS_STYLE: Record<Referral["status"], string> = {
   converted: "bg-green-50 text-green-600",
   paid: "bg-gray-900 text-white",
   declined: "bg-gray-100 text-gray-500",
+  lost: "bg-gray-100 text-gray-500",
 };
 
 function money(n: number) {
@@ -217,6 +218,14 @@ function journey(r: Referral, toBrand?: Brand): Step[] {
     return [
       { label: "Referred", done: true, current: false },
       { label: "Declined", done: false, current: true },
+    ];
+  }
+  // Accepted, then the lead didn't convert — a dead end, shown honestly.
+  if (r.status === "lost") {
+    return [
+      { label: "Referred", done: true, current: false },
+      { label: "Accepted", done: true, current: false },
+      { label: "Didn't convert", done: false, current: true },
     ];
   }
   const accepted = r.status !== "pending";
@@ -1053,8 +1062,14 @@ function ReferralRow({
       : brandById(r.toBrandId);
   const steps = journey(r, brandById(r.toBrandId));
   const accent = other?.accent ?? viewerBrand.accent;
+  // The small caption under the fee: the furthest milestone reached — but for
+  // a dead referral, name the dead end so it doesn't read as still-progressing.
   const lastDone =
-    [...steps].reverse().find((s) => s.done)?.label ?? steps[0]?.label;
+    r.status === "lost"
+      ? "Didn't convert"
+      : r.status === "declined"
+        ? "Declined"
+        : ([...steps].reverse().find((s) => s.done)?.label ?? steps[0]?.label);
 
   return (
     <button
@@ -1249,7 +1264,11 @@ function ReferralDetail({
               ? "Paid out ✓"
               : r.status === "converted"
                 ? "Converted — fee now due"
-                : "Payable once the deal completes"}
+                : r.status === "lost"
+                  ? "Lead didn't convert — no fee due"
+                  : r.status === "declined"
+                    ? "Declined — no fee due"
+                    : "Payable once the deal completes"}
           </p>
         </div>
 

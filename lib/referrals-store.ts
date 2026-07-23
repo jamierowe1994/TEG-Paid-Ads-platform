@@ -265,16 +265,22 @@ export async function syncReferralFromLead(
   }
   if (!target) return;
   const converted = stage === "converted" || stage === "pushed";
-  const status: ReferralStatus =
-    converted && target.status === "accepted" ? "converted" : target.status;
-  await patch(target.id, {
-    stage,
-    status,
-    activity:
-      status === "converted" && target.status !== "converted"
-        ? log(target, "Converted — referral fee now due")
-        : target.activity,
-  });
+  // Move the referral's own status in step with the lead — but never downgrade
+  // a converted/paid/declined referral. Only an "accepted" one flips forward
+  // to converted, or to "lost" if the lead dies; and a "lost" one comes back
+  // to "accepted" if the lead resurfaces into the funnel.
+  let status: ReferralStatus = target.status;
+  if (converted && target.status === "accepted") status = "converted";
+  else if (stage === "lost" && target.status === "accepted") status = "lost";
+  else if (stage !== "lost" && target.status === "lost") status = "accepted";
+
+  let activity = target.activity;
+  if (status !== target.status) {
+    if (status === "converted") activity = log(target, "Converted — referral fee now due");
+    else if (status === "lost") activity = log(target, "Lead marked lost — referral closed");
+    else if (status === "accepted") activity = log(target, "Lead resurfaced — back in the funnel");
+  }
+  await patch(target.id, { stage, status, activity });
 }
 
 // Pending referrals sent TO this brand by others — drives the Referrals dot.

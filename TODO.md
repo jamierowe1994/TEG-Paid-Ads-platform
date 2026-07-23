@@ -19,7 +19,16 @@ off.
   billing) instead of bouncing away; Referrals bumped to the top of the nav
   and set as the post-login landing for referral accounts. Paid accounts
   unchanged (verified both).
-- ⬜ Full referrals-experience QA pass (the flow itself working perfectly).
+- ✅ (23 Jul) Full referrals QA pass — drove the whole loop across two accounts
+  (send → cross-account receive → accept → lead created in receiver's funnel →
+  convert syncs referral → mark paid). All happy-path + edge cases pass:
+  self-brand block (400), referral-tier accounts can send, decline, double-
+  accept creates no duplicate lead, sender can't accept their own (403).
+  **Bug fixed**: a referred lead marked LOST by the receiver still showed
+  "Accepted" to the referrer (looked like it was still progressing). Added a
+  "lost" referral status — the lead's lost/resurface now syncs to the
+  referral (lost → "Didn't convert / no fee due"; resurface → back to
+  accepted), across the row, pipeline, detail banner and admin.
 - ✅ (23 Jul) Account provisioning, the buildable half:
   · One-time **launch import** button on Admin → CRM (super admin only):
     upload a CSV, map columns (first name / last name / email / mobile /

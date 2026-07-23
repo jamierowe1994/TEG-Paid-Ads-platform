@@ -191,6 +191,7 @@ const REFERRAL_STATUS_STYLE: Record<Referral["status"], string> = {
   converted: "bg-green-50 text-green-600",
   paid: "bg-gray-900 text-white",
   declined: "bg-gray-100 text-gray-500",
+  lost: "bg-gray-100 text-gray-500",
 };
 
 interface ActivityEvent {
