@@ -21,7 +21,6 @@ import { packageById } from "@/lib/packages";
 import { ONBOARDING_STAGES, stageIndex } from "@/lib/onboarding";
 import Confetti from "@/components/Confetti";
 import Collapse from "@/components/Collapse";
-import LeadSwipeStack from "@/components/LeadSwipeStack";
 import { LeadModal } from "@/app/dashboard/leads/lead-modal";
 import type { UserProfile, Lead, LeadStage } from "@/lib/types";
 
@@ -312,6 +311,26 @@ export default function DashboardOverview() {
     return buckets;
   }, [leads]);
   const weekly = weeklyBuckets.map((b) => b.length);
+
+  // Leads per day across the current week (Mon→Sun) — drives the little bar
+  // graph on the mobile overview.
+  const daily = useMemo(() => {
+    const DAY = 24 * 3600 * 1000;
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - ((start.getDay() + 6) % 7)); // back to Monday
+    const labels = ["M", "T", "W", "T", "F", "S", "S"];
+    const days = labels.map((label) => ({ label, count: 0, isToday: false }));
+    const todayIdx = Math.floor((Date.now() - start.getTime()) / DAY);
+    if (todayIdx >= 0 && todayIdx < 7) days[todayIdx].isToday = true;
+    for (const l of leads) {
+      const idx = Math.floor(
+        (new Date(l.receivedAt).getTime() - start.getTime()) / DAY,
+      );
+      if (idx >= 0 && idx < 7) days[idx].count++;
+    }
+    return days;
+  }, [leads]);
 
   const topAd = useMemo(() => {
     const counts = new Map<string, number>();
@@ -611,79 +630,54 @@ export default function DashboardOverview() {
       )}
 
       {/* ══ MOBILE overview (<lg) — swipeable Uncontacted + compact tiles ══ */}
-      <section className="mt-6 lg:hidden">
-        {/* Uncontacted — Tinder-style swipe stack */}
-        <div className="mb-3 flex items-center gap-2">
-          <h2 className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-            Uncontacted
-          </h2>
-          {leadsLoaded && untouched.length > 0 && (
-            <span className="rounded-full bg-red-500 px-2 py-0.5 text-[11px] font-semibold text-white">
-              {untouched.length}
-            </span>
-          )}
-        </div>
-        {leadsLoaded && untouched.length === 0 ? (
-          <div className="relative flex h-40 flex-col items-center justify-center overflow-hidden rounded-3xl border border-white/60 bg-white/70 text-center">
-            <Confetti fire />
-            <p className="text-2xl font-bold tracking-tight text-gray-900">
-              All caught up
-            </p>
-            <p className="mt-1 text-xs text-gray-500">No leads to action 🎉</p>
-          </div>
-        ) : (
-          <LeadSwipeStack
-            leads={untouched}
-            brand={brand}
-            onOpen={(l) => setOpenLeadId(l.id)}
-            onResurface={async (l) => {
-              const t = new Date();
-              t.setDate(t.getDate() + 1);
-              t.setHours(8, 0, 0, 0);
-              await setLeadFollowUp(l.id, t.toISOString());
-              setLeads(await fetchLeads());
-            }}
-          />
-        )}
-
-        {/* Follow-ups */}
-        {followUps.length > 0 && (
-          <div className="mt-4 rounded-3xl border border-white/60 bg-white/70 p-5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold">Follow-ups</h2>
-              <Link
-                href="/dashboard/leads"
-                className="text-xs font-medium"
-                style={{ color: brand.accent }}
+      <section className="mt-6 space-y-3 lg:hidden">
+        {/* 2×2 tile grid — Uncontacted · Follow-ups over This week · Ad spend */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* Uncontacted — the action tile (accent tint) */}
+          <button
+            type="button"
+            onClick={() => untouched[0] && setOpenLeadId(untouched[0].id)}
+            className="relative flex aspect-square flex-col items-start overflow-hidden rounded-[26px] border border-white/60 p-5 text-left transition active:scale-[0.98]"
+            style={{ backgroundColor: brand.accentSoft }}
+          >
+            {leadsLoaded && untouched.length > 0 && (
+              <span
+                className="absolute right-4 top-4 rounded-full px-2.5 py-1 text-[10px] font-semibold text-white"
+                style={{ backgroundColor: brand.accent }}
               >
-                All →
-              </Link>
-            </div>
-            <div className="mt-3 space-y-1">
-              {followUps.slice(0, 3).map((lead) => (
-                <button
-                  key={lead.id}
-                  onClick={() => setOpenLeadId(lead.id)}
-                  className="flex w-full items-center gap-2 rounded-lg py-1.5 text-left"
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">
-                      {lead.name}
-                    </span>
-                    <span className="block truncate text-[11px] text-gray-400">
-                      {lead.stage === "attempt3"
-                        ? "3 tries — ready for the funnel"
-                        : "Due for a follow-up"}
-                    </span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+                action now
+              </span>
+            )}
+            <span className="mt-1 text-[44px] font-semibold leading-none tracking-tight text-gray-900">
+              {leadsLoaded ? untouched.length : "—"}
+            </span>
+            <span className="mt-auto flex items-center gap-1 text-sm font-medium text-gray-700">
+              Uncontacted
+              {untouched.length > 0 && <TileChevron />}
+            </span>
+          </button>
 
-        {/* Leads-per-week + Ad spend — two square tiles side by side */}
-        <div className="mt-4 grid grid-cols-2 gap-3">
+          {/* Follow-ups */}
+          <button
+            type="button"
+            onClick={() => followUps[0] && setOpenLeadId(followUps[0].id)}
+            className="relative flex aspect-square flex-col items-start overflow-hidden rounded-[26px] border border-white/60 bg-white/70 p-5 text-left transition active:scale-[0.98]"
+          >
+            {leadsLoaded && followUps.length > 0 && (
+              <span className="absolute right-4 top-4 rounded-full bg-black/5 px-2.5 py-1 text-[10px] font-semibold text-gray-500">
+                due back
+              </span>
+            )}
+            <span className="mt-1 text-[44px] font-semibold leading-none tracking-tight text-gray-900">
+              {leadsLoaded ? followUps.length : "—"}
+            </span>
+            <span className="mt-auto flex items-center gap-1 text-sm font-medium text-gray-700">
+              Follow-ups
+              {followUps.length > 0 && <TileChevron />}
+            </span>
+          </button>
+
+          {/* This week — leads + trend vs last week */}
           {(() => {
             const thisWk = weekly[weekly.length - 1] ?? 0;
             const lastWk = weekly[weekly.length - 2] ?? 0;
@@ -695,15 +689,15 @@ export default function DashboardOverview() {
                   : 0;
             const up = thisWk >= lastWk;
             return (
-              <div className="flex aspect-square flex-col rounded-3xl border border-white/60 bg-white/70 p-4">
+              <div className="flex aspect-square flex-col rounded-[26px] border border-white/60 bg-white/70 p-5">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
                   This week
                 </p>
-                <p className="mt-1 text-3xl font-semibold tracking-tight text-gray-900">
+                <p className="mt-1 text-[40px] font-semibold leading-none tracking-tight text-gray-900">
                   {thisWk}
-                  <span className="ml-1 text-sm font-normal text-gray-400">
-                    lead{thisWk === 1 ? "" : "s"}
-                  </span>
+                </p>
+                <p className="mt-1 text-[11px] text-gray-400">
+                  lead{thisWk === 1 ? "" : "s"}
                 </p>
                 <div
                   className={`mt-auto flex items-center gap-1 text-sm font-semibold ${
@@ -726,17 +720,18 @@ export default function DashboardOverview() {
             );
           })()}
 
-          <div className="flex aspect-square flex-col rounded-3xl border border-white/60 bg-white/70 p-4">
+          {/* Ad spend */}
+          <div className="flex aspect-square flex-col rounded-[26px] border border-white/60 bg-white/70 p-5">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
               Ad spend
             </p>
             <p
-              className="mt-1 text-3xl font-semibold tracking-tight"
+              className="mt-1 text-[40px] font-semibold leading-none tracking-tight"
               style={{ color: brand.accent }}
             >
               £{spent}
             </p>
-            <p className="text-[11px] text-gray-400">of £{cap} this month</p>
+            <p className="mt-1 text-[11px] text-gray-400">of £{cap} this month</p>
             <div className="mt-auto">
               <div className="h-2 overflow-hidden rounded-full bg-black/5">
                 <div
@@ -751,8 +746,62 @@ export default function DashboardOverview() {
           </div>
         </div>
 
-        {/* Four stat squares — the headline totals */}
-        <div className="mt-3 grid grid-cols-2 gap-3">
+        {/* Leads this week — a little bar graph (today in brand colour) */}
+        {(() => {
+          const dayMax = Math.max(1, ...daily.map((d) => d.count));
+          const total = daily.reduce((a, d) => a + d.count, 0);
+          return (
+            <div className="rounded-[26px] border border-white/60 bg-white/70 p-5">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-gray-900">
+                  Leads this week
+                </h2>
+                <span className="rounded-full bg-black/5 px-2.5 py-1 text-[11px] font-medium text-gray-500">
+                  {total} total
+                </span>
+              </div>
+              <div className="mt-5 flex gap-3">
+                <div className="flex h-28 flex-col justify-between py-0.5 text-[10px] font-medium text-gray-300">
+                  <span>{dayMax}</span>
+                  <span>{Math.round(dayMax / 2)}</span>
+                  <span>0</span>
+                </div>
+                <div className="flex h-28 flex-1 items-end justify-between gap-2.5">
+                  {daily.map((d, i) => (
+                    <div
+                      key={i}
+                      className="flex h-full flex-1 flex-col items-center justify-end gap-2"
+                    >
+                      <div className="flex w-full flex-1 items-end">
+                        <div
+                          className="w-full rounded-md"
+                          style={{
+                            height: `${Math.max((d.count / dayMax) * 100, d.count > 0 ? 8 : 3)}%`,
+                            background: d.isToday
+                              ? brand.accent
+                              : i % 2 === 1
+                                ? "repeating-linear-gradient(45deg, #111827 0 2px, transparent 2px 5px)"
+                                : "#111827",
+                            opacity: d.count === 0 && !d.isToday ? 0.14 : 1,
+                          }}
+                        />
+                      </div>
+                      <span
+                        className={`text-[10px] font-medium ${d.isToday ? "" : "text-gray-400"}`}
+                        style={d.isToday ? { color: brand.accent } : undefined}
+                      >
+                        {d.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Headline totals — four stat squares */}
+        <div className="grid grid-cols-2 gap-3">
           {stats.map((s) => (
             <div
               key={s.label}
@@ -1359,5 +1408,21 @@ export default function DashboardOverview() {
         />
       )}
     </div>
+  );
+}
+
+// Small "go" chevron for the tappable mobile tiles.
+function TileChevron() {
+  return (
+    <svg
+      className="h-4 w-4 text-gray-400"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      viewBox="0 0 24 24"
+      aria-hidden
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 6l6 6-6 6" />
+    </svg>
   );
 }

@@ -1,17 +1,31 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 // InstallGate — funnels mobile-browser visitors into the installed PWA.
 //
-// When the portal is opened in a phone browser (not yet added to the home
-// screen), we cover the un-optimised browser view with a full-screen prompt
-// telling them to install LaunchPad. It's a SOFT lock: there's a "continue in
-// browser" escape hatch so nobody is ever hard-trapped (e.g. locked-down
-// devices, or the Microsoft OAuth-in-PWA edge case).
+// It only guards the APP itself (sign-in + the portal), NOT the public
+// marketing site. So a phone visitor can freely browse the landing page,
+// packages, sign-up — and only when they head to /login (or land anywhere in
+// the dashboard/admin in a browser) do we cover the view with a full-screen
+// prompt telling them to install LaunchPad and use that instead. It's a SOFT
+// lock: there's a "continue in browser" escape hatch so nobody is ever
+// hard-trapped (e.g. locked-down devices, or the Microsoft OAuth-in-PWA edge
+// case).
 //
 // Desktop and the already-installed PWA never see this — the component renders
-// nothing there. Prototype: lives on the capacitor-prototype branch.
+// nothing there.
+
+// The routes that ARE the app (everything else is the public marketing site,
+// which stays freely browsable in a phone browser).
+function isAppRoute(pathname: string): boolean {
+  return (
+    pathname === "/login" ||
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/admin")
+  );
+}
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -42,6 +56,7 @@ function detectPlatform(): "ios" | "android" | "other-mobile" | "desktop" {
 }
 
 export default function InstallGate() {
+  const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const [skipped, setSkipped] = useState(false);
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
@@ -61,13 +76,15 @@ export default function InstallGate() {
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
-  // Render nothing until mounted (avoids SSR/hydration mismatch), and never on
-  // desktop, the installed app, or after the user opts to continue in-browser.
-  // `?install=preview` forces the prompt to show anywhere (for reviewing it on
-  // desktop) — it can only reveal the gate, never bypass it.
+  // Render nothing until mounted (avoids SSR/hydration mismatch). `?install=
+  // preview` forces the prompt to show anywhere (for reviewing it on desktop)
+  // — it can only reveal the gate, never bypass it.
   const forced =
     mounted && new URLSearchParams(window.location.search).get("install") === "preview";
-  if (!mounted || (!forced && (skipped || isStandalone()))) return null;
+  // Never on the public marketing site (only sign-in + the portal), the
+  // installed app, or after the user opts to continue in-browser.
+  if (!mounted) return null;
+  if (!forced && (!isAppRoute(pathname) || skipped || isStandalone())) return null;
   const platform = detectPlatform() === "desktop" && forced ? "ios" : detectPlatform();
   if (platform === "desktop") return null;
 

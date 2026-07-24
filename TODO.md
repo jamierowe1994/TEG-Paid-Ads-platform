@@ -190,7 +190,25 @@ desktop (≥1024px) renders byte-identically (existing markup scoped with `lg:`)
     Call/Email/WhatsApp/Schedule — the sheet sits below the nav (z-80 vs 90),
     tapping the dimmed backdrop closes it, and "Log contact attempt" now lives
     on the page (in the sheet body) rather than in the nav.
+  · ✅ (24 Jul) Building ON the PWA (standalone mode removes the browser
+    chrome, so there's no bottom bar to fight — the visualViewport gymnastics
+    stay gone):
+    - Install gate now only guards the APP (/login, /dashboard, /admin). The
+      public marketing site (/, /signup) is freely browsable in a phone
+      browser; the "install LaunchPad" prompt only appears when they head to
+      sign in. (components/InstallGate.tsx, usePathname gate.)
+    - Bottom nav: bigger (taller pill, h-6 icons, bigger + circle), sits
+      closer to the bottom (pb reduced to safe-area+7px so it contours to the
+      phone), and is glassier — frosted bg-white/55 + backdrop-blur, not the
+      milky near-solid it was.
+    - Overview mobile re-imagined against a reference (BizLink): scrapped the
+      Tinder swipe stack. Top is now a 2×2 tile grid — Uncontacted (accent
+      tile, taps to the first one) · Follow-ups · This week (±% vs last week) ·
+      Ad spend — over a "Leads this week" bar graph (per-day bars, today in the
+      brand colour) and the four headline stat squares. (app/dashboard/page.tsx)
   · ⬜ Still to do: Leads funnel/board page, Profile, admin on mobile.
+  · ⬜ Real-iPhone check: Microsoft login *inside* the installed PWA is the one
+    path not yet tested on a real device (flagged by the PWA build session).
   Desktop verified unchanged throughout.
 
 ## 10. Micro-site data from base44 (later) ⬜
