@@ -346,6 +346,32 @@ export function LeadModal({
   const attemptNo =
     lead.stage === "new" ? 1 : lead.stage === "attempt1" ? 2 : lead.stage === "attempt2" ? 3 : 3;
 
+  // Progress pill — three contact attempts, then nurture as the fourth stage.
+  const attemptsDone =
+    lead.stage === "new"
+      ? 0
+      : lead.stage === "attempt1"
+        ? 1
+        : lead.stage === "attempt2"
+          ? 2
+          : lead.stage === "attempt3"
+            ? 3
+            : ["nurture", "converted", "pushed"].includes(lead.stage)
+              ? 4
+              : 0;
+  const progressCaption =
+    lead.stage === "converted" || lead.stage === "pushed"
+      ? "Booked ✓"
+      : lead.stage === "nurture"
+        ? "In nurture"
+        : lead.stage === "lost"
+          ? "Lost"
+          : attemptsDone === 0
+            ? "Not contacted yet"
+            : attemptsDone >= 3
+              ? "3 tries — add to nurture"
+              : `Attempt ${attemptsDone} of 3`;
+
   // `entered` drops the entrance animation class once it's finished playing.
   const [entered, setEntered] = useState(false);
   useEffect(() => {
@@ -401,11 +427,11 @@ export function LeadModal({
     >
       {/* Tick (done) + X (dismiss) — mobile only, floating on the blurred
           backdrop ABOVE the sheet's rounded top. Both close the file. */}
-      <div className="pointer-events-none absolute inset-x-0 top-[calc(env(safe-area-inset-top)+12px)] z-10 flex items-center justify-between px-6 sm:hidden">
+      <div className="pointer-events-none absolute inset-x-0 top-[calc(env(safe-area-inset-top)+20px)] z-10 flex items-center justify-between px-6 sm:hidden">
         <button
           onClick={(e) => { e.stopPropagation(); onClose(); }}
           aria-label="Done"
-          className="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500 text-white shadow-[0_6px_18px_-4px_rgba(16,185,129,0.7)] transition-transform active:scale-90"
+          className="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500 text-white shadow-[0_2px_6px_rgba(0,0,0,0.2)] transition-transform active:scale-90"
         >
           <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2.6">
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -428,7 +454,7 @@ export function LeadModal({
         // blurred, darkened dashboard shows through above it — making it read
         // as a sheet. Desktop: the centred dialog. When opened from a card it
         // expands out of that card (FLIP effect above); otherwise modal-pop.
-        className={`relative flex h-[calc(100dvh-env(safe-area-inset-top)-64px)] w-full max-w-5xl flex-col overflow-hidden rounded-t-[28px] bg-white sm:h-auto sm:max-h-[94vh] sm:rounded-3xl ${entered || origin ? "" : "modal-pop"}`}
+        className={`relative flex h-[calc(100dvh-env(safe-area-inset-top)-78px)] w-full max-w-5xl flex-col overflow-hidden rounded-t-[28px] bg-white sm:h-auto sm:max-h-[94vh] sm:rounded-3xl ${entered || origin ? "" : "modal-pop"}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header — mobile: X on top; below it the source icon (no box, sized
@@ -436,7 +462,7 @@ export function LeadModal({
             beside it, all left-aligned. */}
         {/* Header — mobile: the name + source sit right at the top of the sheet
             (the tick/X live OUTSIDE, on the backdrop above — see below). */}
-        <div className="px-6 pt-7 sm:hidden">
+        <div className="px-6 pt-9 sm:hidden">
           <div className="flex items-center gap-3.5">
             <SourceIcon source={lead.source} size={54} className="shrink-0" />
             <div className="min-w-0 leading-tight">
@@ -489,9 +515,28 @@ export function LeadModal({
               re-ordered (inquiry → log → notes → more details) without moving
               the DOM; desktop reverts to the normal block flow. */}
           <div className="flex min-w-0 flex-col lg:block">
-            {/* Address — open on mobile so it can be typed in straight away. */}
-            <div className="order-1 mb-2 mt-4 lg:hidden">
-              <AddressField lead={lead} onSave={onUpdateFields} />
+            {/* Progress pill — three contact attempts, then nurture as the
+                fourth stage. Fills as attempts are logged. (Location now lives
+                under "More details".) */}
+            <div className="order-1 mt-4 lg:hidden">
+              <div className="mb-2 flex items-center justify-between px-0.5">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Progress</span>
+                <span className="text-[12px] font-medium text-gray-600">{progressCaption}</span>
+              </div>
+              <div className="flex gap-1.5">
+                {[0, 1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="h-3 flex-1 rounded-full transition-colors"
+                    style={{ backgroundColor: i < attemptsDone ? (i === 3 ? "#d97706" : "#111827") : "#e5e7eb" }}
+                  />
+                ))}
+              </div>
+              <div className="mt-1.5 flex text-[10px] font-medium text-gray-400">
+                {["Try 1", "Try 2", "Try 3", "Nurture"].map((l) => (
+                  <span key={l} className="flex-1 text-center">{l}</span>
+                ))}
+              </div>
             </div>
 
             {/* Mobile: a single "More details" toggle reveals the contact facts,
@@ -755,8 +800,7 @@ export function LeadModal({
               <button
                 onClick={handleLogAttempt}
                 disabled={busy}
-                className="order-2 mt-1 flex w-auto items-center gap-2 self-start rounded-2xl px-5 py-3 text-[15px] font-semibold text-white shadow-[inset_0_1.5px_0_rgba(255,255,255,0.28),inset_0_-2px_3px_rgba(0,0,0,0.22),0_3px_9px_-2px_rgba(0,0,0,0.3)] transition active:scale-[0.97] disabled:opacity-40 lg:hidden"
-                style={{ backgroundColor: accent }}
+                className="order-2 mt-4 flex w-auto items-center gap-2 self-start rounded-2xl bg-gray-900 px-5 py-3 text-[15px] font-semibold text-white shadow-[inset_0_1.5px_0_rgba(255,255,255,0.18),inset_0_-2px_3px_rgba(0,0,0,0.3),0_3px_9px_-2px_rgba(0,0,0,0.35)] transition active:scale-[0.97] disabled:opacity-40 lg:hidden"
               >
                 <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 11l3 3 8-8M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h9" />
@@ -765,9 +809,43 @@ export function LeadModal({
               </button>
             )}
 
+            {/* Activity timeline — mobile (desktop keeps it in the right rail). */}
+            <div className="order-4 mt-7 lg:hidden">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Activity</span>
+                <span className="ml-auto text-[11px] font-medium text-gray-400">{events.length} events</span>
+              </div>
+              <ol className="mt-2 rounded-2xl border border-gray-200 px-2 py-1">
+                {[...events].reverse().slice(0, showAllEvents ? undefined : 4).map((e, i) => {
+                  const idx = events.length - 1 - i;
+                  return (
+                    <li key={idx}>
+                      <button onClick={() => setOpenEvent(openEvent === idx ? null : idx)} className="relative flex w-full items-start gap-3 rounded-xl px-2.5 py-2.5 pl-8 text-left transition active:bg-gray-50">
+                        <span className="absolute left-3 top-4 h-2 w-2 rounded-full ring-2 ring-white" style={{ backgroundColor: i === 0 ? "#111827" : "#D1D5DB" }} />
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-baseline gap-2">
+                            <span className="truncate text-sm font-medium text-gray-800">{e.label}</span>
+                            <span className="ml-auto shrink-0 text-[11px] tabular-nums text-gray-400">{shortDate(e.at)}</span>
+                          </span>
+                          <Expand open={openEvent === idx}>
+                            <span className="mt-1 block text-xs text-gray-500">{fullDate(e.at)}</span>
+                          </Expand>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+              {events.length > 4 && (
+                <button onClick={() => setShowAllEvents((v) => !v)} className="mt-1.5 px-1 text-xs font-medium text-gray-400">
+                  {showAllEvents ? "Show less" : `Show all ${events.length} ↓`}
+                </button>
+              )}
+            </div>
+
             {/* Notes — mobile: bigger, sits above More details / Mark as lost.
                 Desktop keeps the right-rail Notes + quick-note bar instead. */}
-            <div className="order-4 mt-6 lg:hidden">
+            <div className="order-5 mt-6 lg:hidden">
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Notes</span>
                 <span className="text-[11px] font-medium text-gray-400">{notes.length}</span>
@@ -794,8 +872,7 @@ export function LeadModal({
               <button
                 onClick={saveNote}
                 disabled={!noteText.trim() || savingNote}
-                className="mt-2 w-auto self-start rounded-xl px-5 py-2.5 text-sm font-semibold text-white shadow-[inset_0_1.5px_0_rgba(255,255,255,0.28),inset_0_-2px_3px_rgba(0,0,0,0.22),0_3px_9px_-2px_rgba(0,0,0,0.3)] transition active:scale-[0.97] disabled:opacity-40"
-                style={{ backgroundColor: accent }}
+                className="mt-2 w-auto self-start rounded-xl bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white shadow-[inset_0_1.5px_0_rgba(255,255,255,0.18),inset_0_-2px_3px_rgba(0,0,0,0.3),0_3px_9px_-2px_rgba(0,0,0,0.35)] transition active:scale-[0.97] disabled:opacity-40"
               >
                 {savingNote ? "Saving…" : "Add note"}
               </button>
@@ -823,10 +900,8 @@ export function LeadModal({
 
           {/* RIGHT RAIL */}
           <div className="space-y-5">
-            {/* Activity — hidden on mobile unless "More details" is open */}
-            <div
-              className={`rounded-2xl border border-gray-200 lg:block ${mobileDetails ? "block" : "hidden"}`}
-            >
+            {/* Activity — mobile shows this in-body (above); desktop only here */}
+            <div className="hidden rounded-2xl border border-gray-200 lg:block">
               <div className="flex items-center gap-2 px-4 pb-2 pt-4">
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Activity</span>
                 <span className="ml-auto text-[11px] font-medium text-gray-400">{events.length} events</span>
