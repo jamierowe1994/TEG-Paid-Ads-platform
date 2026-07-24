@@ -178,6 +178,12 @@ export function LeadModal({
   );
   const [booking, setBooking] = useState(false);
   const [resettingRex, setResettingRex] = useState(false);
+  // The Schedule action opens its own bottom sheet (calendar + X/tick). While
+  // it's open, tuck the bottom nav away so it can't sit over the calendar.
+  const [schedSheet, setSchedSheet] = useState(false);
+  useEffect(() => {
+    window.dispatchEvent(new Event(schedSheet ? "teg:nav-hide" : "teg:nav-show"));
+  }, [schedSheet]);
 
   // Mark-as-lost flow.
   const [lostStep, setLostStep] = useState<null | "ask" | "reason" | "date" | "funnel" | "done">(null);
@@ -218,7 +224,7 @@ export function LeadModal({
         detail: { phone: lead.phone, email: lead.email, wa: waNumber },
       }),
     );
-    const sched = () => setPanel("sched");
+    const sched = () => setSchedSheet(true);
     window.addEventListener("teg:lead-schedule", sched);
     return () => {
       window.removeEventListener("teg:lead-schedule", sched);
@@ -381,7 +387,7 @@ export function LeadModal({
       <div
         // Mobile: a bottom sheet that stops short of the top (85dvh) and never
         // grows past it. Desktop: the centred dialog, unchanged.
-        className={`relative flex h-[85dvh] w-full max-w-5xl flex-col overflow-hidden rounded-t-3xl bg-white sm:h-auto sm:max-h-[94vh] sm:rounded-3xl ${entered ? "" : "modal-pop"}`}
+        className={`relative flex h-dvh w-full max-w-5xl flex-col overflow-hidden rounded-t-3xl bg-white sm:h-auto sm:max-h-[94vh] sm:rounded-3xl ${entered ? "" : "modal-pop"}`}
         style={
           dragY
             ? {
@@ -398,7 +404,7 @@ export function LeadModal({
           onPointerMove={onGrabMove}
           onPointerUp={onGrabUp}
           onPointerCancel={onGrabUp}
-          className="flex shrink-0 touch-none cursor-grab justify-center pb-1 pt-3 active:cursor-grabbing sm:hidden"
+          className="flex shrink-0 touch-none cursor-grab justify-center pb-1 pt-[calc(env(safe-area-inset-top)+10px)] active:cursor-grabbing sm:hidden"
         >
           <span className="h-1.5 w-11 rounded-full bg-gray-300" />
         </div>
@@ -436,14 +442,27 @@ export function LeadModal({
         {/* Body — one column on mobile (grid-cols-1 bounds the track so nothing
             overflows sideways), two columns on desktop. */}
         <div className="grid flex-1 grid-cols-1 gap-7 overflow-x-hidden overflow-y-auto px-7 pt-6 pb-28 sm:px-8 lg:grid-cols-[1.6fr_1fr] lg:pb-6">
-          {/* MAIN */}
-          <div className="min-w-0">
+          {/* MAIN — on mobile this is a flex column whose children are
+              re-ordered (inquiry → log → notes → more details) without moving
+              the DOM; desktop reverts to the normal block flow. */}
+          <div className="flex min-w-0 flex-col lg:block">
+            {/* Mobile: the inquiry front-and-centre (no box) with the time it
+                came in underneath in small letters. */}
+            <div className="order-1 mb-5 text-center lg:hidden">
+              <p className="text-[22px] font-semibold leading-snug tracking-tight text-gray-900">
+                {whatFor(lead)}
+              </p>
+              <p className="mt-2 text-[12px] text-gray-400">
+                Came in {fullDate(lead.receivedAt)}
+              </p>
+            </div>
+
             {/* Mobile: a single "More details" toggle reveals the contact facts,
                 enquiry and activity — hidden by default to keep it to one page.
                 Desktop always shows everything, so the toggle is hidden there. */}
             <button
               onClick={() => setMobileDetails((v) => !v)}
-              className="mb-4 flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-200 py-2 text-[13px] font-medium text-gray-500 lg:hidden"
+              className="order-6 mb-4 mt-6 flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-200 py-2 text-[13px] font-medium text-gray-500 lg:mt-0 lg:hidden"
             >
               {mobileDetails ? "Hide details" : "More details"}
               <svg
@@ -456,7 +475,7 @@ export function LeadModal({
 
             {/* Editable facts — hidden on mobile unless "More details" is open */}
             <div
-              className={`gap-3 sm:grid-cols-2 lg:grid ${mobileDetails ? "grid" : "hidden"}`}
+              className={`order-7 gap-3 sm:grid-cols-2 lg:grid ${mobileDetails ? "grid" : "hidden"}`}
             >
               <InlineField
                 label="Phone"
@@ -479,7 +498,7 @@ export function LeadModal({
 
             {/* Interested in — hidden on mobile unless "More details" is open */}
             <div
-              className={`mt-4 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 lg:block ${mobileDetails ? "block" : "hidden"}`}
+              className={`order-8 mt-4 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 lg:block ${mobileDetails ? "block" : "hidden"}`}
             >
               <button
                 onClick={() => setShowInterested((v) => !v)}
@@ -635,7 +654,7 @@ export function LeadModal({
             </Expand>
 
             {/* Progressive next step */}
-            <div className="mt-6">
+            <div className="order-3 mt-6">
               {followAsk && onFollowUp ? (
                 <NextCard tone="accent" accent={accent} tick title={`Logged. When shall we follow up with ${firstName}?`} body="We'll rest the lead and bring it back in your follow-ups on that day.">
                   <div className="flex flex-wrap gap-2">
@@ -676,11 +695,16 @@ export function LeadModal({
                   <BigBtn accent={accent} onClick={() => onStage("new")}>Reopen lead</BigBtn>
                 </NextCard>
               ) : attemptNext[lead.stage] ? (
-                <NextCard tone="plain" accent={accent} num={attemptNo} title={`Next step — reach out to ${firstName}`} body="Fastest route: give them a quick call while the lead's hot, then log the attempt." hint="Speed wins — leads called within 30 mins are far more likely to book in.">
-                  <BigBtn primary accent={accent} onClick={() => setPanel("call")}>
-                    {`Log contact attempt ${attemptNo}`}
-                  </BigBtn>
-                </NextCard>
+                // Desktop only — on mobile it duplicated the Log Attempt
+                // button, so it's dropped there (the standalone one below
+                // handles logging).
+                <div className="hidden lg:block">
+                  <NextCard tone="plain" accent={accent} num={attemptNo} title={`Next step — reach out to ${firstName}`} body="Fastest route: give them a quick call while the lead's hot, then log the attempt." hint="Speed wins — leads called within 30 mins are far more likely to book in.">
+                    <BigBtn primary accent={accent} onClick={() => setPanel("call")}>
+                      {`Log contact attempt ${attemptNo}`}
+                    </BigBtn>
+                  </NextCard>
+                </div>
               ) : null}
 
               {lead.stage === "lost" && !lead.archivedAt && (
@@ -694,7 +718,7 @@ export function LeadModal({
               <button
                 onClick={handleLogAttempt}
                 disabled={busy}
-                className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-[15px] font-semibold text-white transition disabled:opacity-40 lg:hidden"
+                className="order-2 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-[15px] font-semibold text-white transition disabled:opacity-40 lg:hidden"
                 style={{ backgroundColor: accent }}
               >
                 <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -704,9 +728,9 @@ export function LeadModal({
               </button>
             )}
 
-            {/* Notes — mobile: bigger, sits above Mark as lost. Desktop keeps
-                the right-rail Notes + quick-note bar instead. */}
-            <div className="mt-6 lg:hidden">
+            {/* Notes — mobile: bigger, sits above More details / Mark as lost.
+                Desktop keeps the right-rail Notes + quick-note bar instead. */}
+            <div className="order-4 mt-6 lg:hidden">
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Notes</span>
                 <span className="text-[11px] font-medium text-gray-400">{notes.length}</span>
@@ -741,7 +765,7 @@ export function LeadModal({
             </div>
 
             {/* Archive / mark lost */}
-            <div className="mt-5 flex items-center justify-center gap-4">
+            <div className="order-9 mt-5 flex items-center justify-center gap-4">
               {canWork && !lead.archivedAt && (
                 <button onClick={() => { setNurtureReason(""); setLostReason(""); setLostStep("ask"); }} className="rounded-xl px-4 py-2 text-sm font-medium text-gray-400 transition hover:bg-red-50 hover:text-red-600">
                   Mark as lost
@@ -843,6 +867,69 @@ export function LeadModal({
           </button>
         </div>
       </div>
+
+      {/* Schedule — its own bottom sheet. The X (cancel) and tick (save, brand
+          colour) sit OUTSIDE the sheet on the blurred backdrop; the calendar
+          sits directly on the sheet (no box-in-a-box) and a bit bigger. */}
+      {schedSheet && (
+        <div
+          className="fixed inset-0 z-[108] flex items-end justify-center bg-gray-900/50 backdrop-blur-sm p-0 sm:items-center sm:p-6"
+          onClick={() => setSchedSheet(false)}
+        >
+          {/* Cancel (X) — top-left, on the backdrop */}
+          <button
+            onClick={() => setSchedSheet(false)}
+            aria-label="Cancel"
+            className="absolute left-4 top-[calc(env(safe-area-inset-top)+16px)] z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white text-gray-700 shadow-lg active:scale-95"
+          >
+            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+          {/* Save (tick) — top-right, brand colour, on the backdrop */}
+          <button
+            onClick={async () => { await confirmBooking(); setSchedSheet(false); }}
+            disabled={!pickedDay || !pickedTime || booking}
+            aria-label="Save"
+            className="absolute right-4 top-[calc(env(safe-area-inset-top)+16px)] z-10 flex h-12 w-12 items-center justify-center rounded-full text-white shadow-lg transition active:scale-95 disabled:opacity-40"
+            style={{ backgroundColor: accent }}
+          >
+            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2.4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4 10-11" />
+            </svg>
+          </button>
+
+          <div
+            className="w-full max-w-2xl animate-[sheet-up_0.4s_cubic-bezier(0.22,1,0.36,1)] rounded-t-3xl bg-white px-6 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-7 sm:rounded-3xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-center text-lg font-semibold tracking-tight text-gray-900">
+              {booked ? "Rearrange the time" : "Pick a day & time"}
+            </p>
+            {booked && (
+              <p className="mx-auto mt-3 w-fit rounded-xl bg-green-50 px-4 py-2 text-sm font-medium text-green-700">
+                📅 Booked for {apptLabel(lead.appointmentAt!)}
+              </p>
+            )}
+            <div className="mt-5">
+              <InlineCalendar big value={pickedDay} accent={accent} onPick={setPickedDay} />
+            </div>
+            {pickedDay && (
+              <div className="mt-6">
+                <TimePicker value={pickedTime} accent={accent} onChange={setPickedTime} />
+              </div>
+            )}
+            {booked && (
+              <button
+                onClick={() => { onCancelBooking(); setSchedSheet(false); }}
+                className="mt-5 w-full rounded-2xl py-2.5 text-sm font-medium text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              >
+                Cancel booking
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Mark-as-lost flow (kept from before) */}
       {lostStep && (
@@ -1125,7 +1212,7 @@ function TimePicker({ value, accent, onChange }: { value: string; accent: string
 }
 
 // ── Inline calendar ──
-function InlineCalendar({ value, accent, onPick }: { value: Date | null; accent: string; onPick: (d: Date) => void }) {
+function InlineCalendar({ value, accent, onPick, big }: { value: Date | null; accent: string; onPick: (d: Date) => void; big?: boolean }) {
   const [month, setMonth] = useState(() => { const d = value ?? new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -1136,21 +1223,21 @@ function InlineCalendar({ value, accent, onPick }: { value: Date | null; accent:
   const cells: (number | null)[] = [...Array<null>(firstWeekday).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
   const canPrev = new Date(year, mon, 1) > new Date(today.getFullYear(), today.getMonth(), 1);
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-3">
-      <div className="flex items-center justify-between px-1 pb-2">
-        <button disabled={!canPrev} onClick={() => setMonth(new Date(year, mon - 1, 1))} className="rounded-lg px-2 py-1 text-gray-400 hover:bg-gray-100 disabled:opacity-30" aria-label="Previous month">‹</button>
-        <span className="text-sm font-semibold">{month.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</span>
-        <button onClick={() => setMonth(new Date(year, mon + 1, 1))} className="rounded-lg px-2 py-1 text-gray-400 hover:bg-gray-100" aria-label="Next month">›</button>
+    <div className={big ? "" : "rounded-xl border border-gray-200 bg-white p-3"}>
+      <div className={`flex items-center justify-between px-1 ${big ? "pb-3" : "pb-2"}`}>
+        <button disabled={!canPrev} onClick={() => setMonth(new Date(year, mon - 1, 1))} className={`rounded-lg px-2 text-gray-400 hover:bg-gray-100 disabled:opacity-30 ${big ? "py-1 text-xl" : "py-1"}`} aria-label="Previous month">‹</button>
+        <span className={`font-semibold ${big ? "text-base" : "text-sm"}`}>{month.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</span>
+        <button onClick={() => setMonth(new Date(year, mon + 1, 1))} className={`rounded-lg px-2 text-gray-400 hover:bg-gray-100 ${big ? "py-1 text-xl" : "py-1"}`} aria-label="Next month">›</button>
       </div>
-      <div className="grid grid-cols-7 text-center text-[11px] font-medium text-gray-400">{["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (<div key={i} className="py-1">{d}</div>))}</div>
-      <div className="grid grid-cols-7 gap-1">
+      <div className={`grid grid-cols-7 text-center font-medium text-gray-400 ${big ? "text-xs" : "text-[11px]"}`}>{["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (<div key={i} className={big ? "py-1.5" : "py-1"}>{d}</div>))}</div>
+      <div className={`grid grid-cols-7 ${big ? "gap-1.5" : "gap-1"}`}>
         {cells.map((day, i) => {
           if (day === null) return <div key={i} />;
           const date = new Date(year, mon, day);
           const past = date < today;
           const selected = value && value.getFullYear() === year && value.getMonth() === mon && value.getDate() === day;
           return (
-            <button key={i} disabled={past} onClick={() => onPick(date)} className={`aspect-square rounded-lg text-sm transition ${selected ? "font-semibold text-white" : past ? "text-gray-300" : "text-gray-700 hover:bg-gray-100"}`} style={selected ? { backgroundColor: accent } : undefined}>{day}</button>
+            <button key={i} disabled={past} onClick={() => onPick(date)} className={`aspect-square rounded-xl transition ${big ? "text-[15px]" : "text-sm rounded-lg"} ${selected ? "font-semibold text-white" : past ? "text-gray-300" : "text-gray-700 hover:bg-gray-100"}`} style={selected ? { backgroundColor: accent } : undefined}>{day}</button>
           );
         })}
       </div>

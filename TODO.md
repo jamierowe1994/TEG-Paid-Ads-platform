@@ -281,6 +281,22 @@ desktop (≥1024px) renders byte-identically (existing markup scoped with `lg:`)
       navigate / tap-away.
     - The bottom bar still morphs (pinch-to-centre) into a lead's actions when
       a file opens — the "context-aware" behaviour.
+  · ✅ (24 Jul) Lead-file + nav pass 7:
+    - Brought the "+" bubble back next to the 4-icon pill (with the sliding
+      surround); it opens a quick-actions menu (Help / Profile / Log out).
+      NB: overlaps the top-right three-dots — pending a unique per-screen role.
+    - Lead file opens as a FULL window (h-dvh) instead of an 85dvh sheet, with
+      the swipe-down grab handle + safe-area top. Keeps the slide-up animation.
+    - Mobile lead body re-ordered via flexbox `order` (no DOM move, desktop
+      untouched): the inquiry sits front-and-centre with NO box + the time it
+      came in small underneath → Log Attempt → Notes → More details (moved
+      below Notes).
+    - Killed the duplicate Log Attempt: the "Next step — reach out to X" card
+      is desktop-only now; mobile keeps the single standalone Log button.
+    - Schedule/Calendar is its own bottom sheet: X (cancel) top-left and a
+      brand-colour tick (save) top-right sit OUTSIDE on the blurred backdrop;
+      the calendar sits directly on the sheet (no box-in-a-box), bigger, with
+      the time slider. Nav tucks away while it's open.
   · ⬜ Still to do: Leads funnel/board page, Profile, admin on mobile.
   · ⬜ Real-iPhone check: Microsoft login *inside* the installed PWA is the one
     path not yet tested on a real device (flagged by the PWA build session).

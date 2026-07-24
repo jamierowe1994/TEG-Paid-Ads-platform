@@ -121,6 +121,8 @@ export default function DashboardLayout({
   // Mobile-only chrome: the three-dots menu (Notifications / Help / Profile)
   // and the tap-to-open search sheet. Desktop ignores these.
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  // The bottom nav's "+" bubble menu (quick actions).
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   // Top-right overflow: a three-dots button that unrolls left into
   // notifications / help / profile / log out (icons only).
   const [topMenuOpen, setTopMenuOpen] = useState(false);
@@ -1031,7 +1033,7 @@ export default function DashboardLayout({
         {/* This wrapper pinches shut to the centre and re-opens when the bar
             morphs between the main nav and a lead's actions. */}
         <div
-          className="flex w-full items-center justify-center"
+          className="flex w-full items-center justify-center gap-2.5"
           style={{
             transform: collapsing ? "scaleX(0)" : "scaleX(1)",
             transformOrigin: "center",
@@ -1082,7 +1084,8 @@ export default function DashboardLayout({
               </button>
             </div>
           ) : (
-            <div className="relative flex w-full items-stretch rounded-full border border-white/10 bg-[#26262b] p-1.5 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.5)]">
+            <>
+            <div className="relative flex flex-1 items-stretch rounded-full border border-white/10 bg-[#26262b] p-1.5 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.5)]">
               {/* Sliding highlight — a slightly lighter surround that flows to
                   the active tab. */}
               <div
@@ -1126,9 +1129,69 @@ export default function DashboardLayout({
                 );
               })}
             </div>
+
+            {/* Separate "+" bubble — quick actions. */}
+            <button
+              onClick={() => setMobileMenuOpen((v) => !v)}
+              aria-label="Quick actions"
+              className="flex h-[62px] w-[62px] shrink-0 items-center justify-center rounded-full border border-white/10 bg-[#26262b] text-white shadow-[0_12px_34px_-8px_rgba(0,0,0,0.5)] transition active:scale-95"
+            >
+              <svg
+                className={`h-8 w-8 transition-transform duration-200 ${mobileMenuOpen ? "rotate-45" : ""}`}
+                fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+            </>
           )}
         </div>
       </div>
+
+      {/* "+" bubble menu — quick actions above the bottom nav. */}
+      {mobileMenuOpen && (
+        <>
+          <button
+            className="fixed inset-0 z-[91] cursor-default lg:hidden"
+            aria-hidden
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          <div
+            className="fixed right-4 z-[92] w-52 origin-bottom-right animate-[bubble-up_0.42s_cubic-bezier(0.34,1.56,0.64,1)] overflow-hidden rounded-2xl border border-white/10 bg-[#26262b] p-1.5 shadow-2xl lg:hidden"
+            style={{ bottom: `calc(env(safe-area-inset-bottom)/2 + 92px)` }}
+          >
+            <button
+              onClick={() => { setMobileMenuOpen(false); window.dispatchEvent(new Event("teg:toggle-help")); }}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-gray-200 active:bg-white/10"
+            >
+              <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9.25" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M12 17.25h.008v.008H12v-.008z" />
+              </svg>
+              Help
+            </button>
+            <button
+              onClick={() => { setMobileMenuOpen(false); router.push("/dashboard/profile"); }}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-gray-200 active:bg-white/10"
+            >
+              <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Profile
+            </button>
+            <div className="my-1 border-t border-white/10" />
+            <button
+              onClick={() => { setMobileMenuOpen(false); signOut(); router.push("/"); }}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-gray-200 active:bg-white/10"
+            >
+              <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12H3m0 0l4-4m-4 4l4 4M13 4h5a2 2 0 012 2v12a2 2 0 01-2 2h-5" />
+              </svg>
+              Log out
+            </button>
+          </div>
+        </>
+      )}
 
       {/* Campaign-stage toast — bigger white card with a black outline.
           Sits above the Help Centre launcher so the two never overlap. */}
