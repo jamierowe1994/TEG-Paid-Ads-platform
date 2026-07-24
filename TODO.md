@@ -166,6 +166,13 @@ desktop (≥1024px) renders byte-identically (existing markup scoped with `lg:`)
     transitionend that never fired) → "massive gap"; and 10 stacked
     backdrop-blur layers made content behind them (the onboarding card) fail to
     paint → blur now desktop-only on the glaze tiles.
+  · ✅ (24 Jul) Overview mobile re-imagined: Uncontacted is now a "Tinder for
+    leads" swipe stack (components/LeadSwipeStack.tsx) — swipe right to open the
+    file, left to resurface tomorrow, up to two cards peeking behind, counts
+    down to "All caught up". Leads-per-week + Ad spend are two square tiles side
+    by side (this-week count + % up/down vs last week). The four totals
+    (Impressions/Clicks/Leads/Converted) are square stat tiles. Desktop keeps
+    the original bento + header stats (both scoped desktop-only).
   · ⬜ Still to do: Leads funnel/board page, Profile, admin on mobile.
   Desktop verified unchanged throughout.
 

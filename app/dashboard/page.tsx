@@ -21,6 +21,7 @@ import { packageById } from "@/lib/packages";
 import { ONBOARDING_STAGES, stageIndex } from "@/lib/onboarding";
 import Confetti from "@/components/Confetti";
 import Collapse from "@/components/Collapse";
+import LeadSwipeStack from "@/components/LeadSwipeStack";
 import { LeadModal } from "@/app/dashboard/leads/lead-modal";
 import type { UserProfile, Lead, LeadStage } from "@/lib/types";
 
@@ -412,9 +413,9 @@ export default function DashboardOverview() {
           </h1>
         </div>
 
-        {/* Mobile: no icons, smaller numbers, tighter gaps so all four fit on
-            the row without spilling off the right. Desktop unchanged. */}
-        <div className="flex items-end gap-4 lg:gap-9">
+        {/* Desktop stat row. On mobile these become the four square tiles in
+            the mobile-only section below. */}
+        <div className="hidden items-end gap-4 lg:flex lg:gap-9">
           {stats.map((s) => (
             <div key={s.label} className="flex items-center gap-2.5">
               <svg
@@ -609,9 +610,167 @@ export default function DashboardOverview() {
         </section>
       )}
 
-      {/* Bento — square glaze tiles, Onboarding Tracker spans both rows */}
+      {/* ══ MOBILE overview (<lg) — swipeable Uncontacted + compact tiles ══ */}
+      <section className="mt-6 lg:hidden">
+        {/* Uncontacted — Tinder-style swipe stack */}
+        <div className="mb-3 flex items-center gap-2">
+          <h2 className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+            Uncontacted
+          </h2>
+          {leadsLoaded && untouched.length > 0 && (
+            <span className="rounded-full bg-red-500 px-2 py-0.5 text-[11px] font-semibold text-white">
+              {untouched.length}
+            </span>
+          )}
+        </div>
+        {leadsLoaded && untouched.length === 0 ? (
+          <div className="relative flex h-40 flex-col items-center justify-center overflow-hidden rounded-3xl border border-white/60 bg-white/70 text-center">
+            <Confetti fire />
+            <p className="text-2xl font-bold tracking-tight text-gray-900">
+              All caught up
+            </p>
+            <p className="mt-1 text-xs text-gray-500">No leads to action 🎉</p>
+          </div>
+        ) : (
+          <LeadSwipeStack
+            leads={untouched}
+            brand={brand}
+            onOpen={(l) => setOpenLeadId(l.id)}
+            onResurface={async (l) => {
+              const t = new Date();
+              t.setDate(t.getDate() + 1);
+              t.setHours(8, 0, 0, 0);
+              await setLeadFollowUp(l.id, t.toISOString());
+              setLeads(await fetchLeads());
+            }}
+          />
+        )}
+
+        {/* Follow-ups */}
+        {followUps.length > 0 && (
+          <div className="mt-4 rounded-3xl border border-white/60 bg-white/70 p-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold">Follow-ups</h2>
+              <Link
+                href="/dashboard/leads"
+                className="text-xs font-medium"
+                style={{ color: brand.accent }}
+              >
+                All →
+              </Link>
+            </div>
+            <div className="mt-3 space-y-1">
+              {followUps.slice(0, 3).map((lead) => (
+                <button
+                  key={lead.id}
+                  onClick={() => setOpenLeadId(lead.id)}
+                  className="flex w-full items-center gap-2 rounded-lg py-1.5 text-left"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">
+                      {lead.name}
+                    </span>
+                    <span className="block truncate text-[11px] text-gray-400">
+                      {lead.stage === "attempt3"
+                        ? "3 tries — ready for the funnel"
+                        : "Due for a follow-up"}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Leads-per-week + Ad spend — two square tiles side by side */}
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          {(() => {
+            const thisWk = weekly[weekly.length - 1] ?? 0;
+            const lastWk = weekly[weekly.length - 2] ?? 0;
+            const pct =
+              lastWk > 0
+                ? Math.round(((thisWk - lastWk) / lastWk) * 100)
+                : thisWk > 0
+                  ? 100
+                  : 0;
+            const up = thisWk >= lastWk;
+            return (
+              <div className="flex aspect-square flex-col rounded-3xl border border-white/60 bg-white/70 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                  This week
+                </p>
+                <p className="mt-1 text-3xl font-semibold tracking-tight text-gray-900">
+                  {thisWk}
+                  <span className="ml-1 text-sm font-normal text-gray-400">
+                    lead{thisWk === 1 ? "" : "s"}
+                  </span>
+                </p>
+                <div
+                  className={`mt-auto flex items-center gap-1 text-sm font-semibold ${
+                    up ? "text-green-600" : "text-red-500"
+                  }`}
+                >
+                  <svg
+                    className={`h-4 w-4 ${up ? "" : "rotate-180"}`}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2.2}
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                  </svg>
+                  {Math.abs(pct)}% {up ? "up" : "down"}
+                </div>
+                <p className="text-[11px] text-gray-400">on last week</p>
+              </div>
+            );
+          })()}
+
+          <div className="flex aspect-square flex-col rounded-3xl border border-white/60 bg-white/70 p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+              Ad spend
+            </p>
+            <p
+              className="mt-1 text-3xl font-semibold tracking-tight"
+              style={{ color: brand.accent }}
+            >
+              £{spent}
+            </p>
+            <p className="text-[11px] text-gray-400">of £{cap} this month</p>
+            <div className="mt-auto">
+              <div className="h-2 overflow-hidden rounded-full bg-black/5">
+                <div
+                  className="h-full rounded-full"
+                  style={{ width: `${spendPct}%`, backgroundColor: brand.accent }}
+                />
+              </div>
+              <p className="mt-1.5 text-[11px] font-medium text-gray-500">
+                £{spendLeft} left
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Four stat squares — the headline totals */}
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          {stats.map((s) => (
+            <div
+              key={s.label}
+              className="flex flex-col justify-center rounded-2xl border border-white/60 bg-white/70 px-4 py-3.5"
+            >
+              <p className="text-2xl font-semibold tracking-tight text-gray-900">
+                {s.value}
+              </p>
+              <p className="mt-0.5 text-xs text-gray-500">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Bento — square glaze tiles, Onboarding Tracker spans both rows.
+          Desktop only; mobile uses the tailored section above. */}
       <section
-        className={`mt-5 grid grid-cols-1 gap-3 overflow-x-clip sm:grid-cols-2 lg:mt-8 lg:gap-4 ${
+        className={`mt-5 hidden grid-cols-1 gap-3 overflow-x-clip sm:grid-cols-2 lg:mt-8 lg:grid lg:gap-4 ${
           trackerGone ? "lg:grid-cols-3" : "lg:grid-cols-4"
         }`}
       >
