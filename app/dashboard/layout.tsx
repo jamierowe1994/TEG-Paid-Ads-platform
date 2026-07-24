@@ -1018,7 +1018,7 @@ export default function DashboardLayout({
         {/* This wrapper pinches shut to the centre and re-opens when the bar
             morphs between the main nav and a lead's actions. */}
         <div
-          className="flex w-full items-stretch justify-center gap-2.5"
+          className="flex w-full items-center justify-center gap-2.5"
           style={{
             transform: collapsing ? "scaleX(0)" : "scaleX(1)",
             transformOrigin: "center",
@@ -1115,11 +1115,11 @@ export default function DashboardLayout({
               })}
             </div>
 
-            {/* Search bubble — a single circle the same height as the pill. */}
+            {/* Search bubble — a circle, same shape as the old "+" bubble. */}
             <button
               onClick={() => setMobileSearchOpen(true)}
               aria-label="Search"
-              className="flex aspect-square shrink-0 items-center justify-center rounded-full border border-white/10 bg-[#26262b] text-gray-200 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.5)] transition active:scale-95"
+              className="flex h-[62px] w-[62px] shrink-0 items-center justify-center rounded-full border border-white/10 bg-[#26262b] text-gray-200 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.5)] transition active:scale-95"
             >
               <svg className="h-[28px] w-[28px]" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                 <circle cx="11" cy="11" r="7" />
