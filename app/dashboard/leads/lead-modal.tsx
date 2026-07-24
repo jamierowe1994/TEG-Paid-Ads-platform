@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { Lead, LeadStage } from "@/lib/types";
 import type { Brand } from "@/lib/brands";
 import SourceIcon from "@/components/SourceIcon";
@@ -88,6 +88,7 @@ const attemptNext: Partial<Record<LeadStage, LeadStage>> = {
 export function LeadModal({
   lead,
   brand,
+  origin,
   pushing,
   onClose,
   onStage,
@@ -105,6 +106,7 @@ export function LeadModal({
 }: {
   lead: Lead;
   brand: Brand;
+  origin?: DOMRect | null;
   pushing: boolean;
   onClose: () => void;
   onStage: (stage: LeadStage) => void;
@@ -351,6 +353,44 @@ export function LeadModal({
     return () => clearTimeout(t);
   }, []);
 
+  // Expand-from-the-card (FLIP): if we were handed the tapped card's rect, the
+  // file starts pinned to that card (translated + scaled down) and springs out
+  // to fill the screen with a little overshoot, fading in as it grows.
+  const sheetRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = sheetRef.current;
+    if (!el || !origin) return;
+    const reset = () => {
+      el.style.transition = "";
+      el.style.transform = "";
+      el.style.opacity = "";
+      el.style.transformOrigin = "";
+    };
+    const last = el.getBoundingClientRect();
+    if (last.width === 0 || last.height === 0) return;
+    el.style.transformOrigin = "top left";
+    el.style.transform = `translate(${origin.left - last.left}px, ${origin.top - last.top}px) scale(${origin.width / last.width}, ${origin.height / last.height})`;
+    el.style.opacity = "0";
+    el.style.transition = "none";
+    void el.getBoundingClientRect(); // flush the "before" state
+    const raf = requestAnimationFrame(() => {
+      el.style.transition =
+        "transform 0.52s cubic-bezier(0.2,1.34,0.3,1), opacity 0.32s ease-out";
+      el.style.transform = "translate(0px, 0px) scale(1)";
+      el.style.opacity = "1";
+    });
+    const done = setTimeout(() => {
+      if (sheetRef.current) sheetRef.current.style.transition = "";
+    }, 600);
+    // Reset on cleanup so a StrictMode double-mount re-measures the real
+    // (untransformed) sheet rather than the shrunk one.
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(done);
+      reset();
+    };
+  }, [origin]);
+
   return (
     <div
       // z-[80] keeps the sheet + its dimmed backdrop BELOW the dashboard's
@@ -360,9 +400,11 @@ export function LeadModal({
       onClick={onClose}
     >
       <div
-        // Mobile: a bottom sheet that stops short of the top (85dvh) and never
-        // grows past it. Desktop: the centred dialog, unchanged.
-        className={`relative flex h-dvh w-full max-w-5xl flex-col overflow-hidden rounded-t-3xl bg-white sm:h-auto sm:max-h-[94vh] sm:rounded-3xl ${entered ? "" : "modal-pop"}`}
+        ref={sheetRef}
+        // Mobile: a full-height sheet. Desktop: the centred dialog. When opened
+        // from a card it expands out of that card (see the FLIP effect above);
+        // otherwise it uses the modal-pop entrance.
+        className={`relative flex h-dvh w-full max-w-5xl flex-col overflow-hidden rounded-t-3xl bg-white sm:h-auto sm:max-h-[94vh] sm:rounded-3xl ${entered || origin ? "" : "modal-pop"}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header — mobile: X on top; below it the source icon (no box, sized

@@ -138,7 +138,7 @@ function LeadTile({
   lead: Lead;
   brand: Brand;
   size: TileSize;
-  onClick: () => void;
+  onClick: (rect: DOMRect) => void;
   selectable?: boolean;
   selected?: boolean;
   onToggleSelect?: () => void;
@@ -149,9 +149,9 @@ function LeadTile({
     <div
       role="button"
       tabIndex={0}
-      onClick={onClick}
+      onClick={(e) => onClick((e.currentTarget as HTMLElement).getBoundingClientRect())}
       onKeyDown={(e) => {
-        if (e.key === "Enter") onClick();
+        if (e.key === "Enter") onClick((e.currentTarget as HTMLElement).getBoundingClientRect());
       }}
       className={`relative flex w-full cursor-pointer flex-col rounded-2xl bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${pad} ${
         selected
@@ -311,6 +311,8 @@ export default function LeadsPage() {
   const [toast, setToast] = useState("");
   const [pushing, setPushing] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
+  // The tapped card's on-screen rect, so the file can expand out of it.
+  const [openOrigin, setOpenOrigin] = useState<DOMRect | null>(null);
   const [view, setView] = useState<"active" | "lost" | "archived">("active");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [checkingCrm, setCheckingCrm] = useState(false);
@@ -901,7 +903,7 @@ export default function LeadsPage() {
                     lead={lead}
                     brand={brand}
                     size={size}
-                    onClick={() => setOpenId(lead.id)}
+                    onClick={(rect) => { setOpenOrigin(rect); setOpenId(lead.id); }}
                     selectable={view === "archived"}
                     selected={selected.has(lead.id)}
                     onToggleSelect={() => toggleSelect(lead.id)}
@@ -931,8 +933,9 @@ export default function LeadsPage() {
         <LeadModal
           lead={open}
           brand={brand}
+          origin={openOrigin}
           pushing={pushing === open.id}
-          onClose={() => setOpenId(null)}
+          onClose={() => { setOpenId(null); setOpenOrigin(null); }}
           onStage={(s) => update(open.id, s)}
           onPush={() => pushToCrm(open)}
           onAddNote={(text) => addNote(open.id, text)}
