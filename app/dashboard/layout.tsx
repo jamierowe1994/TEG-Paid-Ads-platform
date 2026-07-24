@@ -566,14 +566,34 @@ export default function DashboardLayout({
             style={{ backgroundColor: brand.accent }}
           />
         </div>
-        {/* Three-dots overflow (bigger) — unrolls left into help / profile /
-            log out. Dark to match the bottom nav. */}
-        <div className="relative flex h-12 w-12 shrink-0 items-center justify-end">
+        {/* Three-dots overflow + notifications, in one dark bubble. The dots
+            (and its unroll of help / profile / log out) sit to the left; the
+            notifications bell is the always-visible endcap on the right. */}
+        <div className="relative flex h-12 w-[92px] shrink-0 items-center justify-end">
           <div
             className="absolute right-0 top-1/2 flex -translate-y-1/2 flex-row-reverse items-center gap-0.5 overflow-hidden rounded-full bg-[#26262b] p-1 shadow-[0_6px_22px_-6px_rgba(0,0,0,0.5)] transition-[max-width] duration-[320ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
-            style={{ maxWidth: topMenuOpen ? 196 : 52 }}
+            style={{ maxWidth: topMenuOpen ? 236 : 96 }}
           >
-            {/* Dots / close — always visible on the right */}
+            {/* Notifications — always visible (far right) */}
+            <button
+              onClick={() => setBellOpen(true)}
+              aria-label="Notifications"
+              className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
+            >
+              <svg className="h-[26px] w-[26px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0" />
+              </svg>
+              {unread > 0 && (
+                <span
+                  className="absolute right-1 top-1 flex h-[17px] min-w-[17px] items-center justify-center rounded-full px-1 text-[10px] font-semibold text-white"
+                  style={{ backgroundColor: "#e11d48" }}
+                >
+                  {unread}
+                </span>
+              )}
+            </button>
+
+            {/* Dots / close — the menu toggle */}
             <button
               onClick={() => setTopMenuOpen((v) => !v)}
               aria-label={topMenuOpen ? "Close menu" : "Menu"}
@@ -998,7 +1018,7 @@ export default function DashboardLayout({
         {/* This wrapper pinches shut to the centre and re-opens when the bar
             morphs between the main nav and a lead's actions. */}
         <div
-          className="flex w-full items-center justify-center gap-2.5"
+          className="flex w-full items-stretch justify-center gap-2.5"
           style={{
             transform: collapsing ? "scaleX(0)" : "scaleX(1)",
             transformOrigin: "center",
@@ -1095,38 +1115,17 @@ export default function DashboardLayout({
               })}
             </div>
 
-            {/* Right bubble — notifications + search (the old "+" is now
-                context-driven; on the app it's what you most need: find + get
-                told). */}
-            <div className="flex shrink-0 items-center gap-0.5 rounded-full border border-white/10 bg-[#26262b] p-1.5 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.5)]">
-              <button
-                onClick={() => setBellOpen(true)}
-                aria-label="Notifications"
-                className="relative flex h-12 w-12 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
-              >
-                <svg className="h-[26px] w-[26px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                  <path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0" />
-                </svg>
-                {unread > 0 && (
-                  <span
-                    className="absolute right-1 top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-semibold text-white"
-                    style={{ backgroundColor: "#e11d48" }}
-                  >
-                    {unread}
-                  </span>
-                )}
-              </button>
-              <button
-                onClick={() => setMobileSearchOpen(true)}
-                aria-label="Search"
-                className="flex h-12 w-12 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
-              >
-                <svg className="h-[26px] w-[26px]" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                  <circle cx="11" cy="11" r="7" />
-                  <path d="M21 21l-4.3-4.3" />
-                </svg>
-              </button>
-            </div>
+            {/* Search bubble — a single circle the same height as the pill. */}
+            <button
+              onClick={() => setMobileSearchOpen(true)}
+              aria-label="Search"
+              className="flex aspect-square shrink-0 items-center justify-center rounded-full border border-white/10 bg-[#26262b] text-gray-200 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.5)] transition active:scale-95"
+            >
+              <svg className="h-[28px] w-[28px]" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M21 21l-4.3-4.3" />
+              </svg>
+            </button>
             </>
           )}
         </div>
