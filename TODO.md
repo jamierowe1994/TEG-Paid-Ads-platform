@@ -252,6 +252,19 @@ desktop (≥1024px) renders byte-identically (existing markup scoped with `lg:`)
     existing alpha pin) for the iOS glass/clear-mode look. Placeholder until the
     proper icon is designed. NB: iOS caches home-screen icons — remove & re-add
     the icon to see the new one.
+  · ✅ (24 Jul) Nav + list polish pass 5:
+    - Uncontacted / Follow-ups list sheet now sits ABOVE the nav (z-95) with a
+      white gradient bar across the bottom, so the dark nav no longer cuts the
+      rows — names slide up from under the white bar.
+    - Lead-action nav is icons-only now (dropped Call/Email/WhatsApp/Schedule
+      labels), evenly padded with more room at the ends, and the WhatsApp glyph
+      bumped up so all four read the same size.
+    - Nav morph animation: the bar now pinches shut to the centre, swaps its
+      buttons while hidden, then re-opens from the middle outwards (a scaleX
+      collapse/expand state machine) — same on open and close.
+    - Nav tucks away (slides down) whenever the notes field is focused / the
+      keyboard is up, via teg:nav-hide / teg:nav-show events; comes back on
+      blur or when the sheet closes.
   · ⬜ Still to do: Leads funnel/board page, Profile, admin on mobile.
   · ⬜ Real-iPhone check: Microsoft login *inside* the installed PWA is the one
     path not yet tested on a real device (flagged by the PWA build session).

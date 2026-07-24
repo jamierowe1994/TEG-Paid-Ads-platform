@@ -223,6 +223,8 @@ export function LeadModal({
     return () => {
       window.removeEventListener("teg:lead-schedule", sched);
       window.dispatchEvent(new Event("teg:lead-close"));
+      // If we unmount while a field was focused, make sure the nav comes back.
+      window.dispatchEvent(new Event("teg:nav-show"));
     };
   }, [lead.phone, lead.email, waNumber]);
 
@@ -671,6 +673,8 @@ export function LeadModal({
               <textarea
                 value={noteText}
                 onChange={(e) => setNoteText(e.target.value)}
+                onFocus={() => window.dispatchEvent(new Event("teg:nav-hide"))}
+                onBlur={() => window.dispatchEvent(new Event("teg:nav-show"))}
                 rows={3}
                 placeholder="Add a note…"
                 className="mt-2 w-full rounded-xl border border-gray-200 bg-white p-3 text-[15px] outline-none focus:border-gray-900"

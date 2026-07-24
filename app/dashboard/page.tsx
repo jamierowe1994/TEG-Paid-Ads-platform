@@ -1415,11 +1415,11 @@ export default function DashboardOverview() {
           lead file. */}
       {leadList && (
         <div
-          className="fixed inset-0 z-[70] flex items-end bg-gray-900/40 lg:hidden"
+          className="fixed inset-0 z-[95] flex items-end bg-gray-900/40 lg:hidden"
           onClick={() => setLeadList(null)}
         >
           <div
-            className="w-full animate-[sheet-up_0.4s_cubic-bezier(0.22,1,0.36,1)] overflow-hidden rounded-t-3xl bg-white"
+            className="relative w-full animate-[sheet-up_0.4s_cubic-bezier(0.22,1,0.36,1)] overflow-hidden rounded-t-3xl bg-white"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-6 pb-3 pt-5">
@@ -1441,7 +1441,7 @@ export default function DashboardOverview() {
                 </button>
               </div>
             </div>
-            <div className="max-h-[64vh] overflow-y-auto px-3 pb-[calc(env(safe-area-inset-bottom)+120px)] pt-1">
+            <div className="max-h-[64vh] overflow-y-auto px-3 pb-[calc(env(safe-area-inset-bottom)+52px)] pt-1">
               {leadList.leads.length === 0 ? (
                 <p className="py-12 text-center text-sm text-gray-400">
                   Nothing here right now 🎉
@@ -1477,6 +1477,13 @@ export default function DashboardOverview() {
                 ))
               )}
             </div>
+
+            {/* White bar across the bottom — masks where the nav sits and lets
+                the names slide up from underneath it. */}
+            <div
+              className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-white via-white to-transparent"
+              style={{ height: "calc(env(safe-area-inset-bottom) + 56px)" }}
+            />
           </div>
         </div>
       )}
