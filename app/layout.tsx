@@ -17,6 +17,21 @@ export const metadata: Metadata = {
   title: "The Experts Group — Paid Ads Portal",
   description:
     "Paid advertising portal for The Experts Group agents — Property, Lettings, Mortgage, Recruitment, Commercial, Fine & Country and The Auction Company.",
+  // Standalone PWA config (prototype). appleWebApp.capable is what makes iOS
+  // Safari launch the home-screen icon full-screen with no browser chrome —
+  // the same on-screen result as a Capacitor native wrapper.
+  applicationName: "LP",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "LP",
+    statusBarStyle: "black-translucent",
+  },
+  // Explicit legacy Apple tag for older iOS versions (iOS <18 needs the
+  // apple-prefixed name; iOS 18+ reads the standard mobile-web-app-capable).
+  other: {
+    "apple-mobile-web-app-capable": "yes",
+  },
 };
 
 // viewport-fit=cover lets the mobile bottom nav honour the safe-area inset and
@@ -25,6 +40,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: "#e31f36",
 };
 
 export default function RootLayout({
