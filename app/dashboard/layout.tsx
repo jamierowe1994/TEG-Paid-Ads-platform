@@ -121,9 +121,24 @@ export default function DashboardLayout({
   // Mobile-only chrome: the three-dots menu (Notifications / Help / Profile)
   // and the tap-to-open search sheet. Desktop ignores these.
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
-  // The mobile search: opens as a bar over the nav, then slides up (searchUp)
-  // when the field is focused so you can see what you're typing.
+  // searchShown drives the enter/exit transition: the bar folds out of the
+  // search circle on open and folds back into it on close (kept mounted a
+  // beat longer so the fold-back can play). searchUp raises the bar above the
+  // keyboard and lifts a clean canvas underneath once the field is focused.
+  const [searchShown, setSearchShown] = useState(false);
   const [searchUp, setSearchUp] = useState(false);
+  const openSearch = () => {
+    setMobileSearchOpen(true);
+    requestAnimationFrame(() => requestAnimationFrame(() => setSearchShown(true)));
+  };
+  const closeSearch = () => {
+    setSearchShown(false);
+    setSearchUp(false);
+    window.setTimeout(() => {
+      setMobileSearchOpen(false);
+      setQuery("");
+    }, 380);
+  };
   // Top-right overflow: a three-dots button that unrolls left into
   // notifications / help / profile / log out (icons only).
   const [topMenuOpen, setTopMenuOpen] = useState(false);
@@ -708,97 +723,116 @@ export default function DashboardLayout({
         </div>
       )}
 
-      {/* Mobile search sheet — full screen, reuses the same search state */}
-      {mobileSearchOpen && (() => {
-        const closeSearch = () => {
-          setMobileSearchOpen(false);
-          setSearchUp(false);
-          setQuery("");
-        };
-        return (
-          <div className="lg:hidden">
-            {/* Dimmed backdrop — the nav sits behind it. Tap to bounce back. */}
-            <button
-              aria-hidden
-              className="fixed inset-0 z-[94] cursor-default bg-gray-900/25"
-              onClick={closeSearch}
-            />
-            {/* The search bar (dark glass) + a results sheet that rises above it
-                once you tap in. Anchored to the bottom; slides up on focus. */}
-            <div
-              className="fixed inset-x-3 z-[96]"
-              style={{
-                bottom: searchUp ? "46vh" : "calc(env(safe-area-inset-bottom)/2 + 8px)",
-                transition: "bottom 0.44s cubic-bezier(0.34,1.5,0.5,1)",
-              }}
-            >
-              {/* Results — white sheet, only once you're typing / focused */}
-              {searchUp && (
-                <div className="mb-2 max-h-[34vh] origin-bottom animate-[modal-pop_0.34s_cubic-bezier(0.22,1,0.36,1)] overflow-y-auto rounded-3xl border border-gray-100 bg-white p-2 shadow-2xl">
-                  {!q ? (
-                    <p className="px-3 py-8 text-center text-sm text-gray-400">
-                      Search for a lead, a referral, or a page.
-                    </p>
-                  ) : !hasResults ? (
-                    <p className="px-3 py-8 text-center text-sm text-gray-400">
-                      No matches for “{query}”.
-                    </p>
-                  ) : (
-                    <>
-                      {search.leads.length > 0 && (
-                        <SearchGroup label="Leads">
-                          {search.leads.map((l) => (
-                            <SearchRow key={l.id} icon="✨" title={l.name} sub={`via ${l.source} · ${l.stage}`} onClick={() => { closeSearch(); go(`/dashboard/leads?lead=${l.id}`); }} />
-                          ))}
-                        </SearchGroup>
-                      )}
-                      {search.referrals.length > 0 && (
-                        <SearchGroup label="Referrals">
-                          {search.referrals.map((r) => (
-                            <SearchRow key={r.id} icon="↩︎" title={r.leadName} sub={`${r.direction === "received" ? "From" : "To"} ${brandById(r.direction === "received" ? r.fromBrandId : r.toBrandId)?.shortName ?? ""}`} onClick={() => { closeSearch(); go("/dashboard/referrals"); }} />
-                          ))}
-                        </SearchGroup>
-                      )}
-                      {search.pages.length > 0 && (
-                        <SearchGroup label="Pages">
-                          {search.pages.map((p) => (
-                            <SearchRow key={p.href} icon="→" title={p.label} sub="Go to page" onClick={() => { closeSearch(); go(p.href); }} />
-                          ))}
-                        </SearchGroup>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
+      {/* Mobile search — the bar folds out of the search circle (pushing the
+          nav off to the left), then rises above the keyboard onto a clean
+          canvas once you tap in. */}
+      {mobileSearchOpen && (
+        <div className="lg:hidden">
+          {/* Blackout — clear while the bar unfolds so you can watch the nav
+              slide off, then blurs everything the moment you start typing. */}
+          <button
+            aria-hidden
+            onClick={closeSearch}
+            className="fixed inset-0 z-[93] cursor-default transition-[background-color,backdrop-filter,opacity] duration-[360ms] ease-out"
+            style={{
+              opacity: searchShown ? 1 : 0,
+              backgroundColor: searchUp ? "rgba(9,9,11,0.32)" : "rgba(9,9,11,0)",
+              backdropFilter: searchUp ? "blur(18px)" : "blur(0px)",
+              WebkitBackdropFilter: searchUp ? "blur(18px)" : "blur(0px)",
+            }}
+          />
 
-              {/* The bar — dark glass, expands out of the search circle */}
-              <div className="flex origin-right animate-[search-pop_0.4s_cubic-bezier(0.34,1.56,0.64,1)] items-center gap-3 rounded-full border border-white/10 bg-[rgba(28,28,32,0.72)] px-5 py-4 text-gray-200 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.14)] backdrop-blur-2xl backdrop-saturate-150">
-                <svg className="h-6 w-6 shrink-0 text-gray-300" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                  <circle cx="11" cy="11" r="7" />
-                  <path d="M21 21l-4.3-4.3" />
-                </svg>
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onFocus={() => setSearchUp(true)}
-                  onKeyDown={(e) => { if (e.key === "Enter") { openFirstResult(); closeSearch(); } }}
-                  placeholder="Search leads, referrals, pages…"
-                  className="min-w-0 flex-1 bg-transparent text-[15px] text-white outline-none placeholder:text-gray-400"
-                />
-                <button
-                  onClick={query ? () => setQuery("") : closeSearch}
-                  aria-label={query ? "Clear" : "Close search"}
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-gray-300 active:bg-white/10"
-                >
-                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
-                  </svg>
-                </button>
-              </div>
+          {/* Clean canvas — a solid panel that rises under the box on focus so
+              what you're typing reads against a calm surface, not blur. Holds
+              the live results. */}
+          <div
+            className="fixed inset-x-0 bottom-0 z-[94] overflow-hidden rounded-t-[34px] border-t border-white/70 bg-[#f4f4f5]/95 backdrop-blur-2xl shadow-[0_-24px_60px_-24px_rgba(0,0,0,0.4)]"
+            style={{
+              height: "64vh",
+              transform: searchShown && searchUp ? "translateY(0)" : "translateY(101%)",
+              transition: "transform 0.5s cubic-bezier(0.32,1.5,0.4,1)",
+            }}
+          >
+            <div className="h-full overflow-y-auto px-4 pb-[46vh] pt-7">
+              {!q ? (
+                <p className="px-3 py-10 text-center text-sm text-gray-400">
+                  Search for a lead, a referral, or a page.
+                </p>
+              ) : !hasResults ? (
+                <p className="px-3 py-10 text-center text-sm text-gray-400">
+                  No matches for “{query}”.
+                </p>
+              ) : (
+                <>
+                  {search.leads.length > 0 && (
+                    <SearchGroup label="Leads">
+                      {search.leads.map((l) => (
+                        <SearchRow key={l.id} icon="✨" title={l.name} sub={`via ${l.source} · ${l.stage}`} onClick={() => { closeSearch(); go(`/dashboard/leads?lead=${l.id}`); }} />
+                      ))}
+                    </SearchGroup>
+                  )}
+                  {search.referrals.length > 0 && (
+                    <SearchGroup label="Referrals">
+                      {search.referrals.map((r) => (
+                        <SearchRow key={r.id} icon="↩︎" title={r.leadName} sub={`${r.direction === "received" ? "From" : "To"} ${brandById(r.direction === "received" ? r.fromBrandId : r.toBrandId)?.shortName ?? ""}`} onClick={() => { closeSearch(); go("/dashboard/referrals"); }} />
+                      ))}
+                    </SearchGroup>
+                  )}
+                  {search.pages.length > 0 && (
+                    <SearchGroup label="Pages">
+                      {search.pages.map((p) => (
+                        <SearchRow key={p.href} icon="→" title={p.label} sub="Go to page" onClick={() => { closeSearch(); go(p.href); }} />
+                      ))}
+                    </SearchGroup>
+                  )}
+                </>
+              )}
             </div>
           </div>
-        );
-      })()}
+
+          {/* The bar — folds out of / back into the search circle (origin right),
+              and rides up above the keyboard when the field is focused. */}
+          <div
+            className="fixed inset-x-3 z-[96]"
+            style={{
+              bottom: searchUp ? "42vh" : "calc(env(safe-area-inset-bottom)/2 + 8px)",
+              transition: "bottom 0.5s cubic-bezier(0.32,1.5,0.4,1)",
+            }}
+          >
+            <div
+              className="flex items-center gap-3 rounded-full border border-white/10 bg-[rgba(28,28,32,0.82)] px-5 py-4 text-gray-200 shadow-[0_16px_40px_-10px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.15)] backdrop-blur-2xl backdrop-saturate-150"
+              style={{
+                transformOrigin: "right center",
+                transform: searchShown ? "scaleX(1)" : "scaleX(0.14)",
+                opacity: searchShown ? 1 : 0,
+                transition: "transform 0.44s cubic-bezier(0.34,1.55,0.5,1), opacity 0.28s ease",
+              }}
+            >
+              <svg className="h-6 w-6 shrink-0 text-gray-300" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M21 21l-4.3-4.3" />
+              </svg>
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onFocus={() => setSearchUp(true)}
+                onKeyDown={(e) => { if (e.key === "Enter") { openFirstResult(); closeSearch(); } }}
+                placeholder="Search leads, referrals, pages…"
+                className="min-w-0 flex-1 bg-transparent text-[15px] text-white outline-none placeholder:text-gray-400"
+              />
+              <button
+                onClick={query ? () => setQuery("") : closeSearch}
+                aria-label={query ? "Clear" : "Close search"}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-gray-300 transition-transform active:scale-90 active:bg-white/10"
+              >
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Top bar controls (desktop only) ── */}
       <header className="fixed left-[240px] right-0 top-0 z-40 hidden h-16 items-center justify-between gap-3 px-6 lg:flex">
@@ -1059,7 +1093,14 @@ export default function DashboardLayout({
             </div>
           ) : (
             <>
-            <div className="relative flex flex-1 items-stretch rounded-full border border-white/10 bg-[rgba(28,28,32,0.68)] backdrop-blur-2xl backdrop-saturate-150 p-1.5 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.14),inset_0_-1px_0_rgba(0,0,0,0.25)]">
+            <div
+              className="relative flex flex-1 items-stretch rounded-full border border-white/10 bg-[rgba(28,28,32,0.68)] backdrop-blur-2xl backdrop-saturate-150 p-1.5 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.14),inset_0_-1px_0_rgba(0,0,0,0.25)]"
+              style={{
+                transform: searchShown ? "translateX(-135%)" : "translateX(0)",
+                opacity: searchShown ? 0 : 1,
+                transition: "transform 0.44s cubic-bezier(0.34,1.5,0.5,1), opacity 0.3s ease",
+              }}
+            >
               {/* Sliding highlight — a slightly lighter surround that flows to
                   the active tab. */}
               <div
@@ -1105,9 +1146,10 @@ export default function DashboardLayout({
 
             {/* Search bubble — a circle, same shape as the old "+" bubble. */}
             <button
-              onClick={() => setMobileSearchOpen(true)}
+              onClick={openSearch}
               aria-label="Search"
-              className="flex h-[65px] w-[65px] shrink-0 items-center justify-center rounded-full border border-white/10 bg-[rgba(28,28,32,0.68)] backdrop-blur-2xl backdrop-saturate-150 text-gray-200 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.14),inset_0_-1px_0_rgba(0,0,0,0.25)] transition-transform duration-[300ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] active:scale-[0.88]"
+              className="flex h-[65px] w-[65px] shrink-0 items-center justify-center rounded-full border border-white/10 bg-[rgba(28,28,32,0.68)] backdrop-blur-2xl backdrop-saturate-150 text-gray-200 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.14),inset_0_-1px_0_rgba(0,0,0,0.25)] transition-[transform,opacity] duration-[300ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] active:scale-[0.88]"
+              style={{ opacity: searchShown ? 0 : 1 }}
             >
               <svg className="h-[28px] w-[28px]" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                 <circle cx="11" cy="11" r="7" />
