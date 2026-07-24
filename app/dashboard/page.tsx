@@ -1420,7 +1420,7 @@ export default function DashboardOverview() {
           onClick={() => setLeadList(null)}
         >
           <div
-            className="relative w-full animate-[sheet-up_0.4s_cubic-bezier(0.22,1,0.36,1)] overflow-hidden rounded-t-3xl bg-white"
+            className="relative w-full animate-[sheet-up_0.46s_cubic-bezier(0.34,1.56,0.64,1)] overflow-hidden rounded-t-3xl bg-white"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-6 pb-3 pt-5">

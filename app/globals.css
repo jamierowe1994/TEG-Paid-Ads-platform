@@ -504,7 +504,8 @@ h5 {
   }
 }
 .modal-pop {
-  animation: modal-pop 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+  /* Springy overshoot so sheets/footers pop up with a little bounce. */
+  animation: modal-pop 0.42s cubic-bezier(0.34, 1.48, 0.5, 1) both;
 }
 
 /* Overview bar-graph bars growing up from the baseline on load. */

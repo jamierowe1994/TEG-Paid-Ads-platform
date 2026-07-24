@@ -900,7 +900,7 @@ export function LeadModal({
           </button>
 
           <div
-            className="w-full max-w-2xl animate-[sheet-up_0.4s_cubic-bezier(0.22,1,0.36,1)] rounded-t-3xl bg-white px-6 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-7 sm:rounded-3xl"
+            className="w-full max-w-2xl animate-[sheet-up_0.46s_cubic-bezier(0.34,1.56,0.64,1)] rounded-t-3xl bg-white px-6 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-7 sm:rounded-3xl"
             onClick={(e) => e.stopPropagation()}
           >
             <p className="text-center text-lg font-semibold tracking-tight text-gray-900">

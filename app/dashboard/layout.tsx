@@ -571,7 +571,7 @@ export default function DashboardLayout({
             notifications bell is the always-visible endcap on the right. */}
         <div className="relative flex h-12 w-[92px] shrink-0 items-center justify-end">
           <div
-            className="absolute right-0 top-1/2 flex -translate-y-1/2 flex-row-reverse items-center gap-0.5 overflow-hidden rounded-full bg-[#26262b] p-1 shadow-[0_6px_22px_-6px_rgba(0,0,0,0.5)] transition-[max-width] duration-[320ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
+            className="absolute right-0 top-1/2 flex -translate-y-1/2 flex-row-reverse items-center gap-0.5 overflow-hidden rounded-full bg-[rgba(28,28,32,0.68)] backdrop-blur-2xl backdrop-saturate-150 p-1 shadow-[0_6px_22px_-6px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.14)] transition-[max-width] duration-[320ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
             style={{ maxWidth: topMenuOpen ? 236 : 96 }}
           >
             {/* Notifications — always visible (far right) */}
@@ -1026,7 +1026,7 @@ export default function DashboardLayout({
           }}
         >
           {showLead ? (
-            <div className="flex w-full items-stretch rounded-full border border-white/10 bg-[#26262b] p-1.5 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.5)]">
+            <div className="flex w-full items-stretch rounded-full border border-white/10 bg-[rgba(28,28,32,0.68)] backdrop-blur-2xl backdrop-saturate-150 p-1.5 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.14),inset_0_-1px_0_rgba(0,0,0,0.25)]">
               <a
                 href={leadNav?.phone ? `tel:${leadNav.phone}` : undefined}
                 aria-label="Call"
@@ -1070,7 +1070,7 @@ export default function DashboardLayout({
             </div>
           ) : (
             <>
-            <div className="relative flex flex-1 items-stretch rounded-full border border-white/10 bg-[#26262b] p-1.5 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.5)]">
+            <div className="relative flex flex-1 items-stretch rounded-full border border-white/10 bg-[rgba(28,28,32,0.68)] backdrop-blur-2xl backdrop-saturate-150 p-1.5 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.14),inset_0_-1px_0_rgba(0,0,0,0.25)]">
               {/* Sliding highlight — a slightly lighter surround that flows to
                   the active tab. */}
               <div
@@ -1119,7 +1119,7 @@ export default function DashboardLayout({
             <button
               onClick={() => setMobileSearchOpen(true)}
               aria-label="Search"
-              className="flex h-[65px] w-[65px] shrink-0 items-center justify-center rounded-full border border-white/10 bg-[#26262b] text-gray-200 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.5)] transition active:scale-95"
+              className="flex h-[65px] w-[65px] shrink-0 items-center justify-center rounded-full border border-white/10 bg-[rgba(28,28,32,0.68)] backdrop-blur-2xl backdrop-saturate-150 text-gray-200 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.14),inset_0_-1px_0_rgba(0,0,0,0.25)] transition-transform duration-[300ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] active:scale-[0.88]"
             >
               <svg className="h-[28px] w-[28px]" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                 <circle cx="11" cy="11" r="7" />
