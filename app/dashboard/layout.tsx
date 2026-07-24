@@ -127,33 +127,18 @@ export default function DashboardLayout({
   // keyboard and lifts a clean canvas underneath once the field is focused.
   const [searchShown, setSearchShown] = useState(false);
   const [searchUp, setSearchUp] = useState(false);
-  // iOS pins position:fixed to the LAYOUT viewport, so when the keyboard opens
-  // and Safari scrolls the page, our top-anchored bar drifts off-screen. We
-  // pin it back to the top of the VISUAL viewport by writing the offset
-  // straight to the node (a ref, never state — so no re-render on scroll).
   const searchWrapRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!mobileSearchOpen) return;
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const el = searchWrapRef.current;
-    const apply = () => {
-      if (searchWrapRef.current) searchWrapRef.current.style.top = `${vv.offsetTop}px`;
-    };
-    apply();
-    vv.addEventListener("resize", apply);
-    vv.addEventListener("scroll", apply);
-    return () => {
-      vv.removeEventListener("resize", apply);
-      vv.removeEventListener("scroll", apply);
-      if (el) el.style.top = "";
-    };
-  }, [mobileSearchOpen]);
+  // We focus the field ourselves with { preventScroll: true } so iOS never
+  // scrolls the (about-to-fly-to-the-top) input into view — that scroll was
+  // what pushed the bar off-screen AND, together with the old visualViewport
+  // repositioning, left the keyboard stuck as just its accessory bar.
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const openSearch = () => {
     setMobileSearchOpen(true);
     requestAnimationFrame(() => requestAnimationFrame(() => setSearchShown(true)));
   };
   const closeSearch = () => {
+    searchInputRef.current?.blur();
     setSearchShown(false);
     setSearchUp(false);
     window.setTimeout(() => {
@@ -803,8 +788,17 @@ export default function DashboardLayout({
                 <path d="M21 21l-4.3-4.3" />
               </svg>
               <input
+                ref={searchInputRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                onPointerDown={(e) => {
+                  // Take focus ourselves, without letting iOS scroll to the
+                  // input — otherwise the flying bar gets pushed off-screen and
+                  // the keyboard fails to present.
+                  e.preventDefault();
+                  setSearchUp(true);
+                  searchInputRef.current?.focus({ preventScroll: true });
+                }}
                 onFocus={() => setSearchUp(true)}
                 onKeyDown={(e) => { if (e.key === "Enter") { openFirstResult(); closeSearch(); } }}
                 placeholder="Search leads, referrals, pages…"
