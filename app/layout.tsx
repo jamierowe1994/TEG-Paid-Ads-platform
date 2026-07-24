@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Montserrat } from "next/font/google";
 import "./globals.css";
 import FeedbackWidget from "@/components/FeedbackWidget";
+import InstallGate from "@/components/InstallGate";
 
 // Body font: Montserrat (Experts Group brand typeface).
 // Heading font: "Uni Text" — a custom font supplied by the client. Until the
@@ -53,6 +54,7 @@ export default function RootLayout({
       <body>
         {children}
         <FeedbackWidget />
+        <InstallGate />
       </body>
     </html>
   );
