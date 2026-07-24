@@ -399,42 +399,45 @@ export function LeadModal({
       className="fixed inset-0 z-[80] flex items-end justify-center bg-gray-950/60 p-0 backdrop-blur-md sm:items-center sm:bg-gray-900/50 sm:p-6 sm:backdrop-blur-none"
       onClick={onClose}
     >
+      {/* Tick (done) + X (dismiss) — mobile only, floating on the blurred
+          backdrop ABOVE the sheet's rounded top. Both close the file. */}
+      <div className="pointer-events-none absolute inset-x-0 top-[calc(env(safe-area-inset-top)+12px)] z-10 flex items-center justify-between px-6 sm:hidden">
+        <button
+          onClick={(e) => { e.stopPropagation(); onClose(); }}
+          aria-label="Done"
+          className="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500 text-white shadow-[0_6px_18px_-4px_rgba(16,185,129,0.7)] transition-transform active:scale-90"
+        >
+          <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2.6">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onClose(); }}
+          aria-label="Close"
+          className="pointer-events-auto flex h-12 w-12 items-center justify-center text-white transition-transform active:scale-90"
+        >
+          <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2.4">
+            <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
+      </div>
+
       <div
         ref={sheetRef}
         // Mobile: a tall bottom sheet that stops just short of the top so the
         // blurred, darkened dashboard shows through above it — making it read
         // as a sheet. Desktop: the centred dialog. When opened from a card it
         // expands out of that card (FLIP effect above); otherwise modal-pop.
-        className={`relative flex h-[calc(100dvh-42px)] w-full max-w-5xl flex-col overflow-hidden rounded-t-[28px] bg-white sm:h-auto sm:max-h-[94vh] sm:rounded-3xl ${entered || origin ? "" : "modal-pop"}`}
+        className={`relative flex h-[calc(100dvh-env(safe-area-inset-top)-64px)] w-full max-w-5xl flex-col overflow-hidden rounded-t-[28px] bg-white sm:h-auto sm:max-h-[94vh] sm:rounded-3xl ${entered || origin ? "" : "modal-pop"}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header — mobile: X on top; below it the source icon (no box, sized
             to the three text lines) with name / received-via / date grouped
             beside it, all left-aligned. */}
-        <div className="px-6 pt-[calc(env(safe-area-inset-top)+14px)] sm:hidden">
-          {/* Green tick (done) top-left, X (dismiss) top-right — both close. */}
-          <div className="flex items-center justify-between">
-            <button
-              onClick={onClose}
-              aria-label="Done"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500 text-white shadow-[0_4px_12px_-3px_rgba(16,185,129,0.6)] transition-transform active:scale-90"
-            >
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.6">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-            </button>
-            <button
-              onClick={onClose}
-              aria-label="Close"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition-transform active:scale-90 active:bg-gray-200"
-            >
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
-              </svg>
-            </button>
-          </div>
-          {/* Name + source — pushed well down the sheet so it breathes. */}
-          <div className="mt-9 flex items-center gap-3.5">
+        {/* Header — mobile: the name + source sit right at the top of the sheet
+            (the tick/X live OUTSIDE, on the backdrop above — see below). */}
+        <div className="px-6 pt-7 sm:hidden">
+          <div className="flex items-center gap-3.5">
             <SourceIcon source={lead.source} size={54} className="shrink-0" />
             <div className="min-w-0 leading-tight">
               <div className="flex flex-wrap items-center gap-2">

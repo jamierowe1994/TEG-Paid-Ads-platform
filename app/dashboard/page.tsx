@@ -451,8 +451,9 @@ export default function DashboardOverview() {
             })}
           </p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-            Morning, {user.name.split(" ")[0]}{" "}
-            <span className="wave-hand" role="img" aria-label="waving hand">
+            Morning, {user.name.split(" ")[0]}
+            {/* Wave — desktop only; it doesn't suit the tighter mobile header. */}
+            <span className="wave-hand ml-2 hidden lg:inline" role="img" aria-label="waving hand">
               👋
             </span>
           </h1>

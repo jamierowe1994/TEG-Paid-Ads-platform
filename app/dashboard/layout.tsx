@@ -127,6 +127,28 @@ export default function DashboardLayout({
   // keyboard and lifts a clean canvas underneath once the field is focused.
   const [searchShown, setSearchShown] = useState(false);
   const [searchUp, setSearchUp] = useState(false);
+  // iOS pins position:fixed to the LAYOUT viewport, so when the keyboard opens
+  // and Safari scrolls the page, our top-anchored bar drifts off-screen. We
+  // pin it back to the top of the VISUAL viewport by writing the offset
+  // straight to the node (a ref, never state — so no re-render on scroll).
+  const searchWrapRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!mobileSearchOpen) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const el = searchWrapRef.current;
+    const apply = () => {
+      if (searchWrapRef.current) searchWrapRef.current.style.top = `${vv.offsetTop}px`;
+    };
+    apply();
+    vv.addEventListener("resize", apply);
+    vv.addEventListener("scroll", apply);
+    return () => {
+      vv.removeEventListener("resize", apply);
+      vv.removeEventListener("scroll", apply);
+      if (el) el.style.top = "";
+    };
+  }, [mobileSearchOpen]);
   const openSearch = () => {
     setMobileSearchOpen(true);
     requestAnimationFrame(() => requestAnimationFrame(() => setSearchShown(true)));
@@ -746,6 +768,7 @@ export default function DashboardLayout({
           {/* Bar + results as one unit. Folds out at the bottom, then flies to
               the top on focus so the keyboard never covers it. */}
           <div
+            ref={searchWrapRef}
             className="fixed inset-x-3 top-0 z-[96]"
             style={{
               transform: searchUp
@@ -754,9 +777,10 @@ export default function DashboardLayout({
               transition: "transform 0.52s cubic-bezier(0.32,1.42,0.4,1)",
             }}
           >
-            {/* The bar — folds out of / back into the search circle (origin right). */}
+            {/* The bar — folds out of / back into the search circle (origin
+                right). Milky dark glass, matching the nav. */}
             <div
-              className="flex items-center gap-3 rounded-full border border-white/10 bg-[rgba(28,28,32,0.86)] px-5 py-4 text-gray-200 shadow-[0_16px_40px_-10px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.15)] backdrop-blur-2xl backdrop-saturate-150"
+              className="flex items-center gap-3 rounded-full border border-white/10 bg-[rgba(28,28,32,0.68)] px-5 py-4 text-gray-200 shadow-[0_16px_40px_-10px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.14),inset_0_-1px_0_rgba(0,0,0,0.25)] backdrop-blur-2xl backdrop-saturate-150"
               style={{
                 transformOrigin: "right center",
                 transform: searchShown ? "scaleX(1)" : "scaleX(0.14)",
