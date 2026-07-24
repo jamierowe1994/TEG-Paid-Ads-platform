@@ -121,8 +121,6 @@ export default function DashboardLayout({
   // Mobile-only chrome: the three-dots menu (Notifications / Help / Profile)
   // and the tap-to-open search sheet. Desktop ignores these.
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
-  // The bottom nav's "+" bubble menu (quick actions).
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   // Top-right overflow: a three-dots button that unrolls left into
   // notifications / help / profile / log out (icons only).
   const [topMenuOpen, setTopMenuOpen] = useState(false);
@@ -554,76 +552,43 @@ export default function DashboardLayout({
       {/* Pull-to-refresh (mobile) — drag down from the top to re-check leads */}
       <PullToRefresh onRefresh={doRefresh} />
 
-      {/* ══ MOBILE top bar (<lg): blends with the page — search left, page
-          title + a short underline in the middle, bell right. Scrolls away with
-          the page. pt clears the phone's status bar / notch in standalone (the
-          safe-area inset) plus breathing room so the icons never sit up under
-          the clock. ══ */}
-      <div className="relative z-40 flex items-center justify-between bg-[#f6f6f7] px-2 pb-2 pt-[calc(env(safe-area-inset-top)+16px)] lg:hidden">
-        <button
-          onClick={() => setMobileSearchOpen(true)}
-          aria-label="Search"
-          className="flex h-11 w-11 items-center justify-center rounded-full text-gray-700 active:bg-black/5"
-        >
-          <svg className="h-[26px] w-[26px]" fill="none" stroke="currentColor" strokeWidth={1.9} viewBox="0 0 24 24">
-            <circle cx="11" cy="11" r="7" />
-            <path d="M21 21l-4.3-4.3" strokeLinecap="round" />
-          </svg>
-        </button>
-        <div className="flex flex-col items-center">
-          <span className="text-sm font-semibold text-gray-900">
+      {/* ══ MOBILE top bar (<lg): the page title on the LEFT, and a three-dots
+          overflow on the right that unrolls into help / profile / log out.
+          Search + notifications now live in the bottom bar. Scrolls away with
+          the page; pt clears the status bar / notch in standalone. ══ */}
+      <div className="relative z-40 flex items-center justify-between bg-[#f6f6f7] px-3 pb-2 pt-[calc(env(safe-area-inset-top)+16px)] lg:hidden">
+        <div className="flex flex-col items-start">
+          <span className="text-xl font-semibold tracking-tight text-gray-900">
             {NAV.find((n) => n.href === pathname)?.label ?? brand.name}
           </span>
           <span
-            className="mt-1 h-[3px] w-6 rounded-full"
+            className="mt-1 h-[3px] w-7 rounded-full"
             style={{ backgroundColor: brand.accent }}
           />
         </div>
-        {/* Three-dots overflow — unrolls left into notifications / help /
-            profile / log out. Dark to match the bottom nav. */}
-        <div className="relative flex h-11 w-11 shrink-0 items-center justify-end">
+        {/* Three-dots overflow (bigger) — unrolls left into help / profile /
+            log out. Dark to match the bottom nav. */}
+        <div className="relative flex h-12 w-12 shrink-0 items-center justify-end">
           <div
             className="absolute right-0 top-1/2 flex -translate-y-1/2 flex-row-reverse items-center gap-0.5 overflow-hidden rounded-full bg-[#26262b] p-1 shadow-[0_6px_22px_-6px_rgba(0,0,0,0.5)] transition-[max-width] duration-[320ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
-            style={{ maxWidth: topMenuOpen ? 232 : 44 }}
+            style={{ maxWidth: topMenuOpen ? 196 : 52 }}
           >
             {/* Dots / close — always visible on the right */}
             <button
               onClick={() => setTopMenuOpen((v) => !v)}
               aria-label={topMenuOpen ? "Close menu" : "Menu"}
-              className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
+              className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
             >
               {topMenuOpen ? (
-                <svg className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <svg className="h-[26px] w-[26px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
                 </svg>
               ) : (
-                <svg className="h-[22px] w-[22px]" fill="currentColor" viewBox="0 0 24 24">
-                  <circle cx="5" cy="12" r="1.7" />
-                  <circle cx="12" cy="12" r="1.7" />
-                  <circle cx="19" cy="12" r="1.7" />
+                <svg className="h-[26px] w-[26px]" fill="currentColor" viewBox="0 0 24 24">
+                  <circle cx="5" cy="12" r="1.9" />
+                  <circle cx="12" cy="12" r="1.9" />
+                  <circle cx="19" cy="12" r="1.9" />
                 </svg>
-              )}
-              {!topMenuOpen && unread > 0 && (
-                <span
-                  className="absolute -right-0.5 -top-0.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full px-1 text-[10px] font-semibold text-white"
-                  style={{ backgroundColor: brand.accent }}
-                >
-                  {unread}
-                </span>
-              )}
-            </button>
-
-            {/* Notifications */}
-            <button
-              onClick={() => { setTopMenuOpen(false); setBellOpen(true); }}
-              aria-label="Notifications"
-              className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
-            >
-              <svg className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                <path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0" />
-              </svg>
-              {unread > 0 && (
-                <span className="absolute right-1 top-1 h-2 w-2 rounded-full" style={{ backgroundColor: brand.accent }} />
               )}
             </button>
 
@@ -631,9 +596,9 @@ export default function DashboardLayout({
             <button
               onClick={() => { setTopMenuOpen(false); window.dispatchEvent(new Event("teg:toggle-help")); }}
               aria-label="Help"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
             >
-              <svg className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+              <svg className="h-[26px] w-[26px]" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="9.25" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M12 17.25h.008v.008H12v-.008z" />
               </svg>
@@ -643,9 +608,9 @@ export default function DashboardLayout({
             <button
               onClick={() => { setTopMenuOpen(false); router.push("/dashboard/profile"); }}
               aria-label="Profile"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
             >
-              <svg className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <svg className="h-[26px] w-[26px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                 <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </button>
@@ -654,9 +619,9 @@ export default function DashboardLayout({
             <button
               onClick={() => { signOut(); router.push("/"); }}
               aria-label="Log out"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
             >
-              <svg className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <svg className="h-[26px] w-[26px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                 <path d="M15 12H3m0 0l4-4m-4 4l4 4M13 4h5a2 2 0 012 2v12a2 2 0 01-2 2h-5" />
               </svg>
             </button>
@@ -1130,68 +1095,42 @@ export default function DashboardLayout({
               })}
             </div>
 
-            {/* Separate "+" bubble — quick actions. */}
-            <button
-              onClick={() => setMobileMenuOpen((v) => !v)}
-              aria-label="Quick actions"
-              className="flex h-[62px] w-[62px] shrink-0 items-center justify-center rounded-full border border-white/10 bg-[#26262b] text-white shadow-[0_12px_34px_-8px_rgba(0,0,0,0.5)] transition active:scale-95"
-            >
-              <svg
-                className={`h-8 w-8 transition-transform duration-200 ${mobileMenuOpen ? "rotate-45" : ""}`}
-                fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
+            {/* Right bubble — notifications + search (the old "+" is now
+                context-driven; on the app it's what you most need: find + get
+                told). */}
+            <div className="flex shrink-0 items-center gap-0.5 rounded-full border border-white/10 bg-[#26262b] p-1.5 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.5)]">
+              <button
+                onClick={() => setBellOpen(true)}
+                aria-label="Notifications"
+                className="relative flex h-12 w-12 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
               >
-                <path strokeLinecap="round" d="M12 5v14M5 12h14" />
-              </svg>
-            </button>
+                <svg className="h-[26px] w-[26px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0" />
+                </svg>
+                {unread > 0 && (
+                  <span
+                    className="absolute right-1 top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-semibold text-white"
+                    style={{ backgroundColor: "#e11d48" }}
+                  >
+                    {unread}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setMobileSearchOpen(true)}
+                aria-label="Search"
+                className="flex h-12 w-12 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
+              >
+                <svg className="h-[26px] w-[26px]" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M21 21l-4.3-4.3" />
+                </svg>
+              </button>
+            </div>
             </>
           )}
         </div>
       </div>
-
-      {/* "+" bubble menu — quick actions above the bottom nav. */}
-      {mobileMenuOpen && (
-        <>
-          <button
-            className="fixed inset-0 z-[91] cursor-default lg:hidden"
-            aria-hidden
-            onClick={() => setMobileMenuOpen(false)}
-          />
-          <div
-            className="fixed right-4 z-[92] w-52 origin-bottom-right animate-[bubble-up_0.42s_cubic-bezier(0.34,1.56,0.64,1)] overflow-hidden rounded-2xl border border-white/10 bg-[#26262b] p-1.5 shadow-2xl lg:hidden"
-            style={{ bottom: `calc(env(safe-area-inset-bottom)/2 + 92px)` }}
-          >
-            <button
-              onClick={() => { setMobileMenuOpen(false); window.dispatchEvent(new Event("teg:toggle-help")); }}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-gray-200 active:bg-white/10"
-            >
-              <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="9.25" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M12 17.25h.008v.008H12v-.008z" />
-              </svg>
-              Help
-            </button>
-            <button
-              onClick={() => { setMobileMenuOpen(false); router.push("/dashboard/profile"); }}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-gray-200 active:bg-white/10"
-            >
-              <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-                <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              Profile
-            </button>
-            <div className="my-1 border-t border-white/10" />
-            <button
-              onClick={() => { setMobileMenuOpen(false); signOut(); router.push("/"); }}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-gray-200 active:bg-white/10"
-            >
-              <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12H3m0 0l4-4m-4 4l4 4M13 4h5a2 2 0 012 2v12a2 2 0 01-2 2h-5" />
-              </svg>
-              Log out
-            </button>
-          </div>
-        </>
-      )}
 
       {/* Campaign-stage toast — bigger white card with a black outline.
           Sits above the Help Centre launcher so the two never overlap. */}

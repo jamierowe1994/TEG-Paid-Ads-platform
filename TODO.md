@@ -297,6 +297,18 @@ desktop (≥1024px) renders byte-identically (existing markup scoped with `lg:`)
       brand-colour tick (save) top-right sit OUTSIDE on the blurred backdrop;
       the calendar sits directly on the sheet (no box-in-a-box), bigger, with
       the time slider. Nav tucks away while it's open.
+  · ✅ (24 Jul) Nav rearrangement pass 8:
+    - Top bar: the page title ("Overview") moved to the LEFT (search icon
+      dropped from there); the three-dots overflow on the right got bigger and
+      now holds just Help / Profile / Log out (bigger, matching icons) — it
+      unrolls left as before.
+    - Bottom-right bubble: the "+" is replaced by a two-icon bubble —
+      notifications (bell, red unread badge) + search — i.e. the context
+      button now shows what you most need on the app (get told + find).
+      Search + notifications both dropped out of the top bar into here.
+    - NB still pending: the bottom bubble is search+notifications on every
+      screen for now; true per-screen morphing (a different action per page)
+      is the outstanding "active button" idea.
   · ⬜ Still to do: Leads funnel/board page, Profile, admin on mobile.
   · ⬜ Real-iPhone check: Microsoft login *inside* the installed PWA is the one
     path not yet tested on a real device (flagged by the PWA build session).
