@@ -333,9 +333,15 @@ desktop (≥1024px) renders byte-identically (existing markup scoped with `lg:`)
       modal unchanged (mobile/desktop headers split).
     - Lead cards: bigger source icon (no box), open-file chevron on the right;
       already full-width + click-anywhere.
-  · ⬜ Leads list still to do (from the brief): the Filters → Sort by / Stage
-    control (newest/oldest/uncontacted, default newest-this-week-first) and the
-    exaggerated "card expands to fill the screen" open animation.
+  · ✅ (24 Jul) Leads mobile Filters: consolidated the sprawling chip row into a
+    single "Filters" button → bouncy bottom sheet with Show (New only / This
+    week / Last 30 days / All time / Check Atlas), Stage (All / New / Attempt
+    1-3 / Booked — new stageFilter), and Sort by (Newest / Oldest / Not
+    contacted). Reset + "Show N leads" apply; an active-filter dot on the
+    button. Defaults stay newest-this-week-first. Desktop keeps its full chip
+    row + Sort (state shared).
+  · ⬜ Leads list still to do: the exaggerated "card expands to fill the screen"
+    open animation (shared-element / FLIP).
   · ⬜ Still to do: Leads funnel/board page polish, Profile, admin on mobile.
   · ⬜ Real-iPhone check: Microsoft login *inside* the installed PWA is the one
     path not yet tested on a real device (flagged by the PWA build session).

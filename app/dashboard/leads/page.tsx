@@ -284,6 +284,17 @@ const RANGES: { id: TimeRange; label: string; days?: number }[] = [
   { id: "all", label: "All time" },
 ];
 
+// Stage filter (active view) — "all" plus the working stages.
+type StageFilter = LeadStage | "all";
+const STAGE_FILTERS: { id: StageFilter; label: string }[] = [
+  { id: "all", label: "All stages" },
+  { id: "new", label: "New" },
+  { id: "attempt1", label: "Attempt 1" },
+  { id: "attempt2", label: "Attempt 2" },
+  { id: "attempt3", label: "Attempt 3" },
+  { id: "converted", label: "Booked" },
+];
+
 export default function LeadsPage() {
   const [brand, setBrand] = useState<Brand | null>(null);
   const [emailConnected, setEmailConnected] = useState(false);
@@ -294,7 +305,9 @@ export default function LeadsPage() {
   // Default to this week — the freshest leads are the ones that matter most.
   const [range, setRange] = useState<TimeRange>("7d");
   const [sort, setSort] = useState<SortOrder>("newest");
+  const [stageFilter, setStageFilter] = useState<StageFilter>("all");
   const [filterOpen, setFilterOpen] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [toast, setToast] = useState("");
   const [pushing, setPushing] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -356,6 +369,10 @@ export default function LeadsPage() {
           : newOnly
             ? leads.filter((l) => l.stage === "new" && !l.archivedAt)
             : leads.filter((l) => l.stage !== "lost" && !l.archivedAt);
+    // Stage filter (active view) — supersedes the "New only" toggle.
+    if (view === "active" && stageFilter !== "all") {
+      base = base.filter((l) => l.stage === stageFilter);
+    }
     const days = RANGES.find((r) => r.id === range)?.days;
     if (days && view !== "archived") {
       const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
@@ -371,7 +388,7 @@ export default function LeadsPage() {
       }
       return byNewest(a, b);
     });
-  }, [leads, newOnly, range, sort, view]);
+  }, [leads, newOnly, range, sort, stageFilter, view]);
 
   function showToast(msg: string, ms = 3500) {
     setToast(msg);
@@ -632,8 +649,9 @@ export default function LeadsPage() {
         ))}
       </div>
 
-      {/* Controls: New-only pill + filter popout */}
-      <div className="mt-4 flex items-center justify-between gap-3">
+      {/* Controls: New-only pill + filter popout — DESKTOP. On mobile these
+          all live inside the single "Filters" sheet below. */}
+      <div className="mt-4 hidden items-center justify-between gap-3 lg:flex">
         {view === "active" ? (
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -781,6 +799,90 @@ export default function LeadsPage() {
         </div>
       </div>
 
+      {/* Controls — MOBILE: one "Filters" button that opens a sheet holding
+          everything (show / stage / sort). */}
+      <div className="mt-4 flex items-center justify-between gap-3 lg:hidden">
+        <p className="text-[13px] font-medium text-gray-400">
+          {visible.length} lead{visible.length === 1 ? "" : "s"}
+        </p>
+        <button
+          onClick={() => setMobileFiltersOpen(true)}
+          className="relative flex items-center gap-2 rounded-full border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 active:bg-gray-50"
+        >
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6h16.5M6.75 12h10.5m-7.5 6h4.5" />
+          </svg>
+          Filters
+          {(newOnly || range !== "7d" || stageFilter !== "all" || sort !== "newest") && (
+            <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-[#f6f6f7]" style={{ backgroundColor: brand.accent }} />
+          )}
+        </button>
+      </div>
+
+      {/* Mobile Filters sheet */}
+      {mobileFiltersOpen && (
+        <div
+          className="fixed inset-0 z-[95] flex items-end bg-gray-900/40 lg:hidden"
+          onClick={() => setMobileFiltersOpen(false)}
+        >
+          <div
+            className="w-full animate-[sheet-up_0.46s_cubic-bezier(0.34,1.56,0.64,1)] overflow-hidden rounded-t-3xl bg-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 pb-2 pt-5">
+              <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => { setNewOnly(false); setRange("7d"); setStageFilter("all"); setSort("newest"); }}
+                  className="text-sm font-medium text-gray-400 active:text-gray-600"
+                >
+                  Reset
+                </button>
+                <button onClick={() => setMobileFiltersOpen(false)} aria-label="Close" className="rounded-full p-1 text-gray-400 active:bg-gray-100">
+                  <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" /></svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="max-h-[62vh] overflow-y-auto px-6 pb-2">
+              {view === "active" && (
+                <>
+                  <FilterSection title="Show">
+                    <FilterChip label="New only" active={newOnly} accent={brand.accent} onClick={() => setNewOnly((v) => !v)} />
+                    {RANGES.map((r) => (
+                      <FilterChip key={r.id} label={r.label} active={range === r.id} accent={brand.accent} onClick={() => setRange(r.id)} />
+                    ))}
+                    <FilterChip label={checkingCrm ? `Checking ${brand.crmName}…` : `Check ${brand.crmName}`} active={false} accent={brand.accent} onClick={runCrmCheck} />
+                  </FilterSection>
+
+                  <FilterSection title="Stage">
+                    {STAGE_FILTERS.map((s) => (
+                      <FilterChip key={s.id} label={s.label} active={stageFilter === s.id} accent={brand.accent} onClick={() => setStageFilter(s.id)} />
+                    ))}
+                  </FilterSection>
+                </>
+              )}
+
+              <FilterSection title="Sort by">
+                {SORTS.map((s) => (
+                  <FilterChip key={s.id} label={s.label} active={sort === s.id} accent={brand.accent} onClick={() => setSort(s.id)} />
+                ))}
+              </FilterSection>
+            </div>
+
+            <div className="px-6 pb-[calc(env(safe-area-inset-bottom)+100px)] pt-3">
+              <button
+                onClick={() => setMobileFiltersOpen(false)}
+                className="w-full rounded-2xl py-3.5 text-[15px] font-semibold text-white shadow-[inset_0_1.5px_0_rgba(255,255,255,0.28),inset_0_-2px_3px_rgba(0,0,0,0.22),0_3px_9px_-2px_rgba(0,0,0,0.3)] transition active:scale-[0.98]"
+                style={{ backgroundColor: brand.accent }}
+              >
+                Show {visible.length} lead{visible.length === 1 ? "" : "s"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Lead tiles — mini profile cards in a snake pattern: newest at the
           top-right, each row alternating direction, tapering smaller for
           older rows so recency reads at a glance. */}
@@ -889,6 +991,48 @@ export default function LeadsPage() {
 }
 
 
+
+// A titled group of filter chips in the mobile Filters sheet.
+function FilterSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="border-t border-gray-100 py-4 first:border-t-0 first:pt-1">
+      <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+        {title}
+      </p>
+      <div className="flex flex-wrap gap-2">{children}</div>
+    </div>
+  );
+}
+
+function FilterChip({
+  label,
+  active,
+  accent,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  accent: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`rounded-full px-4 py-2 text-sm font-medium transition active:scale-95 ${
+        active ? "text-white" : "border border-gray-300 text-gray-700"
+      }`}
+      style={active ? { backgroundColor: accent } : undefined}
+    >
+      {label}
+    </button>
+  );
+}
 
 function Stat({
   label,
