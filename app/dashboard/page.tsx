@@ -648,13 +648,15 @@ export default function DashboardOverview() {
                 action now
               </span>
             )}
-            <span className="mt-1 text-[44px] font-semibold leading-none tracking-tight text-gray-900">
-              {leadsLoaded ? untouched.length : "—"}
-            </span>
-            <span className="mt-auto flex items-center gap-1 text-sm font-medium text-gray-700">
-              Uncontacted
-              {untouched.length > 0 && <TileChevron />}
-            </span>
+            <div className="mt-auto">
+              <span className="block text-[54px] font-semibold leading-none tracking-tight text-gray-900">
+                {leadsLoaded ? untouched.length : "—"}
+              </span>
+              <span className="mt-2 flex items-center gap-1 text-sm font-medium text-gray-700">
+                Uncontacted
+                {untouched.length > 0 && <TileChevron />}
+              </span>
+            </div>
           </button>
 
           {/* Follow-ups */}
@@ -668,13 +670,15 @@ export default function DashboardOverview() {
                 due back
               </span>
             )}
-            <span className="mt-1 text-[44px] font-semibold leading-none tracking-tight text-gray-900">
-              {leadsLoaded ? followUps.length : "—"}
-            </span>
-            <span className="mt-auto flex items-center gap-1 text-sm font-medium text-gray-700">
-              Follow-ups
-              {followUps.length > 0 && <TileChevron />}
-            </span>
+            <div className="mt-auto">
+              <span className="block text-[54px] font-semibold leading-none tracking-tight text-gray-900">
+                {leadsLoaded ? followUps.length : "—"}
+              </span>
+              <span className="mt-2 flex items-center gap-1 text-sm font-medium text-gray-700">
+                Follow-ups
+                {followUps.length > 0 && <TileChevron />}
+              </span>
+            </div>
           </button>
 
           {/* This week — leads + trend vs last week */}

@@ -206,6 +206,14 @@ desktop (≥1024px) renders byte-identically (existing markup scoped with `lg:`)
       tile, taps to the first one) · Follow-ups · This week (±% vs last week) ·
       Ad spend — over a "Leads this week" bar graph (per-day bars, today in the
       brand colour) and the four headline stat squares. (app/dashboard/page.tsx)
+  · ✅ (24 Jul) Overview + nav polish pass 2 (against the BizLink reference):
+    tiles now read number-above-label pinned to the bottom with the pill in
+    the top-right (bigger number); top bar gained safe-area-inset-top padding
+    so the search/bell clear the iPhone status bar in standalone; bottom nav
+    turned dark (reference charcoal #26262b), icons-only (labels dropped,
+    icons bigger), wider with internal edge padding so it's not squished. The
+    open-lead nav morph is dark to match (keeps its Call/Email/WhatsApp/
+    Schedule labels).
   · ⬜ Still to do: Leads funnel/board page, Profile, admin on mobile.
   · ⬜ Real-iPhone check: Microsoft login *inside* the installed PWA is the one
     path not yet tested on a real device (flagged by the PWA build session).
