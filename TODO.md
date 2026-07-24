@@ -214,6 +214,18 @@ desktop (≥1024px) renders byte-identically (existing markup scoped with `lg:`)
     icons bigger), wider with internal edge padding so it's not squished. The
     open-lead nav morph is dark to match (keeps its Call/Email/WhatsApp/
     Schedule labels).
+  · ✅ (24 Jul) Overview + nav pass 3 (from a real-iPhone screenshot):
+    - "Leads this week" bar graph moved above the This-week / Ad-spend row.
+    - Ad spend is now a pie — spent as a solid brand wedge, remaining as
+      hatched grey (SpendPie in page.tsx).
+    - Tapping Uncontacted / Follow-ups now slides up a bottom sheet listing
+      ALL those leads (each row opens the full file), instead of jumping
+      straight to the first one.
+    - The "+" overflow menu bubbles up out of the plus button (bubble-up
+      keyframe) — slower and more obviously animated.
+    - Bottom nav made bigger again (h-30 icons, 66px + circle) and dropped
+      closer to the bottom: pb is now safe-area/2 + 8px (was reserving the
+      full safe-area inset, which left a big dead gap under it in standalone).
   · ⬜ Still to do: Leads funnel/board page, Profile, admin on mobile.
   · ⬜ Real-iPhone check: Microsoft login *inside* the installed PWA is the one
     path not yet tested on a real device (flagged by the PWA build session).

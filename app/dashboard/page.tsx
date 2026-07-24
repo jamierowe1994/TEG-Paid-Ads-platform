@@ -22,6 +22,7 @@ import { ONBOARDING_STAGES, stageIndex } from "@/lib/onboarding";
 import Confetti from "@/components/Confetti";
 import Collapse from "@/components/Collapse";
 import { LeadModal } from "@/app/dashboard/leads/lead-modal";
+import SourceIcon from "@/components/SourceIcon";
 import type { UserProfile, Lead, LeadStage } from "@/lib/types";
 
 // A brief + typical timescale for each onboarding stage — shown when a step
@@ -98,6 +99,10 @@ export default function DashboardOverview() {
   const [openWeek, setOpenWeek] = useState<number | null>(null);
   const [leadsLoaded, setLeadsLoaded] = useState(false);
   const [openLeadId, setOpenLeadId] = useState<string | null>(null);
+  // A slide-up list of leads (Uncontacted / Follow-ups) opened from the tiles.
+  const [leadList, setLeadList] = useState<
+    null | { title: string; leads: Lead[] }
+  >(null);
   const [pushingId, setPushingId] = useState<string | null>(null);
   // The agent's OWN live Meta figures (their tagged campaigns, last 30 days).
   // Null until the admin tags a campaign id and the brand's Meta is connected.
@@ -631,12 +636,15 @@ export default function DashboardOverview() {
 
       {/* ══ MOBILE overview (<lg) — swipeable Uncontacted + compact tiles ══ */}
       <section className="mt-6 space-y-3 lg:hidden">
-        {/* 2×2 tile grid — Uncontacted · Follow-ups over This week · Ad spend */}
+        {/* Row 1 — Uncontacted · Follow-ups. Tapping either slides up the full
+            list of those leads. */}
         <div className="grid grid-cols-2 gap-3">
           {/* Uncontacted — the action tile (accent tint) */}
           <button
             type="button"
-            onClick={() => untouched[0] && setOpenLeadId(untouched[0].id)}
+            onClick={() =>
+              setLeadList({ title: "Uncontacted", leads: untouched })
+            }
             className="relative flex aspect-square flex-col items-start overflow-hidden rounded-[26px] border border-white/60 p-5 text-left transition active:scale-[0.98]"
             style={{ backgroundColor: brand.accentSoft }}
           >
@@ -662,7 +670,9 @@ export default function DashboardOverview() {
           {/* Follow-ups */}
           <button
             type="button"
-            onClick={() => followUps[0] && setOpenLeadId(followUps[0].id)}
+            onClick={() =>
+              setLeadList({ title: "Follow-ups", leads: followUps })
+            }
             className="relative flex aspect-square flex-col items-start overflow-hidden rounded-[26px] border border-white/60 bg-white/70 p-5 text-left transition active:scale-[0.98]"
           >
             {leadsLoaded && followUps.length > 0 && (
@@ -680,77 +690,10 @@ export default function DashboardOverview() {
               </span>
             </div>
           </button>
-
-          {/* This week — leads + trend vs last week */}
-          {(() => {
-            const thisWk = weekly[weekly.length - 1] ?? 0;
-            const lastWk = weekly[weekly.length - 2] ?? 0;
-            const pct =
-              lastWk > 0
-                ? Math.round(((thisWk - lastWk) / lastWk) * 100)
-                : thisWk > 0
-                  ? 100
-                  : 0;
-            const up = thisWk >= lastWk;
-            return (
-              <div className="flex aspect-square flex-col rounded-[26px] border border-white/60 bg-white/70 p-5">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                  This week
-                </p>
-                <p className="mt-1 text-[40px] font-semibold leading-none tracking-tight text-gray-900">
-                  {thisWk}
-                </p>
-                <p className="mt-1 text-[11px] text-gray-400">
-                  lead{thisWk === 1 ? "" : "s"}
-                </p>
-                <div
-                  className={`mt-auto flex items-center gap-1 text-sm font-semibold ${
-                    up ? "text-green-600" : "text-red-500"
-                  }`}
-                >
-                  <svg
-                    className={`h-4 w-4 ${up ? "" : "rotate-180"}`}
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2.2}
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
-                  </svg>
-                  {Math.abs(pct)}% {up ? "up" : "down"}
-                </div>
-                <p className="text-[11px] text-gray-400">on last week</p>
-              </div>
-            );
-          })()}
-
-          {/* Ad spend */}
-          <div className="flex aspect-square flex-col rounded-[26px] border border-white/60 bg-white/70 p-5">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-              Ad spend
-            </p>
-            <p
-              className="mt-1 text-[40px] font-semibold leading-none tracking-tight"
-              style={{ color: brand.accent }}
-            >
-              £{spent}
-            </p>
-            <p className="mt-1 text-[11px] text-gray-400">of £{cap} this month</p>
-            <div className="mt-auto">
-              <div className="h-2 overflow-hidden rounded-full bg-black/5">
-                <div
-                  className="h-full rounded-full"
-                  style={{ width: `${spendPct}%`, backgroundColor: brand.accent }}
-                />
-              </div>
-              <p className="mt-1.5 text-[11px] font-medium text-gray-500">
-                £{spendLeft} left
-              </p>
-            </div>
-          </div>
         </div>
 
-        {/* Leads this week — a little bar graph (today in brand colour) */}
+        {/* Leads this week — a little bar graph (today in brand colour). Sits
+            above the This-week / Ad-spend row. */}
         {(() => {
           const dayMax = Math.max(1, ...daily.map((d) => d.count));
           const total = daily.reduce((a, d) => a + d.count, 0);
@@ -803,6 +746,74 @@ export default function DashboardOverview() {
             </div>
           );
         })()}
+
+        {/* Row 2 — This week · Ad spend (pie) */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* This week — leads + trend vs last week */}
+          {(() => {
+            const thisWk = weekly[weekly.length - 1] ?? 0;
+            const lastWk = weekly[weekly.length - 2] ?? 0;
+            const pct =
+              lastWk > 0
+                ? Math.round(((thisWk - lastWk) / lastWk) * 100)
+                : thisWk > 0
+                  ? 100
+                  : 0;
+            const up = thisWk >= lastWk;
+            return (
+              <div className="flex aspect-square flex-col rounded-[26px] border border-white/60 bg-white/70 p-5">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                  This week
+                </p>
+                <p className="mt-1 text-[40px] font-semibold leading-none tracking-tight text-gray-900">
+                  {thisWk}
+                </p>
+                <p className="mt-1 text-[11px] text-gray-400">
+                  lead{thisWk === 1 ? "" : "s"}
+                </p>
+                <div
+                  className={`mt-auto flex items-center gap-1 text-sm font-semibold ${
+                    up ? "text-green-600" : "text-red-500"
+                  }`}
+                >
+                  <svg
+                    className={`h-4 w-4 ${up ? "" : "rotate-180"}`}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2.2}
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                  </svg>
+                  {Math.abs(pct)}% {up ? "up" : "down"}
+                </div>
+                <p className="text-[11px] text-gray-400">on last week</p>
+              </div>
+            );
+          })()}
+
+          {/* Ad spend — a pie: spent in the brand colour, remaining hatched grey */}
+          <div className="flex aspect-square flex-col rounded-[26px] border border-white/60 bg-white/70 p-5">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+              Ad spend
+            </p>
+            <div className="mt-auto flex items-end justify-between gap-1">
+              <SpendPie spent={spent} cap={cap} accent={brand.accent} />
+              <div className="text-right">
+                <p
+                  className="text-[26px] font-semibold leading-none tracking-tight"
+                  style={{ color: brand.accent }}
+                >
+                  £{spent}
+                </p>
+                <p className="mt-1.5 text-[11px] font-medium text-gray-600">
+                  £{spendLeft} left
+                </p>
+                <p className="text-[11px] text-gray-400">of £{cap}</p>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Headline totals — four stat squares */}
         <div className="grid grid-cols-2 gap-3">
@@ -1378,6 +1389,77 @@ export default function DashboardOverview() {
         </div>
       </section>
 
+      {/* Lead list — slides up from the bottom when a tile is tapped
+          (Uncontacted / Follow-ups). Mobile only; tapping a row opens the full
+          lead file. */}
+      {leadList && (
+        <div
+          className="fixed inset-0 z-[70] flex items-end bg-gray-900/40 lg:hidden"
+          onClick={() => setLeadList(null)}
+        >
+          <div
+            className="w-full animate-[sheet-up_0.4s_cubic-bezier(0.22,1,0.36,1)] overflow-hidden rounded-t-3xl bg-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 pb-3 pt-5">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {leadList.title}
+              </h3>
+              <div className="flex items-center gap-3">
+                <span className="rounded-full bg-black/5 px-2.5 py-1 text-xs font-medium text-gray-500">
+                  {leadList.leads.length}
+                </span>
+                <button
+                  onClick={() => setLeadList(null)}
+                  aria-label="Close"
+                  className="rounded-full p-1 text-gray-400 active:bg-gray-100"
+                >
+                  <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="max-h-[64vh] overflow-y-auto px-3 pb-[calc(env(safe-area-inset-bottom)+120px)] pt-1">
+              {leadList.leads.length === 0 ? (
+                <p className="py-12 text-center text-sm text-gray-400">
+                  Nothing here right now 🎉
+                </p>
+              ) : (
+                leadList.leads.map((l) => (
+                  <button
+                    key={l.id}
+                    onClick={() => {
+                      setOpenLeadId(l.id);
+                      setLeadList(null);
+                    }}
+                    className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition active:bg-black/5"
+                  >
+                    <span
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+                      style={{ backgroundColor: brand.accentSoft }}
+                    >
+                      <SourceIcon source={l.source} size={20} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[15px] font-medium text-gray-900">
+                        {l.name}
+                      </span>
+                      <span className="block truncate text-[13px] text-gray-400">
+                        {l.interestedIn?.trim() ||
+                          l.note?.trim() ||
+                          `via ${l.source}`}
+                      </span>
+                    </span>
+                    <TileChevron />
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Lead pop-out — same rich modal as the leads page, right here */}
       {openLead && (
         <LeadModal
@@ -1412,6 +1494,57 @@ export default function DashboardOverview() {
         />
       )}
     </div>
+  );
+}
+
+// Ad-spend pie: the whole circle is the monthly cap — spent is a solid brand
+// wedge, the remainder is hatched grey (how much is left).
+function SpendPie({
+  spent,
+  cap,
+  accent,
+}: {
+  spent: number;
+  cap: number;
+  accent: string;
+}) {
+  const f = cap > 0 ? Math.max(0, Math.min(1, spent / cap)) : 0;
+  const R = 38;
+  const C = 40;
+  const wedge = (from: number, to: number) => {
+    const a0 = (from * 360 - 90) * (Math.PI / 180);
+    const a1 = (to * 360 - 90) * (Math.PI / 180);
+    const x0 = C + R * Math.cos(a0);
+    const y0 = C + R * Math.sin(a0);
+    const x1 = C + R * Math.cos(a1);
+    const y1 = C + R * Math.sin(a1);
+    const large = to - from > 0.5 ? 1 : 0;
+    return `M${C} ${C} L${x0.toFixed(2)} ${y0.toFixed(2)} A${R} ${R} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)} Z`;
+  };
+  return (
+    <svg width={74} height={74} viewBox="0 0 80 80" className="shrink-0">
+      <defs>
+        <pattern
+          id="spend-hatch"
+          width="5"
+          height="5"
+          patternUnits="userSpaceOnUse"
+          patternTransform="rotate(45)"
+        >
+          <rect width="5" height="5" fill="#eceef1" />
+          <line x1="0" y1="0" x2="0" y2="5" stroke="#c3c7cf" strokeWidth="1.5" />
+        </pattern>
+      </defs>
+      {/* remaining — hatched grey base circle */}
+      <circle cx={C} cy={C} r={R} fill="url(#spend-hatch)" />
+      {/* spent — solid brand wedge on top */}
+      {f > 0 &&
+        (f >= 0.999 ? (
+          <circle cx={C} cy={C} r={R} fill={accent} />
+        ) : (
+          <path d={wedge(0, f)} fill={accent} />
+        ))}
+    </svg>
   );
 }
 

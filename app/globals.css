@@ -507,6 +507,33 @@ h5 {
   animation: modal-pop 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Bottom sheet — slides all the way up from the bottom edge. */
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* "+" overflow menu — bubbles up out of the plus button (grows from the
+   bottom-right with a soft overshoot). Deliberately unhurried so it reads. */
+@keyframes bubble-up {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.6);
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(-3px) scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 /* Mobile bottom nav morph — collapses in on itself then springs back out with
    its new set of buttons (used when a lead file opens/closes). */
 @keyframes nav-pop {
