@@ -582,8 +582,9 @@ export default function LeadsPage() {
         Tap a lead to see everything and mark your next step.
       </p>
 
-      {/* Headline stats */}
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      {/* Headline stats — desktop only. On mobile we skip straight to the
+          active list so the leads themselves are the first thing you see. */}
+      <div className="mt-8 hidden gap-4 lg:grid lg:grid-cols-5">
         <Stat label="Total leads" value={String(total)} />
         <Stat
           label="Cost this month"
