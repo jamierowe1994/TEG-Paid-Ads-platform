@@ -180,12 +180,15 @@ export function LeadModal({
   );
   const [booking, setBooking] = useState(false);
   const [resettingRex, setResettingRex] = useState(false);
-  // The Schedule action opens its own bottom sheet (calendar + X/tick). While
-  // it's open, tuck the bottom nav away so it can't sit over the calendar.
+  // The Schedule / Add-note / Add-location actions each open their own bottom
+  // sheet. While any is open, tuck the bottom nav away so it can't sit over it.
   const [schedSheet, setSchedSheet] = useState(false);
+  const [noteSheet, setNoteSheet] = useState(false);
+  const [locSheet, setLocSheet] = useState(false);
+  const anySheet = schedSheet || noteSheet || locSheet;
   useEffect(() => {
-    window.dispatchEvent(new Event(schedSheet ? "teg:nav-hide" : "teg:nav-show"));
-  }, [schedSheet]);
+    window.dispatchEvent(new Event(anySheet ? "teg:nav-hide" : "teg:nav-show"));
+  }, [anySheet]);
 
   // Mark-as-lost flow.
   const [lostStep, setLostStep] = useState<null | "ask" | "reason" | "date" | "funnel" | "done">(null);
@@ -227,14 +230,29 @@ export function LeadModal({
       }),
     );
     const sched = () => setSchedSheet(true);
+    const log = () => logRef.current();
+    const note = () => setNoteSheet(true);
+    const loc = () => setLocSheet(true);
+    const lost = () => setLostStep("ask");
     window.addEventListener("teg:lead-schedule", sched);
+    window.addEventListener("teg:lead-log", log);
+    window.addEventListener("teg:lead-note", note);
+    window.addEventListener("teg:lead-location", loc);
+    window.addEventListener("teg:lead-lost", lost);
     return () => {
       window.removeEventListener("teg:lead-schedule", sched);
+      window.removeEventListener("teg:lead-log", log);
+      window.removeEventListener("teg:lead-note", note);
+      window.removeEventListener("teg:lead-location", loc);
+      window.removeEventListener("teg:lead-lost", lost);
       window.dispatchEvent(new Event("teg:lead-close"));
       // If we unmount while a field was focused, make sure the nav comes back.
       window.dispatchEvent(new Event("teg:nav-show"));
     };
   }, [lead.phone, lead.email, waNumber]);
+  // Keep a live handle on the log action so the "+" menu always logs the
+  // current attempt (the listener above is registered once).
+  const logRef = useRef<() => void>(() => {});
 
   const EMAIL_TEMPLATES = [
     { name: "First touch", subject: "Following up on your enquiry", body: `Hi ${firstName},\n\nThanks for getting in touch — I'd love to help. When's a good time for a quick chat this week?\n\nBest,` },
@@ -256,6 +274,7 @@ export function LeadModal({
     setEmailLogAsk(false);
     if (onFollowUp) setFollowAsk(true);
   }
+  logRef.current = handleLogAttempt;
 
   async function pickFollow(at: Date) {
     if (!onFollowUp || savingFollow) return;
@@ -425,18 +444,9 @@ export function LeadModal({
       className="fixed inset-0 z-[80] flex items-end justify-center bg-gray-950/60 p-0 backdrop-blur-md sm:items-center sm:bg-gray-900/50 sm:p-6 sm:backdrop-blur-none"
       onClick={onClose}
     >
-      {/* Tick (done) + X (dismiss) — mobile only, floating on the blurred
-          backdrop ABOVE the sheet's rounded top. Both close the file. */}
-      <div className="pointer-events-none absolute inset-x-0 top-[calc(env(safe-area-inset-top)+20px)] z-10 flex items-center justify-between px-6 sm:hidden">
-        <button
-          onClick={(e) => { e.stopPropagation(); onClose(); }}
-          aria-label="Done"
-          className="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500 text-white shadow-[0_2px_6px_rgba(0,0,0,0.2)] transition-transform active:scale-90"
-        >
-          <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2.6">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-        </button>
+      {/* X (dismiss) — mobile only, floating on the blurred backdrop above the
+          sheet's rounded top. */}
+      <div className="pointer-events-none absolute inset-x-0 top-[calc(env(safe-area-inset-top)+20px)] z-10 flex items-center justify-end px-6 sm:hidden">
         <button
           onClick={(e) => { e.stopPropagation(); onClose(); }}
           aria-label="Close"
@@ -527,7 +537,7 @@ export function LeadModal({
                 {[0, 1, 2, 3].map((i) => (
                   <div
                     key={i}
-                    className="h-3 flex-1 rounded-full transition-colors"
+                    className="h-[18px] flex-1 rounded-full transition-colors"
                     style={{ backgroundColor: i < attemptsDone ? (i === 3 ? "#d97706" : "#111827") : "#e5e7eb" }}
                   />
                 ))}
@@ -794,22 +804,9 @@ export function LeadModal({
               )}
             </div>
 
-            {/* Log a contact attempt — mobile, on the page (Call/Email/WhatsApp/
-                Schedule live in the morphed bottom nav; logging stays here). */}
-            {canWork && !lead.archivedAt && attemptNext[lead.stage] && (
-              <button
-                onClick={handleLogAttempt}
-                disabled={busy}
-                className="order-2 mt-4 flex w-auto items-center gap-2 self-start rounded-2xl bg-gray-900 px-5 py-3 text-[15px] font-semibold text-white shadow-[inset_0_1.5px_0_rgba(255,255,255,0.18),inset_0_-2px_3px_rgba(0,0,0,0.3),0_3px_9px_-2px_rgba(0,0,0,0.35)] transition active:scale-[0.97] disabled:opacity-40 lg:hidden"
-              >
-                <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 11l3 3 8-8M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h9" />
-                </svg>
-                {busy ? "Logging…" : `Log attempt ${attemptNo}`}
-              </button>
-            )}
-
-            {/* Activity timeline — mobile (desktop keeps it in the right rail). */}
+            {/* Activity timeline — mobile (desktop keeps it in the right rail).
+                All actions (log / note / location / lost) live in the bottom
+                nav's "+" menu — the file itself is read-only. */}
             <div className="order-4 mt-7 lg:hidden">
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Activity</span>
@@ -843,14 +840,14 @@ export function LeadModal({
               )}
             </div>
 
-            {/* Notes — mobile: bigger, sits above More details / Mark as lost.
-                Desktop keeps the right-rail Notes + quick-note bar instead. */}
+            {/* Notes — mobile: read-only list. Adding a note happens from the
+                "+" menu in the bottom nav, not here. */}
             <div className="order-5 mt-6 lg:hidden">
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Notes</span>
                 <span className="text-[11px] font-medium text-gray-400">{notes.length}</span>
               </div>
-              {notes.length > 0 && (
+              {notes.length > 0 ? (
                 <div className="mt-2 space-y-2">
                   {[...notes].reverse().map((n, i) => (
                     <div key={i} className="rounded-xl bg-gray-50 p-3">
@@ -859,23 +856,11 @@ export function LeadModal({
                     </div>
                   ))}
                 </div>
+              ) : (
+                <p className="mt-2 rounded-xl bg-gray-50 px-3 py-4 text-[13.5px] text-gray-400">
+                  No notes yet — add one from the + menu below.
+                </p>
               )}
-              <textarea
-                value={noteText}
-                onChange={(e) => setNoteText(e.target.value)}
-                onFocus={() => window.dispatchEvent(new Event("teg:nav-hide"))}
-                onBlur={() => window.dispatchEvent(new Event("teg:nav-show"))}
-                rows={3}
-                placeholder="Add a note…"
-                className="mt-2 w-full rounded-xl border border-gray-200 bg-white p-3 text-[15px] outline-none focus:border-gray-900"
-              />
-              <button
-                onClick={saveNote}
-                disabled={!noteText.trim() || savingNote}
-                className="mt-2 w-auto self-start rounded-xl bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white shadow-[inset_0_1.5px_0_rgba(255,255,255,0.18),inset_0_-2px_3px_rgba(0,0,0,0.3),0_3px_9px_-2px_rgba(0,0,0,0.35)] transition active:scale-[0.97] disabled:opacity-40"
-              >
-                {savingNote ? "Saving…" : "Add note"}
-              </button>
             </div>
 
             {/* Archive / mark lost */}
@@ -986,11 +971,11 @@ export function LeadModal({
       {schedSheet && (
         <div
           className="fixed inset-0 z-[108] flex items-end justify-center bg-gray-900/50 backdrop-blur-sm p-0 sm:items-center sm:p-6"
-          onClick={() => setSchedSheet(false)}
+          onClick={(e) => { e.stopPropagation(); setSchedSheet(false); }}
         >
           {/* Cancel (X) — top-left, on the backdrop */}
           <button
-            onClick={() => setSchedSheet(false)}
+            onClick={(e) => { e.stopPropagation(); setSchedSheet(false); }}
             aria-label="Cancel"
             className="absolute left-4 top-[calc(env(safe-area-inset-top)+16px)] z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white text-gray-700 shadow-lg active:scale-95"
           >
@@ -1000,7 +985,7 @@ export function LeadModal({
           </button>
           {/* Save (tick) — top-right, brand colour, on the backdrop */}
           <button
-            onClick={async () => { await confirmBooking(); setSchedSheet(false); }}
+            onClick={async (e) => { e.stopPropagation(); await confirmBooking(); setSchedSheet(false); }}
             disabled={!pickedDay || !pickedTime || booking}
             aria-label="Save"
             className="absolute right-4 top-[calc(env(safe-area-inset-top)+16px)] z-10 flex h-12 w-12 items-center justify-center rounded-full text-white shadow-lg transition active:scale-95 disabled:opacity-40"
@@ -1043,11 +1028,83 @@ export function LeadModal({
         </div>
       )}
 
+      {/* Add-a-note sheet — opened from the "+" menu. X cancels, tick saves. */}
+      {noteSheet && (
+        <div
+          className="fixed inset-0 z-[108] flex items-end justify-center bg-gray-900/50 p-0 backdrop-blur-sm sm:items-center sm:p-6"
+          onClick={(e) => { e.stopPropagation(); setNoteSheet(false); }}
+        >
+          <button
+            onClick={(e) => { e.stopPropagation(); setNoteSheet(false); }}
+            aria-label="Cancel"
+            className="absolute left-4 top-[calc(env(safe-area-inset-top)+16px)] z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white text-gray-700 shadow-lg active:scale-95"
+          >
+            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+          <button
+            onClick={async (e) => { e.stopPropagation(); await saveNote(); setNoteSheet(false); }}
+            disabled={!noteText.trim() || savingNote}
+            aria-label="Save note"
+            className="absolute right-4 top-[calc(env(safe-area-inset-top)+16px)] z-10 flex h-12 w-12 items-center justify-center rounded-full text-white shadow-lg transition active:scale-95 disabled:opacity-40"
+            style={{ backgroundColor: accent }}
+          >
+            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2.4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4 10-11" />
+            </svg>
+          </button>
+          <div
+            className="w-full max-w-2xl animate-[sheet-up_0.46s_cubic-bezier(0.34,1.56,0.64,1)] rounded-t-3xl bg-white px-6 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-7 sm:rounded-3xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-center text-lg font-semibold tracking-tight text-gray-900">Add a note</p>
+            <textarea
+              autoFocus
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+              rows={5}
+              placeholder="Type your note…"
+              className="mt-5 w-full rounded-2xl border border-gray-200 bg-white p-4 text-[15px] outline-none focus:border-gray-900"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Add-location sheet — opened from the "+" menu. The address auto-saves;
+          the tick just closes. */}
+      {locSheet && (
+        <div
+          className="fixed inset-0 z-[108] flex items-end justify-center bg-gray-900/50 p-0 backdrop-blur-sm sm:items-center sm:p-6"
+          onClick={(e) => { e.stopPropagation(); setLocSheet(false); }}
+        >
+          <button
+            onClick={(e) => { e.stopPropagation(); setLocSheet(false); }}
+            aria-label="Done"
+            className="absolute right-4 top-[calc(env(safe-area-inset-top)+16px)] z-10 flex h-12 w-12 items-center justify-center rounded-full text-white shadow-lg transition active:scale-95"
+            style={{ backgroundColor: accent }}
+          >
+            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2.4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4 10-11" />
+            </svg>
+          </button>
+          <div
+            className="w-full max-w-2xl animate-[sheet-up_0.46s_cubic-bezier(0.34,1.56,0.64,1)] rounded-t-3xl bg-white px-6 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-7 sm:rounded-3xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-center text-lg font-semibold tracking-tight text-gray-900">Add location</p>
+            <div className="mt-5">
+              <AddressField lead={lead} onSave={onUpdateFields} />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Mark-as-lost flow (kept from before) */}
       {lostStep && (
-        <div className="fixed inset-0 z-[110] flex items-end justify-center bg-gray-900/50 p-0 sm:items-center sm:p-6" onClick={() => setLostStep(null)}>
+        <div className="fixed inset-0 z-[110] flex items-end justify-center bg-gray-900/50 p-0 sm:items-center sm:p-6" onClick={(e) => { e.stopPropagation(); setLostStep(null); }}>
           <div className="modal-pop relative flex max-h-[92vh] min-h-[60vh] w-full max-w-3xl flex-col overflow-y-auto rounded-t-3xl bg-white p-6 sm:rounded-3xl sm:p-8" onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => setLostStep(null)} className="absolute right-5 top-5 z-10 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600" aria-label="Cancel">
+            <button onClick={(e) => { e.stopPropagation(); setLostStep(null); }} className="absolute right-5 top-5 z-10 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600" aria-label="Cancel">
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" /></svg>
             </button>
             <div key={lostStep} className="flex flex-1 animate-[lost-slide_0.35s_cubic-bezier(0.22,1,0.36,1)] flex-col justify-center">

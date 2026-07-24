@@ -201,6 +201,11 @@ export default function DashboardLayout({
   // rendered; `collapsing` drives the scaleX(0) pinch.
   const [showLead, setShowLead] = useState(false);
   const [collapsing, setCollapsing] = useState(false);
+  // The lead's "+" action menu (log attempt / add note / add location / lost).
+  const [plusOpen, setPlusOpen] = useState(false);
+  useEffect(() => {
+    if (!leadNav) setPlusOpen(false);
+  }, [leadNav]);
   const prevLeadOpen = useRef(false);
   useEffect(() => {
     const open = !!leadNav;
@@ -1087,11 +1092,14 @@ export default function DashboardLayout({
           }}
         >
           {showLead ? (
-            <div className="flex w-full items-stretch rounded-full border border-white/10 bg-[rgba(28,28,32,0.68)] backdrop-blur-2xl backdrop-saturate-150 p-1.5 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.14),inset_0_-1px_0_rgba(0,0,0,0.25)]">
+            <>
+            {/* Contact channels — a pill of four, mirroring the home nav, with
+                a separate "+" circle where the search circle sits. */}
+            <div className="flex flex-1 items-stretch rounded-full border border-white/10 bg-[rgba(28,28,32,0.68)] backdrop-blur-2xl backdrop-saturate-150 p-1.5 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.14),inset_0_-1px_0_rgba(0,0,0,0.25)]">
               <a
                 href={leadNav?.phone ? `tel:${leadNav.phone}` : undefined}
                 aria-label="Call"
-                className={`flex flex-1 items-center justify-center rounded-full py-[11px] text-gray-200 ${leadNav?.phone ? "active:bg-white/10" : "pointer-events-none opacity-40"}`}
+                className={`flex flex-1 items-center justify-center rounded-full py-[12px] text-gray-200 ${leadNav?.phone ? "active:bg-white/[0.13]" : "pointer-events-none opacity-40"}`}
               >
                 <svg className="h-[27px] w-[27px] text-emerald-400" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                   <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.81.36 1.6.68 2.34a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.13-1.13a2 2 0 012.11-.45c.74.32 1.53.55 2.34.68A2 2 0 0122 16.92z" />
@@ -1100,7 +1108,7 @@ export default function DashboardLayout({
               <a
                 href={leadNav?.email ? `mailto:${leadNav.email}` : undefined}
                 aria-label="Email"
-                className={`flex flex-1 items-center justify-center rounded-full py-[11px] text-gray-200 ${leadNav?.email ? "active:bg-white/10" : "pointer-events-none opacity-40"}`}
+                className={`flex flex-1 items-center justify-center rounded-full py-[12px] text-gray-200 ${leadNav?.email ? "active:bg-white/[0.13]" : "pointer-events-none opacity-40"}`}
               >
                 <svg className="h-[27px] w-[27px] text-white" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                   <rect x="3" y="5" width="18" height="14" rx="2" />
@@ -1112,7 +1120,7 @@ export default function DashboardLayout({
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="WhatsApp"
-                className={`flex flex-1 items-center justify-center rounded-full py-[11px] text-gray-200 ${leadNav?.wa ? "active:bg-white/10" : "pointer-events-none opacity-40"}`}
+                className={`flex flex-1 items-center justify-center rounded-full py-[12px] text-gray-200 ${leadNav?.wa ? "active:bg-white/[0.13]" : "pointer-events-none opacity-40"}`}
               >
                 <svg className="h-[28px] w-[28px] text-emerald-400" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M17.6 6.32A7.85 7.85 0 0012 4a7.94 7.94 0 00-6.9 11.9L4 20l4.2-1.1A7.9 7.9 0 0012 20a7.95 7.95 0 005.6-13.68zM12 18.5a6.55 6.55 0 01-3.36-.92l-.24-.14-2.49.65.66-2.43-.16-.25A6.57 6.57 0 1112 18.5zm3.6-4.93c-.2-.1-1.17-.58-1.35-.64s-.31-.1-.44.1-.5.63-.62.76-.23.15-.43.05a5.36 5.36 0 01-1.58-.98 5.94 5.94 0 01-1.1-1.36c-.11-.2 0-.3.09-.4l.3-.35a1.37 1.37 0 00.2-.33.37.37 0 000-.35c-.05-.1-.44-1.07-.6-1.46s-.32-.33-.44-.33h-.38a.72.72 0 00-.52.24 2.19 2.19 0 00-.68 1.63 3.82 3.82 0 00.8 2.03 8.72 8.72 0 003.34 2.95c.47.2.83.33 1.11.42a2.68 2.68 0 001.23.08 2 2 0 001.3-.93 1.62 1.62 0 00.12-.92c-.05-.08-.18-.13-.38-.23z" />
@@ -1121,7 +1129,7 @@ export default function DashboardLayout({
               <button
                 onClick={() => window.dispatchEvent(new Event("teg:lead-schedule"))}
                 aria-label="Schedule"
-                className="flex flex-1 items-center justify-center rounded-full py-[11px] text-gray-200 active:bg-white/10"
+                className="flex flex-1 items-center justify-center rounded-full py-[12px] text-gray-200 active:bg-white/[0.13]"
               >
                 <svg className="h-[27px] w-[27px] text-white" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                   <rect x="3" y="5" width="18" height="16" rx="2" />
@@ -1129,6 +1137,23 @@ export default function DashboardLayout({
                 </svg>
               </button>
             </div>
+
+            {/* "+" — everything else (log / note / location / lost) lives here.
+                Sits exactly where the home search circle does. */}
+            <button
+              onClick={() => setPlusOpen((v) => !v)}
+              aria-label="More actions"
+              className="flex h-[65px] w-[65px] shrink-0 items-center justify-center rounded-full border border-white/10 bg-[rgba(28,28,32,0.68)] backdrop-blur-2xl backdrop-saturate-150 text-white shadow-[0_12px_34px_-8px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.14),inset_0_-1px_0_rgba(0,0,0,0.25)] transition-transform duration-[300ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] active:scale-[0.88]"
+            >
+              <svg
+                className="h-[30px] w-[30px] transition-transform duration-[300ms] ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+                style={{ transform: plusOpen ? "rotate(45deg)" : "rotate(0deg)" }}
+                fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" viewBox="0 0 24 24"
+              >
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+            </>
           ) : (
             <>
             <div
@@ -1198,6 +1223,51 @@ export default function DashboardLayout({
           )}
         </div>
       </div>
+
+      {/* Lead "+" menu — every action you can take on a lead, popped up out of
+          the "+" circle. Dispatches to the open lead file, which does the work. */}
+      {showLead && plusOpen && !navHidden && (
+        <div className="lg:hidden">
+          <button
+            aria-hidden
+            onClick={() => setPlusOpen(false)}
+            className="fixed inset-0 z-[94] cursor-default"
+          />
+          <div
+            className="fixed right-3 z-[95] w-60 origin-bottom-right animate-[search-pop_0.26s_cubic-bezier(0.34,1.56,0.64,1)] overflow-hidden rounded-[28px] border border-white/10 bg-[rgba(28,28,32,0.86)] p-1.5 text-white shadow-[0_22px_50px_-12px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.14),inset_0_-1px_0_rgba(0,0,0,0.3)] backdrop-blur-2xl backdrop-saturate-150"
+            style={{ bottom: "calc(env(safe-area-inset-bottom)/2 + 8px + 78px)" }}
+          >
+            {[
+              { label: "Log attempt", ev: "teg:lead-log", d: "M9 11l3 3 8-8M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h9" },
+              { label: "Add a note", ev: "teg:lead-note", d: "M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z" },
+              { label: "Add location", ev: "teg:lead-location", d: "M12 21s-6-5.7-6-10a6 6 0 1112 0c0 4.3-6 10-6 10z" },
+            ].map((it) => (
+              <button
+                key={it.ev}
+                onClick={() => { window.dispatchEvent(new Event(it.ev)); setPlusOpen(false); }}
+                className="flex w-full items-center gap-3 rounded-[22px] px-3.5 py-3 text-left text-[15px] font-medium text-gray-100 transition active:bg-white/10"
+              >
+                <svg className="h-5 w-5 shrink-0 text-gray-300" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <path d={it.d} />
+                  {it.ev === "teg:lead-location" && <circle cx="12" cy="11" r="2" />}
+                </svg>
+                {it.label}
+              </button>
+            ))}
+            <div className="mx-3.5 my-1 h-px bg-white/10" />
+            <button
+              onClick={() => { window.dispatchEvent(new Event("teg:lead-lost")); setPlusOpen(false); }}
+              className="flex w-full items-center gap-3 rounded-[22px] px-3.5 py-3 text-left text-[15px] font-medium text-red-300 transition active:bg-white/10"
+            >
+              <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M5.6 5.6l12.8 12.8" />
+              </svg>
+              Mark as lost
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Campaign-stage toast — bigger white card with a black outline.
           Sits above the Help Centre launcher so the two never overlap. */}
