@@ -239,6 +239,94 @@ function LeadTile({
 }
 
 
+// Mobile lead card — a single full-width row: a big source badge, the name and
+// when it landed, a "New" pill for fresh leads, and a chevron to open the file.
+// Tapping anywhere opens the lead (the rect drives the expand animation).
+function MobileLeadCard({
+  lead,
+  brand,
+  onClick,
+  selectable,
+  selected,
+  onToggleSelect,
+}: {
+  lead: Lead;
+  brand: Brand;
+  onClick: (rect: DOMRect) => void;
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
+}) {
+  const isNew = lead.stage === "new";
+  const d = new Date(lead.receivedAt);
+  const when = `${d.toLocaleDateString("en-GB", { day: "numeric", month: "short" })} · ${d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={(e) => onClick((e.currentTarget as HTMLElement).getBoundingClientRect())}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") onClick((e.currentTarget as HTMLElement).getBoundingClientRect());
+      }}
+      className={`relative flex w-full cursor-pointer items-center gap-3.5 rounded-2xl bg-white px-4 py-3.5 text-left shadow-[0_2px_10px_-4px_rgba(0,0,0,0.12)] transition active:scale-[0.985] ${
+        selected ? "border border-gray-900 ring-2 ring-gray-900" : "border border-black/10"
+      }`}
+    >
+      <SourceIcon source={lead.source} size={44} className="shrink-0" />
+
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <p className="truncate text-[16px] font-semibold text-gray-900">{lead.name}</p>
+          {isNew && (
+            <span
+              className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+              style={{ backgroundColor: brand.accent }}
+            >
+              New
+            </span>
+          )}
+        </div>
+        <p className="mt-0.5 truncate text-[12.5px] text-gray-400">
+          {lead.resurfaceAt
+            ? `🔥 Warm · back ${shortDate(lead.resurfaceAt)}`
+            : isNew
+              ? `Landed ${when}`
+              : `${stageLabel(lead.stage, brand)} · ${when}`}
+        </p>
+      </div>
+
+      {selectable ? (
+        <span
+          role="checkbox"
+          aria-checked={selected}
+          tabIndex={0}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleSelect?.();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              e.stopPropagation();
+              onToggleSelect?.();
+            }
+          }}
+          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs transition ${
+            selected ? "border-gray-900 bg-gray-900 text-white" : "border-gray-300 text-transparent"
+          }`}
+        >
+          ✓
+        </span>
+      ) : (
+        <svg className="h-5 w-5 shrink-0 text-gray-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 6l6 6-6 6" />
+        </svg>
+      )}
+    </div>
+  );
+}
+
+
 // Human-friendly duration for speed-to-lead (e.g. "42m", "3h 10m", "1d 4h").
 function fmtDuration(ms: number): string {
   const mins = Math.round(ms / 60000);
@@ -600,10 +688,14 @@ export default function LeadsPage() {
 
   return (
     <div className="w-full">
-      <h1 className="text-3xl font-semibold tracking-tight">Leads</h1>
-      <p className="mt-2 text-gray-500">
-        Tap a lead to see everything and mark your next step.
-      </p>
+      {/* Title + subtext — desktop only. On mobile the top bar already says
+          "Leads", so we skip straight to the Active tab. */}
+      <div className="hidden lg:block">
+        <h1 className="text-3xl font-semibold tracking-tight">Leads</h1>
+        <p className="mt-2 text-gray-500">
+          Tap a lead to see everything and mark your next step.
+        </p>
+      </div>
 
       {/* Headline stats — desktop only. On mobile we skip straight to the
           active list so the leads themselves are the first thing you see. */}
@@ -628,7 +720,7 @@ export default function LeadsPage() {
       </div>
 
       {/* Active / Lost / Archived tabs */}
-      <div className="mt-8 flex items-center gap-1 border-b border-gray-100">
+      <div className="mt-1 flex items-center gap-1 border-b border-gray-100 lg:mt-8">
         {(["active", "lost", "archived"] as const).map((v) => (
           <button
             key={v}
@@ -885,10 +977,25 @@ export default function LeadsPage() {
         </div>
       )}
 
-      {/* Lead tiles — mini profile cards in a snake pattern: newest at the
+      {/* Mobile — a clean single-column list of full-width cards. */}
+      <div className="mt-4 flex flex-col gap-2.5 lg:hidden">
+        {visible.map((lead) => (
+          <MobileLeadCard
+            key={lead.id}
+            lead={lead}
+            brand={brand}
+            onClick={(rect) => { setOpenOrigin(rect); setOpenId(lead.id); }}
+            selectable={view === "archived"}
+            selected={selected.has(lead.id)}
+            onToggleSelect={() => toggleSelect(lead.id)}
+          />
+        ))}
+      </div>
+
+      {/* Desktop — mini profile cards in a snake pattern: newest at the
           top-right, each row alternating direction, tapering smaller for
           older rows so recency reads at a glance. */}
-      <div className="mt-4 flex flex-col gap-3">
+      <div className="mt-4 hidden flex-col gap-3 lg:flex">
         {chunk(visible, ROW_SIZE).map((row, ri) => {
           const size: TileSize = ri < 2 ? "lg" : ri < 5 ? "md" : "sm";
           return (
@@ -913,6 +1020,9 @@ export default function LeadsPage() {
             </div>
           );
         })}
+      </div>
+
+      <div>
         {visible.length === 0 && (
           <div className="rounded-2xl border border-dashed border-gray-200 py-16 text-center text-sm text-gray-400">
             {view === "lost"
