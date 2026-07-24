@@ -104,8 +104,9 @@ export default function LocationPicker({
         center: UK_CENTRE,
         zoom: 6,
         disableDefaultUI: true,
-        zoomControl: true,
+        zoomControl: false,
         clickableIcons: false,
+        gestureHandling: "greedy",
       });
       map.current.addListener("click", (e: { latLng: { lat(): number; lng(): number } }) =>
         place(e.latLng.lat(), e.latLng.lng(), false)
@@ -188,43 +189,17 @@ export default function LocationPicker({
         )}
       </div>
 
-      {/* Quick city chips (kept — a fast path, and the only path with no key) */}
-      <div className="mt-3 flex flex-wrap gap-2">
-        {["Liverpool", "Manchester", "Leeds", "Birmingham"].map((c) => (
-          <button
-            key={c}
-            type="button"
-            onClick={() => onChange({ label: c })}
-            className="rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
-          >
-            {c}
-          </button>
-        ))}
-      </div>
-
       {hasKey ? (
-        <div className="relative mt-3">
+        <div className="relative mt-4">
           <div
             ref={mapEl}
-            className="h-56 w-full overflow-hidden rounded-2xl border border-gray-200 bg-gray-50"
+            className="h-[42vh] max-h-[460px] min-h-[300px] w-full overflow-hidden rounded-3xl border border-gray-200 bg-gray-50"
           />
           {!ready && !mapError && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-gray-400">
               Loading map…
             </div>
           )}
-          <p className="mt-2 text-xs text-gray-400">
-            Tap the map to drop a pin, drag it to fine-tune, or{" "}
-            <button
-              type="button"
-              onClick={useMyLocation}
-              className="font-medium underline decoration-dotted underline-offset-2"
-              style={{ color: accent }}
-            >
-              use your location
-            </button>
-            .
-          </p>
         </div>
       ) : (
         <p className="mt-3 text-xs text-gray-400">

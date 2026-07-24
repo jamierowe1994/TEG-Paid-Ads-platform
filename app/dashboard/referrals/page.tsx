@@ -436,34 +436,34 @@ function BrandTile({ brand: b, onOpen }: { brand: Brand; onOpen: () => void }) {
   return (
     <button
       onClick={onOpen}
-      className="group flex h-full flex-col rounded-2xl border border-gray-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
+      className="group flex h-full flex-col rounded-3xl border border-gray-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
     >
       <div className="flex items-center gap-3">
-        <BrandBadge brand={b} />
+        <BrandBadge brand={b} size={40} />
         <div className="min-w-0">
           <h3 className="truncate font-semibold leading-tight">{b.name}</h3>
           <p className="text-xs text-gray-400">{b.audience}</p>
         </div>
       </div>
 
-      <p className="mt-4 text-sm leading-relaxed text-gray-500">
+      <p className="mt-3 text-[13px] leading-relaxed text-gray-500">
         {b.referralPitch}
       </p>
 
-      <div className="mt-4 flex items-end justify-between border-t border-gray-100 pt-4">
+      <div className="mt-3 flex items-end justify-between border-t border-gray-100 pt-3">
         <div>
           <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
             You earn up to
           </p>
           <p
-            className="text-2xl font-semibold tracking-tight"
+            className="text-xl font-semibold tracking-tight"
             style={{ color: b.accent }}
           >
             {money(b.referralFee)}
           </p>
         </div>
         <span
-          className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition group-hover:opacity-90"
+          className="rounded-full px-3.5 py-1.5 text-xs font-semibold text-white transition group-hover:opacity-90"
           style={{ backgroundColor: b.accent }}
         >
           Refer a lead →
@@ -503,27 +503,35 @@ function BrandPreview({
 }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/30 p-6 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-gray-900/40 p-6 backdrop-blur-sm"
       onClick={onClose}
     >
+      {/* X — floats on the backdrop, just above the box. */}
+      <button
+        onClick={onClose}
+        aria-label="Close"
+        className="rounded-full p-2 text-white/90 transition active:scale-90"
+      >
+        <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2.2">
+          <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+        </svg>
+      </button>
+
       <div
-        className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-xl"
+        className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header band in the brand colour */}
-        <div
-          className="flex items-center gap-4 p-6"
-          style={{ backgroundColor: b.accentSoft }}
-        >
-          <BrandBadge brand={b} size={60} />
-          <div>
-            <h2 className="text-xl font-semibold">{b.name}</h2>
-            <p className="text-sm text-gray-500">{b.audience}</p>
+        <div className="p-6 sm:p-7">
+          {/* Header — icon butted straight up against the name, no colour band. */}
+          <div className="flex items-center gap-3">
+            <BrandBadge brand={b} size={56} />
+            <div className="min-w-0">
+              <h2 className="text-xl font-semibold leading-tight">{b.name}</h2>
+              <p className="text-sm text-gray-500">{b.audience}</p>
+            </div>
           </div>
-        </div>
 
-        <div className="p-6">
-          <p className="text-sm leading-relaxed text-gray-600">
+          <p className="mt-5 text-sm leading-relaxed text-gray-600">
             {b.referralAbout}
           </p>
 
@@ -542,21 +550,14 @@ function BrandPreview({
             every stage in your sent list until the fee lands.
           </p>
 
-          <div className="mt-6 flex justify-end gap-3">
-            <button
-              onClick={onClose}
-              className="rounded-lg px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50"
-            >
-              Close
-            </button>
-            <button
-              onClick={onRefer}
-              className="rounded-lg px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90"
-              style={{ backgroundColor: b.accent }}
-            >
-              Refer a lead
-            </button>
-          </div>
+          {/* Refer a lead — central. */}
+          <button
+            onClick={onRefer}
+            className="mt-6 w-full rounded-full py-3.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
+            style={{ backgroundColor: b.accent }}
+          >
+            Refer a lead
+          </button>
         </div>
       </div>
     </div>
@@ -776,20 +777,20 @@ function ReferWizard({
         {/* Location */}
         {step === "location" && (
           <div className="fade-up">
-            <div className="flex items-center gap-3">
-              <BrandBadge brand={toBrand} size={40} />
-              <div>
-                <h2 className="text-lg font-semibold leading-tight">
-                  Refer to {toBrand.shortName}
-                </h2>
-                <p className="text-xs text-gray-400">
-                  You earn {money(toBrand.referralFee)} when it converts
-                </p>
-              </div>
+            {/* Close — top-right, no header band or brand icon. They've already
+                picked who they're referring to. */}
+            <div className="flex justify-end">
+              <button
+                onClick={onClose}
+                aria-label="Close"
+                className="-mr-1 -mt-1 rounded-full p-1.5 text-gray-400 transition hover:bg-gray-100 active:bg-gray-100"
+              >
+                <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
             </div>
-            <h3 className="mt-6 text-lg font-semibold">
-              Where&apos;s your referral based?
-            </h3>
+            <h3 className="text-xl font-semibold">Where was your referral based?</h3>
             <p className="mt-1 text-sm text-gray-500">
               A town or postcode is enough — we&apos;ll match them to the closest
               {" "}
@@ -808,16 +809,10 @@ function ReferWizard({
               />
             </div>
             {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={onClose}
-                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50"
-              >
-                Cancel
-              </button>
+            <div className="mt-6 flex justify-center">
               <button
                 onClick={findAgent}
-                className="rounded-lg px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                className="rounded-full px-8 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
                 style={{ backgroundColor: fromBrand.accent }}
               >
                 Find an agent
@@ -1074,9 +1069,9 @@ function ReferralRow({
   return (
     <button
       onClick={onClick}
-      className="block w-full rounded-2xl border border-gray-200 p-5 text-left transition hover:border-gray-300 hover:shadow-sm"
+      className="block w-full rounded-3xl border border-gray-200 bg-white p-4 text-left transition hover:border-gray-300 hover:shadow-sm"
     >
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3.5">
         {other && <BrandBadge brand={other} size={44} />}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
