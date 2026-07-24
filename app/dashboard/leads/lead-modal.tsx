@@ -185,13 +185,16 @@ export function LeadModal({
   const [schedSheet, setSchedSheet] = useState(false);
   const [noteSheet, setNoteSheet] = useState(false);
   const [locSheet, setLocSheet] = useState(false);
-  const anySheet = schedSheet || noteSheet || locSheet;
-  useEffect(() => {
-    window.dispatchEvent(new Event(anySheet ? "teg:nav-hide" : "teg:nav-show"));
-  }, [anySheet]);
 
   // Mark-as-lost flow.
   const [lostStep, setLostStep] = useState<null | "ask" | "reason" | "date" | "funnel" | "done">(null);
+
+  // Any full-screen overlay (a sheet or the lost/nurture flow) tucks the bottom
+  // nav out of the way so it can't sit over the content.
+  const anyOverlay = schedSheet || noteSheet || locSheet || !!lostStep;
+  useEffect(() => {
+    window.dispatchEvent(new Event(anyOverlay ? "teg:nav-hide" : "teg:nav-show"));
+  }, [anyOverlay]);
   const [savingLost, setSavingLost] = useState(false);
   const [lostReason, setLostReason] = useState("");
   const [nurtureReason, setNurtureReason] = useState("");
@@ -443,18 +446,21 @@ export function LeadModal({
       onClick={onClose}
     >
       {/* X (dismiss) — mobile only, floating on the blurred backdrop above the
-          sheet's rounded top. */}
-      <div className="pointer-events-none absolute inset-x-0 top-[calc(env(safe-area-inset-top)+20px)] z-10 flex items-center justify-end px-6 sm:hidden">
-        <button
-          onClick={(e) => { e.stopPropagation(); onClose(); }}
-          aria-label="Close"
-          className="pointer-events-auto flex h-12 w-12 items-center justify-center text-white transition-transform active:scale-90"
-        >
-          <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2.4">
-            <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
-          </svg>
-        </button>
-      </div>
+          sheet's rounded top. Hidden while an overlay (schedule / note / lost)
+          is up, so it can't be confused with that overlay's own close. */}
+      {!anyOverlay && (
+        <div className="pointer-events-none absolute inset-x-0 top-[calc(env(safe-area-inset-top)+20px)] z-10 flex items-center justify-end px-6 sm:hidden">
+          <button
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            aria-label="Close"
+            className="pointer-events-auto flex h-12 w-12 items-center justify-center text-white transition-transform active:scale-90"
+          >
+            <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2.4">
+              <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       <div
         ref={sheetRef}
@@ -1101,11 +1107,22 @@ export function LeadModal({
         </div>
       )}
 
-      {/* Mark-as-lost flow (kept from before) */}
+      {/* Mark-as-lost flow — heavy dark blur so the file behind is hidden, and
+          a single white X on the backdrop (progressive: it only steps back out
+          of this flow). The bottom nav is tucked away while it's open. */}
       {lostStep && (
-        <div className="fixed inset-0 z-[110] flex items-end justify-center bg-gray-900/50 p-0 sm:items-center sm:p-6" onClick={(e) => { e.stopPropagation(); setLostStep(null); }}>
-          <div className="modal-pop relative flex max-h-[92vh] min-h-[60vh] w-full max-w-3xl flex-col overflow-y-auto rounded-t-3xl bg-white p-6 sm:rounded-3xl sm:p-8" onClick={(e) => e.stopPropagation()}>
-            <button onClick={(e) => { e.stopPropagation(); setLostStep(null); }} className="absolute right-5 top-5 z-10 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600" aria-label="Cancel">
+        <div className="fixed inset-0 z-[110] flex items-end justify-center bg-gray-950/70 p-0 backdrop-blur-xl sm:items-center sm:p-6" onClick={(e) => { e.stopPropagation(); setLostStep(null); }}>
+          {/* White X on the backdrop — obvious, and only closes this flow. */}
+          <button
+            onClick={(e) => { e.stopPropagation(); setLostStep(null); }}
+            aria-label="Cancel"
+            className="absolute right-5 top-[calc(env(safe-area-inset-top)+16px)] z-20 flex h-11 w-11 items-center justify-center text-white transition-transform active:scale-90 sm:hidden"
+          >
+            <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2.4"><path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+          <div className="modal-pop relative flex max-h-[92vh] min-h-[60vh] w-full max-w-3xl flex-col overflow-y-auto rounded-t-3xl bg-white p-6 pb-[calc(env(safe-area-inset-bottom)+28px)] sm:rounded-3xl sm:p-8" onClick={(e) => e.stopPropagation()}>
+            {/* Desktop keeps the corner X inside the card. */}
+            <button onClick={(e) => { e.stopPropagation(); setLostStep(null); }} className="absolute right-5 top-5 z-10 hidden rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 sm:block" aria-label="Cancel">
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" /></svg>
             </button>
             <div key={lostStep} className="flex flex-1 animate-[lost-slide_0.35s_cubic-bezier(0.22,1,0.36,1)] flex-col justify-center">
@@ -1151,11 +1168,10 @@ export function LeadModal({
                 </div>
               )}
               {lostStep === "funnel" && (
-                <div className="grid gap-6 sm:grid-cols-2 sm:gap-8">
+                <div className="grid gap-7 sm:grid-cols-2 sm:gap-8">
                   <div className="flex flex-col justify-center">
                     <GifCard src={FUNNEL_GIF} emoji="🙌" tint="linear-gradient(135deg,#f0fdf4,#dcfce7)" />
                     <h3 className="mt-5 text-xl font-semibold">Not lost — just nurtured</h3>
-                    <p className="mt-2 text-sm text-gray-500">{firstName} will get our marketing sequence and could come back around when the timing&apos;s right.</p>
                     {nurtureReason && (
                       <div className="fade-up mt-5"><BigBtn primary accent={accent} disabled={savingLost} onClick={addToNurture}>{savingLost ? "Adding…" : "Add to marketing funnel ✓"}</BigBtn></div>
                     )}
@@ -1426,7 +1442,7 @@ function Expand({ open, children }: { open: boolean; children: ReactNode }) {
 
 function BigBtn({ children, onClick, primary, accent, disabled }: { children: ReactNode; onClick: () => void; primary?: boolean; accent?: string; disabled?: boolean }) {
   return (
-    <button onClick={onClick} disabled={disabled} className={`w-full rounded-2xl py-3.5 text-sm font-semibold transition disabled:opacity-60 ${primary ? "text-white hover:opacity-90" : "border border-gray-200 text-gray-800 hover:bg-gray-50"}`} style={primary && accent ? { backgroundColor: accent } : undefined}>
+    <button onClick={onClick} disabled={disabled} className={`w-full rounded-full py-3.5 text-sm font-semibold transition disabled:opacity-60 ${primary ? "text-white hover:opacity-90" : "border border-gray-200 text-gray-800 hover:bg-gray-50"}`} style={primary && accent ? { backgroundColor: accent } : undefined}>
       {children}
     </button>
   );
