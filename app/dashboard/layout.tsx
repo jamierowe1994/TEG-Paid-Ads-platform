@@ -17,6 +17,7 @@ import HelpCentre from "@/components/HelpCentre";
 import SetPasswordGate from "@/components/SetPasswordGate";
 import PaidLockOverlay from "@/components/PaidLockOverlay";
 import MobileLoading from "@/components/MobileLoading";
+import { useBottomInset } from "@/lib/useBottomInset";
 
 // Toast copy when the admin advances a customer's campaign stage.
 const STAGE_TOAST: Record<string, string> = {
@@ -133,34 +134,9 @@ export default function DashboardLayout({
     return () => window.removeEventListener("resize", on);
   }, []);
 
-  // How many pixels of the layout viewport are hidden below the *visual*
-  // viewport's bottom edge — i.e. covered by Chrome's bottom URL bar (or the
-  // keyboard). The mobile bottom nav shifts up by this so it's always visible
-  // and never slides under the browser chrome. Desktop never reads it.
-  const [bottomInset, setBottomInset] = useState(0);
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    let raf = 0;
-    const update = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const hidden = Math.max(
-          0,
-          Math.round(window.innerHeight - vv.height - vv.offsetTop)
-        );
-        setBottomInset(hidden);
-      });
-    };
-    update();
-    vv.addEventListener("resize", update);
-    vv.addEventListener("scroll", update);
-    return () => {
-      cancelAnimationFrame(raf);
-      vv.removeEventListener("resize", update);
-      vv.removeEventListener("scroll", update);
-    };
-  }, []);
+  // The mobile bottom nav shifts up by this so it's always visible above the
+  // browser's bottom bar / keyboard. Desktop never reads it.
+  const bottomInset = useBottomInset();
 
   useEffect(() => {
     refreshUser().then((u) => {
@@ -505,67 +481,79 @@ export default function DashboardLayout({
         </div>
       </aside>
 
-      {/* ══ MOBILE top bar (<lg): search icon · page title · three-dots ══ */}
-      <div className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-gray-100 bg-white/90 px-2 backdrop-blur lg:hidden">
+      {/* ══ MOBILE top bar (<lg): transparent (blends with the page) — search
+          left, page title + a short underline in the middle, bell right. The
+          old three-dots options now live in the bottom nav's + button. ══ */}
+      <div className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between px-2 lg:hidden">
         <button
           onClick={() => setMobileSearchOpen(true)}
           aria-label="Search"
-          className="flex h-10 w-10 items-center justify-center rounded-full text-gray-600 active:bg-gray-100"
+          className="flex h-10 w-10 items-center justify-center rounded-full text-gray-600 active:bg-black/5"
         >
           <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <circle cx="11" cy="11" r="7" />
             <path d="M21 21l-4.3-4.3" strokeLinecap="round" />
           </svg>
         </button>
-        <span className="text-sm font-semibold text-gray-900">
-          {NAV.find((n) => n.href === pathname)?.label ?? brand.name}
-        </span>
+        <div className="flex flex-col items-center">
+          <span className="text-sm font-semibold text-gray-900">
+            {NAV.find((n) => n.href === pathname)?.label ?? brand.name}
+          </span>
+          <span
+            className="mt-1 h-[3px] w-6 rounded-full"
+            style={{ backgroundColor: brand.accent }}
+          />
+        </div>
         <button
-          onClick={() => setMobileMenuOpen((v) => !v)}
-          aria-label="Menu"
-          className="relative flex h-10 w-10 items-center justify-center rounded-full text-gray-700 active:bg-gray-100"
+          onClick={() => setBellOpen((v) => !v)}
+          aria-label="Notifications"
+          className="relative flex h-10 w-10 items-center justify-center rounded-full text-gray-700 active:bg-black/5"
         >
-          <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-            <circle cx="12" cy="5" r="1.75" />
-            <circle cx="12" cy="12" r="1.75" />
-            <circle cx="12" cy="19" r="1.75" />
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+            <path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           {unread > 0 && (
             <span
-              className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full"
+              className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold text-white"
               style={{ backgroundColor: brand.accent }}
-            />
+            >
+              {unread}
+            </span>
           )}
         </button>
       </div>
 
-      {/* Three-dots menu → Notifications / Help / Profile */}
+      {/* The "+" overflow menu — pops up above the bottom nav's plus button.
+          Extra destinations that don't fit the main pill: All Ads, Help,
+          Profile, Log out. Kept in one place so it's easy to add per-screen
+          actions later. */}
       {mobileMenuOpen && (
         <>
           <button
-            className="fixed inset-0 z-40 cursor-default lg:hidden"
+            className="fixed inset-0 z-[91] cursor-default lg:hidden"
             aria-hidden
             onClick={() => setMobileMenuOpen(false)}
           />
-          <div className="fixed right-2 top-14 z-50 w-56 overflow-hidden rounded-2xl border border-gray-200 bg-white p-1.5 shadow-xl lg:hidden">
+          <div
+            className="fixed right-4 z-[92] w-52 overflow-hidden rounded-2xl border border-white/50 bg-white/85 p-1.5 shadow-2xl backdrop-blur-xl lg:hidden"
+            style={{ bottom: `calc(96px + ${bottomInset}px + env(safe-area-inset-bottom))` }}
+          >
             <button
               onClick={() => {
                 setMobileMenuOpen(false);
-                setBellOpen(true);
+                router.push("/dashboard/ads");
               }}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-gray-700 active:bg-gray-50"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-gray-700 active:bg-black/5"
             >
               <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-                <path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0" strokeLinecap="round" strokeLinejoin="round" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 5h16a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1zm2 11l4-5 3 3 2-2 3 4M9 9.5a.5.5 0 11-1 0 .5.5 0 011 0z" />
               </svg>
-              Notifications
-              {unread > 0 && (
-                <span
-                  className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold text-white"
-                  style={{ backgroundColor: brand.accent }}
-                >
-                  {unread}
-                </span>
+              All Ads
+              {isReferralOnly && (
+                <svg className="ml-auto h-3.5 w-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" aria-label="Locked">
+                  <rect x="5" y="11" width="14" height="9" rx="2" />
+                  <path d="M8 11V8a4 4 0 018 0v3" strokeLinecap="round" />
+                </svg>
               )}
             </button>
             <button
@@ -573,7 +561,7 @@ export default function DashboardLayout({
                 setMobileMenuOpen(false);
                 window.dispatchEvent(new Event("teg:toggle-help"));
               }}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-gray-700 active:bg-gray-50"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-gray-700 active:bg-black/5"
             >
               <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="9.25" />
@@ -586,21 +574,21 @@ export default function DashboardLayout({
                 setMobileMenuOpen(false);
                 router.push("/dashboard/profile");
               }}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-gray-700 active:bg-gray-50"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-gray-700 active:bg-black/5"
             >
               <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
                 <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               Profile
             </button>
-            <div className="my-1 border-t border-gray-100" />
+            <div className="my-1 border-t border-gray-200/70" />
             <button
               onClick={() => {
                 setMobileMenuOpen(false);
                 signOut();
                 router.push("/");
               }}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-gray-700 active:bg-gray-50"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-gray-700 active:bg-black/5"
             >
               <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 12H3m0 0l4-4m-4 4l4 4M13 4h5a2 2 0 012 2v12a2 2 0 01-2 2h-5" />
@@ -936,7 +924,7 @@ export default function DashboardLayout({
 
       {/* ── Main ── (mobile: no sidebar margin, room for the top bar + bottom
           nav; desktop margins/padding unchanged) */}
-      <main className="px-4 pb-24 pt-[68px] lg:ml-[240px] lg:px-8 lg:pb-10 lg:pt-[176px]">
+      <main className="px-4 pb-24 pt-[78px] lg:ml-[240px] lg:px-8 lg:pb-10 lg:pt-[176px]">
         {onLockedRoute ? (
           <PaidLockOverlay
             accent={brand.accent}
@@ -954,63 +942,66 @@ export default function DashboardLayout({
         )}
       </main>
 
-      {/* ══ MOBILE bottom nav (<lg): Overview · Leads · Referrals · All Ads ══
-          Pinned to the *visual* viewport bottom (shifts up by bottomInset) so
-          Chrome's bottom URL bar can never slide over it. z-[90] keeps it above
-          page content and overlays; solid white so nothing shows through. */}
-      <nav
-        className="fixed inset-x-0 bottom-0 z-[90] flex h-[68px] items-stretch border-t border-gray-100 bg-white pb-[env(safe-area-inset-bottom)] lg:hidden"
-        style={{
-          transform: `translateY(-${bottomInset}px)`,
-          willChange: "transform",
-        }}
+      {/* ══ MOBILE bottom nav (<lg) — a "broken" glass bar: a frosted pill with
+          Overview · Leads · Referrals, and a separate frosted circle for the
+          "+" (All Ads / Help / Profile / Log out). Floats over the page so the
+          content behind blurs through it. Shifts up by bottomInset so the
+          browser's bottom bar / keyboard never cover it. */}
+      <div
+        className="fixed inset-x-0 bottom-0 z-[90] flex items-center justify-center gap-2.5 px-4 pb-[calc(env(safe-area-inset-bottom)+14px)] lg:hidden"
+        style={{ transform: `translateY(-${bottomInset}px)`, willChange: "transform" }}
       >
-        {NAV.slice(0, 4).map((item) => {
-          const active = pathname === item.href;
-          const locked = isReferralOnly && item.paidOnly;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="relative flex flex-1 flex-col items-center justify-center gap-1"
-              style={active && !locked ? { color: brand.accent } : undefined}
-            >
-              <span className="relative">
-                <svg
-                  className={`h-6 w-6 ${active && !locked ? "" : "text-gray-400"}`}
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.8}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  viewBox="0 0 24 24"
-                >
-                  <path d={item.icon} />
-                </svg>
-                {locked && (
-                  <svg className="absolute -right-1.5 -top-1 h-3 w-3 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-label="Locked">
-                    <rect x="5" y="11" width="14" height="9" rx="2" />
-                    <path d="M8 11V8a4 4 0 018 0v3" strokeLinecap="round" />
-                  </svg>
-                )}
-                {dotFor(item.href) && (
-                  <span
-                    className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full"
-                    style={{ backgroundColor: brand.accent }}
-                  />
-                )}
-              </span>
-              <span
-                className={`text-[11px] font-medium ${
-                  active && !locked ? "" : "text-gray-500"
-                }`}
+        <div className="flex items-stretch overflow-hidden rounded-full border border-white/60 bg-white/60 shadow-[0_8px_30px_-6px_rgba(0,0,0,0.28)] backdrop-blur-xl">
+          {NAV.slice(0, 3).map((item) => {
+            const active = pathname === item.href;
+            const locked = isReferralOnly && item.paidOnly;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="relative flex flex-col items-center justify-center gap-0.5 px-5 py-2.5"
+                style={active && !locked ? { color: brand.accent } : undefined}
               >
-                {item.label}
-              </span>
-            </Link>
-          );
-        })}
-      </nav>
+                <span className="relative">
+                  <svg
+                    className={`h-[22px] w-[22px] ${active && !locked ? "" : "text-gray-500"}`}
+                    fill="none" stroke="currentColor" strokeWidth={1.8}
+                    strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"
+                  >
+                    <path d={item.icon} />
+                  </svg>
+                  {locked && (
+                    <svg className="absolute -right-1.5 -top-1 h-3 w-3 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-label="Locked">
+                      <rect x="5" y="11" width="14" height="9" rx="2" />
+                      <path d="M8 11V8a4 4 0 018 0v3" strokeLinecap="round" />
+                    </svg>
+                  )}
+                  {dotFor(item.href) && (
+                    <span className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full" style={{ backgroundColor: brand.accent }} />
+                  )}
+                </span>
+                <span className={`text-[10px] font-medium ${active && !locked ? "" : "text-gray-500"}`}>
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+
+        {/* Separate frosted circle — the "+" overflow */}
+        <button
+          onClick={() => setMobileMenuOpen((v) => !v)}
+          aria-label="More"
+          className="flex h-[58px] w-[58px] shrink-0 items-center justify-center rounded-full border border-white/60 bg-white/60 text-gray-700 shadow-[0_8px_30px_-6px_rgba(0,0,0,0.28)] backdrop-blur-xl transition active:scale-95"
+        >
+          <svg
+            className={`h-6 w-6 transition-transform duration-200 ${mobileMenuOpen ? "rotate-45" : ""}`}
+            fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" d="M12 5v14M5 12h14" />
+          </svg>
+        </button>
+      </div>
 
       {/* Campaign-stage toast — bigger white card with a black outline.
           Sits above the Help Centre launcher so the two never overlap. */}

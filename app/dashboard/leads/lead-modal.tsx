@@ -6,6 +6,7 @@ import type { Brand } from "@/lib/brands";
 import SourceIcon from "@/components/SourceIcon";
 import { geocodeUk, extractPostcode } from "@/lib/geo-uk";
 import { lostReasonsFor, warmReasonsFor } from "@/lib/lost-reasons";
+import { useBottomInset } from "@/lib/useBottomInset";
 
 export function stageLabel(stage: LeadStage, brand: Brand): string {
   switch (stage) {
@@ -187,6 +188,9 @@ export function LeadModal({
   const [snoozeDay, setSnoozeDay] = useState<Date | null>(null);
   const [savingSnooze, setSavingSnooze] = useState(false);
 
+  // Keeps the mobile action bar above the browser's bottom bar / keyboard.
+  const bottomInset = useBottomInset();
+
   // Lock the page behind the sheet while it's open, so on mobile you can only
   // scroll/swipe the sheet itself — the background can't drift and "freak out".
   useEffect(() => {
@@ -319,11 +323,15 @@ export function LeadModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-gray-900/50 p-0 sm:items-center sm:p-6"
+      // z-[100] lifts the whole sheet above the dashboard's bottom nav (z-90)
+      // on mobile, so the candidate action bar below sits where the nav was.
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-gray-900/50 p-0 sm:items-center sm:p-6"
       onClick={onClose}
     >
       <div
-        className="modal-pop relative flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-t-3xl bg-white sm:rounded-3xl"
+        // Mobile: a bottom sheet that stops short of the top (85dvh) and never
+        // grows past it. Desktop: the centred dialog, unchanged.
+        className="modal-pop relative flex h-[85dvh] w-full max-w-5xl flex-col overflow-hidden rounded-t-3xl bg-white sm:h-auto sm:max-h-[94vh] sm:rounded-3xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -358,7 +366,7 @@ export function LeadModal({
 
         {/* Body — one column on mobile (grid-cols-1 bounds the track so nothing
             overflows sideways), two columns on desktop. */}
-        <div className="grid flex-1 grid-cols-1 gap-7 overflow-x-hidden overflow-y-auto px-7 py-6 sm:px-8 lg:grid-cols-[1.6fr_1fr]">
+        <div className="grid flex-1 grid-cols-1 gap-7 overflow-x-hidden overflow-y-auto px-7 pt-6 pb-28 sm:px-8 lg:grid-cols-[1.6fr_1fr] lg:pb-6">
           {/* MAIN */}
           <div className="min-w-0">
             {/* Mobile: a single "More details" toggle reveals the contact facts,
@@ -432,12 +440,13 @@ export function LeadModal({
               </Expand>
             </div>
 
-            {/* Get in touch */}
-            <div className="mt-6 flex items-center gap-3">
+            {/* Get in touch — desktop only; on mobile these live in the fixed
+                candidate action bar at the bottom. */}
+            <div className="mt-6 hidden items-center gap-3 lg:flex">
               <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Get in touch</span>
               <span className="h-px flex-1 bg-gray-100" />
             </div>
-            <div className="mt-3 grid grid-cols-3 gap-3">
+            <div className="mt-3 hidden grid-cols-3 gap-3 lg:grid">
               <Tool active={panel === "call"} accent={accent} onClick={() => togglePanel("call")} icon={<PhoneIcon />} label="Call" />
               {/* Mobile: WhatsApp them directly (opens their chat). Desktop: the
                   email composer. */}
@@ -610,6 +619,40 @@ export function LeadModal({
               )}
             </div>
 
+            {/* Notes — mobile: bigger, sits above Mark as lost. Desktop keeps
+                the right-rail Notes + quick-note bar instead. */}
+            <div className="mt-6 lg:hidden">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Notes</span>
+                <span className="text-[11px] font-medium text-gray-400">{notes.length}</span>
+              </div>
+              {notes.length > 0 && (
+                <div className="mt-2 space-y-2">
+                  {[...notes].reverse().map((n, i) => (
+                    <div key={i} className="rounded-xl bg-gray-50 p-3">
+                      <p className="text-[13.5px] text-gray-700">{n.text}</p>
+                      <p className="mt-1.5 text-[11px] text-gray-400">{fullDate(n.at)}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <textarea
+                value={noteText}
+                onChange={(e) => setNoteText(e.target.value)}
+                rows={3}
+                placeholder="Add a note…"
+                className="mt-2 w-full rounded-xl border border-gray-200 bg-white p-3 text-[15px] outline-none focus:border-gray-900"
+              />
+              <button
+                onClick={saveNote}
+                disabled={!noteText.trim() || savingNote}
+                className="mt-2 w-full rounded-xl py-2.5 text-sm font-semibold text-white transition disabled:opacity-40"
+                style={{ backgroundColor: accent }}
+              >
+                {savingNote ? "Saving…" : "Add note"}
+              </button>
+            </div>
+
             {/* Archive / mark lost */}
             <div className="mt-5 flex items-center justify-center gap-4">
               {canWork && !lead.archivedAt && (
@@ -670,8 +713,8 @@ export function LeadModal({
               )}
             </div>
 
-            {/* Notes */}
-            <div className="rounded-2xl border border-gray-200">
+            {/* Notes — desktop only (mobile has its own bigger block above) */}
+            <div className="hidden rounded-2xl border border-gray-200 lg:block">
               <div className="flex items-center gap-2 px-4 pb-2 pt-4">
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Notes</span>
                 <span className="ml-auto text-[11px] font-medium text-gray-400">{notes.length}</span>
@@ -692,8 +735,8 @@ export function LeadModal({
           </div>
         </div>
 
-        {/* Always-on note bar */}
-        <div className="flex items-center gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4 sm:px-8">
+        {/* Always-on note bar — desktop only (mobile note box lives in-body) */}
+        <div className="hidden items-center gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4 sm:px-8 lg:flex">
           <span className="hidden text-xs font-medium text-gray-400 sm:block">Quick note</span>
           <input
             value={noteText}
@@ -714,9 +757,63 @@ export function LeadModal({
         </div>
       </div>
 
+      {/* Mobile candidate action bar — sits where the dashboard nav was (the
+          whole sheet is z-[100], above the nav). Call / WhatsApp / Email are
+          direct links; Schedule opens the in-sheet picker; Log records the
+          attempt. Shifts up by bottomInset so the browser's bottom bar / the
+          keyboard never cover it. */}
+      <div
+        className="fixed inset-x-0 bottom-0 z-10 flex items-stretch border-t border-gray-100 bg-white pb-[env(safe-area-inset-bottom)] lg:hidden"
+        style={{ transform: `translateY(-${bottomInset}px)` }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <a
+          href={lead.phone ? `tel:${lead.phone}` : undefined}
+          className={`flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-gray-600 ${lead.phone ? "active:bg-gray-50" : "pointer-events-none opacity-40"}`}
+        >
+          <PhoneIcon />
+          <span className="text-[11px] font-medium">Call</span>
+        </a>
+        <a
+          href={waNumber ? `https://wa.me/${waNumber}` : undefined}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-gray-600 ${waNumber ? "active:bg-gray-50" : "pointer-events-none opacity-40"}`}
+        >
+          <WhatsAppIcon />
+          <span className="text-[11px] font-medium">WhatsApp</span>
+        </a>
+        <a
+          href={lead.email ? `mailto:${lead.email}` : undefined}
+          className={`flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-gray-600 ${lead.email ? "active:bg-gray-50" : "pointer-events-none opacity-40"}`}
+        >
+          <MailIcon />
+          <span className="text-[11px] font-medium">Email</span>
+        </a>
+        <button
+          onClick={() => setPanel((p) => (p === "sched" ? null : "sched"))}
+          className={`flex flex-1 flex-col items-center justify-center gap-1 py-2.5 active:bg-gray-50 ${panel === "sched" ? "" : "text-gray-600"}`}
+          style={panel === "sched" ? { color: accent } : undefined}
+        >
+          <CalIcon />
+          <span className="text-[11px] font-medium">Schedule</span>
+        </button>
+        <button
+          onClick={handleLogAttempt}
+          disabled={!attemptNext[lead.stage] || busy}
+          className="flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-white disabled:opacity-40"
+          style={{ backgroundColor: accent }}
+        >
+          <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 11l3 3 8-8M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h9" />
+          </svg>
+          <span className="text-[11px] font-medium">Log</span>
+        </button>
+      </div>
+
       {/* Mark-as-lost flow (kept from before) */}
       {lostStep && (
-        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-gray-900/50 p-0 sm:items-center sm:p-6" onClick={() => setLostStep(null)}>
+        <div className="fixed inset-0 z-[110] flex items-end justify-center bg-gray-900/50 p-0 sm:items-center sm:p-6" onClick={() => setLostStep(null)}>
           <div className="modal-pop relative flex max-h-[92vh] min-h-[60vh] w-full max-w-3xl flex-col overflow-y-auto rounded-t-3xl bg-white p-6 sm:rounded-3xl sm:p-8" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => setLostStep(null)} className="absolute right-5 top-5 z-10 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600" aria-label="Cancel">
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" /></svg>

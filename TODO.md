@@ -149,6 +149,23 @@ desktop (≥1024px) renders byte-identically (existing markup scoped with `lg:`)
     (no more "freak out"); fixed a horizontal-overflow bug (grid-cols-1).
   · ✅ (23 Jul) Global mobile smoothness: inputs pinned to 16px so focusing a
     field no longer zooms/janks the page.
+  · ✅ (24 Jul) Lead sheet v2: slides up leaving a top gap; a fixed candidate
+    action bar (Call · WhatsApp · Email · Schedule · Log) replaces the nav
+    while open (sheet is z-[100] above it); in-sheet Get-in-touch buttons
+    removed; Notes made bigger and moved above Mark-as-lost; body scroll
+    locked so only the sheet moves.
+  · ✅ (24 Jul) Nav redesign: "broken glass" bottom nav — a frosted pill
+    (Overview/Leads/Referrals) + a separate frosted "+" circle whose menu holds
+    All Ads/Help/Profile/Log out; top bar is now transparent (title + short
+    accent underline), notifications bell top-right, three-dots removed.
+  · ✅ (24 Jul) Overview mobile polish: greeting given top room; bento gaps
+    tightened; Leads-per-week given real height + bigger numbers; stats already
+    icon-free.
+  · ✅ (24 Jul) Two bugs fixed: the onboarding tile could strand itself
+    invisible-but-space-occupying (its slide-away waited on a transform
+    transitionend that never fired) → "massive gap"; and 10 stacked
+    backdrop-blur layers made content behind them (the onboarding card) fail to
+    paint → blur now desktop-only on the glaze tiles.
   · ⬜ Still to do: Leads funnel/board page, Profile, admin on mobile.
   Desktop verified unchanged throughout.
 

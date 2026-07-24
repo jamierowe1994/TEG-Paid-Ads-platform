@@ -72,11 +72,14 @@ const STAT_ICON: Record<string, string> = {
 
 // Translucent "glaze" tile — a light frost that lets the page's background
 // glow read straight through it (the gradient lives on the page, not the box).
+// Desktop only: the backdrop-blur glass. On mobile it's a near-solid tile —
+// stacking many backdrop-blur layers there overwhelms the compositor (content
+// behind them, e.g. the onboarding card, silently fails to paint).
 function glaze() {
   return {
     className:
-      "relative overflow-hidden rounded-3xl border border-white/40 backdrop-blur-xl shadow-[0_2px_8px_-2px_rgba(0,0,0,0.12),inset_0_1px_1px_rgba(255,255,255,0.7),inset_0_0_30px_rgba(0,0,0,0.08)]",
-    style: { background: "rgba(255,255,255,0.2)" } as React.CSSProperties,
+      "relative overflow-hidden rounded-3xl border border-white/40 bg-white/70 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.12),inset_0_1px_1px_rgba(255,255,255,0.7),inset_0_0_30px_rgba(0,0,0,0.08)] lg:bg-[rgba(255,255,255,0.2)] lg:backdrop-blur-xl",
+    style: {} as React.CSSProperties,
   };
 }
 
@@ -165,9 +168,17 @@ export default function DashboardOverview() {
     } catch {
       /* storage blocked — play the animation every time, better than never */
     }
-    // Let the confetti land first, then wave the tile off.
+    // Let the confetti land first, then wave the tile off. A second timer is a
+    // safety net: if the exit transition never emits a transitionend (some
+    // browsers don't for an unchanged transform), unmount anyway so the tile
+    // can't linger invisible and leave a gap.
     const t = setTimeout(() => setTrackerLeaving(true), 3200);
-    return () => clearTimeout(t);
+    const t2 = setTimeout(() => trackerExitDone(), 4200);
+    return () => {
+      clearTimeout(t);
+      clearTimeout(t2);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
   function trackerExitDone() {
     setTrackerGone(true);
@@ -436,7 +447,7 @@ export default function DashboardOverview() {
           way. */}
       {!user.msEmail && !emailPromptHidden && !emailPromptGone && (
         <div className="lg:hidden">
-          <div className="mt-4 flex items-center gap-3 rounded-2xl border border-gray-200 bg-white/80 px-3.5 py-2.5 backdrop-blur">
+          <div className="mt-4 flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-3.5 py-2.5">
             <span className="text-base">✉️</span>
             <p className="min-w-0 flex-1 text-[13px] leading-snug text-gray-600">
               Connect your email to send from your own address.
@@ -600,7 +611,7 @@ export default function DashboardOverview() {
 
       {/* Bento — square glaze tiles, Onboarding Tracker spans both rows */}
       <section
-        className={`mt-8 grid grid-cols-1 gap-4 overflow-x-clip sm:grid-cols-2 ${
+        className={`mt-5 grid grid-cols-1 gap-3 overflow-x-clip sm:grid-cols-2 lg:mt-8 lg:gap-4 ${
           trackerGone ? "lg:grid-cols-3" : "lg:grid-cols-4"
         }`}
       >
@@ -864,7 +875,10 @@ export default function DashboardOverview() {
           }`}
           style={g.style}
           onTransitionEnd={(e) => {
-            if (trackerLeaving && e.propertyName === "transform") trackerExitDone();
+            // Fire on opacity — it always transitions 1→0, whereas the
+            // transform can compute to `none` and never emit a transitionend,
+            // which used to strand the tile invisible-but-space-occupying.
+            if (trackerLeaving && e.propertyName === "opacity") trackerExitDone();
           }}
         >
           <div className="px-5 pt-5">
@@ -1059,14 +1073,15 @@ export default function DashboardOverview() {
           </div>
         </div>
 
-        {/* Leads per week — wide; click a bar to list that week's leads below */}
+        {/* Leads per week — wide; click a bar to list that week's leads below.
+            Given real height on mobile so the chart has room to breathe. */}
         <div
-          className={`${g.className} flex flex-col p-5 sm:col-span-2`}
+          className={`${g.className} flex min-h-[260px] flex-col p-5 sm:col-span-2 lg:min-h-0`}
           style={g.style}
         >
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-semibold">Leads per week</h2>
+              <h2 className="text-lg font-semibold lg:text-base">Leads per week</h2>
               <p className="mt-0.5 text-xs text-gray-400">
                 {openWeek === null
                   ? "Tap a bar to see the leads"
@@ -1077,7 +1092,7 @@ export default function DashboardOverview() {
                       } ago`}
               </p>
             </div>
-            <p className="text-2xl font-semibold tracking-tight">
+            <p className="text-3xl font-semibold tracking-tight lg:text-2xl">
               {leads.length}
               <span className="ml-1 text-xs font-normal text-gray-400">
                 total
@@ -1108,7 +1123,7 @@ export default function DashboardOverview() {
                       }}
                     >
                       <span
-                        className={`absolute -top-5 left-1/2 -translate-x-1/2 text-[11px] font-semibold ${
+                        className={`absolute -top-6 left-1/2 -translate-x-1/2 text-sm font-semibold lg:-top-5 lg:text-[11px] ${
                           n === 0 ? "hidden" : ""
                         }`}
                         style={{ color: sel || last ? brand.accent : "#9ca3af" }}
