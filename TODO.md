@@ -173,6 +173,23 @@ desktop (≥1024px) renders byte-identically (existing markup scoped with `lg:`)
     by side (this-week count + % up/down vs last week). The four totals
     (Impressions/Clicks/Leads/Converted) are square stat tiles. Desktop keeps
     the original bento + header stats (both scoped desktop-only).
+  · ✅ (24 Jul) Performance fix + nav polish. The mobile site had slowed to a
+    crawl (clicks not registering, everything janky): the `useBottomInset`
+    hook added a `visualViewport` *scroll* listener that fired every scroll
+    frame — because mobile Chrome animates its URL bar on scroll, the viewport
+    height changed each frame → `setInset` re-rendered the whole dashboard
+    layout (and any open lead modal) ~60×/sec, saturating the main thread.
+    Removed the hook entirely (nav now just `fixed bottom-0`), and dropped the
+    `backdrop-blur-xl` on the nav pill/circle/menu (near-solid white instead)
+    so it no longer repaints the page on every scroll frame. Scrolling +
+    tapping verified smooth again. Alongside: All Ads moved into the bottom
+    pill (Overview/Leads/Referrals/All Ads), so the "+" menu is now just
+    Help/Profile/Log out; the top bar is back in normal flow (scrolls away
+    with the page instead of floating transparently over content); and opening
+    a lead makes the bottom nav *morph* (collapse + re-expand) into that lead's
+    Call/Email/WhatsApp/Schedule — the sheet sits below the nav (z-80 vs 90),
+    tapping the dimmed backdrop closes it, and "Log contact attempt" now lives
+    on the page (in the sheet body) rather than in the nav.
   · ⬜ Still to do: Leads funnel/board page, Profile, admin on mobile.
   Desktop verified unchanged throughout.
 

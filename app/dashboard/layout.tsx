@@ -17,7 +17,6 @@ import HelpCentre from "@/components/HelpCentre";
 import SetPasswordGate from "@/components/SetPasswordGate";
 import PaidLockOverlay from "@/components/PaidLockOverlay";
 import MobileLoading from "@/components/MobileLoading";
-import { useBottomInset } from "@/lib/useBottomInset";
 
 // Toast copy when the admin advances a customer's campaign stage.
 const STAGE_TOAST: Record<string, string> = {
@@ -134,9 +133,24 @@ export default function DashboardLayout({
     return () => window.removeEventListener("resize", on);
   }, []);
 
-  // The mobile bottom nav shifts up by this so it's always visible above the
-  // browser's bottom bar / keyboard. Desktop never reads it.
-  const bottomInset = useBottomInset();
+  // When a lead file is open on mobile, the bottom nav morphs into that lead's
+  // quick actions (Call / Email / WhatsApp / Schedule). The open lead modal
+  // broadcasts its contact details via a window event so the nav — which lives
+  // out here in the shell — can persist and re-shape rather than being covered.
+  const [leadNav, setLeadNav] = useState<
+    null | { phone?: string; email?: string; wa?: string }
+  >(null);
+  useEffect(() => {
+    const open = (e: Event) =>
+      setLeadNav((e as CustomEvent).detail ?? {});
+    const close = () => setLeadNav(null);
+    window.addEventListener("teg:lead-open", open as EventListener);
+    window.addEventListener("teg:lead-close", close);
+    return () => {
+      window.removeEventListener("teg:lead-open", open as EventListener);
+      window.removeEventListener("teg:lead-close", close);
+    };
+  }, []);
 
   useEffect(() => {
     refreshUser().then((u) => {
@@ -484,7 +498,7 @@ export default function DashboardLayout({
       {/* ══ MOBILE top bar (<lg): transparent (blends with the page) — search
           left, page title + a short underline in the middle, bell right. The
           old three-dots options now live in the bottom nav's + button. ══ */}
-      <div className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between px-2 lg:hidden">
+      <div className="relative z-40 flex h-14 items-center justify-between bg-[#f6f6f7] px-2 lg:hidden">
         <button
           onClick={() => setMobileSearchOpen(true)}
           aria-label="Search"
@@ -535,27 +549,9 @@ export default function DashboardLayout({
             onClick={() => setMobileMenuOpen(false)}
           />
           <div
-            className="fixed right-4 z-[92] w-52 overflow-hidden rounded-2xl border border-white/50 bg-white/85 p-1.5 shadow-2xl backdrop-blur-xl lg:hidden"
-            style={{ bottom: `calc(96px + ${bottomInset}px + env(safe-area-inset-bottom))` }}
+            className="fixed right-4 z-[92] w-52 overflow-hidden rounded-2xl border border-gray-200/70 bg-white p-1.5 shadow-2xl lg:hidden"
+            style={{ bottom: `calc(96px + env(safe-area-inset-bottom))` }}
           >
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                router.push("/dashboard/ads");
-              }}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-gray-700 active:bg-black/5"
-            >
-              <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 5h16a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1zm2 11l4-5 3 3 2-2 3 4M9 9.5a.5.5 0 11-1 0 .5.5 0 011 0z" />
-              </svg>
-              All Ads
-              {isReferralOnly && (
-                <svg className="ml-auto h-3.5 w-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" aria-label="Locked">
-                  <rect x="5" y="11" width="14" height="9" rx="2" />
-                  <path d="M8 11V8a4 4 0 018 0v3" strokeLinecap="round" />
-                </svg>
-              )}
-            </button>
             <button
               onClick={() => {
                 setMobileMenuOpen(false);
@@ -924,7 +920,7 @@ export default function DashboardLayout({
 
       {/* ── Main ── (mobile: no sidebar margin, room for the top bar + bottom
           nav; desktop margins/padding unchanged) */}
-      <main className="px-4 pb-24 pt-[78px] lg:ml-[240px] lg:px-8 lg:pb-10 lg:pt-[176px]">
+      <main className="px-4 pb-24 pt-3 lg:ml-[240px] lg:px-8 lg:pb-10 lg:pt-[176px]">
         {onLockedRoute ? (
           <PaidLockOverlay
             accent={brand.accent}
@@ -942,65 +938,116 @@ export default function DashboardLayout({
         )}
       </main>
 
-      {/* ══ MOBILE bottom nav (<lg) — a "broken" glass bar: a frosted pill with
-          Overview · Leads · Referrals, and a separate frosted circle for the
-          "+" (All Ads / Help / Profile / Log out). Floats over the page so the
-          content behind blurs through it. Shifts up by bottomInset so the
-          browser's bottom bar / keyboard never cover it. */}
-      <div
-        className="fixed inset-x-0 bottom-0 z-[90] flex items-center justify-center gap-2.5 px-4 pb-[calc(env(safe-area-inset-bottom)+14px)] lg:hidden"
-        style={{ transform: `translateY(-${bottomInset}px)`, willChange: "transform" }}
-      >
-        <div className="flex items-stretch overflow-hidden rounded-full border border-white/60 bg-white/60 shadow-[0_8px_30px_-6px_rgba(0,0,0,0.28)] backdrop-blur-xl">
-          {NAV.slice(0, 3).map((item) => {
-            const active = pathname === item.href;
-            const locked = isReferralOnly && item.paidOnly;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="relative flex flex-col items-center justify-center gap-0.5 px-5 py-2.5"
-                style={active && !locked ? { color: brand.accent } : undefined}
-              >
-                <span className="relative">
-                  <svg
-                    className={`h-[22px] w-[22px] ${active && !locked ? "" : "text-gray-500"}`}
-                    fill="none" stroke="currentColor" strokeWidth={1.8}
-                    strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"
-                  >
-                    <path d={item.icon} />
-                  </svg>
-                  {locked && (
-                    <svg className="absolute -right-1.5 -top-1 h-3 w-3 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-label="Locked">
-                      <rect x="5" y="11" width="14" height="9" rx="2" />
-                      <path d="M8 11V8a4 4 0 018 0v3" strokeLinecap="round" />
-                    </svg>
-                  )}
-                  {dotFor(item.href) && (
-                    <span className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full" style={{ backgroundColor: brand.accent }} />
-                  )}
-                </span>
-                <span className={`text-[10px] font-medium ${active && !locked ? "" : "text-gray-500"}`}>
-                  {item.label}
-                </span>
-              </Link>
-            );
-          })}
-        </div>
-
-        {/* Separate frosted circle — the "+" overflow */}
-        <button
-          onClick={() => setMobileMenuOpen((v) => !v)}
-          aria-label="More"
-          className="flex h-[58px] w-[58px] shrink-0 items-center justify-center rounded-full border border-white/60 bg-white/60 text-gray-700 shadow-[0_8px_30px_-6px_rgba(0,0,0,0.28)] backdrop-blur-xl transition active:scale-95"
-        >
-          <svg
-            className={`h-6 w-6 transition-transform duration-200 ${mobileMenuOpen ? "rotate-45" : ""}`}
-            fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
+      {/* ══ MOBILE bottom nav (<lg) — a "broken" glass bar: a near-solid white
+          pill with Overview · Leads · Referrals · All Ads, and a separate
+          circle for the "+" (Help / Profile / Log out). When a lead file is
+          open it morphs (collapses + re-expands) into that lead's quick
+          actions — Call · Email · WhatsApp · Schedule. Near-solid (not blurred)
+          so it doesn't repaint the whole page on every scroll frame. */}
+      <div className="fixed inset-x-0 bottom-0 z-[90] flex items-center justify-center gap-2.5 px-4 pb-[calc(env(safe-area-inset-bottom)+14px)] lg:hidden">
+        {leadNav ? (
+          <div
+            key="leadnav"
+            className="flex items-stretch overflow-hidden rounded-full border border-gray-200/80 bg-white/95 shadow-[0_8px_30px_-6px_rgba(0,0,0,0.28)] animate-[nav-pop_0.34s_cubic-bezier(0.34,1.56,0.64,1)]"
           >
-            <path strokeLinecap="round" d="M12 5v14M5 12h14" />
-          </svg>
-        </button>
+            <a
+              href={leadNav.phone ? `tel:${leadNav.phone}` : undefined}
+              className={`flex flex-col items-center justify-center gap-0.5 px-4 py-2.5 text-gray-600 ${leadNav.phone ? "active:bg-black/5" : "pointer-events-none opacity-40"}`}
+            >
+              <svg className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.81.36 1.6.68 2.34a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.13-1.13a2 2 0 012.11-.45c.74.32 1.53.55 2.34.68A2 2 0 0122 16.92z" />
+              </svg>
+              <span className="text-[10px] font-medium">Call</span>
+            </a>
+            <a
+              href={leadNav.email ? `mailto:${leadNav.email}` : undefined}
+              className={`flex flex-col items-center justify-center gap-0.5 px-4 py-2.5 text-gray-600 ${leadNav.email ? "active:bg-black/5" : "pointer-events-none opacity-40"}`}
+            >
+              <svg className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <rect x="3" y="5" width="18" height="14" rx="2" />
+                <path d="M3 7l9 6 9-6" />
+              </svg>
+              <span className="text-[10px] font-medium">Email</span>
+            </a>
+            <a
+              href={leadNav.wa ? `https://wa.me/${leadNav.wa}` : undefined}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`flex flex-col items-center justify-center gap-0.5 px-4 py-2.5 text-gray-600 ${leadNav.wa ? "active:bg-black/5" : "pointer-events-none opacity-40"}`}
+            >
+              <svg className="h-[22px] w-[22px]" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M17.6 6.32A7.85 7.85 0 0012 4a7.94 7.94 0 00-6.9 11.9L4 20l4.2-1.1A7.9 7.9 0 0012 20a7.95 7.95 0 005.6-13.68zM12 18.5a6.55 6.55 0 01-3.36-.92l-.24-.14-2.49.65.66-2.43-.16-.25A6.57 6.57 0 1112 18.5zm3.6-4.93c-.2-.1-1.17-.58-1.35-.64s-.31-.1-.44.1-.5.63-.62.76-.23.15-.43.05a5.36 5.36 0 01-1.58-.98 5.94 5.94 0 01-1.1-1.36c-.11-.2 0-.3.09-.4l.3-.35a1.37 1.37 0 00.2-.33.37.37 0 000-.35c-.05-.1-.44-1.07-.6-1.46s-.32-.33-.44-.33h-.38a.72.72 0 00-.52.24 2.19 2.19 0 00-.68 1.63 3.82 3.82 0 00.8 2.03 8.72 8.72 0 003.34 2.95c.47.2.83.33 1.11.42a2.68 2.68 0 001.23.08 2 2 0 001.3-.93 1.62 1.62 0 00.12-.92c-.05-.08-.18-.13-.38-.23z" />
+              </svg>
+              <span className="text-[10px] font-medium">WhatsApp</span>
+            </a>
+            <button
+              onClick={() => window.dispatchEvent(new Event("teg:lead-schedule"))}
+              className="flex flex-col items-center justify-center gap-0.5 px-4 py-2.5 text-gray-600 active:bg-black/5"
+            >
+              <svg className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <rect x="3" y="5" width="18" height="16" rx="2" />
+                <path d="M3 9h18M8 3v4M16 3v4" />
+              </svg>
+              <span className="text-[10px] font-medium">Schedule</span>
+            </button>
+          </div>
+        ) : (
+          <>
+            <div
+              key="mainnav"
+              className="flex items-stretch overflow-hidden rounded-full border border-gray-200/80 bg-white/95 shadow-[0_8px_30px_-6px_rgba(0,0,0,0.28)] animate-[nav-pop_0.34s_cubic-bezier(0.34,1.56,0.64,1)]"
+            >
+              {NAV.slice(0, 4).map((item) => {
+                const active = pathname === item.href;
+                const locked = isReferralOnly && item.paidOnly;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="relative flex flex-col items-center justify-center gap-0.5 px-3.5 py-2.5"
+                    style={active && !locked ? { color: brand.accent } : undefined}
+                  >
+                    <span className="relative">
+                      <svg
+                        className={`h-[22px] w-[22px] ${active && !locked ? "" : "text-gray-500"}`}
+                        fill="none" stroke="currentColor" strokeWidth={1.8}
+                        strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"
+                      >
+                        <path d={item.icon} />
+                      </svg>
+                      {locked && (
+                        <svg className="absolute -right-1.5 -top-1 h-3 w-3 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-label="Locked">
+                          <rect x="5" y="11" width="14" height="9" rx="2" />
+                          <path d="M8 11V8a4 4 0 018 0v3" strokeLinecap="round" />
+                        </svg>
+                      )}
+                      {dotFor(item.href) && (
+                        <span className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full" style={{ backgroundColor: brand.accent }} />
+                      )}
+                    </span>
+                    <span className={`text-[10px] font-medium ${active && !locked ? "" : "text-gray-500"}`}>
+                      {item.label}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+
+            {/* Separate circle — the "+" overflow (Help / Profile / Log out) */}
+            <button
+              onClick={() => setMobileMenuOpen((v) => !v)}
+              aria-label="More"
+              className="flex h-[58px] w-[58px] shrink-0 items-center justify-center rounded-full border border-gray-200/80 bg-white/95 text-gray-700 shadow-[0_8px_30px_-6px_rgba(0,0,0,0.28)] transition active:scale-95"
+            >
+              <svg
+                className={`h-6 w-6 transition-transform duration-200 ${mobileMenuOpen ? "rotate-45" : ""}`}
+                fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+          </>
+        )}
       </div>
 
       {/* Campaign-stage toast — bigger white card with a black outline.

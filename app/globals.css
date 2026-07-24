@@ -507,6 +507,22 @@ h5 {
   animation: modal-pop 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Mobile bottom nav morph — collapses in on itself then springs back out with
+   its new set of buttons (used when a lead file opens/closes). */
+@keyframes nav-pop {
+  0% {
+    opacity: 0.35;
+    transform: scale(0.55);
+  }
+  60% {
+    transform: scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 /* ── Ambient dashboard glow — a soft bubble anchored bottom-right that wanders
    between three points (bottom-right → top-right → bottom-left) behind the
    glass, covering the area with a gentle wave. ── */

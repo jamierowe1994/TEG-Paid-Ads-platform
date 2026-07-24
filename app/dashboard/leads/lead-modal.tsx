@@ -6,7 +6,6 @@ import type { Brand } from "@/lib/brands";
 import SourceIcon from "@/components/SourceIcon";
 import { geocodeUk, extractPostcode } from "@/lib/geo-uk";
 import { lostReasonsFor, warmReasonsFor } from "@/lib/lost-reasons";
-import { useBottomInset } from "@/lib/useBottomInset";
 
 export function stageLabel(stage: LeadStage, brand: Brand): string {
   switch (stage) {
@@ -188,9 +187,6 @@ export function LeadModal({
   const [snoozeDay, setSnoozeDay] = useState<Date | null>(null);
   const [savingSnooze, setSavingSnooze] = useState(false);
 
-  // Keeps the mobile action bar above the browser's bottom bar / keyboard.
-  const bottomInset = useBottomInset();
-
   // Lock the page behind the sheet while it's open, so on mobile you can only
   // scroll/swipe the sheet itself — the background can't drift and "freak out".
   useEffect(() => {
@@ -210,6 +206,25 @@ export function LeadModal({
     if (raw.startsWith("0")) return "44" + raw.slice(1);
     return raw;
   })();
+
+  // On mobile the dashboard's own bottom nav persists and morphs into this
+  // lead's quick actions (Call / Email / WhatsApp / Schedule) while the sheet
+  // is open — so we hand it this lead's contact details, and listen for its
+  // Schedule tap (which just opens our in-sheet scheduler). See the shell nav
+  // in app/dashboard/layout.tsx.
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent("teg:lead-open", {
+        detail: { phone: lead.phone, email: lead.email, wa: waNumber },
+      }),
+    );
+    const sched = () => setPanel("sched");
+    window.addEventListener("teg:lead-schedule", sched);
+    return () => {
+      window.removeEventListener("teg:lead-schedule", sched);
+      window.dispatchEvent(new Event("teg:lead-close"));
+    };
+  }, [lead.phone, lead.email, waNumber]);
 
   const EMAIL_TEMPLATES = [
     { name: "First touch", subject: "Following up on your enquiry", body: `Hi ${firstName},\n\nThanks for getting in touch — I'd love to help. When's a good time for a quick chat this week?\n\nBest,` },
@@ -323,9 +338,10 @@ export function LeadModal({
 
   return (
     <div
-      // z-[100] lifts the whole sheet above the dashboard's bottom nav (z-90)
-      // on mobile, so the candidate action bar below sits where the nav was.
-      className="fixed inset-0 z-[100] flex items-end justify-center bg-gray-900/50 p-0 sm:items-center sm:p-6"
+      // z-[80] keeps the sheet + its dimmed backdrop BELOW the dashboard's
+      // bottom nav (z-90) on mobile, so the nav persists over the sheet and
+      // morphs into this lead's actions. Tapping the dimmed area closes.
+      className="fixed inset-0 z-[80] flex items-end justify-center bg-gray-900/50 p-0 sm:items-center sm:p-6"
       onClick={onClose}
     >
       <div
@@ -619,6 +635,22 @@ export function LeadModal({
               )}
             </div>
 
+            {/* Log a contact attempt — mobile, on the page (Call/Email/WhatsApp/
+                Schedule live in the morphed bottom nav; logging stays here). */}
+            {canWork && !lead.archivedAt && attemptNext[lead.stage] && (
+              <button
+                onClick={handleLogAttempt}
+                disabled={busy}
+                className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-[15px] font-semibold text-white transition disabled:opacity-40 lg:hidden"
+                style={{ backgroundColor: accent }}
+              >
+                <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 11l3 3 8-8M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h9" />
+                </svg>
+                {busy ? "Logging…" : `Log contact attempt ${attemptNo}`}
+              </button>
+            )}
+
             {/* Notes — mobile: bigger, sits above Mark as lost. Desktop keeps
                 the right-rail Notes + quick-note bar instead. */}
             <div className="mt-6 lg:hidden">
@@ -755,60 +787,6 @@ export function LeadModal({
             ＋
           </button>
         </div>
-      </div>
-
-      {/* Mobile candidate action bar — sits where the dashboard nav was (the
-          whole sheet is z-[100], above the nav). Call / WhatsApp / Email are
-          direct links; Schedule opens the in-sheet picker; Log records the
-          attempt. Shifts up by bottomInset so the browser's bottom bar / the
-          keyboard never cover it. */}
-      <div
-        className="fixed inset-x-0 bottom-0 z-10 flex items-stretch border-t border-gray-100 bg-white pb-[env(safe-area-inset-bottom)] lg:hidden"
-        style={{ transform: `translateY(-${bottomInset}px)` }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <a
-          href={lead.phone ? `tel:${lead.phone}` : undefined}
-          className={`flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-gray-600 ${lead.phone ? "active:bg-gray-50" : "pointer-events-none opacity-40"}`}
-        >
-          <PhoneIcon />
-          <span className="text-[11px] font-medium">Call</span>
-        </a>
-        <a
-          href={waNumber ? `https://wa.me/${waNumber}` : undefined}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-gray-600 ${waNumber ? "active:bg-gray-50" : "pointer-events-none opacity-40"}`}
-        >
-          <WhatsAppIcon />
-          <span className="text-[11px] font-medium">WhatsApp</span>
-        </a>
-        <a
-          href={lead.email ? `mailto:${lead.email}` : undefined}
-          className={`flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-gray-600 ${lead.email ? "active:bg-gray-50" : "pointer-events-none opacity-40"}`}
-        >
-          <MailIcon />
-          <span className="text-[11px] font-medium">Email</span>
-        </a>
-        <button
-          onClick={() => setPanel((p) => (p === "sched" ? null : "sched"))}
-          className={`flex flex-1 flex-col items-center justify-center gap-1 py-2.5 active:bg-gray-50 ${panel === "sched" ? "" : "text-gray-600"}`}
-          style={panel === "sched" ? { color: accent } : undefined}
-        >
-          <CalIcon />
-          <span className="text-[11px] font-medium">Schedule</span>
-        </button>
-        <button
-          onClick={handleLogAttempt}
-          disabled={!attemptNext[lead.stage] || busy}
-          className="flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-white disabled:opacity-40"
-          style={{ backgroundColor: accent }}
-        >
-          <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 11l3 3 8-8M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h9" />
-          </svg>
-          <span className="text-[11px] font-medium">Log</span>
-        </button>
       </div>
 
       {/* Mark-as-lost flow (kept from before) */}
