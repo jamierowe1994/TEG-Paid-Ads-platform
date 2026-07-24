@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   getUser,
@@ -679,7 +679,7 @@ export default function DashboardOverview() {
             )}
             <div className="mt-auto">
               <span className="block text-[54px] font-semibold leading-none tracking-tight text-gray-900">
-                {leadsLoaded ? untouched.length : "—"}
+                {leadsLoaded ? <AnimatedNumber value={untouched.length} /> : "—"}
               </span>
               <span className="mt-2 flex items-center gap-1 text-sm font-medium text-gray-700">
                 Uncontacted
@@ -703,7 +703,7 @@ export default function DashboardOverview() {
             )}
             <div className="mt-auto">
               <span className="block text-[54px] font-semibold leading-none tracking-tight text-gray-900">
-                {leadsLoaded ? followUps.length : "—"}
+                {leadsLoaded ? <AnimatedNumber value={followUps.length} /> : "—"}
               </span>
               <span className="mt-2 flex items-center gap-1 text-sm font-medium text-gray-700">
                 Follow-ups
@@ -742,9 +742,10 @@ export default function DashboardOverview() {
                     >
                       <div className="flex w-full flex-1 items-end">
                         <div
-                          className="w-full rounded-md"
+                          className="w-full origin-bottom rounded-md animate-[bar-grow_0.6s_cubic-bezier(0.22,1,0.36,1)_both]"
                           style={{
                             height: `${Math.max((d.count / dayMax) * 100, d.count > 0 ? 8 : 3)}%`,
+                            animationDelay: `${i * 70}ms`,
                             background: d.isToday
                               ? brand.accent
                               : i % 2 === 1
@@ -787,7 +788,7 @@ export default function DashboardOverview() {
                   This week
                 </p>
                 <p className="mt-1 text-[40px] font-semibold leading-none tracking-tight text-gray-900">
-                  {thisWk}
+                  <AnimatedNumber value={thisWk} />
                 </p>
                 <p className="mt-1 text-[11px] text-gray-400">
                   lead{thisWk === 1 ? "" : "s"}
@@ -825,7 +826,7 @@ export default function DashboardOverview() {
                   className="text-[26px] font-semibold leading-none tracking-tight"
                   style={{ color: brand.accent }}
                 >
-                  £{spent}
+                  <AnimatedNumber value={spent} prefix="£" />
                 </p>
                 <p className="mt-1.5 text-[11px] font-medium text-gray-600">
                   £{spendLeft} left
@@ -1525,8 +1526,48 @@ export default function DashboardOverview() {
   );
 }
 
+// Eases a value from 0 up to `target` on mount and whenever the target
+// changes — the "count up on sign-in" feel for the overview numbers/graphs.
+function useCountUp(target: number, duration = 950): number {
+  const [val, setVal] = useState(0);
+  const raf = useRef(0);
+  useEffect(() => {
+    let startTs = 0;
+    const from = 0;
+    const step = (ts: number) => {
+      if (!startTs) startTs = ts;
+      const p = Math.min((ts - startTs) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
+      setVal(from + (target - from) * eased);
+      if (p < 1) raf.current = requestAnimationFrame(step);
+      else setVal(target);
+    };
+    raf.current = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf.current);
+  }, [target, duration]);
+  return val;
+}
+
+// A number that counts up to its value.
+function AnimatedNumber({
+  value,
+  prefix = "",
+}: {
+  value: number;
+  prefix?: string;
+}) {
+  const v = useCountUp(value);
+  return (
+    <>
+      {prefix}
+      {Math.round(v)}
+    </>
+  );
+}
+
 // Ad-spend pie: the whole circle is the monthly cap — spent is a solid brand
-// wedge, the remainder is hatched grey (how much is left).
+// wedge, the remainder is hatched grey (how much is left). The wedge fills up
+// from empty on load.
 function SpendPie({
   spent,
   cap,
@@ -1536,7 +1577,8 @@ function SpendPie({
   cap: number;
   accent: string;
 }) {
-  const f = cap > 0 ? Math.max(0, Math.min(1, spent / cap)) : 0;
+  const targetF = cap > 0 ? Math.max(0, Math.min(1, spent / cap)) : 0;
+  const f = useCountUp(targetF, 1000);
   const R = 38;
   const C = 40;
   const wedge = (from: number, to: number) => {

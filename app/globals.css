@@ -507,6 +507,16 @@ h5 {
   animation: modal-pop 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Overview bar-graph bars growing up from the baseline on load. */
+@keyframes bar-grow {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
 /* Bottom sheet — slides all the way up from the bottom edge. */
 @keyframes sheet-up {
   from {

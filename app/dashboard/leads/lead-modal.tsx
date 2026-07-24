@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Lead, LeadStage } from "@/lib/types";
 import type { Brand } from "@/lib/brands";
 import SourceIcon from "@/components/SourceIcon";
@@ -338,6 +338,38 @@ export function LeadModal({
   const attemptNo =
     lead.stage === "new" ? 1 : lead.stage === "attempt1" ? 2 : lead.stage === "attempt2" ? 3 : 3;
 
+  // Swipe-down-to-dismiss (mobile bottom sheet). Grab the handle and drag down;
+  // past a threshold the file slides off the bottom and closes. The dimmed
+  // backdrop keeps the page behind perfectly still. `entered` drops the
+  // entrance animation after it finishes so the drag transform isn't fighting
+  // the keyframe's fill.
+  const [dragY, setDragY] = useState(0);
+  const [entered, setEntered] = useState(false);
+  const dragStart = useRef<number | null>(null);
+  useEffect(() => {
+    const t = setTimeout(() => setEntered(true), 360);
+    return () => clearTimeout(t);
+  }, []);
+  function onGrabDown(e: React.PointerEvent) {
+    dragStart.current = e.clientY;
+    (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+  }
+  function onGrabMove(e: React.PointerEvent) {
+    if (dragStart.current == null) return;
+    const dy = e.clientY - dragStart.current;
+    setDragY(dy > 0 ? dy : dy * 0.2); // resist upward
+  }
+  function onGrabUp() {
+    if (dragStart.current == null) return;
+    dragStart.current = null;
+    if (dragY > 130) {
+      setDragY(window.innerHeight); // fling it off, then close
+      setTimeout(onClose, 200);
+    } else {
+      setDragY(0); // snap back
+    }
+  }
+
   return (
     <div
       // z-[80] keeps the sheet + its dimmed backdrop BELOW the dashboard's
@@ -349,11 +381,30 @@ export function LeadModal({
       <div
         // Mobile: a bottom sheet that stops short of the top (85dvh) and never
         // grows past it. Desktop: the centred dialog, unchanged.
-        className="modal-pop relative flex h-[85dvh] w-full max-w-5xl flex-col overflow-hidden rounded-t-3xl bg-white sm:h-auto sm:max-h-[94vh] sm:rounded-3xl"
+        className={`relative flex h-[85dvh] w-full max-w-5xl flex-col overflow-hidden rounded-t-3xl bg-white sm:h-auto sm:max-h-[94vh] sm:rounded-3xl ${entered ? "" : "modal-pop"}`}
+        style={
+          dragY
+            ? {
+                transform: `translateY(${dragY}px)`,
+                transition: dragStart.current ? "none" : "transform 0.25s cubic-bezier(0.22,1,0.36,1)",
+              }
+            : undefined
+        }
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Grab handle — drag down to dismiss (mobile). */}
+        <div
+          onPointerDown={onGrabDown}
+          onPointerMove={onGrabMove}
+          onPointerUp={onGrabUp}
+          onPointerCancel={onGrabUp}
+          className="flex shrink-0 touch-none cursor-grab justify-center pb-1 pt-3 active:cursor-grabbing sm:hidden"
+        >
+          <span className="h-1.5 w-11 rounded-full bg-gray-300" />
+        </div>
+
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 px-7 pt-7 sm:px-8">
+        <div className="flex items-start justify-between gap-4 px-7 pt-2 sm:px-8 sm:pt-7">
           <div className="flex items-start gap-3.5">
             <div
               className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"

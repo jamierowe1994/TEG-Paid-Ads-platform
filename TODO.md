@@ -265,6 +265,22 @@ desktop (≥1024px) renders byte-identically (existing markup scoped with `lg:`)
     - Nav tucks away (slides down) whenever the notes field is focused / the
       keyboard is up, via teg:nav-hide / teg:nav-show events; comes back on
       blur or when the sheet closes.
+  · ✅ (24 Jul) Big polish pass 6:
+    - Overview animates on load: the tile numbers count up, the bar-graph bars
+      grow up from the baseline (staggered), and the ad-spend pie fills from
+      empty (useCountUp hook + bar-grow keyframe + animated SpendPie fraction).
+    - Lead file is swipe-to-dismiss: a grab handle at the top; drag down past a
+      threshold and it slides off and closes (the dimmed backdrop keeps the
+      page behind perfectly still). No more forced X.
+    - Bottom nav redesigned to the reference: dark, edge-to-edge, equal-width
+      44px+ targets, with a lighter "surround" that SLIDES to the active tab
+      (flows between them). The separate "+" circle is gone.
+    - Overflow moved to a top-right three-dots button (dark, matches the nav):
+      tap it and it unrolls left into notifications / help / profile / log out
+      (icons only). Replaces the bell + the old bottom "+" menu; closes on
+      navigate / tap-away.
+    - The bottom bar still morphs (pinch-to-centre) into a lead's actions when
+      a file opens — the "context-aware" behaviour.
   · ⬜ Still to do: Leads funnel/board page, Profile, admin on mobile.
   · ⬜ Real-iPhone check: Microsoft login *inside* the installed PWA is the one
     path not yet tested on a real device (flagged by the PWA build session).

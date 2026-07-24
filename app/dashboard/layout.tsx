@@ -120,8 +120,10 @@ export default function DashboardLayout({
   const [bellOpen, setBellOpen] = useState(false);
   // Mobile-only chrome: the three-dots menu (Notifications / Help / Profile)
   // and the tap-to-open search sheet. Desktop ignores these.
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  // Top-right overflow: a three-dots button that unrolls left into
+  // notifications / help / profile / log out (icons only).
+  const [topMenuOpen, setTopMenuOpen] = useState(false);
   // Notifications the user has cleared — kept per user in localStorage so
   // "Clear all" sticks between visits (the feed itself is derived live).
   const [cleared, setCleared] = useState<Set<string>>(new Set());
@@ -214,6 +216,13 @@ export default function DashboardLayout({
   }, [router]);
 
   const isReferralOnly = user?.accountType === "referral";
+
+  // Which of the four bottom-nav tabs is active — drives the sliding
+  // highlight surround. -1 (e.g. on Profile) hides it.
+  const mainActiveIndex = NAV.slice(0, 4).findIndex((n) => n.href === pathname);
+
+  // Close the top overflow menu whenever we navigate.
+  useEffect(() => setTopMenuOpen(false), [pathname]);
 
   // Referrals-only accounts still see the paid pages, but blurred behind an
   // "Activate Paid Ads" card (see the main render below) — so they know what's
@@ -568,82 +577,100 @@ export default function DashboardLayout({
             style={{ backgroundColor: brand.accent }}
           />
         </div>
-        <button
-          onClick={() => setBellOpen((v) => !v)}
-          aria-label="Notifications"
-          className="relative flex h-11 w-11 items-center justify-center rounded-full text-gray-700 active:bg-black/5"
-        >
-          <svg className="h-[26px] w-[26px]" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-            <path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          {unread > 0 && (
-            <span
-              className="absolute right-1 top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-semibold text-white"
-              style={{ backgroundColor: brand.accent }}
-            >
-              {unread}
-            </span>
-          )}
-        </button>
-      </div>
-
-      {/* The "+" overflow menu — pops up above the bottom nav's plus button.
-          Extra destinations that don't fit the main pill: All Ads, Help,
-          Profile, Log out. Kept in one place so it's easy to add per-screen
-          actions later. */}
-      {mobileMenuOpen && (
-        <>
-          <button
-            className="fixed inset-0 z-[91] cursor-default lg:hidden"
-            aria-hidden
-            onClick={() => setMobileMenuOpen(false)}
-          />
+        {/* Three-dots overflow — unrolls left into notifications / help /
+            profile / log out. Dark to match the bottom nav. */}
+        <div className="relative flex h-11 w-11 shrink-0 items-center justify-end">
           <div
-            className="fixed right-4 z-[92] w-52 origin-bottom-right animate-[bubble-up_0.42s_cubic-bezier(0.34,1.56,0.64,1)] overflow-hidden rounded-2xl border border-white/50 bg-white/75 p-1.5 shadow-2xl backdrop-blur-2xl backdrop-saturate-150 lg:hidden"
-            style={{ bottom: `calc(env(safe-area-inset-bottom)/2 + 92px)` }}
+            className="absolute right-0 top-1/2 flex -translate-y-1/2 flex-row-reverse items-center gap-0.5 overflow-hidden rounded-full bg-[#26262b] p-1 shadow-[0_6px_22px_-6px_rgba(0,0,0,0.5)] transition-[max-width] duration-[320ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
+            style={{ maxWidth: topMenuOpen ? 232 : 44 }}
           >
+            {/* Dots / close — always visible on the right */}
             <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                window.dispatchEvent(new Event("teg:toggle-help"));
-              }}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-gray-700 active:bg-black/5"
+              onClick={() => setTopMenuOpen((v) => !v)}
+              aria-label={topMenuOpen ? "Close menu" : "Menu"}
+              className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
             >
-              <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+              {topMenuOpen ? (
+                <svg className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              ) : (
+                <svg className="h-[22px] w-[22px]" fill="currentColor" viewBox="0 0 24 24">
+                  <circle cx="5" cy="12" r="1.7" />
+                  <circle cx="12" cy="12" r="1.7" />
+                  <circle cx="19" cy="12" r="1.7" />
+                </svg>
+              )}
+              {!topMenuOpen && unread > 0 && (
+                <span
+                  className="absolute -right-0.5 -top-0.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full px-1 text-[10px] font-semibold text-white"
+                  style={{ backgroundColor: brand.accent }}
+                >
+                  {unread}
+                </span>
+              )}
+            </button>
+
+            {/* Notifications */}
+            <button
+              onClick={() => { setTopMenuOpen(false); setBellOpen(true); }}
+              aria-label="Notifications"
+              className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
+            >
+              <svg className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0" />
+              </svg>
+              {unread > 0 && (
+                <span className="absolute right-1 top-1 h-2 w-2 rounded-full" style={{ backgroundColor: brand.accent }} />
+              )}
+            </button>
+
+            {/* Help */}
+            <button
+              onClick={() => { setTopMenuOpen(false); window.dispatchEvent(new Event("teg:toggle-help")); }}
+              aria-label="Help"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
+            >
+              <svg className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="9.25" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M12 17.25h.008v.008H12v-.008z" />
               </svg>
-              Help
             </button>
+
+            {/* Profile */}
             <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                router.push("/dashboard/profile");
-              }}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-gray-700 active:bg-black/5"
+              onClick={() => { setTopMenuOpen(false); router.push("/dashboard/profile"); }}
+              aria-label="Profile"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
             >
-              <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-                <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" strokeLinecap="round" strokeLinejoin="round" />
+              <svg className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
-              Profile
             </button>
-            <div className="my-1 border-t border-gray-200/70" />
+
+            {/* Log out */}
             <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                signOut();
-                router.push("/");
-              }}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-gray-700 active:bg-black/5"
+              onClick={() => { signOut(); router.push("/"); }}
+              aria-label="Log out"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
             >
-              <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12H3m0 0l4-4m-4 4l4 4M13 4h5a2 2 0 012 2v12a2 2 0 01-2 2h-5" />
+              <svg className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <path d="M15 12H3m0 0l4-4m-4 4l4 4M13 4h5a2 2 0 012 2v12a2 2 0 01-2 2h-5" />
               </svg>
-              Log out
             </button>
           </div>
-        </>
+        </div>
+      </div>
+
+      {/* Tap-away closes the top overflow menu */}
+      {topMenuOpen && (
+        <button
+          aria-hidden
+          className="fixed inset-0 z-[35] cursor-default lg:hidden"
+          onClick={() => setTopMenuOpen(false)}
+        />
       )}
+
 
       {/* Mobile notifications sheet (bellOpen; the desktop dropdown is inside
           the hidden desktop header, so this is the phone equivalent) */}
@@ -988,14 +1015,14 @@ export default function DashboardLayout({
         )}
       </main>
 
-      {/* ══ MOBILE bottom nav (<lg) — a "broken" glass bar: a near-solid white
-          pill with Overview · Leads · Referrals · All Ads, and a separate
-          circle for the "+" (Help / Profile / Log out). When a lead file is
-          open it morphs (collapses + re-expands) into that lead's quick
-          actions — Call · Email · WhatsApp · Schedule. Near-solid (not blurred)
-          so it doesn't repaint the whole page on every scroll frame. */}
+      {/* ══ MOBILE bottom nav (<lg) — a dark, edge-to-edge pill: Overview ·
+          Leads · Referrals · All Ads, with a lighter surround that slides to
+          the active tab. When a lead file is open it morphs (pinches to the
+          centre + re-opens) into that lead's actions — Call · Email · WhatsApp
+          · Schedule. Overflow (notifications / help / profile / log out) lives
+          in the top-right three-dots menu now. */}
       <div
-        className="fixed inset-x-0 bottom-0 z-[90] flex items-center justify-center px-3 pb-[calc(env(safe-area-inset-bottom)/2+8px)] lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-[90] flex items-center justify-center px-2.5 pb-[calc(env(safe-area-inset-bottom)/2+8px)] lg:hidden"
         style={{
           transform: navHidden ? "translateY(170%)" : "translateY(0)",
           transition: "transform 0.3s cubic-bezier(0.4,0,0.2,1)",
@@ -1004,7 +1031,7 @@ export default function DashboardLayout({
         {/* This wrapper pinches shut to the centre and re-opens when the bar
             morphs between the main nav and a lead's actions. */}
         <div
-          className="flex items-center justify-center gap-2.5"
+          className="flex w-full items-center justify-center"
           style={{
             transform: collapsing ? "scaleX(0)" : "scaleX(1)",
             transformOrigin: "center",
@@ -1012,11 +1039,11 @@ export default function DashboardLayout({
           }}
         >
           {showLead ? (
-            <div className="flex items-stretch overflow-hidden rounded-full border border-white/10 bg-[#26262b] px-4 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.5)]">
+            <div className="flex w-full items-stretch rounded-full border border-white/10 bg-[#26262b] p-1.5 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.5)]">
               <a
                 href={leadNav?.phone ? `tel:${leadNav.phone}` : undefined}
                 aria-label="Call"
-                className={`flex items-center justify-center px-[18px] py-4 text-gray-200 ${leadNav?.phone ? "active:bg-white/10" : "pointer-events-none opacity-40"}`}
+                className={`flex flex-1 items-center justify-center rounded-full py-[13px] text-gray-200 ${leadNav?.phone ? "active:bg-white/10" : "pointer-events-none opacity-40"}`}
               >
                 <svg className="h-[26px] w-[26px]" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                   <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.81.36 1.6.68 2.34a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.13-1.13a2 2 0 012.11-.45c.74.32 1.53.55 2.34.68A2 2 0 0122 16.92z" />
@@ -1025,7 +1052,7 @@ export default function DashboardLayout({
               <a
                 href={leadNav?.email ? `mailto:${leadNav.email}` : undefined}
                 aria-label="Email"
-                className={`flex items-center justify-center px-[18px] py-4 text-gray-200 ${leadNav?.email ? "active:bg-white/10" : "pointer-events-none opacity-40"}`}
+                className={`flex flex-1 items-center justify-center rounded-full py-[13px] text-gray-200 ${leadNav?.email ? "active:bg-white/10" : "pointer-events-none opacity-40"}`}
               >
                 <svg className="h-[26px] w-[26px]" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                   <rect x="3" y="5" width="18" height="14" rx="2" />
@@ -1037,7 +1064,7 @@ export default function DashboardLayout({
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="WhatsApp"
-                className={`flex items-center justify-center px-[18px] py-4 text-gray-200 ${leadNav?.wa ? "active:bg-white/10" : "pointer-events-none opacity-40"}`}
+                className={`flex flex-1 items-center justify-center rounded-full py-[13px] text-gray-200 ${leadNav?.wa ? "active:bg-white/10" : "pointer-events-none opacity-40"}`}
               >
                 <svg className="h-[30px] w-[30px]" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M17.6 6.32A7.85 7.85 0 0012 4a7.94 7.94 0 00-6.9 11.9L4 20l4.2-1.1A7.9 7.9 0 0012 20a7.95 7.95 0 005.6-13.68zM12 18.5a6.55 6.55 0 01-3.36-.92l-.24-.14-2.49.65.66-2.43-.16-.25A6.57 6.57 0 1112 18.5zm3.6-4.93c-.2-.1-1.17-.58-1.35-.64s-.31-.1-.44.1-.5.63-.62.76-.23.15-.43.05a5.36 5.36 0 01-1.58-.98 5.94 5.94 0 01-1.1-1.36c-.11-.2 0-.3.09-.4l.3-.35a1.37 1.37 0 00.2-.33.37.37 0 000-.35c-.05-.1-.44-1.07-.6-1.46s-.32-.33-.44-.33h-.38a.72.72 0 00-.52.24 2.19 2.19 0 00-.68 1.63 3.82 3.82 0 00.8 2.03 8.72 8.72 0 003.34 2.95c.47.2.83.33 1.11.42a2.68 2.68 0 001.23.08 2 2 0 001.3-.93 1.62 1.62 0 00.12-.92c-.05-.08-.18-.13-.38-.23z" />
@@ -1046,7 +1073,7 @@ export default function DashboardLayout({
               <button
                 onClick={() => window.dispatchEvent(new Event("teg:lead-schedule"))}
                 aria-label="Schedule"
-                className="flex items-center justify-center px-[18px] py-4 text-gray-200 active:bg-white/10"
+                className="flex flex-1 items-center justify-center rounded-full py-[13px] text-gray-200 active:bg-white/10"
               >
                 <svg className="h-[26px] w-[26px]" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                   <rect x="3" y="5" width="18" height="16" rx="2" />
@@ -1055,56 +1082,50 @@ export default function DashboardLayout({
               </button>
             </div>
           ) : (
-            <>
-              <div className="flex items-stretch overflow-hidden rounded-full border border-white/10 bg-[#26262b] px-2 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.5)]">
-                {NAV.slice(0, 4).map((item) => {
-                  const active = pathname === item.href;
-                  const locked = isReferralOnly && item.paidOnly;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      aria-label={item.label}
-                      className="relative flex items-center justify-center px-[15px] py-5"
-                      style={active && !locked ? { color: brand.accent } : undefined}
-                    >
-                      <span className="relative">
-                        <svg
-                          className={`h-[30px] w-[30px] ${active && !locked ? "" : "text-gray-400"}`}
-                          fill="none" stroke="currentColor" strokeWidth={1.8}
-                          strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"
-                        >
-                          <path d={item.icon} />
+            <div className="relative flex w-full items-stretch rounded-full border border-white/10 bg-[#26262b] p-1.5 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.5)]">
+              {/* Sliding highlight — a slightly lighter surround that flows to
+                  the active tab. */}
+              <div
+                className="pointer-events-none absolute inset-y-1.5 left-1.5 rounded-full bg-white/[0.13] transition-[transform,opacity] duration-[320ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
+                style={{
+                  width: "calc((100% - 12px) / 4)",
+                  transform: `translateX(${Math.max(mainActiveIndex, 0) * 100}%)`,
+                  opacity: mainActiveIndex >= 0 ? 1 : 0,
+                }}
+              />
+              {NAV.slice(0, 4).map((item) => {
+                const active = pathname === item.href;
+                const locked = isReferralOnly && item.paidOnly;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-label={item.label}
+                    className="relative z-10 flex flex-1 items-center justify-center py-[15px]"
+                    style={active && !locked ? { color: brand.accent } : undefined}
+                  >
+                    <span className="relative">
+                      <svg
+                        className={`h-[30px] w-[30px] ${active && !locked ? "" : "text-gray-400"}`}
+                        fill="none" stroke="currentColor" strokeWidth={1.8}
+                        strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"
+                      >
+                        <path d={item.icon} />
+                      </svg>
+                      {locked && (
+                        <svg className="absolute -right-2 -top-1.5 h-3.5 w-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-label="Locked">
+                          <rect x="5" y="11" width="14" height="9" rx="2" />
+                          <path d="M8 11V8a4 4 0 018 0v3" strokeLinecap="round" />
                         </svg>
-                        {locked && (
-                          <svg className="absolute -right-2 -top-1.5 h-3.5 w-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-label="Locked">
-                            <rect x="5" y="11" width="14" height="9" rx="2" />
-                            <path d="M8 11V8a4 4 0 018 0v3" strokeLinecap="round" />
-                          </svg>
-                        )}
-                        {dotFor(item.href) && (
-                          <span className="absolute -right-1.5 -top-1 h-2 w-2 rounded-full" style={{ backgroundColor: brand.accent }} />
-                        )}
-                      </span>
-                    </Link>
-                  );
-                })}
-              </div>
-
-              {/* Separate circle — the "+" overflow (Help / Profile / Log out) */}
-              <button
-                onClick={() => setMobileMenuOpen((v) => !v)}
-                aria-label="More"
-                className="flex h-[66px] w-[66px] shrink-0 items-center justify-center rounded-full border border-white/10 bg-[#26262b] text-white shadow-[0_12px_34px_-8px_rgba(0,0,0,0.5)] transition active:scale-95"
-              >
-                <svg
-                  className={`h-8 w-8 transition-transform duration-200 ${mobileMenuOpen ? "rotate-45" : ""}`}
-                  fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" d="M12 5v14M5 12h14" />
-                </svg>
-              </button>
-            </>
+                      )}
+                      {dotFor(item.href) && (
+                        <span className="absolute -right-1.5 -top-1 h-2 w-2 rounded-full" style={{ backgroundColor: brand.accent }} />
+                      )}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
           )}
         </div>
       </div>
