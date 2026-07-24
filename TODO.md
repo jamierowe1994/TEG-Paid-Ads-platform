@@ -310,6 +310,17 @@ desktop (≥1024px) renders byte-identically (existing markup scoped with `lg:`)
     - NB still pending: the bottom "+" slot is search on every screen for now;
       true per-screen morphing (a different action per page) is the
       outstanding "active button" idea.
+  · ✅ (24 Jul) Glass + physics + search interaction pass 9:
+    - Nav bar is now dark GLASS: rgba(28,28,32,0.68) + backdrop-blur/saturate,
+      with an inset top-highlight and bottom-shade for lit depth (not flat) —
+      the "milky dark, best of both worlds" look from the reference card.
+    - Elasticity: sheets/footers pop up with a spring overshoot (modal-pop +
+      sheet-up use bouncy easings); the search circle springs back on release.
+    - Mobile search reworked: tapping the search circle expands a dark-glass
+      bar across the bottom over the nav (search-pop, grows from the right);
+      tapping the field slides it up ~halfway with a white results sheet above
+      (room for the keyboard) and live results; tap the dimmed backdrop to
+      bounce back. Replaced the old full-screen search sheet.
   · ⬜ Still to do: Leads funnel/board page, Profile, admin on mobile.
   · ⬜ Real-iPhone check: Microsoft login *inside* the installed PWA is the one
     path not yet tested on a real device (flagged by the PWA build session).

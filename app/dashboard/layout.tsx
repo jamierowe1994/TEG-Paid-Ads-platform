@@ -121,6 +121,9 @@ export default function DashboardLayout({
   // Mobile-only chrome: the three-dots menu (Notifications / Help / Profile)
   // and the tap-to-open search sheet. Desktop ignores these.
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  // The mobile search: opens as a bar over the nav, then slides up (searchUp)
+  // when the field is focused so you can see what you're typing.
+  const [searchUp, setSearchUp] = useState(false);
   // Top-right overflow: a three-dots button that unrolls left into
   // notifications / help / profile / log out (icons only).
   const [topMenuOpen, setTopMenuOpen] = useState(false);
@@ -706,110 +709,96 @@ export default function DashboardLayout({
       )}
 
       {/* Mobile search sheet — full screen, reuses the same search state */}
-      {mobileSearchOpen && (
-        <div className="fixed inset-0 z-[60] flex flex-col bg-white pt-[env(safe-area-inset-top)] lg:hidden">
-          <div className="flex items-center gap-2 border-b border-gray-100 px-3 py-2.5">
+      {mobileSearchOpen && (() => {
+        const closeSearch = () => {
+          setMobileSearchOpen(false);
+          setSearchUp(false);
+          setQuery("");
+        };
+        return (
+          <div className="lg:hidden">
+            {/* Dimmed backdrop — the nav sits behind it. Tap to bounce back. */}
             <button
-              onClick={() => {
-                setMobileSearchOpen(false);
-                setQuery("");
-              }}
-              aria-label="Close search"
-              className="flex h-9 w-9 items-center justify-center rounded-full text-gray-600 active:bg-gray-100"
-            >
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path d="M15 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-            <input
-              autoFocus
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  openFirstResult();
-                  setMobileSearchOpen(false);
-                }
-              }}
-              placeholder="Search leads, referrals, pages…"
-              className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-gray-400"
+              aria-hidden
+              className="fixed inset-0 z-[94] cursor-default bg-gray-900/25"
+              onClick={closeSearch}
             />
-            {query && (
-              <button
-                onClick={() => setQuery("")}
-                aria-label="Clear"
-                className="flex h-9 w-9 items-center justify-center rounded-full text-gray-300 active:bg-gray-100"
-              >
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+            {/* The search bar (dark glass) + a results sheet that rises above it
+                once you tap in. Anchored to the bottom; slides up on focus. */}
+            <div
+              className="fixed inset-x-3 z-[96]"
+              style={{
+                bottom: searchUp ? "46vh" : "calc(env(safe-area-inset-bottom)/2 + 8px)",
+                transition: "bottom 0.44s cubic-bezier(0.34,1.5,0.5,1)",
+              }}
+            >
+              {/* Results — white sheet, only once you're typing / focused */}
+              {searchUp && (
+                <div className="mb-2 max-h-[34vh] origin-bottom animate-[modal-pop_0.34s_cubic-bezier(0.22,1,0.36,1)] overflow-y-auto rounded-3xl border border-gray-100 bg-white p-2 shadow-2xl">
+                  {!q ? (
+                    <p className="px-3 py-8 text-center text-sm text-gray-400">
+                      Search for a lead, a referral, or a page.
+                    </p>
+                  ) : !hasResults ? (
+                    <p className="px-3 py-8 text-center text-sm text-gray-400">
+                      No matches for “{query}”.
+                    </p>
+                  ) : (
+                    <>
+                      {search.leads.length > 0 && (
+                        <SearchGroup label="Leads">
+                          {search.leads.map((l) => (
+                            <SearchRow key={l.id} icon="✨" title={l.name} sub={`via ${l.source} · ${l.stage}`} onClick={() => { closeSearch(); go(`/dashboard/leads?lead=${l.id}`); }} />
+                          ))}
+                        </SearchGroup>
+                      )}
+                      {search.referrals.length > 0 && (
+                        <SearchGroup label="Referrals">
+                          {search.referrals.map((r) => (
+                            <SearchRow key={r.id} icon="↩︎" title={r.leadName} sub={`${r.direction === "received" ? "From" : "To"} ${brandById(r.direction === "received" ? r.fromBrandId : r.toBrandId)?.shortName ?? ""}`} onClick={() => { closeSearch(); go("/dashboard/referrals"); }} />
+                          ))}
+                        </SearchGroup>
+                      )}
+                      {search.pages.length > 0 && (
+                        <SearchGroup label="Pages">
+                          {search.pages.map((p) => (
+                            <SearchRow key={p.href} icon="→" title={p.label} sub="Go to page" onClick={() => { closeSearch(); go(p.href); }} />
+                          ))}
+                        </SearchGroup>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* The bar — dark glass, expands out of the search circle */}
+              <div className="flex origin-right animate-[search-pop_0.4s_cubic-bezier(0.34,1.56,0.64,1)] items-center gap-3 rounded-full border border-white/10 bg-[rgba(28,28,32,0.72)] px-5 py-4 text-gray-200 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.14)] backdrop-blur-2xl backdrop-saturate-150">
+                <svg className="h-6 w-6 shrink-0 text-gray-300" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M21 21l-4.3-4.3" />
                 </svg>
-              </button>
-            )}
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onFocus={() => setSearchUp(true)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { openFirstResult(); closeSearch(); } }}
+                  placeholder="Search leads, referrals, pages…"
+                  className="min-w-0 flex-1 bg-transparent text-[15px] text-white outline-none placeholder:text-gray-400"
+                />
+                <button
+                  onClick={query ? () => setQuery("") : closeSearch}
+                  aria-label={query ? "Clear" : "Close search"}
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-gray-300 active:bg-white/10"
+                >
+                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+                  </svg>
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto p-2">
-            {!q ? (
-              <p className="px-3 py-10 text-center text-sm text-gray-400">
-                Search for a lead, a referral, or a page.
-              </p>
-            ) : !hasResults ? (
-              <p className="px-3 py-10 text-center text-sm text-gray-400">
-                No matches for “{query}”.
-              </p>
-            ) : (
-              <>
-                {search.leads.length > 0 && (
-                  <SearchGroup label="Leads">
-                    {search.leads.map((l) => (
-                      <SearchRow
-                        key={l.id}
-                        icon="✨"
-                        title={l.name}
-                        sub={`via ${l.source} · ${l.stage}`}
-                        onClick={() => {
-                          setMobileSearchOpen(false);
-                          go(`/dashboard/leads?lead=${l.id}`);
-                        }}
-                      />
-                    ))}
-                  </SearchGroup>
-                )}
-                {search.referrals.length > 0 && (
-                  <SearchGroup label="Referrals">
-                    {search.referrals.map((r) => (
-                      <SearchRow
-                        key={r.id}
-                        icon="↩︎"
-                        title={r.leadName}
-                        sub={`${r.direction === "received" ? "From" : "To"} ${brandById(r.direction === "received" ? r.fromBrandId : r.toBrandId)?.shortName ?? ""}`}
-                        onClick={() => {
-                          setMobileSearchOpen(false);
-                          go("/dashboard/referrals");
-                        }}
-                      />
-                    ))}
-                  </SearchGroup>
-                )}
-                {search.pages.length > 0 && (
-                  <SearchGroup label="Pages">
-                    {search.pages.map((p) => (
-                      <SearchRow
-                        key={p.href}
-                        icon="→"
-                        title={p.label}
-                        sub="Go to page"
-                        onClick={() => {
-                          setMobileSearchOpen(false);
-                          go(p.href);
-                        }}
-                      />
-                    ))}
-                  </SearchGroup>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── Top bar controls (desktop only) ── */}
       <header className="fixed left-[240px] right-0 top-0 z-40 hidden h-16 items-center justify-between gap-3 px-6 lg:flex">

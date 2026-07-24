@@ -508,6 +508,22 @@ h5 {
   animation: modal-pop 0.42s cubic-bezier(0.34, 1.48, 0.5, 1) both;
 }
 
+/* Search bar expanding out of the search circle (grows from the right). */
+@keyframes search-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.28);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 /* Overview bar-graph bars growing up from the baseline on load. */
 @keyframes bar-grow {
   from {
