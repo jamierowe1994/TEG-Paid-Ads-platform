@@ -756,12 +756,17 @@ export default function DashboardLayout({
           <button
             aria-hidden
             onClick={closeSearch}
-            className="fixed inset-0 z-[93] cursor-default transition-[background-color,backdrop-filter,opacity] duration-[360ms] ease-out"
+            className="fixed left-0 right-0 z-[93] cursor-default transition-[background-color,backdrop-filter,opacity] duration-[360ms] ease-out"
             style={{
+              // Over-cover well past the viewport in both directions so the
+              // blur reaches the very bottom even past where the page content
+              // ends (and behind the keyboard).
+              top: "-50vh",
+              bottom: "-50vh",
               opacity: searchShown ? 1 : 0,
-              backgroundColor: searchUp ? "rgba(9,9,11,0.44)" : "rgba(9,9,11,0)",
-              backdropFilter: searchUp ? "blur(16px)" : "blur(0px)",
-              WebkitBackdropFilter: searchUp ? "blur(16px)" : "blur(0px)",
+              backgroundColor: searchUp ? "rgba(9,9,11,0.5)" : "rgba(9,9,11,0)",
+              backdropFilter: searchUp ? "blur(18px)" : "blur(0px)",
+              WebkitBackdropFilter: searchUp ? "blur(18px)" : "blur(0px)",
             }}
           />
 
@@ -811,16 +816,20 @@ export default function DashboardLayout({
               </button>
             </div>
 
-            {/* Results — a clean panel that drops in under the bar on focus. */}
+            {/* Results — once the bar has flown to the top, this clean panel
+                unfolds from its middle outwards in a big, slow, exaggerated
+                sweep. */}
             <div
               className="overflow-hidden rounded-[26px] border border-white/70 bg-white/97 backdrop-blur-2xl shadow-[0_28px_64px_-28px_rgba(0,0,0,0.55)]"
               style={{
-                marginTop: searchUp ? "10px" : "0px",
-                maxHeight: searchUp ? "64vh" : "0px",
+                marginTop: "10px",
+                maxHeight: "64vh",
+                transformOrigin: "center center",
+                transform: searchUp ? "scale(1, 1)" : "scale(0.86, 0.015)",
                 opacity: searchUp ? 1 : 0,
-                transform: searchUp ? "translateY(0)" : "translateY(-10px)",
-                transition:
-                  "max-height 0.5s cubic-bezier(0.32,1.42,0.4,1), opacity 0.32s ease, transform 0.42s ease, margin-top 0.4s ease",
+                transition: searchUp
+                  ? "transform 1.15s cubic-bezier(0.18,1.12,0.32,1) 0.34s, opacity 0.55s ease 0.34s"
+                  : "transform 0.28s ease, opacity 0.2s ease",
               }}
             >
               <div className="max-h-[64vh] overflow-y-auto px-2.5 py-2.5">
