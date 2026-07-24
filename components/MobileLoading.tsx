@@ -1,33 +1,36 @@
 "use client";
 
-import BrandMark from "@/components/BrandMark";
-import { EXPERTS_GROUP } from "@/lib/brands";
-
-// Mobile-only welcome/loading splash — "The Experts Group" with a "Loading"
-// line and three pulsing dots, centred. Shown while the app checks the session
-// on a phone, so the first thing people see is a warm, branded moment rather
-// than a bare "Loading…". Hidden on desktop (lg+), which keeps its existing
-// minimal loading text untouched.
+// Mobile-only launch/loading splash — the "Launch Pad" lockup: the Experts
+// Group pin on the left with the "Launch Pad" wordmark (tight, stacked) beside
+// it, over a soft frosted-white wash so it reads as a clean glass moment while
+// the app checks the session. Hidden on desktop (lg+).
 export default function MobileLoading() {
   return (
-    <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-white lg:hidden">
-      <BrandMark
-        name={EXPERTS_GROUP.name}
-        accent={EXPERTS_GROUP.accent}
-        logo={EXPERTS_GROUP.logo}
-        size={64}
-        rounded="rounded-2xl"
-      />
-      <p className="mt-5 text-xl font-semibold tracking-tight text-gray-900">
-        The Experts Group
-      </p>
-      <div className="mt-4 flex items-center gap-2 text-gray-400">
-        <span className="text-sm font-medium">Loading</span>
-        <span className="flex items-center gap-1">
-          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-300 [animation-delay:0ms]" />
-          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-300 [animation-delay:150ms]" />
-          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-300 [animation-delay:300ms]" />
-        </span>
+    <div
+      className="fixed inset-0 z-[200] flex flex-col items-center justify-center lg:hidden"
+      style={{
+        background:
+          "radial-gradient(120% 90% at 50% 32%, #ffffff 0%, #eef0f2 100%)",
+      }}
+    >
+      <div className="flex items-center gap-4">
+        {/* Experts Group pin (transparent PNG) */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/brand-logos/group-black.png"
+          alt=""
+          className="h-[78px] w-auto"
+        />
+        <div className="flex flex-col leading-[0.86] tracking-[-0.045em] text-gray-900">
+          <span className="text-[42px] font-semibold">Launch</span>
+          <span className="text-[42px] font-semibold">Pad</span>
+        </div>
+      </div>
+
+      <div className="mt-10 flex items-center gap-1.5">
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-300 [animation-delay:0ms]" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-300 [animation-delay:150ms]" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-300 [animation-delay:300ms]" />
       </div>
     </div>
   );

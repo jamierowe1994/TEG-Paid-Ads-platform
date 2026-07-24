@@ -243,6 +243,15 @@ desktop (≥1024px) renders byte-identically (existing markup scoped with `lg:`)
       reveal a spinner and re-check leads/referrals/notifications (fires a
       teg:refresh the page listens for). Disabled while a sheet/modal is open.
     - Bigger search + notification icons in the top bar.
+  · ✅ (24 Jul) Launch Pad branding: loading splash rebuilt as the "Launch Pad"
+    lockup (Experts Group pin + stacked, tight-tracked wordmark on a frosted
+    wash) instead of "The Experts Group / Loading"; app name changed from "LP"
+    to "Launch Pad" (manifest short_name + appleWebApp title + applicationName);
+    home-screen icons (apple-touch-icon / icon-192 / icon-512) regenerated as
+    the pin glyph centred on a TRANSPARENT square (via a sharp script from the
+    existing alpha pin) for the iOS glass/clear-mode look. Placeholder until the
+    proper icon is designed. NB: iOS caches home-screen icons — remove & re-add
+    the icon to see the new one.
   · ⬜ Still to do: Leads funnel/board page, Profile, admin on mobile.
   · ⬜ Real-iPhone check: Microsoft login *inside* the installed PWA is the one
     path not yet tested on a real device (flagged by the PWA build session).

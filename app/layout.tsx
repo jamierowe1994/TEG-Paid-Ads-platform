@@ -18,14 +18,15 @@ export const metadata: Metadata = {
   title: "The Experts Group — Paid Ads Portal",
   description:
     "Paid advertising portal for The Experts Group agents — Property, Lettings, Mortgage, Recruitment, Commercial, Fine & Country and The Auction Company.",
-  // Standalone PWA config (prototype). appleWebApp.capable is what makes iOS
-  // Safari launch the home-screen icon full-screen with no browser chrome —
-  // the same on-screen result as a Capacitor native wrapper.
-  applicationName: "LP",
+  // Standalone PWA config. appleWebApp.capable is what makes iOS Safari launch
+  // the home-screen icon full-screen with no browser chrome — the same
+  // on-screen result as a Capacitor native wrapper. The home-screen label is
+  // "Launch Pad".
+  applicationName: "Launch Pad",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    title: "LP",
+    title: "Launch Pad",
     statusBarStyle: "black-translucent",
   },
   // Explicit legacy Apple tag for older iOS versions (iOS <18 needs the

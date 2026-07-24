@@ -10,8 +10,8 @@ import type { MetadataRoute } from "next";
 // public website is never shown inside the installed app.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "LaunchPad — The Experts Group",
-    short_name: "LP",
+    name: "Launch Pad — The Experts Group",
+    short_name: "Launch Pad",
     description: "Paid advertising portal for The Experts Group agents.",
     start_url: "/dashboard",
     display: "standalone",
