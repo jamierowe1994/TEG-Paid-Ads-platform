@@ -161,14 +161,18 @@ function LeadTile({
     >
       {/* Where it came from + who, with the date (and archive checkbox) */}
       <div className="flex items-start justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <SourceIcon source={lead.source} size={14} />
+        <div className="flex min-w-0 items-center gap-2.5">
+          <SourceIcon source={lead.source} size={18} className="shrink-0" />
           <p className={`truncate font-semibold text-gray-900 ${nameSize}`}>
             {lead.name}
           </p>
         </div>
         <span className="flex shrink-0 items-center gap-1.5 text-[10px] text-gray-400">
           {shortDate(lead.receivedAt)}
+          {/* Open-file affordance */}
+          <svg className="h-4 w-4 text-gray-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 6l6 6-6 6" />
+          </svg>
           {selectable && (
             <span
               role="checkbox"

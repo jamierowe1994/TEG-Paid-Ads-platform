@@ -1079,11 +1079,10 @@ export default function DashboardLayout({
                     href={item.href}
                     aria-label={item.label}
                     className="relative z-10 flex flex-1 items-center justify-center py-[12px]"
-                    style={active && !locked ? { color: brand.accent } : undefined}
                   >
                     <span className="relative">
                       <svg
-                        className={`h-[27px] w-[27px] ${active && !locked ? "" : "text-gray-400"}`}
+                        className={`h-[27px] w-[27px] ${active && !locked ? "text-white" : "text-gray-400"}`}
                         fill="none" stroke="currentColor" strokeWidth={1.8}
                         strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"
                       >

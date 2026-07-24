@@ -321,7 +321,22 @@ desktop (≥1024px) renders byte-identically (existing markup scoped with `lg:`)
       tapping the field slides it up ~halfway with a white results sheet above
       (room for the keyboard) and live results; tap the dimmed backdrop to
       bounce back. Replaced the old full-screen search sheet.
-  · ⬜ Still to do: Leads funnel/board page, Profile, admin on mobile.
+  · ✅ (24 Jul) Lead file + card pass 10:
+    - Nav bar's selected icon is now WHITE (was the brand accent, hard to read
+      on the dark glass).
+    - Lead file (mobile): removed the swipe-down grab bar; X sits top-right and
+      everything is bumped below it; the source icon has no box, is bigger and
+      sized to the three text lines (name / received-via / date) grouped
+      left-aligned. Dropped the big "visual text" inquiry. Address is open at
+      the top (type straight in). "Log attempt" and "Add note" are now
+      left-aligned auto-width buttons with a 3D inset-shadow look. Desktop
+      modal unchanged (mobile/desktop headers split).
+    - Lead cards: bigger source icon (no box), open-file chevron on the right;
+      already full-width + click-anywhere.
+  · ⬜ Leads list still to do (from the brief): the Filters → Sort by / Stage
+    control (newest/oldest/uncontacted, default newest-this-week-first) and the
+    exaggerated "card expands to fill the screen" open animation.
+  · ⬜ Still to do: Leads funnel/board page polish, Profile, admin on mobile.
   · ⬜ Real-iPhone check: Microsoft login *inside* the installed PWA is the one
     path not yet tested on a real device (flagged by the PWA build session).
   Desktop verified unchanged throughout.

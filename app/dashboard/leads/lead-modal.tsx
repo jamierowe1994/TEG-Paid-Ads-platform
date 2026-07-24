@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { Lead, LeadStage } from "@/lib/types";
 import type { Brand } from "@/lib/brands";
 import SourceIcon from "@/components/SourceIcon";
@@ -344,37 +344,12 @@ export function LeadModal({
   const attemptNo =
     lead.stage === "new" ? 1 : lead.stage === "attempt1" ? 2 : lead.stage === "attempt2" ? 3 : 3;
 
-  // Swipe-down-to-dismiss (mobile bottom sheet). Grab the handle and drag down;
-  // past a threshold the file slides off the bottom and closes. The dimmed
-  // backdrop keeps the page behind perfectly still. `entered` drops the
-  // entrance animation after it finishes so the drag transform isn't fighting
-  // the keyframe's fill.
-  const [dragY, setDragY] = useState(0);
+  // `entered` drops the entrance animation class once it's finished playing.
   const [entered, setEntered] = useState(false);
-  const dragStart = useRef<number | null>(null);
   useEffect(() => {
-    const t = setTimeout(() => setEntered(true), 360);
+    const t = setTimeout(() => setEntered(true), 420);
     return () => clearTimeout(t);
   }, []);
-  function onGrabDown(e: React.PointerEvent) {
-    dragStart.current = e.clientY;
-    (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
-  }
-  function onGrabMove(e: React.PointerEvent) {
-    if (dragStart.current == null) return;
-    const dy = e.clientY - dragStart.current;
-    setDragY(dy > 0 ? dy : dy * 0.2); // resist upward
-  }
-  function onGrabUp() {
-    if (dragStart.current == null) return;
-    dragStart.current = null;
-    if (dragY > 130) {
-      setDragY(window.innerHeight); // fling it off, then close
-      setTimeout(onClose, 200);
-    } else {
-      setDragY(0); // snap back
-    }
-  }
 
   return (
     <div
@@ -388,29 +363,40 @@ export function LeadModal({
         // Mobile: a bottom sheet that stops short of the top (85dvh) and never
         // grows past it. Desktop: the centred dialog, unchanged.
         className={`relative flex h-dvh w-full max-w-5xl flex-col overflow-hidden rounded-t-3xl bg-white sm:h-auto sm:max-h-[94vh] sm:rounded-3xl ${entered ? "" : "modal-pop"}`}
-        style={
-          dragY
-            ? {
-                transform: `translateY(${dragY}px)`,
-                transition: dragStart.current ? "none" : "transform 0.25s cubic-bezier(0.22,1,0.36,1)",
-              }
-            : undefined
-        }
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Grab handle — drag down to dismiss (mobile). */}
-        <div
-          onPointerDown={onGrabDown}
-          onPointerMove={onGrabMove}
-          onPointerUp={onGrabUp}
-          onPointerCancel={onGrabUp}
-          className="flex shrink-0 touch-none cursor-grab justify-center pb-1 pt-[calc(env(safe-area-inset-top)+10px)] active:cursor-grabbing sm:hidden"
-        >
-          <span className="h-1.5 w-11 rounded-full bg-gray-300" />
+        {/* Header — mobile: X on top; below it the source icon (no box, sized
+            to the three text lines) with name / received-via / date grouped
+            beside it, all left-aligned. */}
+        <div className="px-7 pt-[calc(env(safe-area-inset-top)+14px)] sm:hidden">
+          <div className="flex justify-end">
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="-mr-1 rounded-full p-1.5 text-gray-400 active:bg-gray-100"
+            >
+              <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          </div>
+          <div className="mt-1 flex items-center gap-3.5">
+            <SourceIcon source={lead.source} size={48} className="shrink-0" />
+            <div className="min-w-0 leading-tight">
+              <div className="flex flex-wrap items-center gap-2">
+                <InlineName value={lead.name} onSave={(v) => onUpdateFields?.({ name: v })} />
+                <StagePill lead={lead} brand={brand} />
+              </div>
+              <p className="mt-1 text-[13px] text-gray-500">
+                Received via <span className="capitalize">{lead.source}</span>
+              </p>
+              <p className="text-[12px] text-gray-400">{fullDate(lead.receivedAt)}</p>
+            </div>
+          </div>
         </div>
 
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4 px-7 pt-2 sm:px-8 sm:pt-7">
+        {/* Header — desktop (inline, unchanged) */}
+        <div className="hidden items-start justify-between gap-4 px-8 pt-7 sm:flex">
           <div className="flex items-start gap-3.5">
             <div
               className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
@@ -446,15 +432,9 @@ export function LeadModal({
               re-ordered (inquiry → log → notes → more details) without moving
               the DOM; desktop reverts to the normal block flow. */}
           <div className="flex min-w-0 flex-col lg:block">
-            {/* Mobile: the inquiry front-and-centre (no box) with the time it
-                came in underneath in small letters. */}
-            <div className="order-1 mb-5 text-center lg:hidden">
-              <p className="text-[22px] font-semibold leading-snug tracking-tight text-gray-900">
-                {whatFor(lead)}
-              </p>
-              <p className="mt-2 text-[12px] text-gray-400">
-                Came in {fullDate(lead.receivedAt)}
-              </p>
+            {/* Address — open on mobile so it can be typed in straight away. */}
+            <div className="order-1 mb-2 mt-4 lg:hidden">
+              <AddressField lead={lead} onSave={onUpdateFields} />
             </div>
 
             {/* Mobile: a single "More details" toggle reveals the contact facts,
@@ -718,13 +698,13 @@ export function LeadModal({
               <button
                 onClick={handleLogAttempt}
                 disabled={busy}
-                className="order-2 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-[15px] font-semibold text-white transition disabled:opacity-40 lg:hidden"
+                className="order-2 mt-1 flex w-auto items-center gap-2 self-start rounded-2xl px-5 py-3 text-[15px] font-semibold text-white shadow-[inset_0_1.5px_0_rgba(255,255,255,0.28),inset_0_-2px_3px_rgba(0,0,0,0.22),0_3px_9px_-2px_rgba(0,0,0,0.3)] transition active:scale-[0.97] disabled:opacity-40 lg:hidden"
                 style={{ backgroundColor: accent }}
               >
                 <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 11l3 3 8-8M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h9" />
                 </svg>
-                {busy ? "Logging…" : `Log contact attempt ${attemptNo}`}
+                {busy ? "Logging…" : `Log attempt ${attemptNo}`}
               </button>
             )}
 
@@ -757,7 +737,7 @@ export function LeadModal({
               <button
                 onClick={saveNote}
                 disabled={!noteText.trim() || savingNote}
-                className="mt-2 w-full rounded-xl py-2.5 text-sm font-semibold text-white transition disabled:opacity-40"
+                className="mt-2 w-auto self-start rounded-xl px-5 py-2.5 text-sm font-semibold text-white shadow-[inset_0_1.5px_0_rgba(255,255,255,0.28),inset_0_-2px_3px_rgba(0,0,0,0.22),0_3px_9px_-2px_rgba(0,0,0,0.3)] transition active:scale-[0.97] disabled:opacity-40"
                 style={{ backgroundColor: accent }}
               >
                 {savingNote ? "Saving…" : "Add note"}
