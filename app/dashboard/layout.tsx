@@ -1101,7 +1101,7 @@ export default function DashboardLayout({
                 aria-label="Call"
                 className={`flex flex-1 items-center justify-center rounded-full py-[12px] text-gray-200 ${leadNav?.phone ? "active:bg-white/[0.13]" : "pointer-events-none opacity-40"}`}
               >
-                <svg className="h-[27px] w-[27px] text-emerald-400" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <svg className="h-[27px] w-[27px] text-white" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                   <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.81.36 1.6.68 2.34a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.13-1.13a2 2 0 012.11-.45c.74.32 1.53.55 2.34.68A2 2 0 0122 16.92z" />
                 </svg>
               </a>
@@ -1122,7 +1122,7 @@ export default function DashboardLayout({
                 aria-label="WhatsApp"
                 className={`flex flex-1 items-center justify-center rounded-full py-[12px] text-gray-200 ${leadNav?.wa ? "active:bg-white/[0.13]" : "pointer-events-none opacity-40"}`}
               >
-                <svg className="h-[28px] w-[28px] text-emerald-400" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="h-[32px] w-[32px] text-white" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M17.6 6.32A7.85 7.85 0 0012 4a7.94 7.94 0 00-6.9 11.9L4 20l4.2-1.1A7.9 7.9 0 0012 20a7.95 7.95 0 005.6-13.68zM12 18.5a6.55 6.55 0 01-3.36-.92l-.24-.14-2.49.65.66-2.43-.16-.25A6.57 6.57 0 1112 18.5zm3.6-4.93c-.2-.1-1.17-.58-1.35-.64s-.31-.1-.44.1-.5.63-.62.76-.23.15-.43.05a5.36 5.36 0 01-1.58-.98 5.94 5.94 0 01-1.1-1.36c-.11-.2 0-.3.09-.4l.3-.35a1.37 1.37 0 00.2-.33.37.37 0 000-.35c-.05-.1-.44-1.07-.6-1.46s-.32-.33-.44-.33h-.38a.72.72 0 00-.52.24 2.19 2.19 0 00-.68 1.63 3.82 3.82 0 00.8 2.03 8.72 8.72 0 003.34 2.95c.47.2.83.33 1.11.42a2.68 2.68 0 001.23.08 2 2 0 001.3-.93 1.62 1.62 0 00.12-.92c-.05-.08-.18-.13-.38-.23z" />
                 </svg>
               </a>

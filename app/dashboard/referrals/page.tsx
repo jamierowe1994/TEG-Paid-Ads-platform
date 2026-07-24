@@ -320,13 +320,13 @@ export default function ReferralsPage() {
         </p>
       </div>
 
-      {/* Two simple tabs */}
-      <div className="mt-6 inline-flex rounded-xl border border-gray-200 bg-white p-1">
+      {/* Two simple tabs — pill-shaped, to match the rest of the UI. */}
+      <div className="mt-6 inline-flex rounded-full border border-gray-200 bg-white p-1">
         {TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`rounded-lg px-5 py-2 text-sm font-medium transition ${
+            className={`rounded-full px-5 py-2 text-sm font-medium transition ${
               tab === t.id
                 ? "bg-gray-900 text-white"
                 : "text-gray-500 hover:bg-gray-50"
@@ -450,8 +450,8 @@ function BrandTile({ brand: b, onOpen }: { brand: Brand; onOpen: () => void }) {
         {b.referralPitch}
       </p>
 
-      <div className="mt-3 flex items-end justify-between border-t border-gray-100 pt-3">
-        <div>
+      <div className="mt-3 flex items-stretch justify-between gap-3 border-t border-gray-100 pt-3">
+        <div className="flex flex-col justify-center">
           <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
             You earn up to
           </p>
@@ -463,7 +463,7 @@ function BrandTile({ brand: b, onOpen }: { brand: Brand; onOpen: () => void }) {
           </p>
         </div>
         <span
-          className="rounded-full px-3.5 py-1.5 text-xs font-semibold text-white transition group-hover:opacity-90"
+          className="flex items-center self-stretch rounded-full px-5 text-sm font-semibold text-white transition group-hover:opacity-90"
           style={{ backgroundColor: b.accent }}
         >
           Refer a lead →
@@ -474,11 +474,12 @@ function BrandTile({ brand: b, onOpen }: { brand: Brand; onOpen: () => void }) {
 }
 
 // Brand logo in a soft tinted rounded square, falling back to a letter mark.
-function BrandBadge({ brand: b, size = 44 }: { brand: Brand; size?: number }) {
+// `bare` drops the tinted background so the logo reads as part of the header.
+function BrandBadge({ brand: b, size = 44, bare = false }: { brand: Brand; size?: number; bare?: boolean }) {
   return (
     <div
       className="flex shrink-0 items-center justify-center overflow-hidden rounded-xl"
-      style={{ width: size, height: size, backgroundColor: b.accentSoft }}
+      style={{ width: size, height: size, backgroundColor: bare ? "transparent" : b.accentSoft }}
     >
       <Image
         src={b.logo}
@@ -522,9 +523,10 @@ function BrandPreview({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6 sm:p-7">
-          {/* Header — icon butted straight up against the name, no colour band. */}
-          <div className="flex items-center gap-3">
-            <BrandBadge brand={b} size={56} />
+          {/* Header — bare logo (no tinted box), name nudged right up to it so
+              it reads as part of the logo. */}
+          <div className="flex items-center gap-1.5">
+            <BrandBadge brand={b} size={56} bare />
             <div className="min-w-0">
               <h2 className="text-xl font-semibold leading-tight">{b.name}</h2>
               <p className="text-sm text-gray-500">{b.audience}</p>
@@ -855,50 +857,12 @@ function ReferWizard({
               </button>
             </div>
 
-            <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,0.8fr)_1.2fr]">
-              {/* LEFT — everyone close by, tap to feature. Distances shown when
-                  we've got a pin to measure from. */}
-              <div className="space-y-2 sm:order-1 sm:max-h-[52vh] sm:overflow-y-auto sm:pr-1">
-                {ranked.map((o) => {
-                  const active = o.id === agent.id;
-                  const miles = distanceMiles(coords, o);
-                  return (
-                    <button
-                      key={o.id}
-                      onClick={() => setAgent(o)}
-                      className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition ${
-                        active
-                          ? "border-gray-900 bg-gray-50"
-                          : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                      }`}
-                    >
-                      <AgentAvatar
-                        name={o.name}
-                        photo={o.photo}
-                        accent={toBrand.accent}
-                        size={40}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{o.name}</p>
-                        <p className="truncate text-xs text-gray-400">
-                          Covers {o.area}
-                        </p>
-                      </div>
-                      {miles != null && (
-                        <span
-                          className="shrink-0 text-xs font-semibold"
-                          style={{ color: toBrand.accent }}
-                        >
-                          {miles} mi
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* RIGHT — the featured agent, with the refer button at the base */}
-              <div className="flex flex-col rounded-2xl border border-gray-200 p-4 sm:order-2">
+            <div className="mt-4 space-y-4">
+              {/* Recommended agent — always at the top. */}
+              <div className="flex flex-col rounded-2xl border border-gray-200 p-4">
+                <span className="mb-3 inline-flex w-fit items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold text-white" style={{ backgroundColor: toBrand.accent }}>
+                  ★ Recommended
+                </span>
                 <div className="flex items-start gap-4">
                   <AgentAvatar
                     name={agent.name}
@@ -935,12 +899,48 @@ function ReferWizard({
 
                 <button
                   onClick={() => setStep("details")}
-                  className="mt-4 w-full rounded-xl py-3 text-sm font-semibold text-white transition hover:opacity-90 sm:mt-auto"
+                  className="mt-4 w-full rounded-xl py-3 text-sm font-semibold text-white transition hover:opacity-90"
                   style={{ backgroundColor: toBrand.accent }}
                 >
                   Refer to {firstName}
                 </button>
               </div>
+
+              {/* Up to four other close-by agents — tap to feature. */}
+              {(() => {
+                const others = ranked.filter((o) => o.id !== agent.id).slice(0, 4);
+                if (others.length === 0) return null;
+                return (
+                  <div>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      Other agents nearby
+                    </p>
+                    <div className="space-y-2">
+                      {others.map((o) => {
+                        const miles = distanceMiles(coords, o);
+                        return (
+                          <button
+                            key={o.id}
+                            onClick={() => setAgent(o)}
+                            className="flex w-full items-center gap-3 rounded-2xl border border-gray-200 p-3 text-left transition hover:border-gray-300 hover:bg-gray-50"
+                          >
+                            <AgentAvatar name={o.name} photo={o.photo} accent={toBrand.accent} size={40} />
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium">{o.name}</p>
+                              <p className="truncate text-xs text-gray-400">Covers {o.area}</p>
+                            </div>
+                            {miles != null && (
+                              <span className="shrink-0 text-xs font-semibold" style={{ color: toBrand.accent }}>
+                                {miles} mi
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}

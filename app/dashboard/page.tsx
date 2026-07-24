@@ -452,9 +452,12 @@ export default function DashboardOverview() {
           </p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">
             Morning, {user.name.split(" ")[0]}
-            {/* Wave — desktop only; it doesn't suit the tighter mobile header. */}
-            <span className="wave-hand ml-2 hidden lg:inline" role="img" aria-label="waving hand">
-              👋
+            {/* Wave — desktop only. Wrapped so the visibility toggle isn't
+                overridden by .wave-hand's own `display`. */}
+            <span className="ml-2 hidden lg:inline">
+              <span className="wave-hand" role="img" aria-label="waving hand">
+                👋
+              </span>
             </span>
           </h1>
         </div>

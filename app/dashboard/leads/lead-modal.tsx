@@ -387,9 +387,7 @@ export function LeadModal({
           ? "Lost"
           : attemptsDone === 0
             ? "Not contacted yet"
-            : attemptsDone >= 3
-              ? "3 tries — add to nurture"
-              : `Attempt ${attemptsDone} of 3`;
+            : `Attempt ${Math.min(attemptsDone, 3)} of 3`;
 
   // `entered` drops the entrance animation class once it's finished playing.
   const [entered, setEntered] = useState(false);
@@ -777,11 +775,15 @@ export function LeadModal({
                   )}
                 </NextCard>
               ) : lead.stage === "attempt3" ? (
-                <NextCard tone="plain" accent={accent} title="Three tries, no answer" body={`Keep ${firstName} warm with the marketing funnel — automated follow-ups until the timing's right.`}>
-                  <BigBtn primary accent={accent} disabled={busy} onClick={async () => { setBusy(true); await Promise.resolve(onStage("nurture")); setBusy(false); }}>
-                    {busy ? "Sending…" : "Send to marketing funnel"}
-                  </BigBtn>
-                </NextCard>
+                // Desktop only — on mobile it's redundant with the progress pill
+                // and the "+" menu's add-to-nurture path.
+                <div className="hidden lg:block">
+                  <NextCard tone="plain" accent={accent} title="Three tries, no answer" body={`Keep ${firstName} warm with the marketing funnel — automated follow-ups until the timing's right.`}>
+                    <BigBtn primary accent={accent} disabled={busy} onClick={async () => { setBusy(true); await Promise.resolve(onStage("nurture")); setBusy(false); }}>
+                      {busy ? "Sending…" : "Send to marketing funnel"}
+                    </BigBtn>
+                  </NextCard>
+                </div>
               ) : lead.stage === "nurture" ? (
                 <NextCard tone="plain" accent={accent} title="In the marketing funnel" body={`${firstName} is getting our follow-up sequence. Reopen any time to pick things back up.`}>
                   <BigBtn accent={accent} onClick={() => onStage("new")}>Reopen lead</BigBtn>
@@ -810,7 +812,6 @@ export function LeadModal({
             <div className="order-4 mt-7 lg:hidden">
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Activity</span>
-                <span className="ml-auto text-[11px] font-medium text-gray-400">{events.length} events</span>
               </div>
               <ol className="mt-2 rounded-2xl border border-gray-200 px-2 py-1">
                 {[...events].reverse().slice(0, showAllEvents ? undefined : 4).map((e, i) => {
