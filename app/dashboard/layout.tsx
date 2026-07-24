@@ -1119,7 +1119,7 @@ export default function DashboardLayout({
             <button
               onClick={() => setMobileSearchOpen(true)}
               aria-label="Search"
-              className="flex h-[62px] w-[62px] shrink-0 items-center justify-center rounded-full border border-white/10 bg-[#26262b] text-gray-200 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.5)] transition active:scale-95"
+              className="flex h-[74px] w-[74px] shrink-0 items-center justify-center rounded-full border border-white/10 bg-[#26262b] text-gray-200 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.5)] transition active:scale-95"
             >
               <svg className="h-[28px] w-[28px]" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                 <circle cx="11" cy="11" r="7" />
