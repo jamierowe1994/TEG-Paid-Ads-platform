@@ -17,6 +17,7 @@ import HelpCentre from "@/components/HelpCentre";
 import SetPasswordGate from "@/components/SetPasswordGate";
 import PaidLockOverlay from "@/components/PaidLockOverlay";
 import MobileLoading from "@/components/MobileLoading";
+import PullToRefresh from "@/components/PullToRefresh";
 
 // Toast copy when the admin advances a customer's campaign stage.
 const STAGE_TOAST: Record<string, string> = {
@@ -151,6 +152,17 @@ export default function DashboardLayout({
       window.removeEventListener("teg:lead-close", close);
     };
   }, []);
+
+  // Pull-to-refresh handler: re-check leads / referrals / notifications and
+  // tell the current page (via teg:refresh) to re-fetch its own data too.
+  async function doRefresh() {
+    window.dispatchEvent(new Event("teg:refresh"));
+    await Promise.all([
+      fetchLeads().then(setLeads),
+      fetchReferrals().then(setReferrals),
+      fetchNotifications().then(setNotifs),
+    ]);
+  }
 
   useEffect(() => {
     refreshUser().then((u) => {
@@ -495,6 +507,9 @@ export default function DashboardLayout({
         </div>
       </aside>
 
+      {/* Pull-to-refresh (mobile) — drag down from the top to re-check leads */}
+      <PullToRefresh onRefresh={doRefresh} />
+
       {/* ══ MOBILE top bar (<lg): blends with the page — search left, page
           title + a short underline in the middle, bell right. Scrolls away with
           the page. pt clears the phone's status bar / notch in standalone (the
@@ -504,9 +519,9 @@ export default function DashboardLayout({
         <button
           onClick={() => setMobileSearchOpen(true)}
           aria-label="Search"
-          className="flex h-10 w-10 items-center justify-center rounded-full text-gray-600 active:bg-black/5"
+          className="flex h-11 w-11 items-center justify-center rounded-full text-gray-700 active:bg-black/5"
         >
-          <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+          <svg className="h-[26px] w-[26px]" fill="none" stroke="currentColor" strokeWidth={1.9} viewBox="0 0 24 24">
             <circle cx="11" cy="11" r="7" />
             <path d="M21 21l-4.3-4.3" strokeLinecap="round" />
           </svg>
@@ -523,14 +538,14 @@ export default function DashboardLayout({
         <button
           onClick={() => setBellOpen((v) => !v)}
           aria-label="Notifications"
-          className="relative flex h-10 w-10 items-center justify-center rounded-full text-gray-700 active:bg-black/5"
+          className="relative flex h-11 w-11 items-center justify-center rounded-full text-gray-700 active:bg-black/5"
         >
-          <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+          <svg className="h-[26px] w-[26px]" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
             <path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           {unread > 0 && (
             <span
-              className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold text-white"
+              className="absolute right-1 top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-semibold text-white"
               style={{ backgroundColor: brand.accent }}
             >
               {unread}

@@ -13,12 +13,14 @@ import Parallax from "@/components/Parallax";
 import SmoothScroll from "@/components/SmoothScroll";
 import ContourClip from "@/components/ContourClip";
 import ScrollFillText from "@/components/ScrollFillText";
+import StandaloneGuard from "@/components/StandaloneGuard";
 
 export default function LandingPage() {
   // No bg-white on <main> — the body provides the white base so the fixed
   // -z-10 texture/glows show through the transparent sections.
   return (
     <main className="relative min-h-screen overflow-x-clip">
+      <StandaloneGuard />
       <SmoothScroll />
       {/* Reveals the red contour copy only within the frosted panel's rect */}
       <ContourClip targetId="built" />

@@ -50,15 +50,17 @@ export function verifySessionToken(token: string | undefined): string | null {
   return userId;
 }
 
-// "Remember me" on → a persistent cookie that survives browser restarts for a
-// month. Off → a session cookie with no maxAge, cleared when the browser
-// closes (so shared/public machines don't stay signed in).
-export function sessionCookieOptions(remember = true) {
+// The session cookie is always persistent (maxAge = the token's 30-day life)
+// so the installed PWA stays signed in across app closes — nobody has to log
+// in every launch. The token itself expires after SESSION_DAYS, which is the
+// natural "sign back in about once a month" timeout. (The `remember` arg is
+// kept for the login route's checkbox but no longer shortens persistence.)
+export function sessionCookieOptions(_remember = true) {
   return {
     httpOnly: true,
     sameSite: "lax" as const,
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    ...(remember ? { maxAge: SESSION_DAYS * 24 * 60 * 60 } : {}),
+    maxAge: SESSION_DAYS * 24 * 60 * 60,
   };
 }

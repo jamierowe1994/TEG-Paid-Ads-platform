@@ -226,6 +226,23 @@ desktop (≥1024px) renders byte-identically (existing markup scoped with `lg:`)
     - Bottom nav made bigger again (h-30 icons, 66px + circle) and dropped
       closer to the bottom: pb is now safe-area/2 + 8px (was reserving the
       full safe-area inset, which left a big dead gap under it in standalone).
+  · ✅ (24 Jul) PWA-feel + overview pass 4:
+    - Stay-signed-in: the session cookie is now always persistent (maxAge =
+      the token's 30-day life) instead of dropping to a session cookie when
+      "remember me" was off — so the installed app no longer makes you log in
+      every launch. Natural ~monthly re-login when the token expires.
+    - The app opens into itself, not the website: manifest start_url is now
+      /dashboard (→ overview if signed in, else /login), and a StandaloneGuard
+      redirects the marketing page into the app if it's ever hit in standalone.
+      The public site only shows in a real browser.
+    - Bar-graph bug fixed: "Leads this week" bucketed by Mon–Sun calendar week
+      while "This week" counts a rolling 7 days, so recent leads before Monday
+      showed in the number but not the bars. Both now use the identical rolling
+      7-day window, so the graph total always equals the This-week count.
+    - Pull-to-refresh (components/PullToRefresh.tsx): drag down from the top to
+      reveal a spinner and re-check leads/referrals/notifications (fires a
+      teg:refresh the page listens for). Disabled while a sheet/modal is open.
+    - Bigger search + notification icons in the top bar.
   · ⬜ Still to do: Leads funnel/board page, Profile, admin on mobile.
   · ⬜ Real-iPhone check: Microsoft login *inside* the installed PWA is the one
     path not yet tested on a real device (flagged by the PWA build session).

@@ -292,6 +292,24 @@ export default function DashboardOverview() {
       .catch(() => {});
   }, []);
 
+  // Pull-to-refresh (fired from the shell) re-checks for new leads.
+  useEffect(() => {
+    const h = () => fetchLeads().then(setLeads);
+    window.addEventListener("teg:refresh", h);
+    return () => window.removeEventListener("teg:refresh", h);
+  }, []);
+
+  // While the lead-list sheet is open, lock the background so it can't scroll
+  // (also keeps pull-to-refresh from firing underneath it).
+  useEffect(() => {
+    if (!leadList) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [leadList]);
+
   // Rotate the Current-ad tile through every live creative, one per 10s.
   useEffect(() => {
     if (myCreatives.length < 2) return;
@@ -317,22 +335,25 @@ export default function DashboardOverview() {
   }, [leads]);
   const weekly = weeklyBuckets.map((b) => b.length);
 
-  // Leads per day across the current week (Mon→Sun) — drives the little bar
-  // graph on the mobile overview.
+  // Leads per day across the last 7 days (today on the right) — drives the
+  // little bar graph. Deliberately the SAME rolling-7-day window as
+  // `weekly[last]` ("This week"), so the graph's total always equals the This-
+  // week count (a lead 5 days ago belongs to both, even if that was before
+  // Monday).
   const daily = useMemo(() => {
     const DAY = 24 * 3600 * 1000;
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    start.setDate(start.getDate() - ((start.getDay() + 6) % 7)); // back to Monday
-    const labels = ["M", "T", "W", "T", "F", "S", "S"];
-    const days = labels.map((label) => ({ label, count: 0, isToday: false }));
-    const todayIdx = Math.floor((Date.now() - start.getTime()) / DAY);
-    if (todayIdx >= 0 && todayIdx < 7) days[todayIdx].isToday = true;
+    const INIT = ["S", "M", "T", "W", "T", "F", "S"]; // getDay() 0=Sun
+    const now = Date.now();
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const daysAgo = 6 - i; // index 6 (rightmost) = today
+      const d = new Date(now - daysAgo * DAY);
+      return { label: INIT[d.getDay()], count: 0, isToday: daysAgo === 0 };
+    });
     for (const l of leads) {
-      const idx = Math.floor(
-        (new Date(l.receivedAt).getTime() - start.getTime()) / DAY,
+      const daysAgo = Math.floor(
+        (now - new Date(l.receivedAt).getTime()) / DAY,
       );
-      if (idx >= 0 && idx < 7) days[idx].count++;
+      if (daysAgo >= 0 && daysAgo < 7) days[6 - daysAgo].count++;
     }
     return days;
   }, [leads]);
