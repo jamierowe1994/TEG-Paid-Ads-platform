@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   getUser,
   fetchLeads,
@@ -249,6 +249,8 @@ function MobileLeadCard({
   selectable,
   selected,
   onToggleSelect,
+  onLogContact,
+  onLostDeal,
 }: {
   lead: Lead;
   brand: Brand;
@@ -256,72 +258,149 @@ function MobileLeadCard({
   selectable?: boolean;
   selected?: boolean;
   onToggleSelect?: () => void;
+  onLogContact?: () => void;
+  onLostDeal?: () => void;
 }) {
   const isNew = lead.stage === "new";
   const d = new Date(lead.receivedAt);
   const when = `${d.toLocaleDateString("en-GB", { day: "numeric", month: "short" })} · ${d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={(e) => onClick((e.currentTarget as HTMLElement).getBoundingClientRect())}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") onClick((e.currentTarget as HTMLElement).getBoundingClientRect());
-      }}
-      className={`relative flex w-full cursor-pointer items-center gap-3.5 rounded-2xl bg-white px-4 py-3.5 text-left shadow-[0_2px_10px_-4px_rgba(0,0,0,0.12)] transition active:scale-[0.985] ${
-        selected ? "border border-gray-900 ring-2 ring-gray-900" : "border border-black/10"
-      }`}
-    >
-      <SourceIcon source={lead.source} size={44} className="shrink-0" />
 
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className="truncate text-[16px] font-semibold text-gray-900">{lead.name}</p>
-          {isNew && (
-            <span
-              className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
-              style={{ backgroundColor: brand.accent }}
-            >
-              New
-            </span>
-          )}
-        </div>
-        <p className="mt-0.5 truncate text-[12.5px] text-gray-400">
-          {lead.resurfaceAt
-            ? `🔥 Warm · back ${shortDate(lead.resurfaceAt)}`
-            : isNew
-              ? `Landed ${when}`
-              : `${stageLabel(lead.stage, brand)} · ${when}`}
-        </p>
+  // Swipe-left to reveal Log contact / Lost deal. Disabled in select mode.
+  const REVEAL = 168;
+  const swipeable = !selectable;
+  const [dx, setDx] = useState(0);
+  const [drag, setDrag] = useState(false);
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const openRef = useRef(false);
+  const draggingRef = useRef(false);
+  const moved = useRef(false);
+
+  const close = () => { setDx(0); openRef.current = false; };
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (!swipeable) return;
+    startX.current = e.touches[0].clientX;
+    startY.current = e.touches[0].clientY;
+    moved.current = false;
+    draggingRef.current = true;
+    setDrag(true);
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (!swipeable || !draggingRef.current) return;
+    const ddx = e.touches[0].clientX - startX.current;
+    const ddy = e.touches[0].clientY - startY.current;
+    if (Math.abs(ddx) > 8 && Math.abs(ddx) > Math.abs(ddy)) moved.current = true;
+    const next = Math.max(-REVEAL - 24, Math.min(0, (openRef.current ? -REVEAL : 0) + ddx));
+    setDx(next);
+  };
+  const onTouchEnd = () => {
+    if (!swipeable || !draggingRef.current) return;
+    draggingRef.current = false;
+    setDrag(false);
+    setDx((cur) => {
+      const open = cur < -REVEAL / 2;
+      openRef.current = open;
+      return open ? -REVEAL : 0;
+    });
+  };
+
+  const handleTap = (el: HTMLElement) => {
+    if (moved.current) { moved.current = false; return; }
+    if (openRef.current) { close(); return; }
+    onClick(el.getBoundingClientRect());
+  };
+
+  return (
+    <div className={`relative overflow-hidden rounded-2xl ${selected ? "ring-2 ring-gray-900" : ""}`}>
+      {/* Actions revealed behind the card on swipe-left. Pale on purpose. */}
+      <div className="absolute inset-y-0 right-0 flex">
+        <button
+          onClick={() => { close(); onLogContact?.(); }}
+          className="flex w-[84px] flex-col items-center justify-center gap-1 bg-emerald-100 text-[11px] font-semibold text-emerald-700 active:bg-emerald-200"
+        >
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 11l3 3 8-8M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h9" />
+          </svg>
+          Log contact
+        </button>
+        <button
+          onClick={() => { close(); onLostDeal?.(); }}
+          className="flex w-[84px] flex-col items-center justify-center gap-1 bg-rose-100 text-[11px] font-semibold text-rose-600 active:bg-rose-200"
+        >
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M5.6 5.6l12.8 12.8" />
+          </svg>
+          Lost deal
+        </button>
       </div>
 
-      {selectable ? (
-        <span
-          role="checkbox"
-          aria-checked={selected}
-          tabIndex={0}
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleSelect?.();
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
+      {/* Foreground card. */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={(e) => handleTap(e.currentTarget as HTMLElement)}
+        onKeyDown={(e) => { if (e.key === "Enter") handleTap(e.currentTarget as HTMLElement); }}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        style={{ transform: `translateX(${dx}px)`, transition: drag ? "none" : "transform 0.32s cubic-bezier(0.32,1.4,0.4,1)" }}
+        className={`relative flex w-full cursor-pointer items-center gap-3.5 rounded-2xl bg-white px-4 py-[18px] text-left shadow-[0_2px_10px_-4px_rgba(0,0,0,0.12)] ${
+          selected ? "border border-gray-900" : "border border-black/10"
+        }`}
+      >
+        <SourceIcon source={lead.source} size={44} className="shrink-0" />
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className="truncate text-[16px] font-semibold text-gray-900">{lead.name}</p>
+            {isNew && (
+              <span
+                className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+                style={{ backgroundColor: brand.accent }}
+              >
+                New
+              </span>
+            )}
+          </div>
+          <p className="mt-0.5 truncate text-[12.5px] text-gray-400">
+            {lead.resurfaceAt
+              ? `🔥 Warm · back ${shortDate(lead.resurfaceAt)}`
+              : isNew
+                ? `Landed ${when}`
+                : `${stageLabel(lead.stage, brand)} · ${when}`}
+          </p>
+        </div>
+
+        {selectable ? (
+          <span
+            role="checkbox"
+            aria-checked={selected}
+            tabIndex={0}
+            onClick={(e) => {
               e.stopPropagation();
               onToggleSelect?.();
-            }
-          }}
-          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs transition ${
-            selected ? "border-gray-900 bg-gray-900 text-white" : "border-gray-300 text-transparent"
-          }`}
-        >
-          ✓
-        </span>
-      ) : (
-        <svg className="h-5 w-5 shrink-0 text-gray-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 6l6 6-6 6" />
-        </svg>
-      )}
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                onToggleSelect?.();
+              }
+            }}
+            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs transition ${
+              selected ? "border-gray-900 bg-gray-900 text-white" : "border-gray-300 text-transparent"
+            }`}
+          >
+            ✓
+          </span>
+        ) : (
+          <svg className="h-5 w-5 shrink-0 text-gray-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 6l6 6-6 6" />
+          </svg>
+        )}
+      </div>
     </div>
   );
 }
@@ -504,6 +583,28 @@ export default function LeadsPage() {
         showToast("Couldn't save that — please try again", 3000);
       }
     });
+  }
+
+  // Swipe actions on the mobile list.
+  const NEXT_ATTEMPT: Partial<Record<LeadStage, LeadStage>> = {
+    new: "attempt1",
+    attempt1: "attempt2",
+    attempt2: "attempt3",
+  };
+  function logContact(lead: Lead) {
+    const next = NEXT_ATTEMPT[lead.stage];
+    if (next) {
+      update(lead.id, next);
+      showToast(`Logged a contact attempt for ${lead.name.split(" ")[0]} ✓`);
+    } else {
+      showToast("That's 3 attempts — swipe again to mark it lost or add to nurture");
+    }
+  }
+  function lostDeal(lead: Lead) {
+    // Open the file, then kick off the lost / add-to-nurture flow.
+    setOpenOrigin(null);
+    setOpenId(lead.id);
+    window.setTimeout(() => window.dispatchEvent(new Event("teg:lead-lost")), 360);
   }
 
   async function pushToCrm(lead: Lead) {
@@ -988,6 +1089,8 @@ export default function LeadsPage() {
             selectable={view === "archived"}
             selected={selected.has(lead.id)}
             onToggleSelect={() => toggleSelect(lead.id)}
+            onLogContact={() => logContact(lead)}
+            onLostDeal={() => lostDeal(lead)}
           />
         ))}
       </div>
