@@ -442,15 +442,15 @@ export default function DashboardOverview() {
     <div className="w-full">
       {/* Header: greeting left, stats stripped down and pushed right */}
       <div className="flex flex-wrap items-end justify-between gap-6">
-        <div>
-          <p className="text-sm text-gray-400">
+        <div className="pt-5 lg:pt-0">
+          <p className="text-sm text-gray-400 lg:text-sm">
             {new Date().toLocaleDateString("en-GB", {
               weekday: "long",
               day: "numeric",
               month: "long",
             })}
           </p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">
+          <h1 className="mt-2 text-[40px] font-semibold leading-[1.04] tracking-tight lg:mt-1 lg:text-3xl">
             Morning, {user.name.split(" ")[0]}
             {/* Wave — desktop only. Wrapped so the visibility toggle isn't
                 overridden by .wave-hand's own `display`. */}
@@ -660,18 +660,17 @@ export default function DashboardOverview() {
       )}
 
       {/* ══ MOBILE overview (<lg) — swipeable Uncontacted + compact tiles ══ */}
-      <section className="mt-6 space-y-3 lg:hidden">
+      <section className="mt-8 space-y-5 lg:hidden">
         {/* Row 1 — Uncontacted · Follow-ups. Tapping either slides up the full
             list of those leads. */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           {/* Uncontacted — the action tile (accent tint) */}
           <button
             type="button"
             onClick={() =>
               setLeadList({ title: "Uncontacted", leads: untouched })
             }
-            className="relative flex aspect-square flex-col items-start overflow-hidden rounded-[26px] border border-white/60 p-5 text-left transition active:scale-[0.98]"
-            style={{ backgroundColor: brand.accentSoft }}
+            className="relative flex aspect-square flex-col items-start overflow-hidden rounded-[26px] border border-white/60 bg-white/70 p-5 text-left transition active:scale-[0.98]"
           >
             {leadsLoaded && untouched.length > 0 && (
               <span
@@ -774,7 +773,7 @@ export default function DashboardOverview() {
         })()}
 
         {/* Row 2 — This week · Ad spend (pie) */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           {/* This week — leads + trend vs last week */}
           {(() => {
             const thisWk = weekly[weekly.length - 1] ?? 0;
@@ -842,7 +841,7 @@ export default function DashboardOverview() {
         </div>
 
         {/* Headline totals — four stat squares */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           {stats.map((s) => (
             <div
               key={s.label}

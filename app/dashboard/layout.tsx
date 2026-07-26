@@ -614,18 +614,18 @@ export default function DashboardLayout({
         {/* Three-dots overflow + notifications, in one dark bubble. The dots
             (and its unroll of help / profile / log out) sit to the left; the
             notifications bell is the always-visible endcap on the right. */}
-        <div className="relative flex h-12 w-[92px] shrink-0 items-center justify-end">
+        <div className="relative flex h-11 w-[84px] shrink-0 items-center justify-end">
           <div
             className="absolute right-0 top-1/2 flex -translate-y-1/2 flex-row-reverse items-center gap-0.5 overflow-hidden rounded-full bg-[rgba(28,28,32,0.5)] backdrop-blur-2xl backdrop-saturate-150 p-1 shadow-[0_6px_22px_-6px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.14)] transition-[max-width] duration-[320ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
-            style={{ maxWidth: topMenuOpen ? 236 : 96 }}
+            style={{ maxWidth: topMenuOpen ? 216 : 88 }}
           >
             {/* Notifications — always visible (far right) */}
             <button
               onClick={() => setBellOpen(true)}
               aria-label="Notifications"
-              className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
+              className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
             >
-              <svg className="h-[26px] w-[26px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <svg className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                 <path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0" />
               </svg>
               {unread > 0 && (
@@ -642,14 +642,14 @@ export default function DashboardLayout({
             <button
               onClick={() => setTopMenuOpen((v) => !v)}
               aria-label={topMenuOpen ? "Close menu" : "Menu"}
-              className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
+              className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
             >
               {topMenuOpen ? (
-                <svg className="h-[26px] w-[26px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <svg className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
                 </svg>
               ) : (
-                <svg className="h-[26px] w-[26px]" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="h-[22px] w-[22px]" fill="currentColor" viewBox="0 0 24 24">
                   <circle cx="5" cy="12" r="1.9" />
                   <circle cx="12" cy="12" r="1.9" />
                   <circle cx="19" cy="12" r="1.9" />
@@ -661,9 +661,9 @@ export default function DashboardLayout({
             <button
               onClick={() => { setTopMenuOpen(false); window.dispatchEvent(new Event("teg:toggle-help")); }}
               aria-label="Help"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
             >
-              <svg className="h-[26px] w-[26px]" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+              <svg className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="9.25" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M12 17.25h.008v.008H12v-.008z" />
               </svg>
@@ -673,9 +673,9 @@ export default function DashboardLayout({
             <button
               onClick={() => { setTopMenuOpen(false); router.push("/dashboard/profile"); }}
               aria-label="Profile"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
             >
-              <svg className="h-[26px] w-[26px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <svg className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                 <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </button>
@@ -684,9 +684,9 @@ export default function DashboardLayout({
             <button
               onClick={() => { signOut(); router.push("/"); }}
               aria-label="Log out"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
             >
-              <svg className="h-[26px] w-[26px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <svg className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                 <path d="M15 12H3m0 0l4-4m-4 4l4 4M13 4h5a2 2 0 012 2v12a2 2 0 01-2 2h-5" />
               </svg>
             </button>

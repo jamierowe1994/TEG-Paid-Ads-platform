@@ -320,16 +320,17 @@ export default function ReferralsPage() {
         </p>
       </div>
 
-      {/* Two simple tabs — pill-shaped, to match the rest of the UI. */}
-      <div className="mt-6 inline-flex rounded-full border border-gray-200 bg-white p-1">
+      {/* Two simple tabs — dark glass on mobile (matching the nav), plain pill
+          on desktop. */}
+      <div className="mt-6 inline-flex rounded-full border border-white/10 bg-[rgba(28,28,32,0.5)] p-1 shadow-[0_10px_28px_-10px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-2xl backdrop-saturate-150 lg:border-gray-200 lg:bg-white lg:shadow-none lg:backdrop-blur-none">
         {TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
             className={`rounded-full px-5 py-2 text-sm font-medium transition ${
               tab === t.id
-                ? "bg-gray-900 text-white"
-                : "text-gray-500 hover:bg-gray-50"
+                ? "bg-white/[0.16] text-white lg:bg-gray-900"
+                : "text-gray-300 hover:bg-white/5 lg:text-gray-500 lg:hover:bg-gray-50"
             }`}
           >
             {t.label}
@@ -436,7 +437,7 @@ function BrandTile({ brand: b, onOpen }: { brand: Brand; onOpen: () => void }) {
   return (
     <button
       onClick={onOpen}
-      className="group flex h-full flex-col rounded-3xl border border-gray-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md"
+      className="group flex h-full flex-col rounded-3xl border border-gray-200 bg-transparent p-4 text-left transition hover:-translate-y-0.5 hover:border-gray-300 lg:bg-white lg:shadow-sm lg:hover:shadow-md"
     >
       <div className="flex items-center gap-3">
         <BrandBadge brand={b} size={40} />
@@ -1069,7 +1070,7 @@ function ReferralRow({
   return (
     <button
       onClick={onClick}
-      className="block w-full rounded-3xl border border-gray-200 bg-white p-4 text-left transition hover:border-gray-300 hover:shadow-sm"
+      className="block w-full rounded-3xl border border-gray-200 bg-transparent p-4 text-left transition hover:border-gray-300 lg:bg-white lg:hover:shadow-sm"
     >
       <div className="flex items-center gap-3.5">
         {other && <BrandBadge brand={other} size={44} />}
