@@ -441,6 +441,63 @@ export default function DashboardOverview() {
     { label: "Converted", value: String(converted) },
   ];
 
+  // Derived figures for the pull-up "second page" — the stuff worth geeking
+  // out over, kept off page one entirely.
+  const fmtGap = (ms: number) => {
+    const mins = Math.round(ms / 60000);
+    if (mins < 60) return `${mins}m`;
+    const h = Math.floor(mins / 60);
+    if (h < 24) return mins % 60 ? `${h}h ${mins % 60}m` : `${h}h`;
+    return `${Math.floor(h / 24)}d ${h % 24}h`;
+  };
+  const speedSamples = leads
+    .map((l) => {
+      const first = l.history?.find((h) => h.stage !== "new");
+      return first
+        ? new Date(first.at).getTime() - new Date(l.receivedAt).getTime()
+        : null;
+    })
+    .filter((v): v is number => v !== null && v >= 0);
+  const deepStats: { label: string; value: string; hint?: string }[] = [
+    {
+      label: "Impressions",
+      value: myMeta ? myMeta.impressions.toLocaleString("en-GB") : "—",
+      hint: "times your ads were seen",
+    },
+    {
+      label: "Clicks",
+      value: myMeta ? myMeta.clicks.toLocaleString("en-GB") : "—",
+      hint: "taps through to your form",
+    },
+    {
+      label: "Click rate",
+      value:
+        myMeta && myMeta.impressions > 0
+          ? `${((myMeta.clicks / myMeta.impressions) * 100).toFixed(1)}%`
+          : "—",
+      hint: "clicks per impression",
+    },
+    {
+      label: "Cost per lead",
+      value: leads.length > 0 && spent > 0 ? `£${Math.round(spent / leads.length)}` : "—",
+      hint: "spend ÷ leads",
+    },
+    { label: "Leads", value: String(leads.length), hint: "all time" },
+    { label: "Converted", value: String(converted), hint: brand.conversionLabel },
+    {
+      label: "Conversion rate",
+      value: leads.length > 0 ? `${Math.round((converted / leads.length) * 100)}%` : "—",
+      hint: "leads that convert",
+    },
+    {
+      label: "Speed to lead",
+      value: speedSamples.length
+        ? fmtGap(speedSamples.reduce((a, b) => a + b, 0) / speedSamples.length)
+        : "—",
+      hint: "avg time to first contact",
+    },
+  ];
+
   // The customer sees their creatives at review — no approval step, we
   // handle go-live ourselves.
   const isReview = user.onboardingStage === "review";
@@ -782,24 +839,51 @@ export default function DashboardOverview() {
           );
         })()}
 
-        {/* Pull-up tab — swipe up (or tap) to raise the second page of stats. */}
-        <button
-          type="button"
-          onClick={() => setMoreOpen(true)}
-          onTouchStart={(e) => { dragStartY.current = e.touches[0].clientY; }}
-          onTouchEnd={(e) => {
-            const dy = dragStartY.current == null ? 0 : dragStartY.current - e.changedTouches[0].clientY;
-            dragStartY.current = null;
-            if (dy > 20) setMoreOpen(true);
-          }}
-          className="mt-1 flex w-full flex-col items-center gap-1.5 rounded-t-[26px] bg-[rgba(28,28,32,0.94)] px-5 pb-7 pt-3.5 text-white shadow-[0_-12px_30px_-14px_rgba(0,0,0,0.45)] active:bg-[rgba(28,28,32,0.99)]"
-        >
-          <span className="h-1.5 w-10 rounded-full bg-white/40" />
-          <span className="flex items-center gap-1.5 text-sm font-semibold">
-            See more
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M18 15l-6-6-6 6" /></svg>
-          </span>
-        </button>
+        {/* Footer note — full-bleed with big soft corners, and it deliberately
+            runs on down behind the floating nav so the page never looks like it
+            stops short. Swipe it up (or tap) for the second page. */}
+        <div className="-mx-4 -mb-24 pt-1">
+          <button
+            type="button"
+            onClick={() => setMoreOpen(true)}
+            onTouchStart={(e) => { dragStartY.current = e.touches[0].clientY; }}
+            onTouchEnd={(e) => {
+              const dy = dragStartY.current == null ? 0 : dragStartY.current - e.changedTouches[0].clientY;
+              dragStartY.current = null;
+              if (dy > 20) setMoreOpen(true);
+            }}
+            className="relative w-full overflow-hidden rounded-t-[44px] bg-gray-950 px-6 pb-40 pt-5 text-left text-white"
+          >
+            {/* Brand-coloured glow, bled off the top corner. */}
+            <span
+              className="pointer-events-none absolute -top-20 -right-12 h-56 w-56 rounded-full opacity-40 blur-3xl"
+              style={{ backgroundColor: brand.accent }}
+            />
+
+            <span className="relative mx-auto block h-1.5 w-11 rounded-full bg-white/25" />
+
+            <span className="relative mt-6 flex items-end justify-between gap-4">
+              <span className="block">
+                <span className="block text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
+                  Want to geek out?
+                </span>
+                <span className="mt-2 block text-[30px] font-semibold leading-[1.02] tracking-tight">
+                  The numbers
+                  <br />
+                  behind it all
+                </span>
+                <span className="mt-3.5 inline-block rounded-full bg-white/10 px-3.5 py-1.5 text-[11px] font-semibold text-white/80">
+                  {deepStats.length} metrics · swipe up
+                </span>
+              </span>
+              <span className="mb-1 flex h-14 w-14 shrink-0 animate-bounce items-center justify-center rounded-full bg-white text-gray-950">
+                <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 15l-6-6-6 6" />
+                </svg>
+              </span>
+            </span>
+          </button>
+        </div>
       </section>
 
       {/* ══ PAGE 2 — the deeper stats, on a pull-up "second page" ══ */}
@@ -902,17 +986,20 @@ export default function DashboardOverview() {
           </div>
         </div>
 
-        {/* Headline totals — four stat squares */}
+        {/* Everything else worth knowing — the geek-out grid. */}
         <div className="grid grid-cols-2 gap-4">
-          {stats.map((s) => (
+          {deepStats.map((s) => (
             <div
               key={s.label}
-              className="flex flex-col justify-center rounded-2xl border border-white/60 bg-white/70 px-4 py-3.5"
+              className="flex flex-col justify-center rounded-[22px] border border-white/60 bg-white/70 px-4 py-4"
             >
-              <p className="text-2xl font-semibold tracking-tight text-gray-900">
+              <p className="text-[26px] font-semibold leading-none tracking-tight text-gray-900">
                 {s.value}
               </p>
-              <p className="mt-0.5 text-xs text-gray-500">{s.label}</p>
+              <p className="mt-1.5 text-[12.5px] font-medium text-gray-700">{s.label}</p>
+              {s.hint && (
+                <p className="mt-0.5 text-[11px] leading-snug text-gray-400">{s.hint}</p>
+              )}
             </div>
           ))}
         </div>
