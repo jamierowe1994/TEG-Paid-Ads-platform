@@ -517,7 +517,7 @@ export default function DashboardOverview() {
               month: "long",
             })}
           </p>
-          <h1 className="mt-1.5 text-[36px] font-semibold leading-[1.04] tracking-tight lg:mt-1 lg:text-3xl">
+          <h1 className="mt-1.5 text-[38px] font-semibold leading-[1.04] tracking-tight lg:mt-1 lg:text-3xl">
             Morning, {user.name.split(" ")[0]}
             {/* Wave — desktop only. Wrapped so the visibility toggle isn't
                 overridden by .wave-hand's own `display`. */}
@@ -727,7 +727,7 @@ export default function DashboardOverview() {
       )}
 
       {/* ══ MOBILE overview (<lg) — swipeable Uncontacted + compact tiles ══ */}
-      <section className="mt-5 space-y-3 lg:hidden">
+      <section className="mt-6 space-y-4 lg:hidden">
         {/* Row 1 — Uncontacted · Follow-ups. Tapping either slides up the full
             list of those leads. */}
         <div className="grid grid-cols-2 gap-4">
@@ -737,7 +737,7 @@ export default function DashboardOverview() {
             onClick={() =>
               setLeadList({ title: "Uncontacted", leads: untouched })
             }
-            className="relative flex aspect-[1/0.88] flex-col items-start overflow-hidden rounded-[26px] border border-white/60 bg-white/70 p-5 text-left transition active:scale-[0.98]"
+            className="relative flex aspect-square flex-col items-start overflow-hidden rounded-[26px] border border-white/60 bg-white/70 p-5 text-left transition active:scale-[0.98]"
           >
             {leadsLoaded && untouched.length > 0 && (
               <span
@@ -764,7 +764,7 @@ export default function DashboardOverview() {
             onClick={() =>
               setLeadList({ title: "Follow-ups", leads: followUps })
             }
-            className="relative flex aspect-[1/0.88] flex-col items-start overflow-hidden rounded-[26px] border border-white/60 bg-white/70 p-5 text-left transition active:scale-[0.98]"
+            className="relative flex aspect-square flex-col items-start overflow-hidden rounded-[26px] border border-white/60 bg-white/70 p-5 text-left transition active:scale-[0.98]"
           >
             {leadsLoaded && followUps.length > 0 && (
               <span className="absolute right-4 top-4 rounded-full bg-black/5 px-2.5 py-1 text-[10px] font-semibold text-gray-500">
@@ -799,12 +799,12 @@ export default function DashboardOverview() {
                 </span>
               </div>
               <div className="mt-5 flex gap-3">
-                <div className="flex h-20 flex-col justify-between py-0.5 text-[10px] font-medium text-gray-300">
+                <div className="flex h-24 flex-col justify-between py-0.5 text-[10px] font-medium text-gray-300">
                   <span>{dayMax}</span>
                   <span>{Math.round(dayMax / 2)}</span>
                   <span>0</span>
                 </div>
-                <div className="flex h-20 flex-1 items-end justify-between gap-2.5">
+                <div className="flex h-24 flex-1 items-end justify-between gap-2.5">
                   {daily.map((d, i) => (
                     <div
                       key={i}
@@ -862,7 +862,7 @@ export default function DashboardOverview() {
               </svg>
             </span>
 
-            <span className="relative block overflow-hidden rounded-t-[44px] bg-gray-950 px-6 pb-40 pt-5 text-white">
+            <span className="relative block overflow-hidden rounded-t-[44px] bg-gray-950 px-6 pb-40 pt-7 text-white">
               {/* Brand-coloured glow, bled off the corner. */}
               <span
                 className="pointer-events-none absolute -right-12 -top-20 h-56 w-56 rounded-full opacity-40 blur-3xl"
