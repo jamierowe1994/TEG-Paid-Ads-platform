@@ -505,20 +505,25 @@ function BrandRolodex({
   const geo = useRef({ stick: 0, spacing: 1 });
 
   useEffect(() => {
+    // NB: never measure spacing from offsetTop — once a sticky element is stuck
+    // offsetTop reports its painted position, so every card reads the same value
+    // and the spacing collapses to 0. The cell's layout height is immune to both
+    // sticky and the card's transform, and equals the gap between cards.
     const measure = () => {
       const a = cells.current[0];
-      const b = cells.current[1];
-      const spacing =
-        a && b ? Math.max(1, b.offsetTop - a.offsetTop) : window.innerHeight * 0.46;
-      const stick = a ? parseFloat(getComputedStyle(a).top) || 0 : 0;
-      geo.current = { stick, spacing };
+      geo.current = {
+        stick: a ? parseFloat(getComputedStyle(a).top) || 0 : 0,
+        spacing: a?.offsetHeight || window.innerHeight * 0.55,
+      };
     };
 
     let raf = 0;
     const tick = () => {
       const wrap = wrapRef.current;
       if (!wrap) return;
-      const { stick, spacing } = geo.current;
+      const { stick } = geo.current;
+      const spacing =
+        cells.current[0]?.offsetHeight || geo.current.spacing || 1;
       // 0 when the first card lands, 1 when the second does, and so on.
       const progress = (stick - wrap.getBoundingClientRect().top) / spacing;
       for (let i = 0; i < brands.length; i++) {
@@ -530,7 +535,7 @@ function BrandRolodex({
         // Fade the ones that have fallen off the back of the stack.
         card.style.opacity =
           depth > ROLO_MAX ? String(Math.max(0, 1 - (depth - ROLO_MAX) / 0.5)) : "1";
-        const veil = card.firstElementChild as HTMLElement | null;
+        const veil = card.querySelector<HTMLElement>("[data-veil]");
         if (veil) veil.style.opacity = String(Math.min(0.5, d * 0.2));
       }
     };
@@ -571,11 +576,30 @@ function BrandRolodex({
             className="relative flex h-[55vh] origin-top flex-col overflow-hidden rounded-[34px] px-6 pb-6 pt-5 text-white shadow-[0_26px_50px_-20px_rgba(0,0,0,0.55)] will-change-transform"
             style={{ backgroundColor: b.accent }}
           >
+            {/* Photo — drop <brand id>.jpg (or .png) into public/referral-images
+                and it lights up here. Missing file just leaves the brand colour,
+                so cards can be filled in one at a time. Faintly blurred so the
+                type always reads. */}
+            <div
+              className="pointer-events-none absolute inset-0 bg-cover bg-center"
+              style={{
+                backgroundImage: `url(/referral-images/${b.id}.jpg), url(/referral-images/${b.id}.png)`,
+                filter: "blur(3px)",
+                transform: "scale(1.08)",
+              }}
+            />
+            {/* Brand wash + a bottom-weighted darkening, kept light. */}
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{ backgroundColor: b.accent, opacity: 0.5 }}
+            />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-black/25" />
+
             {/* Darkening veil — deepens as the card falls back in the stack. */}
-            <div className="pointer-events-none absolute inset-0 bg-black opacity-0" />
+            <div data-veil className="pointer-events-none absolute inset-0 bg-black opacity-0" />
 
             {/* Oversized brand mark, bled off the corner. */}
-            <div className="pointer-events-none absolute -bottom-10 -right-10 opacity-[0.12]">
+            <div className="pointer-events-none absolute -bottom-10 -right-10 opacity-[0.10]">
               <Image src={b.logo} alt="" width={230} height={230} className="h-[230px] w-[230px] object-contain" />
             </div>
 
@@ -586,9 +610,9 @@ function BrandRolodex({
               </span>
             </div>
 
-            {/* The brand, stacked a word per line, big and central. */}
-            <div className="relative flex flex-1 items-center justify-center">
-              <h3 className="text-center text-[40px] font-semibold leading-[0.94] tracking-tight">
+            {/* The brand, stacked a word per line — left-aligned to the pill. */}
+            <div className="relative flex flex-1 items-center">
+              <h3 className="text-[40px] font-semibold leading-[0.94] tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.35)]">
                 {b.name.split(" ").map((word) => (
                   <span key={word} className="block">{word}</span>
                 ))}
@@ -596,10 +620,10 @@ function BrandRolodex({
             </div>
 
             <div className="relative">
-              <p className="text-center text-[10px] font-bold uppercase tracking-[0.12em] text-white/70">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/70">
                 You earn up to
               </p>
-              <p className="mt-1 text-center text-[44px] font-semibold leading-none tracking-tight">
+              <p className="mt-1 text-[44px] font-semibold leading-none tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.35)]">
                 {money(b.referralFee)}
               </p>
               <button

@@ -868,3 +868,38 @@ h5 {
     animation-duration: 0.01s;
   }
 }
+
+/* ── Overview "see more" footer ────────────────────────────────────────────
+   A lazy bob on the handle to invite the tap, and a little equaliser that
+   hints at the numbers waiting behind it. */
+@keyframes tab-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+@keyframes eq-bar {
+  0%,
+  100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+.tab-bob {
+  animation: tab-bob 2.4s ease-in-out infinite;
+}
+.eq-bar {
+  transform-origin: bottom;
+  animation: eq-bar 1.5s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tab-bob,
+  .eq-bar {
+    animation: none;
+  }
+}

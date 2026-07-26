@@ -839,10 +839,11 @@ export default function DashboardOverview() {
           );
         })()}
 
-        {/* Footer note — full-bleed with big soft corners, and it deliberately
-            runs on down behind the floating nav so the page never looks like it
-            stops short. Swipe it up (or tap) for the second page. */}
-        <div className="-mx-4 -mb-24 pt-1">
+        {/* Footer note — full-bleed with big soft corners, running on down
+            BEHIND the floating nav so the page never looks like it stops short.
+            A white pull-tab pokes up out of the top edge and bobs to invite the
+            tap; swipe it up or tap it for the second page. */}
+        <div className="-mx-4 -mb-24">
           <button
             type="button"
             onClick={() => setMoreOpen(true)}
@@ -852,34 +853,60 @@ export default function DashboardOverview() {
               dragStartY.current = null;
               if (dy > 20) setMoreOpen(true);
             }}
-            className="relative w-full overflow-hidden rounded-t-[44px] bg-gray-950 px-6 pb-40 pt-5 text-left text-white"
+            className="relative block w-full pt-8 text-left"
           >
-            {/* Brand-coloured glow, bled off the top corner. */}
-            <span
-              className="pointer-events-none absolute -top-20 -right-12 h-56 w-56 rounded-full opacity-40 blur-3xl"
-              style={{ backgroundColor: brand.accent }}
-            />
+            {/* The pull-tab — sits half out of the panel and bobs. */}
+            <span className="tab-bob absolute left-1/2 top-0 z-10 flex h-[62px] w-[62px] -translate-x-1/2 items-center justify-center rounded-full bg-white text-gray-950 shadow-[0_12px_26px_-8px_rgba(0,0,0,0.55)]">
+              <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 15l-6-6-6 6" />
+              </svg>
+            </span>
 
-            <span className="relative mx-auto block h-1.5 w-11 rounded-full bg-white/25" />
+            <span className="relative block overflow-hidden rounded-t-[44px] bg-gray-950 px-6 pb-40 pt-11 text-white">
+              {/* Brand-coloured glow, bled off the corner. */}
+              <span
+                className="pointer-events-none absolute -right-12 -top-20 h-56 w-56 rounded-full opacity-40 blur-3xl"
+                style={{ backgroundColor: brand.accent }}
+              />
 
-            <span className="relative mt-6 flex items-end justify-between gap-4">
-              <span className="block">
-                <span className="block text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
-                  Want to geek out?
+              <span className="relative flex items-end justify-between gap-5">
+                <span className="block">
+                  <span className="block text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
+                    Want to geek out?
+                  </span>
+                  <span className="mt-2 block text-[30px] font-semibold leading-[1.02] tracking-tight">
+                    The numbers
+                    <br />
+                    behind it all
+                  </span>
                 </span>
-                <span className="mt-2 block text-[30px] font-semibold leading-[1.02] tracking-tight">
-                  The numbers
-                  <br />
-                  behind it all
-                </span>
-                <span className="mt-3.5 inline-block rounded-full bg-white/10 px-3.5 py-1.5 text-[11px] font-semibold text-white/80">
-                  {deepStats.length} metrics · swipe up
+
+                {/* Little live equaliser — hints at the data waiting behind. */}
+                <span className="mb-1.5 flex h-11 shrink-0 items-end gap-1.5">
+                  {[62, 100, 44, 86, 54, 96].map((h, i) => (
+                    <span
+                      key={i}
+                      className="eq-bar block w-[6px] rounded-full bg-white/30"
+                      style={{ height: `${h}%`, animationDelay: `${i * 0.13}s` }}
+                    />
+                  ))}
                 </span>
               </span>
-              <span className="mb-1 flex h-14 w-14 shrink-0 animate-bounce items-center justify-center rounded-full bg-white text-gray-950">
-                <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 15l-6-6-6 6" />
-                </svg>
+
+              {/* A taste of the actual numbers. */}
+              <span className="relative mt-4 flex flex-wrap gap-2">
+                {[
+                  `£${spent} spend`,
+                  `${leads.length} lead${leads.length === 1 ? "" : "s"}`,
+                  `${deepStats.find((s) => s.label === "Speed to lead")?.value ?? "—"} to lead`,
+                ].map((t) => (
+                  <span
+                    key={t}
+                    className="rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-white/80"
+                  >
+                    {t}
+                  </span>
+                ))}
               </span>
             </span>
           </button>
