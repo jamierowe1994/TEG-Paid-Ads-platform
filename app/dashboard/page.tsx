@@ -104,6 +104,16 @@ export default function DashboardOverview() {
     null | { title: string; leads: Lead[] }
   >(null);
   const [pushingId, setPushingId] = useState<string | null>(null);
+  // Overview "second page" — a pull-up sheet holding the deeper stats. Opening
+  // it flips the bottom nav to light glass so the sheet reads through it.
+  const [moreOpen, setMoreOpen] = useState(false);
+  const dragStartY = useRef<number | null>(null);
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("teg:nav-light", { detail: moreOpen }));
+    return () => {
+      window.dispatchEvent(new CustomEvent("teg:nav-light", { detail: false }));
+    };
+  }, [moreOpen]);
   // The agent's OWN live Meta figures (their tagged campaigns, last 30 days).
   // Null until the admin tags a campaign id and the brand's Meta is connected.
   const [myMeta, setMyMeta] = useState<{
@@ -772,6 +782,58 @@ export default function DashboardOverview() {
           );
         })()}
 
+        {/* Pull-up tab — swipe up (or tap) to raise the second page of stats. */}
+        <button
+          type="button"
+          onClick={() => setMoreOpen(true)}
+          onTouchStart={(e) => { dragStartY.current = e.touches[0].clientY; }}
+          onTouchEnd={(e) => {
+            const dy = dragStartY.current == null ? 0 : dragStartY.current - e.changedTouches[0].clientY;
+            dragStartY.current = null;
+            if (dy > 20) setMoreOpen(true);
+          }}
+          className="mt-1 flex w-full flex-col items-center gap-1.5 rounded-t-[26px] bg-[rgba(28,28,32,0.94)] px-5 pb-7 pt-3.5 text-white shadow-[0_-12px_30px_-14px_rgba(0,0,0,0.45)] active:bg-[rgba(28,28,32,0.99)]"
+        >
+          <span className="h-1.5 w-10 rounded-full bg-white/40" />
+          <span className="flex items-center gap-1.5 text-sm font-semibold">
+            See more
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M18 15l-6-6-6 6" /></svg>
+          </span>
+        </button>
+      </section>
+
+      {/* ══ PAGE 2 — the deeper stats, on a pull-up "second page" ══ */}
+      {moreOpen && (
+        <button
+          aria-hidden
+          onClick={() => setMoreOpen(false)}
+          className="fixed inset-0 z-[44] cursor-default bg-gray-900/20 lg:hidden"
+        />
+      )}
+      <div
+        className="fixed inset-x-2 bottom-0 z-[45] flex h-[90vh] flex-col overflow-hidden rounded-t-[30px] border border-white/60 bg-[#f4f4f5] shadow-[0_-24px_60px_-24px_rgba(0,0,0,0.45)] lg:hidden"
+        style={{
+          transform: moreOpen ? "translateY(0)" : "translateY(100%)",
+          transition: "transform 0.6s cubic-bezier(0.22,1.5,0.36,1)",
+        }}
+      >
+        {/* Grab handle — swipe down (or tap) to drop back to page one. */}
+        <button
+          type="button"
+          onClick={() => setMoreOpen(false)}
+          onTouchStart={(e) => { dragStartY.current = e.touches[0].clientY; }}
+          onTouchEnd={(e) => {
+            const dy = dragStartY.current == null ? 0 : e.changedTouches[0].clientY - dragStartY.current;
+            dragStartY.current = null;
+            if (dy > 20) setMoreOpen(false);
+          }}
+          className="flex w-full shrink-0 flex-col items-center gap-2 pb-2 pt-3.5"
+        >
+          <span className="h-1.5 w-10 rounded-full bg-gray-300" />
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Your numbers</span>
+        </button>
+
+        <div className="flex-1 space-y-5 overflow-y-auto px-2 pb-[calc(env(safe-area-inset-bottom)+120px)] pt-1">
         {/* Row 2 — This week · Ad spend (pie) */}
         <div className="grid grid-cols-2 gap-4">
           {/* This week — leads + trend vs last week */}
@@ -854,7 +916,8 @@ export default function DashboardOverview() {
             </div>
           ))}
         </div>
-      </section>
+        </div>
+      </div>
 
       {/* Bento — square glaze tiles, Onboarding Tracker spans both rows.
           Desktop only; mobile uses the tailored section above. */}

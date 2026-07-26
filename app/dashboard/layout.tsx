@@ -232,6 +232,18 @@ export default function DashboardLayout({
       window.removeEventListener("teg:nav-show", show);
     };
   }, []);
+  // The overview's pull-up "second page" flips the nav to light glass so its
+  // pale content stays legible through it.
+  const [navLight, setNavLight] = useState(false);
+  useEffect(() => {
+    const on = (e: Event) => setNavLight(!!(e as CustomEvent).detail);
+    window.addEventListener("teg:nav-light", on as EventListener);
+    return () => window.removeEventListener("teg:nav-light", on as EventListener);
+  }, []);
+  // Dark vs light glass for the nav pill / circles.
+  const glass = navLight
+    ? "border-black/5 bg-[rgba(255,255,255,0.6)]"
+    : "border-white/10 bg-[rgba(28,28,32,0.5)]";
 
   // Pull-to-refresh handler: re-check leads / referrals / notifications and
   // tell the current page (via teg:refresh) to re-fetch its own data too.
@@ -1158,7 +1170,7 @@ export default function DashboardLayout({
           ) : (
             <>
             <div
-              className="relative flex flex-1 items-stretch rounded-full border border-white/10 bg-[rgba(28,28,32,0.5)] backdrop-blur-2xl backdrop-saturate-150 p-1.5 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.14),inset_0_-1px_0_rgba(0,0,0,0.25)]"
+              className={`relative flex flex-1 items-stretch rounded-full border ${glass} backdrop-blur-2xl backdrop-saturate-150 p-1.5 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.14),inset_0_-1px_0_rgba(0,0,0,0.25)]`}
               style={{
                 transform: searchShown ? "translateX(-135%)" : "translateX(0)",
                 opacity: searchShown ? 0 : 1,
@@ -1168,7 +1180,7 @@ export default function DashboardLayout({
               {/* Sliding highlight — a slightly lighter surround that flows to
                   the active tab. */}
               <div
-                className="pointer-events-none absolute inset-y-1.5 left-1.5 rounded-full bg-white/[0.13] transition-[transform,opacity] duration-[320ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
+                className={`pointer-events-none absolute inset-y-1.5 left-1.5 rounded-full transition-[transform,opacity] duration-[320ms] ease-[cubic-bezier(0.4,0,0.2,1)] ${navLight ? "bg-black/[0.06]" : "bg-white/[0.13]"}`}
                 style={{
                   width: "calc((100% - 12px) / 4)",
                   transform: `translateX(${Math.max(mainActiveIndex, 0) * 100}%)`,
@@ -1187,7 +1199,7 @@ export default function DashboardLayout({
                   >
                     <span className="relative">
                       <svg
-                        className={`h-[27px] w-[27px] ${active && !locked ? "text-white" : "text-gray-400"}`}
+                        className={`h-[27px] w-[27px] ${active && !locked ? (navLight ? "text-gray-900" : "text-white") : (navLight ? "text-gray-500" : "text-gray-400")}`}
                         fill="none" stroke="currentColor" strokeWidth={1.8}
                         strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"
                       >
@@ -1212,7 +1224,7 @@ export default function DashboardLayout({
             <button
               onClick={openSearch}
               aria-label="Search"
-              className="flex h-[65px] w-[65px] shrink-0 items-center justify-center rounded-full border border-white/10 bg-[rgba(28,28,32,0.5)] backdrop-blur-2xl backdrop-saturate-150 text-gray-200 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.14),inset_0_-1px_0_rgba(0,0,0,0.25)] transition-[transform,opacity] duration-[300ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] active:scale-[0.88]"
+              className={`flex h-[65px] w-[65px] shrink-0 items-center justify-center rounded-full border ${glass} ${navLight ? "text-gray-700" : "text-gray-200"} backdrop-blur-2xl backdrop-saturate-150 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.14),inset_0_-1px_0_rgba(0,0,0,0.25)] transition-[transform,opacity] duration-[300ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] active:scale-[0.88]`}
               style={{ opacity: searchShown ? 0 : 1 }}
             >
               <svg className="h-[28px] w-[28px]" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
