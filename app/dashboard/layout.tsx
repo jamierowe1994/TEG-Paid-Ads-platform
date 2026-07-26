@@ -616,7 +616,7 @@ export default function DashboardLayout({
             notifications bell is the always-visible endcap on the right. */}
         <div className="relative flex h-12 w-[92px] shrink-0 items-center justify-end">
           <div
-            className="absolute right-0 top-1/2 flex -translate-y-1/2 flex-row-reverse items-center gap-0.5 overflow-hidden rounded-full bg-[rgba(28,28,32,0.68)] backdrop-blur-2xl backdrop-saturate-150 p-1 shadow-[0_6px_22px_-6px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.14)] transition-[max-width] duration-[320ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
+            className="absolute right-0 top-1/2 flex -translate-y-1/2 flex-row-reverse items-center gap-0.5 overflow-hidden rounded-full bg-[rgba(28,28,32,0.5)] backdrop-blur-2xl backdrop-saturate-150 p-1 shadow-[0_6px_22px_-6px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.14)] transition-[max-width] duration-[320ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
             style={{ maxWidth: topMenuOpen ? 236 : 96 }}
           >
             {/* Notifications — always visible (far right) */}
@@ -790,7 +790,7 @@ export default function DashboardLayout({
             {/* The bar — folds out of / back into the search circle (origin
                 right). Milky dark glass, matching the nav. */}
             <div
-              className="flex items-center gap-3 rounded-full border border-white/10 bg-[rgba(28,28,32,0.68)] px-5 py-4 text-gray-200 shadow-[0_16px_40px_-10px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.14),inset_0_-1px_0_rgba(0,0,0,0.25)] backdrop-blur-2xl backdrop-saturate-150"
+              className="flex items-center gap-3 rounded-full border border-white/10 bg-[rgba(28,28,32,0.5)] px-5 py-4 text-gray-200 shadow-[0_16px_40px_-10px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.14),inset_0_-1px_0_rgba(0,0,0,0.25)] backdrop-blur-2xl backdrop-saturate-150"
               style={{
                 transformOrigin: "right center",
                 transform: searchShown ? "scaleX(1)" : "scaleX(0.14)",
@@ -1096,7 +1096,7 @@ export default function DashboardLayout({
             <>
             {/* Contact channels — a pill of four, mirroring the home nav, with
                 a separate "+" circle where the search circle sits. */}
-            <div className="flex flex-1 items-stretch rounded-full border border-white/10 bg-[rgba(28,28,32,0.68)] backdrop-blur-2xl backdrop-saturate-150 p-1.5 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.14),inset_0_-1px_0_rgba(0,0,0,0.25)]">
+            <div className="flex flex-1 items-stretch rounded-full border border-white/10 bg-[rgba(28,28,32,0.5)] backdrop-blur-2xl backdrop-saturate-150 p-1.5 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.14),inset_0_-1px_0_rgba(0,0,0,0.25)]">
               <a
                 href={leadNav?.phone ? `tel:${leadNav.phone}` : undefined}
                 aria-label="Call"
@@ -1144,7 +1144,7 @@ export default function DashboardLayout({
             <button
               onClick={() => setPlusOpen((v) => !v)}
               aria-label="More actions"
-              className="flex h-[65px] w-[65px] shrink-0 items-center justify-center rounded-full border border-white/10 bg-[rgba(28,28,32,0.68)] backdrop-blur-2xl backdrop-saturate-150 text-white shadow-[0_12px_34px_-8px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.14),inset_0_-1px_0_rgba(0,0,0,0.25)] transition-transform duration-[300ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] active:scale-[0.88]"
+              className="flex h-[65px] w-[65px] shrink-0 items-center justify-center rounded-full border border-white/10 bg-[rgba(28,28,32,0.5)] backdrop-blur-2xl backdrop-saturate-150 text-white shadow-[0_12px_34px_-8px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.14),inset_0_-1px_0_rgba(0,0,0,0.25)] transition-transform duration-[300ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] active:scale-[0.88]"
             >
               <svg
                 className="h-[30px] w-[30px] transition-transform duration-[300ms] ease-[cubic-bezier(0.34,1.56,0.64,1)]"
@@ -1158,7 +1158,7 @@ export default function DashboardLayout({
           ) : (
             <>
             <div
-              className="relative flex flex-1 items-stretch rounded-full border border-white/10 bg-[rgba(28,28,32,0.68)] backdrop-blur-2xl backdrop-saturate-150 p-1.5 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.14),inset_0_-1px_0_rgba(0,0,0,0.25)]"
+              className="relative flex flex-1 items-stretch rounded-full border border-white/10 bg-[rgba(28,28,32,0.5)] backdrop-blur-2xl backdrop-saturate-150 p-1.5 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.14),inset_0_-1px_0_rgba(0,0,0,0.25)]"
               style={{
                 transform: searchShown ? "translateX(-135%)" : "translateX(0)",
                 opacity: searchShown ? 0 : 1,
@@ -1212,7 +1212,7 @@ export default function DashboardLayout({
             <button
               onClick={openSearch}
               aria-label="Search"
-              className="flex h-[65px] w-[65px] shrink-0 items-center justify-center rounded-full border border-white/10 bg-[rgba(28,28,32,0.68)] backdrop-blur-2xl backdrop-saturate-150 text-gray-200 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.14),inset_0_-1px_0_rgba(0,0,0,0.25)] transition-[transform,opacity] duration-[300ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] active:scale-[0.88]"
+              className="flex h-[65px] w-[65px] shrink-0 items-center justify-center rounded-full border border-white/10 bg-[rgba(28,28,32,0.5)] backdrop-blur-2xl backdrop-saturate-150 text-gray-200 shadow-[0_12px_34px_-8px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.14),inset_0_-1px_0_rgba(0,0,0,0.25)] transition-[transform,opacity] duration-[300ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] active:scale-[0.88]"
               style={{ opacity: searchShown ? 0 : 1 }}
             >
               <svg className="h-[28px] w-[28px]" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
