@@ -352,7 +352,7 @@ export default function ReferralsPage() {
         <>
           {/* Mobile — a stacked, scroll-driven deck of brand cards. */}
           <div className="mt-6">
-            <StackedBrandCards brands={otherBrands} onOpen={openPreview} />
+            <BrandRolodex brands={otherBrands} onOpen={openPreview} />
           </div>
           {/* Desktop — the plain tile grid. */}
           <div className="mt-8 hidden gap-4 sm:grid-cols-2 xl:grid-cols-3 lg:grid">
@@ -481,100 +481,138 @@ function BrandTile({ brand: b, onOpen }: { brand: Brand; onOpen: () => void }) {
   );
 }
 
-// ── Mobile: a stacked "roller index" of brand cards ─────────────────────────
-// Each brand is a full-height card in its own brand colour. Sticky-stacked, so
-// as you scroll the front card shrinks back and darkens while the next slides
-// up over it (and the reverse on the way back up).
-function StackedBrandCards({
+// ── Mobile: a rolodex of brand cards ────────────────────────────────────────
+// Every brand is a card in its own brand colour, all sticky at the SAME top so
+// they pile up permanently. As you scroll, the front card slides back — up,
+// smaller and darker — while the next lands in front of it, so you always see
+// the top strip (and the "what they do" pill) of the ~3 cards behind. Scroll
+// back and it unwinds. Feels like one page that animates rather than a list.
+const ROLO_PEEK = 46; // px each receding card lifts, exposing its pill
+const ROLO_MAX = 3; // how many cards stay visible behind the front one
+
+function BrandRolodex({
   brands,
   onOpen,
 }: {
   brands: Brand[];
   onOpen: (b: Brand) => void;
 }) {
-  const cards = useRef<(HTMLDivElement | null)[]>([]);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const cells = useRef<(HTMLDivElement | null)[]>([]);
+  const cards = useRef<(HTMLDivElement | null)[]>([]);
+  // Sticky offset + the scroll distance between cards, measured from layout so
+  // the maths stays right at any screen size.
+  const geo = useRef({ stick: 0, spacing: 1 });
 
   useEffect(() => {
+    const measure = () => {
+      const a = cells.current[0];
+      const b = cells.current[1];
+      const spacing =
+        a && b ? Math.max(1, b.offsetTop - a.offsetTop) : window.innerHeight * 0.46;
+      const stick = a ? parseFloat(getComputedStyle(a).top) || 0 : 0;
+      geo.current = { stick, spacing };
+    };
+
     let raf = 0;
     const tick = () => {
-      const vh = window.innerHeight;
-      const step = vh * 0.64; // scroll distance per card (matches cell height)
-      const stuck = 80; // ~ the sticky top offset
+      const wrap = wrapRef.current;
+      if (!wrap) return;
+      const { stick, spacing } = geo.current;
+      // 0 when the first card lands, 1 when the second does, and so on.
+      const progress = (stick - wrap.getBoundingClientRect().top) / spacing;
       for (let i = 0; i < brands.length; i++) {
         const card = cards.current[i];
-        const next = cells.current[i + 1];
         if (!card) continue;
-        // How far the next card has slid up over this one (0 → 1).
-        const cover = next
-          ? Math.min(1, Math.max(0, 1 - (next.getBoundingClientRect().top - stuck) / step))
-          : 0;
-        // Ease so the shrink only really kicks in once the next card is
-        // genuinely sliding over this one — keeps the gap small.
-        const e = cover * cover;
-        card.style.transform = `scale(${1 - e * 0.06})`;
-        const dim = card.firstElementChild as HTMLElement | null;
-        if (dim) dim.style.opacity = String(cover * 0.5);
+        const depth = Math.max(0, progress - i);
+        const d = Math.min(depth, ROLO_MAX);
+        card.style.transform = `translateY(${-d * ROLO_PEEK}px) scale(${1 - d * 0.05})`;
+        // Fade the ones that have fallen off the back of the stack.
+        card.style.opacity =
+          depth > ROLO_MAX ? String(Math.max(0, 1 - (depth - ROLO_MAX) / 0.5)) : "1";
+        const veil = card.firstElementChild as HTMLElement | null;
+        if (veil) veil.style.opacity = String(Math.min(0.5, d * 0.2));
       }
     };
+
     const onScroll = () => {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(tick);
     };
+    const onResize = () => {
+      measure();
+      onScroll();
+    };
+    measure();
     tick();
     window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
+    window.addEventListener("resize", onResize);
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
+      window.removeEventListener("resize", onResize);
     };
   }, [brands.length]);
 
   return (
-    <div className="lg:hidden">
+    <div ref={wrapRef} className="relative pb-[16vh] lg:hidden">
       {brands.map((b, i) => (
         <div
           key={b.id}
           ref={(el) => { cells.current[i] = el; }}
-          className="sticky top-[calc(env(safe-area-inset-top)+16px)] h-[64vh]"
+          // All cards stick to the same line, so they stack instead of passing.
+          // No margin: one card-height of scroll advances the deck by one, which
+          // gives every brand a moment fully in front before the next covers it.
+          className="sticky top-[calc(env(safe-area-inset-top)+108px)]"
           style={{ zIndex: i }}
         >
           <div
             ref={(el) => { cards.current[i] = el; }}
-            className="relative flex h-full origin-top flex-col overflow-hidden rounded-[32px] p-7 text-white shadow-[0_30px_60px_-24px_rgba(0,0,0,0.5)] will-change-transform"
+            className="relative flex h-[55vh] origin-top flex-col overflow-hidden rounded-[34px] px-6 pb-6 pt-5 text-white shadow-[0_26px_50px_-20px_rgba(0,0,0,0.55)] will-change-transform"
             style={{ backgroundColor: b.accent }}
           >
-            {/* darkening veil as it gets covered */}
+            {/* Darkening veil — deepens as the card falls back in the stack. */}
             <div className="pointer-events-none absolute inset-0 bg-black opacity-0" />
 
-            <div className="relative flex flex-1 flex-col">
-                <div>
-                  <h3 className="text-[30px] font-semibold leading-[1.05]">{b.name}</h3>
-                  <span className="mt-3 inline-block rounded-full bg-white/20 px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide backdrop-blur-sm">
-                    {b.audience}
-                  </span>
-                </div>
+            {/* Oversized brand mark, bled off the corner. */}
+            <div className="pointer-events-none absolute -bottom-10 -right-10 opacity-[0.12]">
+              <Image src={b.logo} alt="" width={230} height={230} className="h-[230px] w-[230px] object-contain" />
+            </div>
 
-                <div className="mt-auto">
-                  <p className="text-[13px] font-medium uppercase tracking-wide text-white/70">
-                    You earn up to
-                  </p>
-                  <p className="mt-1 text-[64px] font-semibold leading-none tracking-tight">
-                    {money(b.referralFee)}
-                  </p>
-                  <button
-                    onClick={() => onOpen(b)}
-                    className="mt-7 flex w-full items-center justify-center gap-2 rounded-full bg-white py-4 text-[15px] font-semibold shadow-sm transition active:scale-[0.98]"
-                    style={{ color: b.accent }}
-                  >
-                    Refer a lead
-                    <span aria-hidden>→</span>
-                  </button>
-                </div>
-              </div>
+            {/* Top strip — this is what stays visible on the cards behind. */}
+            <div className="relative">
+              <span className="inline-block rounded-full bg-white/20 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.08em] backdrop-blur-sm">
+                {b.audience}
+              </span>
+            </div>
+
+            {/* The brand, stacked a word per line, big and central. */}
+            <div className="relative flex flex-1 items-center justify-center">
+              <h3 className="text-center text-[40px] font-semibold leading-[0.94] tracking-tight">
+                {b.name.split(" ").map((word) => (
+                  <span key={word} className="block">{word}</span>
+                ))}
+              </h3>
+            </div>
+
+            <div className="relative">
+              <p className="text-center text-[10px] font-bold uppercase tracking-[0.12em] text-white/70">
+                You earn up to
+              </p>
+              <p className="mt-1 text-center text-[44px] font-semibold leading-none tracking-tight">
+                {money(b.referralFee)}
+              </p>
+              <button
+                onClick={() => onOpen(b)}
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-white py-3.5 text-[15px] font-semibold shadow-sm transition active:scale-[0.98]"
+                style={{ color: b.accent }}
+              >
+                Refer a lead
+                <span aria-hidden>→</span>
+              </button>
             </div>
           </div>
+        </div>
       ))}
     </div>
   );

@@ -48,9 +48,16 @@ body {
 /* Mobile only: kill any horizontal "play" (sideways rubber-band / drift) so the
    page can't be nudged left/right. Desktop (≥1024px) is untouched. */
 @media (max-width: 1023px) {
-  html,
-  body {
+  html {
     overflow-x: hidden;
+    max-width: 100%;
+  }
+
+  /* Deliberately NOT overflow-x on <body>: unlike <html> (whose overflow
+     propagates to the viewport) a value on <body> turns body into its own
+     scroll container, which silently breaks `position: sticky` everywhere.
+     The rule on <html> already kills the sideways drift. */
+  body {
     max-width: 100%;
   }
 
