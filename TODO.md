@@ -167,7 +167,6 @@ receipt emails from item 3.
   for lead data, the lawful basis for nurture messages, the liability cap, and
   the Railway hosting region.
 - ⬜ Then: the Grow top-up / package change.
-- ⬜ Enforce the 3-month minimum on cancellation using commitment_ends_at.
 - ⬜ Live keys + the production webhook endpoint (its signing secret differs
   from the CLI one).
 
