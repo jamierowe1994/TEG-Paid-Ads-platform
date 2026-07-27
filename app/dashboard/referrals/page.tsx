@@ -208,10 +208,60 @@ function distanceMiles(
 }
 
 // ── Progress model ──────────────────────────────────────────────────────────
-// The milestones we can honestly drive today from status + mirrored stage.
-// Further granularity (on market / sold) will light up once the CRM feeds
-// back — until then these four map exactly to what we track.
-type Step = { label: string; done: boolean; current: boolean };
+// Every business works a referral through its own pipeline, so the milestones
+// are defined per brand rather than one generic set.
+//
+// `reached` may only use signals we genuinely hold today: the referral's own
+// status, and the lead stage the recipient mirrors back once they accept. A
+// stage with `awaitingFeed: true` is a real step in their process that we can't
+// yet observe — it shows in the pipeline but stays dim, and lights up once
+// that brand's CRM reports it (see TODO.md → referral stage feeds).
+type Step = {
+  label: string;
+  done: boolean;
+  current: boolean;
+  awaitingFeed?: boolean;
+};
+type StageDef = {
+  label: string;
+  reached?: (r: Referral) => boolean;
+  awaitingFeed?: boolean;
+};
+
+// Signals we can read right now.
+const wasAccepted = (r: Referral) => r.status !== "pending";
+const wasContacted = (r: Referral) =>
+  wasAccepted(r) && r.stage !== "new";
+const wasBooked = (r: Referral) =>
+  r.status === "converted" ||
+  r.status === "paid" ||
+  r.stage === "converted" ||
+  r.stage === "pushed";
+const dealDone = (r: Referral) =>
+  r.status === "converted" || r.status === "paid";
+const feePaid = (r: Referral) => r.status === "paid";
+
+const REFERRAL_PIPELINES: Partial<Record<BrandId, StageDef[]>> = {
+  // The Recruitment Experts work a candidate like this.
+  recruitment: [
+    { label: "Referred", reached: () => true },
+    { label: "Contacted", reached: wasContacted },
+    { label: "Terms signed", awaitingFeed: true },
+    { label: "Interview booked", reached: wasBooked },
+    { label: "Offer accepted", reached: dealDone },
+    { label: "Fee paid", reached: feePaid },
+  ],
+};
+
+// Anything without its own pipeline keeps the generic four.
+function defaultPipeline(toBrand?: Brand): StageDef[] {
+  return [
+    { label: "Referred", reached: () => true },
+    { label: "Accepted", reached: wasAccepted },
+    { label: toBrand?.conversionLabel ?? "Converted", reached: wasBooked },
+    { label: "Fee paid", reached: feePaid },
+  ];
+}
 
 function journey(r: Referral, toBrand?: Brand): Step[] {
   if (r.status === "declined") {
@@ -228,19 +278,13 @@ function journey(r: Referral, toBrand?: Brand): Step[] {
       { label: "Didn't convert", done: false, current: true },
     ];
   }
-  const accepted = r.status !== "pending";
-  const converted =
-    r.status === "converted" ||
-    r.status === "paid" ||
-    r.stage === "converted" ||
-    r.stage === "pushed";
-  const paid = r.status === "paid";
-  const raw = [
-    { label: "Referred", done: true },
-    { label: "Accepted", done: accepted },
-    { label: toBrand?.conversionLabel ?? "Converted", done: converted },
-    { label: "Fee paid", done: paid },
-  ];
+  const defs =
+    (toBrand && REFERRAL_PIPELINES[toBrand.id]) ?? defaultPipeline(toBrand);
+  const raw = defs.map((d) => ({
+    label: d.label,
+    done: d.reached ? d.reached(r) : false,
+    awaitingFeed: d.awaitingFeed,
+  }));
   const firstOpen = raw.findIndex((s) => !s.done);
   return raw.map((s, i) => ({
     ...s,
@@ -350,19 +394,11 @@ export default function ReferralsPage() {
       {/* SEND — advertisement tiles, then the referrals you've sent */}
       {tab === "send" && (
         <>
-          {/* Mobile — a stacked, scroll-driven deck of brand cards. */}
-          <div className="mt-6">
-            <BrandRolodex brands={otherBrands} onOpen={openPreview} />
-          </div>
-          {/* Desktop — the plain tile grid. */}
-          <div className="mt-8 hidden gap-4 sm:grid-cols-2 xl:grid-cols-3 lg:grid">
-            {otherBrands.map((b) => (
-              <BrandTile key={b.id} brand={b} onOpen={() => openPreview(b)} />
-            ))}
-          </div>
-
+          {/* What you've already sent comes FIRST — checking on a referral is
+              the reason you open this tab once you've made one, and it used to
+              sit below the whole brand deck. */}
           {sent.length > 0 && (
-            <section className="mt-10">
+            <section className="mt-6">
               <h2 className="text-lg font-semibold">Referrals you&apos;ve sent</h2>
               <div className="mt-4 space-y-3">
                 {sent.map((r) => (
@@ -376,6 +412,21 @@ export default function ReferralsPage() {
               </div>
             </section>
           )}
+
+          {sent.length > 0 && (
+            <h2 className="mt-10 text-lg font-semibold lg:mt-12">Refer someone new</h2>
+          )}
+
+          {/* Mobile — a stacked, scroll-driven deck of brand cards. */}
+          <div className="mt-4">
+            <BrandRolodex brands={otherBrands} onOpen={openPreview} />
+          </div>
+          {/* Desktop — the plain tile grid. */}
+          <div className="mt-6 hidden gap-4 sm:grid-cols-2 xl:grid-cols-3 lg:grid">
+            {otherBrands.map((b) => (
+              <BrandTile key={b.id} brand={b} onOpen={() => openPreview(b)} />
+            ))}
+          </div>
         </>
       )}
 
@@ -1340,7 +1391,7 @@ function ReferralProgress({
                 />
               )}
             </div>
-            <div className={`pb-4 ${last ? "" : ""}`}>
+            <div className="pb-4">
               <p
                 className={`text-sm ${
                   s.current
@@ -1351,6 +1402,12 @@ function ReferralProgress({
                 }`}
               >
                 {s.label}
+                {/* A real step in their process that we can't observe yet. */}
+                {s.awaitingFeed && !s.done && (
+                  <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                    awaiting feed
+                  </span>
+                )}
               </p>
             </div>
           </li>
@@ -1383,16 +1440,30 @@ function ReferralDetail({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex justify-end bg-gray-900/30 backdrop-blur-sm"
+      // Mobile: a bottom sheet that stops short of the top, matching the lead
+      // file. Desktop: the original right-hand drawer.
+      className="fixed inset-0 z-50 flex items-end justify-center bg-gray-950/60 backdrop-blur-md lg:items-stretch lg:justify-end lg:bg-gray-900/30 lg:backdrop-blur-sm"
       onClick={onClose}
     >
+      {/* X — mobile only, on the backdrop above the sheet so it's never cropped
+          by the notch and can't be mistaken for an in-sheet control. */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
+        aria-label="Close"
+        className="absolute right-5 top-[calc(env(safe-area-inset-top)+20px)] z-10 flex h-11 w-11 items-center justify-center text-white transition-transform active:scale-90 lg:hidden"
+      >
+        <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4}>
+          <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+        </svg>
+      </button>
+
       <div
-        className="h-full w-full max-w-md overflow-y-auto bg-white p-6 shadow-2xl"
+        className="h-[calc(100dvh-env(safe-area-inset-top)-78px)] w-full overflow-y-auto rounded-t-[28px] bg-white px-6 pb-[calc(env(safe-area-inset-bottom)+120px)] pt-8 shadow-2xl lg:h-full lg:max-w-md lg:rounded-none lg:p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            {other && <BrandBadge brand={other} size={40} />}
+          <div className="flex items-center gap-2.5">
+            {other && <BrandBadge brand={other} size={44} bare />}
             <div>
               <h2 className="text-xl font-semibold leading-tight">
                 {r.leadName}
@@ -1404,9 +1475,10 @@ function ReferralDetail({
               </p>
             </div>
           </div>
+          {/* Desktop keeps its in-drawer close. */}
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-gray-400 hover:bg-gray-100"
+            className="hidden rounded-lg p-1 text-gray-400 hover:bg-gray-100 lg:block"
             aria-label="Close"
           >
             <svg
