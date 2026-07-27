@@ -112,11 +112,14 @@ export default function HowItWorksPhone() {
       </div>
 
       {/* Phone — the frame never moves; the screen slides between the two.
-          Pushed down so it runs off the bottom edge of the light slab and is
-          cut off by it (the slab carries the overflow-hidden). The negative
-          margin is what makes it overhang; without it the slab just grows to
-          fit and nothing is cropped. */}
-      <div className="relative z-10 flex justify-center lg:-mb-60 lg:justify-end">
+          Runs off the bottom edge of the light slab and is cut off by it (the
+          slab carries the overflow-hidden). Two things set where the cut
+          lands: this overhang has to EXCEED the section's bottom padding to
+          crop at all, and the dark slab below overlaps the panel by a further
+          ~138px, so the VISIBLE cut is that much higher than the panel edge.
+          Tuned together with the section's pb so the phone starts level with
+          step 1 and the cut lands in the bottom of its nav bar. */}
+      <div className="relative z-10 flex justify-center lg:-mb-36 lg:justify-end">
         {/* A soft bloom so the phone's edges separate from the slab. */}
         <span
           aria-hidden

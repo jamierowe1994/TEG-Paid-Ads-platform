@@ -216,7 +216,7 @@ export default function LandingPage() {
         <div className="light-panel sticky top-0 z-10 overflow-hidden">
           <section
             id="how"
-            className="mx-auto max-w-6xl px-6 pb-20 pt-28 sm:pt-36"
+            className="mx-auto max-w-6xl px-6 pb-20 pt-28 sm:pt-36 lg:pb-32"
           >
             <Reveal>
               <HowItWorksPhone />
@@ -237,7 +237,11 @@ export default function LandingPage() {
           charcoal, so a second slab edge here would sit dark-on-dark and
           read as nothing. Replaced the mocked ad showcase, which was
           pretending to be real campaigns we don't have yet. */}
-      <section id="pain" className="relative z-30 py-28">
+      {/* Explicit background, not transparent: the section above it is an
+          opaque slab, so anything sitting behind the page (a bloom, the
+          texture layer) shows through this one and not that one — which drew
+          a hard line across the join. Same colour, both opaque, no seam. */}
+      <section id="pain" className="relative z-30 bg-[#1b1c20] py-28">
         <PainPoints />
       </section>
 
