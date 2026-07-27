@@ -741,16 +741,13 @@ h5 {
 /* Hover squeeze-up: springs up taller/bigger and pops out, colour bleeding
    in, held while hovered and springing back on leave. */
 .hero-pop-icon {
-  transform-origin: center bottom;
   /* White: the hero is black. Hovering bleeds in the platform's own colour. */
   color: #ffffff;
-  transition:
-    transform 0.42s cubic-bezier(0.34, 1.7, 0.5, 1),
-    color 0.35s ease;
-  will-change: transform, color;
+  transition: color 0.35s ease;
+  will-change: color;
 }
+/* Hover simply bleeds the platform's own colour in — no lift, no squeeze. */
 .hero-icon-hit:hover .hero-pop-icon {
-  transform: translateY(-26px) scale(1.18, 1.34);
   color: var(--icon-color, #ffffff);
 }
 
@@ -915,13 +912,14 @@ h5 {
   display: inline-block;
   border-radius: 9999px;
   color: #ffffff;
-  background: rgba(255, 255, 255, 0.035);
+  /* Exactly the page's black — the pill only exists because of its outline. */
+  background: #08080a;
   transition:
     background 0.4s ease,
     transform 0.18s cubic-bezier(0.34, 1.4, 0.5, 1);
 }
 .btn-rim:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
 }
 .btn-rim:active {
   transform: scale(0.97);
@@ -963,4 +961,114 @@ h5 {
   .btn-rim-edge {
     animation: none;
   }
+}
+
+/* ── Night sky ─────────────────────────────────────────────────────────────
+   Stars behind the landing page, plus the occasional shooting star. */
+.star {
+  position: absolute;
+  border-radius: 9999px;
+  background: #ffffff;
+  animation: star-twinkle 7s ease-in-out infinite;
+}
+@keyframes star-twinkle {
+  0%,
+  100% {
+    opacity: inherit;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.25;
+    transform: scale(0.7);
+  }
+}
+.shooting-star {
+  position: absolute;
+  height: 1px;
+  transform-origin: left center;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.85));
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.55));
+  animation: shoot 1.5s ease-out forwards;
+}
+@keyframes shoot {
+  0% {
+    opacity: 0;
+    translate: 0 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    translate: 420px 130px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .star,
+  .shooting-star {
+    animation: none;
+  }
+}
+
+/* ── Landing page: dark theme ──────────────────────────────────────────────
+   The marketing page was built light. Rather than rewrite every utility on
+   every section, the page is wrapped in .landing-dark and the handful of
+   colour utilities it uses are remapped here. Scoped, so the app itself and
+   any genuinely-white element (which opts out by using an arbitrary value like
+   bg-[#ffffff]) are untouched. */
+.landing-dark {
+  /* Deliberately transparent: the black is a fixed layer at -z-20 inside the
+     page, so the star field (-z-10) paints ON TOP of the black but still
+     BEHIND the content. A background here would bury both. */
+  background: transparent;
+  color: #ffffff;
+}
+.landing-dark .text-gray-900 {
+  color: #ffffff;
+}
+.landing-dark .text-gray-800 {
+  color: rgba(255, 255, 255, 0.88);
+}
+.landing-dark .text-gray-700 {
+  color: rgba(255, 255, 255, 0.78);
+}
+.landing-dark .text-gray-600 {
+  color: rgba(255, 255, 255, 0.68);
+}
+.landing-dark .text-gray-500 {
+  color: rgba(255, 255, 255, 0.58);
+}
+.landing-dark .text-gray-400 {
+  color: rgba(255, 255, 255, 0.45);
+}
+.landing-dark .bg-white {
+  background-color: rgba(255, 255, 255, 0.045);
+}
+.landing-dark .bg-gray-50 {
+  background-color: rgba(255, 255, 255, 0.035);
+}
+.landing-dark .bg-gray-100 {
+  background-color: rgba(255, 255, 255, 0.07);
+}
+.landing-dark .bg-gray-200 {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+.landing-dark .border-gray-100,
+.landing-dark .border-gray-200,
+.landing-dark .border-gray-300 {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+/* Cards that were white now need their own hairline to separate from black. */
+.landing-dark .bg-white {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+}
+
+/* The big frosted panel was tuned for a white page — bright gloss and dark
+   inner shadows. On black it needs the opposite: a faint lift with a hairline. */
+.landing-dark .glass-panel {
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.07),
+    0 30px 70px -30px rgba(0, 0, 0, 0.8);
 }

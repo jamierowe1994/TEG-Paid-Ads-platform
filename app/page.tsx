@@ -7,12 +7,10 @@ import PhysicsIcons from "@/components/PhysicsIcons";
 import HeroIconStrip from "@/components/HeroIconStrip";
 import LeadsStat from "@/components/LeadsStat";
 import PanelReveal from "@/components/PanelReveal";
-import BackgroundTexture from "@/components/BackgroundTexture";
-import Parallax from "@/components/Parallax";
 import SmoothScroll from "@/components/SmoothScroll";
-import ContourClip from "@/components/ContourClip";
 import ScrollFillText from "@/components/ScrollFillText";
 import StandaloneGuard from "@/components/StandaloneGuard";
+import Stars from "@/components/Stars";
 
 // The hero's backdrop. Kept as a constant because the rocket's window is
 // punched out in this exact colour.
@@ -24,7 +22,7 @@ function LaunchPadMark() {
   return (
     <svg
       viewBox="0 0 512 512"
-      className="h-8 w-8 sm:h-9 sm:w-9"
+      className="h-12 w-12 sm:h-14 sm:w-14"
       fill="#ffffff"
       aria-hidden
     >
@@ -46,29 +44,29 @@ export default function LandingPage() {
   // No bg-white on <main> — the body provides the white base so the fixed
   // -z-10 texture/glows show through the transparent sections.
   return (
-    <main className="relative min-h-screen overflow-x-clip">
+    <main className="landing-dark relative min-h-screen overflow-x-clip">
       <StandaloneGuard />
       <SmoothScroll />
-      {/* Reveals the red contour copy only within the frosted panel's rect */}
-      <ContourClip targetId="built" />
-      {/* Subtle background — soft brand-tinted glows + a faint contour
-          texture, showing through the transparent (white) sections while the
-          charcoal panel and footer sit on top of it. */}
+      {/* The black itself. Sits below the stars so they read against it. */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-20"
+        style={{ backgroundColor: HERO_BG }}
+      />
+      {/* Night sky — stars edge to edge, with an occasional shooting star. */}
+      <Stars />
+      {/* A whisper of brand colour in the black, so it isn't flat. */}
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0 -z-10"
         style={{
           backgroundImage:
-            "radial-gradient(60% 50% at 15% 6%, rgba(227,31,54,0.09), transparent 62%)," +
-            "radial-gradient(50% 45% at 90% 12%, rgba(43,97,147,0.085), transparent 62%)," +
-            "radial-gradient(55% 50% at 78% 92%, rgba(227,31,54,0.07), transparent 62%)," +
-            "radial-gradient(45% 40% at 8% 80%, rgba(43,97,147,0.06), transparent 62%)",
+            "radial-gradient(60% 50% at 15% 6%, rgba(227,31,54,0.10), transparent 62%)," +
+            "radial-gradient(50% 45% at 90% 12%, rgba(43,97,147,0.10), transparent 62%)," +
+            "radial-gradient(55% 50% at 78% 92%, rgba(227,31,54,0.08), transparent 62%)," +
+            "radial-gradient(45% 40% at 8% 80%, rgba(43,97,147,0.07), transparent 62%)",
         }}
       />
-      {/* Topographic contour texture across all white sections */}
-      <BackgroundTexture />
-      {/* Red copy of the same texture, revealed only under the frosted panel */}
-      <BackgroundTexture tint />
 
       {/* Nav — just the Launch Pad mark, then See pricing + Sign in. Sits over
           the black hero, so everything here is white. */}
@@ -86,7 +84,7 @@ export default function LandingPage() {
             </a>
             <Link
               href="/login"
-              className="rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-gray-900 transition hover:bg-white/90 sm:px-7 sm:py-3 sm:text-base"
+              className="rounded-full bg-[#ffffff] px-5 py-2.5 text-sm font-semibold text-[#0f1115] transition hover:bg-white/90 sm:px-7 sm:py-3 sm:text-base"
             >
               Sign in
             </Link>
@@ -97,11 +95,8 @@ export default function LandingPage() {
       {/* Hero — one screen tall in total, black, with the heading self-centred
           in the space above and the platform icons sitting inside the same
           frame rather than below the fold. */}
-      <section
-        className="relative flex min-h-screen flex-col text-white"
-        style={{ backgroundColor: HERO_BG }}
-      >
-        <Parallax speed={0.46} max={360} className="flex flex-1 flex-col items-center justify-center px-6 pb-8 pt-28 text-center">
+      <section className="relative flex min-h-screen flex-col text-white">
+        <div className="flex flex-1 flex-col items-center justify-center px-6 pb-8 pt-28 text-center">
           <Reveal>
             {/* nowrap keeps "Our ad engine." on one line while the hidden
                 card expands on hover */}
@@ -126,7 +121,7 @@ export default function LandingPage() {
               </Link>
             </div>
           </Reveal>
-        </Parallax>
+        </div>
         {/* Social platforms strip — sits quietly at the foot of the hero. The
             generous bottom padding keeps it clear of the next section's panel,
             which parallaxes UP by ~190px and would otherwise clip it. */}
@@ -145,12 +140,7 @@ export default function LandingPage() {
             panel's backdrop-filter — so the frost must sit on the same element
             that carries the transform, not a parent. */}
         <PanelReveal>
-        <Parallax
-          mode="element"
-          strength={-190}
-          max={210}
-          className="glass-panel relative flex min-h-[64vh] flex-col overflow-hidden rounded-[2.5rem]"
-        >
+        <div className="glass-panel relative flex min-h-[64vh] flex-col overflow-hidden rounded-[2.5rem]">
           <div className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-10 px-8 py-12 sm:px-12 lg:grid-cols-2">
             <div className="p-words">
               <span className="inline-block rounded-full bg-[#E31F36] px-4 py-1.5 text-sm font-medium text-white">
@@ -190,7 +180,7 @@ export default function LandingPage() {
           <div className="h-32" />
           {/* The hero's icons fall in behind the pills and hit the bottom */}
           <PhysicsIcons />
-        </Parallax>
+        </div>
         </PanelReveal>
       </section>
 
@@ -218,7 +208,7 @@ export default function LandingPage() {
 
       {/* How it works — steps left, mock dashboard right */}
       <section id="how" className="mx-auto max-w-6xl px-6 py-28">
-        <Parallax mode="element" strength={-70} max={110}>
+        <div>
         <div className="grid items-center gap-16 lg:grid-cols-2">
           {/* Steps */}
           <div>
@@ -419,7 +409,7 @@ export default function LandingPage() {
             </div>
           </Reveal>
         </div>
-        </Parallax>
+        </div>
       </section>
 
       {/* Statement piece — right-aligned to the same max-w-6xl right edge as
@@ -444,7 +434,7 @@ export default function LandingPage() {
           TODO(showcase): swap mocks for real ads + add the filter-by-brand
           chips once enough brands are live. */}
       <section>
-        <Parallax mode="element" strength={-70} max={110}>
+        <div>
         <div className="mx-auto max-w-6xl px-6 py-28">
           <Reveal>
             <h2 className="mx-auto max-w-2xl text-center text-4xl font-semibold tracking-tight">
@@ -558,7 +548,7 @@ export default function LandingPage() {
             with them.
           </p>
         </div>
-        </Parallax>
+        </div>
       </section>
 
       {/* Packages */}
