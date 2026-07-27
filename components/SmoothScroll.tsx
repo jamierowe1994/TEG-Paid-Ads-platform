@@ -13,9 +13,11 @@ export default function SmoothScroll() {
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) return;
 
     const lenis = new Lenis({
-      lerp: 0.08, // lower = floatier
+      // Higher = tighter. 0.08 was floaty enough that the page kept drifting
+      // after you'd stopped scrolling; this still smooths but settles quickly.
+      lerp: 0.16,
       smoothWheel: true,
-      wheelMultiplier: 0.9,
+      wheelMultiplier: 1,
     });
 
     let raf = 0;

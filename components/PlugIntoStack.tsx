@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import ICONS, { SocialIcon } from "./SocialIcons";
 
 // "Everything plugs into one place" — the platforms leads come from on the
@@ -17,6 +19,26 @@ const DESTINATIONS = [
   { id: "rex", label: "REX" },
   { id: "atlas", label: "Atlas" },
 ];
+
+/* Which logo file (if any) exists for a destination.
+   Resolved on the server rather than in the browser: the first attempt at
+   this rendered an <img> pointed at .svg and swapped to .png in onError, but
+   the 404 lands before React hydrates, so the handler never runs and you get
+   a broken-image icon. Checking the filesystem also means no 404s in the log
+   and no flash of the wrong mark.
+
+   Note: the landing page is statically prerendered, so this is evaluated at
+   BUILD time — a logo added to the folder only appears after a rebuild.
+   Adding one is a commit anyway, and pushing triggers a build. */
+function logoSrc(id: string): string | null {
+  const dir = path.join(process.cwd(), "public", "system-logos");
+  for (const ext of ["svg", "png"]) {
+    if (fs.existsSync(path.join(dir, `${id}.${ext}`))) {
+      return `/system-logos/${id}.${ext}`;
+    }
+  }
+  return null;
+}
 
 export default function PlugIntoStack() {
   return (
@@ -70,21 +92,29 @@ export default function PlugIntoStack() {
 
         {/* Destinations */}
         <div className="flex flex-col gap-9 sm:gap-12">
-          {DESTINATIONS.map((d) => (
-            <span key={d.id} className="relative flex h-11 items-center">
-              {/* The logo, if one has been dropped in. */}
-              <span
-                className="absolute inset-0 bg-contain bg-left bg-no-repeat"
-                style={{
-                  backgroundImage: `url(/system-logos/${d.id}.svg), url(/system-logos/${d.id}.png)`,
-                }}
-              />
-              {/* Sits underneath, so it shows through only when there's no file. */}
-              <span className="text-[13px] font-semibold uppercase tracking-[0.14em] text-white/70 sm:text-sm">
-                {d.label}
+          {DESTINATIONS.map((d) => {
+            const src = logoSrc(d.id);
+            return (
+              <span key={d.id} className="flex h-11 items-center">
+                {src ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  // The supplied marks are flat mid-grey, which sinks into the
+                  // charcoal next to the bright white platform icons opposite.
+                  // brightness-0 + invert flattens any logo to white so both
+                  // sides of the diagram carry the same weight.
+                  <img
+                    src={src}
+                    alt={d.label}
+                    className="h-11 w-auto max-w-[130px] object-contain object-left opacity-80 brightness-0 invert"
+                  />
+                ) : (
+                  <span className="text-[13px] font-semibold uppercase tracking-[0.14em] text-white/70 sm:text-sm">
+                    {d.label}
+                  </span>
+                )}
               </span>
-            </span>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

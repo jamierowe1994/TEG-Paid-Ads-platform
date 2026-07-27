@@ -16,6 +16,7 @@ import StandaloneGuard from "@/components/StandaloneGuard";
 import PlugIntoStack from "@/components/PlugIntoStack";
 import HowItWorksPhone from "@/components/HowItWorksPhone";
 import TrialProof from "@/components/TrialProof";
+import PainPoints from "@/components/PainPoints";
 
 // The site's backdrop — a dark charcoal that runs the length of the page.
 // Kept as a constant because the rocket's window is punched out in it.
@@ -202,125 +203,11 @@ export default function LandingPage() {
         </Reveal>
       </section>
 
-      {/* Showcase — mocked ad creatives until real campaign shots arrive.
-          TODO(showcase): swap mocks for real ads + add the filter-by-brand
-          chips once enough brands are live. */}
-      <section>
-        <div>
-        <div className="mx-auto max-w-6xl px-6 py-28">
-          <Reveal>
-            <h2 className="mx-auto max-w-2xl text-center text-4xl font-semibold tracking-tight">
-              Our agents, putting themselves out there
-            </h2>
-            <p className="mx-auto mt-3 max-w-md text-center text-gray-500">
-              Every campaign is branded as the agent, not the group — here's
-              the kind of ad your patch will be seeing.
-            </p>
-          </Reveal>
-
-          <div className="mt-16 grid gap-x-10 gap-y-16 lg:grid-cols-2">
-            {/* Mock ad 1 — Property */}
-            <Reveal>
-              <div>
-                <div className="relative flex aspect-[4/5] flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-[#A72A35] to-[#6b1a21] p-8 shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-sm font-bold text-white">
-                      JR
-                    </div>
-                    <div className="leading-tight text-white">
-                      <p className="text-sm font-semibold">James Rowe</p>
-                      <p className="text-xs text-white/60">
-                        The Property Experts · Sponsored
-                      </p>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="max-w-xs text-4xl font-semibold leading-tight text-white">
-                      Thinking of selling this year?
-                    </p>
-                    <p className="mt-3 max-w-xs text-white/70">
-                      Find out what your home is really worth — free market
-                      appraisal, no obligation.
-                    </p>
-                    <span className="mt-6 inline-block rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-gray-900">
-                      Book my free appraisal
-                    </span>
-                  </div>
-                  <p className="text-right text-xs font-semibold uppercase tracking-[0.25em] text-white/50">
-                    The Property Experts
-                  </p>
-                </div>
-                <p className="mt-5 text-sm leading-relaxed text-gray-500">
-                  Personal-brand lead generation for estate agents — appraisal
-                  bookings straight from the agent's own feed.
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {["Property", "Social Ads", "Lead Gen"].map((t) => (
-                    <span
-                      key={t}
-                      className="rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600"
-                    >
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </Reveal>
-
-            {/* Mock ad 2 — Mortgage (offset for the staggered gallery feel) */}
-            <Reveal delay={120} className="lg:mt-24">
-              <div>
-                <div className="relative flex aspect-[4/3] flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-[#2B6193] to-[#173954] p-8 shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-sm font-bold text-white">
-                      SK
-                    </div>
-                    <div className="leading-tight text-white">
-                      <p className="text-sm font-semibold">Sofia Khan</p>
-                      <p className="text-xs text-white/60">
-                        The Mortgage Experts · Sponsored
-                      </p>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="max-w-sm text-3xl font-semibold leading-tight text-white">
-                      Fixed rate ending soon?
-                    </p>
-                    <p className="mt-2 max-w-sm text-white/70">
-                      Beat the jump — book a free remortgage review this week.
-                    </p>
-                    <span className="mt-5 inline-block rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-gray-900">
-                      Book my review
-                    </span>
-                  </div>
-                  <p className="text-right text-xs font-semibold uppercase tracking-[0.25em] text-white/50">
-                    The Mortgage Experts
-                  </p>
-                </div>
-                <p className="mt-5 text-sm leading-relaxed text-gray-500">
-                  Remortgage appointment campaigns for advisers — timed to
-                  fixed-rate renewal windows in their area.
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {["Mortgage", "Social Ads", "Appointments"].map((t) => (
-                    <span
-                      key={t}
-                      className="rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600"
-                    >
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </Reveal>
-          </div>
-
-          <p className="mt-16 text-center text-sm text-gray-400">
-            Live campaign showcases landing soon — filter by brand arrives
-            with them.
-          </p>
-        </div>
-        </div>
+      {/* Pain points — the empathy beat, deliberately the last thing before
+          the price. Replaced the mocked ad showcase, which was pretending to
+          be real campaigns we don't have yet. */}
+      <section id="pain" className="py-28">
+        <PainPoints />
       </section>
 
       {/* Packages */}
