@@ -43,10 +43,11 @@ function logoSrc(id: string): string | null {
 export default function PlugIntoStack() {
   return (
     <div className="mx-auto max-w-4xl text-center">
-      <h2 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+      {/* Also on the light slab — grey scale, not white. */}
+      <h2 className="text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl">
         Everything plugs into one place.
       </h2>
-      <p className="mx-auto mt-4 max-w-xl text-white/55">
+      <p className="mx-auto mt-4 max-w-xl text-gray-500">
         We pull from the platforms your leads come from and push into the
         systems you already work in. You just open one app.
       </p>
@@ -55,7 +56,7 @@ export default function PlugIntoStack() {
         {/* Sources */}
         <div className="flex flex-col gap-9 sm:gap-12">
           {SOURCES.map((icon) => (
-            <span key={icon.name} className="text-white/85">
+            <span key={icon.name} className="text-gray-800">
               <SocialIcon icon={icon} className="h-9 w-9 sm:h-11 sm:w-11" />
             </span>
           ))}
@@ -66,15 +67,17 @@ export default function PlugIntoStack() {
 
         {/* The hub */}
         <div className="relative shrink-0">
+          {/* On the light slab the hub stays a black tile — but its glow has
+              to go dark, a white bloom on near-white is invisible. */}
           <span
             aria-hidden
             className="pointer-events-none absolute left-1/2 top-1/2 h-44 w-44 -translate-x-1/2 -translate-y-1/2 rounded-full blur-[55px]"
             style={{
               background:
-                "radial-gradient(circle, rgba(255,255,255,0.28), transparent 68%)",
+                "radial-gradient(circle, rgba(17,24,39,0.18), transparent 68%)",
             }}
           />
-          <div className="relative flex h-24 w-24 items-center justify-center rounded-[24px] border border-white/15 bg-[#0e0e12] shadow-[0_0_46px_-12px_rgba(255,255,255,0.4),inset_0_1px_0_rgba(255,255,255,0.14)] sm:h-28 sm:w-28">
+          <div className="relative flex h-24 w-24 items-center justify-center rounded-[24px] bg-[#0e0e12] shadow-[0_18px_40px_-14px_rgba(17,24,39,0.55),inset_0_1px_0_rgba(255,255,255,0.14)] sm:h-28 sm:w-28">
             <svg viewBox="0 0 512 512" className="h-12 w-12 sm:h-14 sm:w-14" fill="#ffffff" aria-hidden>
               <g transform="rotate(45 256 256) translate(0 -8)">
                 <path d="M256 80 C298 122 300 194 298 268 C298 302 293 330 284 350 L228 350 C219 330 214 302 214 268 C212 194 214 122 256 80 Z" />
@@ -97,18 +100,17 @@ export default function PlugIntoStack() {
             return (
               <span key={d.id} className="flex h-11 items-center">
                 {src ? (
+                  // brightness-0 flattens whatever colour the supplied mark is
+                  // to solid black, so it carries the same weight as the
+                  // platform icons opposite on the light slab.
                   // eslint-disable-next-line @next/next/no-img-element
-                  // The supplied marks are flat mid-grey, which sinks into the
-                  // charcoal next to the bright white platform icons opposite.
-                  // brightness-0 + invert flattens any logo to white so both
-                  // sides of the diagram carry the same weight.
                   <img
                     src={src}
                     alt={d.label}
-                    className="h-11 w-auto max-w-[130px] object-contain object-left opacity-80 brightness-0 invert"
+                    className="h-11 w-auto max-w-[130px] object-contain object-left opacity-75 brightness-0"
                   />
                 ) : (
-                  <span className="text-[13px] font-semibold uppercase tracking-[0.14em] text-white/70 sm:text-sm">
+                  <span className="text-[13px] font-semibold uppercase tracking-[0.14em] text-gray-500 sm:text-sm">
                     {d.label}
                   </span>
                 )}
@@ -142,7 +144,7 @@ function Wires({ direction, rows }: { direction: "in" | "out"; rows: number[] })
           refY="3"
           orient="auto"
         >
-          <path d="M0 0 L6 3 L0 6 z" fill="rgba(255,255,255,0.45)" />
+          <path d="M0 0 L6 3 L0 6 z" fill="rgba(17,24,39,0.5)" />
         </marker>
       </defs>
       {rows.map((y) => (
@@ -150,7 +152,7 @@ function Wires({ direction, rows }: { direction: "in" | "out"; rows: number[] })
           key={y}
           d={`M0 ${y} H26 L74 100 H90`}
           fill="none"
-          stroke="rgba(255,255,255,0.22)"
+          stroke="rgba(17,24,39,0.28)"
           strokeWidth="1.6"
           vectorEffect="non-scaling-stroke"
           markerEnd={`url(#arrow-${direction})`}

@@ -181,32 +181,50 @@ export default function LandingPage() {
       {/* Proof — the real three-month trial. Deliberately between "What is
           Launch Pad?" and "How it works": say what it is, earn the trust, then
           explain the mechanics. */}
-      <section id="proof" className="py-28">
+      {/* Deep bottom padding on large screens: the phone from the section
+          below rises up into this space, and without the clearance it lands
+          on top of the third stat. */}
+      <section id="proof" className="pb-28 pt-28 lg:pb-80">
         <Reveal>
           <TrialProof />
         </Reveal>
       </section>
 
-      {/* How it works — the process shown through the app itself, with a tab
-          for each way of earning. */}
-      <section id="how" className="mx-auto max-w-6xl px-6 py-28">
-        <Reveal>
-          <HowItWorksPhone />
-        </Reveal>
-      </section>
+      {/* ── The light slab ────────────────────────────────────────────────
+          "How it works" and "Everything plugs into one place" ride on a
+          near-white panel that scrolls up over the dark section above it —
+          negative margin + rounded top + a higher z-index, so it genuinely
+          overlaps rather than butting up against it. The phone breaks back
+          out through the top curve.
 
-      {/* Everything plugs into one place — sources in, Launch Pad in the
-          middle, the systems you already use out the other side. */}
-      <section className="px-6 py-28">
-        <Reveal>
-          <PlugIntoStack />
-        </Reveal>
-      </section>
+          No overflow clipping here: the phone's overhang depends on it. */}
+      <div className="light-panel relative z-10 -mt-16 sm:-mt-24">
+        {/* How it works — the process shown through the app itself, with a
+            tab for each way of earning. Extra top padding leaves room for
+            the phone to rise out of the curve without hitting the copy. */}
+        <section id="how" className="mx-auto max-w-6xl px-6 pb-24 pt-28 lg:pt-56">
+          <Reveal>
+            <HowItWorksPhone />
+          </Reveal>
+        </section>
+
+        {/* Everything plugs into one place — sources in, Launch Pad in the
+            middle, the systems you already use out the other side. */}
+        <section className="px-6 pb-40 pt-16">
+          <Reveal>
+            <PlugIntoStack />
+          </Reveal>
+        </section>
+      </div>
 
       {/* Pain points — the empathy beat, deliberately the last thing before
-          the price. Replaced the mocked ad showcase, which was pretending to
-          be real campaigns we don't have yet. */}
-      <section id="pain" className="py-28">
+          the price. Rides back over the light slab the same way, which is
+          what returns the page to charcoal. Replaced the mocked ad showcase,
+          which was pretending to be real campaigns we don't have yet. */}
+      <section
+        id="pain"
+        className="dark-slab relative z-20 -mt-16 pb-28 pt-32 sm:-mt-24 sm:pt-40"
+      >
         <PainPoints />
       </section>
 

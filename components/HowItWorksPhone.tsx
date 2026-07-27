@@ -61,10 +61,14 @@ export default function HowItWorksPhone() {
   return (
     <div className="grid items-start gap-16 lg:grid-cols-2">
       <div>
-        <h2 className="text-4xl font-semibold tracking-tight text-white">
+        {/* This section sits on the light slab, so its chrome uses the grey
+            scale rather than white — .light-panel restores those greys from
+            the dark theme's remapping. The phone's own UI below is a device
+            mockup and keeps its own colours. */}
+        <h2 className="text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl">
           How it works
         </h2>
-        <p className="mt-3 max-w-md text-white/55">
+        <p className="mt-3 max-w-md text-gray-500">
           Two ways to make money in one app. Pick a side.
         </p>
 
@@ -91,12 +95,12 @@ export default function HowItWorksPhone() {
         <ol className="mt-10 min-h-[470px] space-y-7">
           {STEPS[tab].map((s) => (
             <li key={s.n} className="flex gap-5">
-              <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/15 text-sm font-semibold text-white/80">
+              <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-300 text-sm font-semibold text-gray-500">
                 {s.n}
               </span>
               <div>
-                <p className="text-lg font-semibold text-white">{s.title}</p>
-                <p className="mt-1.5 max-w-md leading-relaxed text-white/55">
+                <p className="text-lg font-semibold text-gray-900">{s.title}</p>
+                <p className="mt-1.5 max-w-md leading-relaxed text-gray-500">
                   {s.body}
                 </p>
               </div>
@@ -105,13 +109,17 @@ export default function HowItWorksPhone() {
         </ol>
       </div>
 
-      {/* Phone — the frame never moves; the screen slides between the two. */}
-      <div className="relative flex justify-center lg:justify-end">
-        {/* A soft red bloom so the phone's edges separate from the black. */}
+      {/* Phone — the frame never moves; the screen slides between the two.
+          Pulled up so it breaks out through the top curve of the light slab
+          and overlaps the dark section above it. z-10 keeps it above the
+          slab's own background; the slab must not clip it. */}
+      <div className="relative z-10 flex justify-center lg:-mt-[21rem] lg:justify-end">
+        {/* A soft bloom so the phone's edges separate from whichever half of
+            the background it's crossing. */}
         <span
           aria-hidden
-          className="pointer-events-none absolute left-1/2 top-1/2 h-[560px] w-[460px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-70 blur-[90px] lg:left-auto lg:right-[40px] lg:translate-x-0"
-          style={{ background: "radial-gradient(circle, rgba(227,31,54,0.30), rgba(227,31,54,0.10) 55%, transparent 72%)" }}
+          className="pointer-events-none absolute left-1/2 top-1/2 h-[560px] w-[460px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-50 blur-[90px] lg:left-auto lg:right-[40px] lg:translate-x-0"
+          style={{ background: "radial-gradient(circle, rgba(167,42,53,0.30), rgba(167,42,53,0.10) 55%, transparent 72%)" }}
         />
         <PhoneFrame tab={tab} />
       </div>

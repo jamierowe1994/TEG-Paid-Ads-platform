@@ -1086,3 +1086,64 @@ h5 {
     inset 0 -3px 6px rgba(88, 20, 26, 0.42),
     0 3px 9px rgba(0, 0, 0, 0.5);
 }
+
+/* ── Landing page: the light slab ──────────────────────────────────────────
+   "How it works" and "Everything plugs into one place" ride on a near-white
+   panel that scrolls up over the dark section above it; the next dark section
+   then rides up over the panel. The slab sits INSIDE .landing-dark, so every
+   remap that block makes has to be undone here. Selectors are deliberately
+   three-deep (.landing-dark .light-panel .x) so they beat the two-deep dark
+   rules on specificity rather than relying on source order. */
+.light-panel {
+  background: #f2f2f3;
+  color: #111827;
+  /* The curve at the top, plus a lip of shadow so it reads as riding OVER
+     the dark section rather than butting up against it. */
+  border-radius: 2.5rem 2.5rem 0 0;
+  box-shadow: 0 -24px 60px -20px rgba(0, 0, 0, 0.75);
+}
+@media (min-width: 640px) {
+  .light-panel {
+    border-radius: 3.5rem 3.5rem 0 0;
+  }
+}
+.landing-dark .light-panel .text-gray-900 {
+  color: #111827;
+}
+.landing-dark .light-panel .text-gray-800 {
+  color: #1f2937;
+}
+.landing-dark .light-panel .text-gray-700 {
+  color: #374151;
+}
+.landing-dark .light-panel .text-gray-600 {
+  color: #4b5563;
+}
+.landing-dark .light-panel .text-gray-500 {
+  color: #6b7280;
+}
+.landing-dark .light-panel .text-gray-400 {
+  color: #9ca3af;
+}
+.landing-dark .light-panel .bg-white {
+  background-color: #ffffff;
+  box-shadow: none;
+}
+.landing-dark .light-panel .border-gray-200 {
+  border-color: #e5e7eb;
+}
+.landing-dark .light-panel .border-gray-300 {
+  border-color: #d1d5db;
+}
+
+/* The dark section that follows the slab curves over it the same way. */
+.dark-slab {
+  background: #1b1c20;
+  border-radius: 2.5rem 2.5rem 0 0;
+  box-shadow: 0 -24px 60px -20px rgba(0, 0, 0, 0.6);
+}
+@media (min-width: 640px) {
+  .dark-slab {
+    border-radius: 3.5rem 3.5rem 0 0;
+  }
+}
