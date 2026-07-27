@@ -623,8 +623,14 @@ export default function LandingPage() {
       </section>
 
       {/* Footer — black panel, big rounded corners, inset from the edges */}
-      <footer className="px-3 pb-3 pt-16">
-        <div className="rounded-[2.5rem] bg-gray-950 px-8 py-14 text-white sm:px-14">
+      {/* Footer — mission control at the edge of the planet. The horizon sits
+          behind the content and the page ends on it. */}
+      <footer className="relative overflow-hidden pt-16">
+        <div className="horizon" aria-hidden>
+          <div className="horizon-bloom" />
+          <div className="horizon-planet" />
+        </div>
+        <div className="relative z-10 px-8 pb-[300px] pt-4 text-white sm:px-14 sm:pb-[380px]">
           <div className="mx-auto max-w-6xl">
             {/* CTA row */}
             <div className="flex flex-col items-start justify-between gap-8 border-b border-white/10 pb-12 lg:flex-row lg:items-center">
@@ -639,79 +645,69 @@ export default function LandingPage() {
               </Link>
             </div>
 
-            {/* Link columns */}
-            <div className="grid gap-10 pt-12 sm:grid-cols-2 lg:grid-cols-4">
-              <div>
+            {/* Links — kept to one tight row (the per-brand list is gone, so
+                the horizon isn't pushed miles down the page). */}
+            <div className="flex flex-col justify-between gap-8 pt-10 sm:flex-row sm:gap-14">
+              <div className="max-w-xs">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/brand-logos/group-white.png"
                   alt="The Experts Group"
-                  className="h-12 w-auto"
+                  className="h-10 w-auto"
                 />
-                <p className="mt-4 max-w-xs text-sm text-white/50">
+                <p className="mt-4 text-sm text-white/50">
                   Paid ads, built and run for Experts Group agents — tracked
                   from first click to your CRM.
                 </p>
               </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-white/40">
-                  Portal
-                </p>
-                <ul className="mt-4 space-y-2.5 text-sm text-white/70">
-                  <li>
-                    <Link href="/login" className="hover:text-white">
-                      Sign in
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/signup" className="hover:text-white">
-                      Create your account
-                    </Link>
-                  </li>
-                  <li>
-                    <a href="#packages" className="hover:text-white">
-                      Packages
-                    </a>
-                  </li>
-                  <li>
-                    <Link href="/admin" className="hover:text-white">
-                      Admin
-                    </Link>
-                  </li>
-                </ul>
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-white/40">
-                  The group
-                </p>
-                <ul className="mt-4 space-y-2.5 text-sm text-white/70">
-                  {BRANDS.map((b) => (
-                    <li key={b.id}>{b.name}</li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-white/40">
-                  Contact
-                </p>
-                <ul className="mt-4 space-y-2.5 text-sm text-white/70">
-                  <li>
-                    <a
-                      href="mailto:info@theexpertsgroup.co.uk"
-                      className="hover:text-white"
-                    >
-                      info@theexpertsgroup.co.uk
-                    </a>
-                  </li>
-                  <li className="text-white/40">
-                    Spotted something? Use the pencil, bottom right.
-                  </li>
-                </ul>
+              <div className="flex gap-12 sm:gap-16">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-white/40">
+                    Portal
+                  </p>
+                  <ul className="mt-4 space-y-2.5 text-sm text-white/70">
+                    <li>
+                      <Link href="/login" className="hover:text-white">
+                        Sign in
+                      </Link>
+                    </li>
+                    <li>
+                      <Link href="/signup" className="hover:text-white">
+                        Create your account
+                      </Link>
+                    </li>
+                    <li>
+                      <a href="#packages" className="hover:text-white">
+                        Packages
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-white/40">
+                    Contact
+                  </p>
+                  <ul className="mt-4 space-y-2.5 text-sm text-white/70">
+                    <li>
+                      <a
+                        href="mailto:leads@theexpertsgroup.co.uk"
+                        className="hover:text-white"
+                      >
+                        leads@theexpertsgroup.co.uk
+                      </a>
+                    </li>
+                    <li>
+                      <Link href="/admin" className="hover:text-white">
+                        Admin
+                      </Link>
+                    </li>
+                  </ul>
+                </div>
               </div>
             </div>
 
             {/* Legal row */}
-            <div className="mt-14 flex flex-col items-center justify-between gap-3 border-t border-white/10 pt-6 text-xs text-white/40 sm:flex-row">
+            <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-white/10 pt-6 text-xs text-white/40 sm:flex-row">
               <span>© {new Date().getFullYear()} The Experts Group</span>
               <div className="flex gap-6">
                 <span>Privacy</span>
