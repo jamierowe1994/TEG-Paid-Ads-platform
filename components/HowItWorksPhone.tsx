@@ -65,13 +65,14 @@ export default function HowItWorksPhone() {
           viewport, so they separate on the way in and close back up — the
           space between them does the work rather than more padding. */}
       <Drift speed={0.05}>
-        {/* Back on the dark page background, so white chrome again. Sized up
-            — this section was carrying the least visual weight of any on the
-            page despite being the one that explains the product. */}
-        <h2 className="text-5xl font-semibold tracking-tight text-white sm:text-6xl">
+        {/* On the light panel, so the grey scale rather than white —
+            .light-panel restores those greys from the dark theme's remapping.
+            Sized up: this section was carrying the least visual weight of any
+            on the page despite being the one that explains the product. */}
+        <h2 className="text-5xl font-semibold tracking-tight text-gray-900 sm:text-6xl">
           How it works
         </h2>
-        <p className="mt-5 max-w-md text-lg text-white/55">
+        <p className="mt-5 max-w-md text-lg text-gray-500">
           Two ways to make money in one app. Pick a side.
         </p>
 
@@ -98,12 +99,12 @@ export default function HowItWorksPhone() {
         <ol className="mt-12 min-h-[470px] space-y-9">
           {STEPS[tab].map((s) => (
             <li key={s.n} className="flex gap-5">
-              <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/20 text-sm font-semibold text-white/80">
+              <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-300 text-sm font-semibold text-gray-500">
                 {s.n}
               </span>
               <div>
-                <p className="text-xl font-semibold text-white">{s.title}</p>
-                <p className="mt-2 max-w-md text-[17px] leading-relaxed text-white/55">
+                <p className="text-xl font-semibold text-gray-900">{s.title}</p>
+                <p className="mt-2 max-w-md text-[17px] leading-relaxed text-gray-500">
                   {s.body}
                 </p>
               </div>
@@ -115,11 +116,11 @@ export default function HowItWorksPhone() {
       {/* Phone — the frame never moves; the screen slides between the two.
           Drifts harder than the copy, so the two pull apart and settle. */}
       <Drift speed={-0.06} className="relative z-10 flex justify-center lg:justify-end">
-        {/* A soft bloom so the phone's edges separate from the background. */}
+        {/* A soft bloom so the phone's edges separate from the panel. */}
         <span
           aria-hidden
-          className="pointer-events-none absolute left-1/2 top-1/2 h-[560px] w-[460px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-70 blur-[90px] lg:left-auto lg:right-[40px] lg:translate-x-0"
-          style={{ background: "radial-gradient(circle, rgba(167,42,53,0.30), rgba(167,42,53,0.10) 55%, transparent 72%)" }}
+          className="pointer-events-none absolute left-1/2 top-1/2 h-[560px] w-[460px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-40 blur-[90px] lg:left-auto lg:right-[40px] lg:translate-x-0"
+          style={{ background: "radial-gradient(circle, rgba(167,42,53,0.26), rgba(167,42,53,0.08) 55%, transparent 72%)" }}
         />
         <PhoneFrame tab={tab} />
       </Drift>
@@ -129,7 +130,7 @@ export default function HowItWorksPhone() {
 
 function PhoneFrame({ tab }: { tab: TabId }) {
   return (
-    <div className="relative w-[300px] shrink-0 rounded-[44px] border-[7px] border-[#1c1c20] bg-[#f4f4f5] shadow-[0_40px_90px_-30px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.12)] lg:w-[380px]">
+    <div className="relative w-[300px] shrink-0 rounded-[44px] border-[7px] border-[#1c1c20] bg-[#f4f4f5] shadow-[0_40px_90px_-30px_rgba(0,0,0,0.45),0_0_0_1px_rgba(0,0,0,0.06)] lg:w-[380px]">
       {/* Dynamic-island style pill */}
       <div className="absolute left-1/2 top-2.5 z-20 h-[22px] w-[86px] -translate-x-1/2 rounded-full bg-[#1c1c20]" />
       <div className="relative h-[600px] overflow-hidden rounded-[37px]">

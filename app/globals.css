@@ -1097,13 +1097,18 @@ h5 {
 .light-panel {
   background: #f2f2f3;
   color: #111827;
-  /* The curve at the top, plus a lip of shadow so it reads as riding OVER
-     the dark section rather than butting up against it. */
+}
+
+/* The curve + shadow lip that makes a panel read as riding OVER the one
+   before it. Split out from .light-panel/.dark-slab so a panel can take the
+   colour without the edge: two adjacent light sections share one curve at
+   the top of the first, rather than showing a seam between them. */
+.slab-top {
   border-radius: 2.5rem 2.5rem 0 0;
   box-shadow: 0 -24px 60px -20px rgba(0, 0, 0, 0.75);
 }
 @media (min-width: 640px) {
-  .light-panel {
+  .slab-top {
     border-radius: 3.5rem 3.5rem 0 0;
   }
 }
@@ -1136,14 +1141,7 @@ h5 {
   border-color: #d1d5db;
 }
 
-/* The dark section that follows the slab curves over it the same way. */
+/* The dark section that follows the light band; pair it with .slab-top. */
 .dark-slab {
   background: #1b1c20;
-  border-radius: 2.5rem 2.5rem 0 0;
-  box-shadow: 0 -24px 60px -20px rgba(0, 0, 0, 0.6);
-}
-@media (min-width: 640px) {
-  .dark-slab {
-    border-radius: 3.5rem 3.5rem 0 0;
-  }
 }
