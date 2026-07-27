@@ -487,8 +487,11 @@ function BrandTile({ brand: b, onOpen }: { brand: Brand; onOpen: () => void }) {
 // smaller and darker — while the next lands in front of it, so you always see
 // the top strip (and the "what they do" pill) of the ~3 cards behind. Scroll
 // back and it unwinds. Feels like one page that animates rather than a list.
-const ROLO_PEEK = 46; // px each receding card lifts, exposing its pill
-const ROLO_MAX = 3; // how many cards stay visible behind the front one
+// The pill sits 20px into the card and is ~26px tall, so the lift has to clear
+// 46px or the next card's edge lands right on it — that's what made the stacked
+// pills look like they were touching. 58 leaves a clean ~12px gap under each.
+const ROLO_PEEK = 58; // px each receding card lifts, exposing its pill
+const ROLO_MAX = 2; // cards visible BEHIND the front one (so three in view)
 
 function BrandRolodex({
   brands,
@@ -509,11 +512,16 @@ function BrandRolodex({
     // offsetTop reports its painted position, so every card reads the same value
     // and the spacing collapses to 0. The cell's layout height is immune to both
     // sticky and the card's transform, and equals the gap between cards.
+    // Cards are separated by a margin so the deck breathes; the scroll step is
+    // the cell height PLUS that margin (offsetHeight excludes margins).
+    const step = (cell: HTMLDivElement) =>
+      cell.offsetHeight + (parseFloat(getComputedStyle(cell).marginBottom) || 0);
+
     const measure = () => {
       const a = cells.current[0];
       geo.current = {
         stick: a ? parseFloat(getComputedStyle(a).top) || 0 : 0,
-        spacing: a?.offsetHeight || window.innerHeight * 0.55,
+        spacing: a ? step(a) : window.innerHeight * 0.55,
       };
     };
 
@@ -522,8 +530,8 @@ function BrandRolodex({
       const wrap = wrapRef.current;
       if (!wrap) return;
       const { stick } = geo.current;
-      const spacing =
-        cells.current[0]?.offsetHeight || geo.current.spacing || 1;
+      const first = cells.current[0];
+      const spacing = (first ? step(first) : 0) || geo.current.spacing || 1;
       // 0 when the first card lands, 1 when the second does, and so on.
       const progress = (stick - wrap.getBoundingClientRect().top) / spacing;
       for (let i = 0; i < brands.length; i++) {
@@ -531,12 +539,12 @@ function BrandRolodex({
         if (!card) continue;
         const depth = Math.max(0, progress - i);
         const d = Math.min(depth, ROLO_MAX);
-        card.style.transform = `translateY(${-d * ROLO_PEEK}px) scale(${1 - d * 0.05})`;
+        card.style.transform = `translateY(${-d * ROLO_PEEK}px) scale(${1 - d * 0.075})`;
         // Fade the ones that have fallen off the back of the stack.
         card.style.opacity =
           depth > ROLO_MAX ? String(Math.max(0, 1 - (depth - ROLO_MAX) / 0.5)) : "1";
         const veil = card.querySelector<HTMLElement>("[data-veil]");
-        if (veil) veil.style.opacity = String(Math.min(0.5, d * 0.2));
+        if (veil) veil.style.opacity = String(Math.min(0.55, d * 0.26));
       }
     };
 
@@ -566,14 +574,15 @@ function BrandRolodex({
           key={b.id}
           ref={(el) => { cells.current[i] = el; }}
           // All cards stick to the same line, so they stack instead of passing.
-          // No margin: one card-height of scroll advances the deck by one, which
-          // gives every brand a moment fully in front before the next covers it.
-          className="sticky top-[calc(env(safe-area-inset-top)+108px)]"
+          // The top offset leaves room for the two peek strips above the front
+          // card; the bottom margin is the gap between cards, so the next one
+          // isn't butted against this one as it rises.
+          className="sticky top-[calc(env(safe-area-inset-top)+136px)] mb-[11vh]"
           style={{ zIndex: i }}
         >
           <div
             ref={(el) => { cards.current[i] = el; }}
-            className="relative flex h-[55vh] origin-top flex-col overflow-hidden rounded-[34px] px-6 pb-6 pt-5 text-white shadow-[0_26px_50px_-20px_rgba(0,0,0,0.55)] will-change-transform"
+            className="relative mx-3 flex h-[54vh] origin-top flex-col overflow-hidden rounded-[34px] px-6 pb-6 pt-5 text-white shadow-[0_26px_50px_-20px_rgba(0,0,0,0.55)] will-change-transform"
             style={{ backgroundColor: b.accent }}
           >
             {/* Photo — drop <brand id>.jpg (or .png) into public/referral-images
