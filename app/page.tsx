@@ -10,6 +10,7 @@ import SmoothScroll from "@/components/SmoothScroll";
 import StandaloneGuard from "@/components/StandaloneGuard";
 import PlugIntoStack from "@/components/PlugIntoStack";
 import HowItWorksPhone from "@/components/HowItWorksPhone";
+import TrialProof from "@/components/TrialProof";
 
 // The site's backdrop — a dark charcoal that runs the length of the page.
 // Kept as a constant because the rocket's window is punched out in it.
@@ -124,7 +125,7 @@ export default function LandingPage() {
         <div className="relative flex min-h-[64vh] flex-col overflow-hidden rounded-[2.5rem]">
           <div className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-10 px-8 py-12 sm:px-12 lg:grid-cols-2">
             <div className="p-words">
-              <span className="inline-block rounded-full bg-[#E31F36] px-4 py-1.5 text-sm font-medium text-white">
+              <span className="inline-block rounded-full bg-[#A72A35] px-4 py-1.5 text-sm font-medium text-white">
                 Mission briefing
               </span>
               <h2 className="mt-5 max-w-lg text-4xl font-semibold leading-[1.05] tracking-tight text-gray-900 sm:text-5xl">
@@ -192,6 +193,15 @@ export default function LandingPage() {
         </Reveal>
       </section>
 
+      {/* Proof — the real three-month trial. Deliberately between "What is
+          Launch Pad?" and "How it works": say what it is, earn the trust, then
+          explain the mechanics. */}
+      <section id="proof" className="px-6 py-28">
+        <Reveal>
+          <TrialProof />
+        </Reveal>
+      </section>
+
       {/* How it works — the process shown through the app itself, with a tab
           for each way of earning. */}
       <section id="how" className="mx-auto max-w-6xl px-6 py-28">
@@ -228,7 +238,7 @@ export default function LandingPage() {
             {/* Mock ad 1 — Property */}
             <Reveal>
               <div>
-                <div className="relative flex aspect-[4/5] flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-[#E31F36] to-[#8f1322] p-8 shadow-sm">
+                <div className="relative flex aspect-[4/5] flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-[#A72A35] to-[#6b1a21] p-8 shadow-sm">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-sm font-bold text-white">
                       JR

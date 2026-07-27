@@ -169,7 +169,7 @@ function AdsScreen() {
               <div className="flex items-center gap-1.5">
                 <p className="truncate text-[13px] font-semibold">{l.n}</p>
                 {l.tag && (
-                  <span className="rounded-full bg-[#E31F36] px-1.5 py-0.5 text-[8px] font-bold uppercase text-white">
+                  <span className="rounded-full bg-[#A72A35] px-1.5 py-0.5 text-[8px] font-bold uppercase text-white">
                     {l.tag}
                   </span>
                 )}
@@ -204,7 +204,7 @@ function ReferralScreen() {
       <div className="relative mt-5 flex-1">
         <div className="absolute inset-x-4 top-0 h-24 rounded-[22px] bg-[#7d1620]" />
         <div className="absolute inset-x-2 top-3 h-28 rounded-[24px] bg-[#a4192a]" />
-        <div className="absolute inset-x-0 top-7 flex h-[300px] flex-col rounded-[26px] bg-[#E31F36] p-5 text-white shadow-xl">
+        <div className="absolute inset-x-0 top-7 flex h-[300px] flex-col rounded-[26px] bg-[#A72A35] p-5 text-white shadow-xl">
           <span className="w-fit rounded-full bg-white/20 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide">
             Estate agents
           </span>
@@ -219,7 +219,7 @@ function ReferralScreen() {
             You earn up to
           </p>
           <p className="text-[30px] font-semibold leading-none">£850</p>
-          <span className="mt-3 rounded-full bg-[#ffffff] py-2 text-center text-[12px] font-semibold text-[#E31F36]">
+          <span className="mt-3 rounded-full bg-[#ffffff] py-2 text-center text-[12px] font-semibold text-[#A72A35]">
             Refer a lead →
           </span>
         </div>

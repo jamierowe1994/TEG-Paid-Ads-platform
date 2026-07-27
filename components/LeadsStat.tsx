@@ -73,13 +73,13 @@ export default function LeadsStat({
       <p className="text-xs font-medium uppercase tracking-wide text-[#9ca3af]">
         Leads this month
       </p>
-      <p className="mt-1 text-3xl font-semibold text-[#E31F36]">↑ {count}%</p>
+      <p className="mt-1 text-3xl font-semibold text-[#A72A35]">↑ {count}%</p>
       <div className="mt-3 flex items-end gap-2">
         <div
           className={`bar-grow h-8 flex-1 rounded-md bg-red-100 ${on ? "grown" : ""}`}
         />
         <div
-          className={`bar-grow h-12 flex-1 rounded-md bg-[#E31F36] ${on ? "grown" : ""}`}
+          className={`bar-grow h-12 flex-1 rounded-md bg-[#A72A35] ${on ? "grown" : ""}`}
           style={{ animationDelay: "0.4s" }}
         />
       </div>
