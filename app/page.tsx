@@ -211,8 +211,7 @@ export default function LandingPage() {
           </Reveal>
         </section>
 
-        {/* The one light panel — curved top, and it clips the phone that
-            runs off its bottom edge.
+        {/* The one light panel — curved top.
 
             The wrapper exists purely to buy dwell time. Without it the dark
             slab began covering this panel the moment it pinned, so step 4 was
@@ -220,9 +219,12 @@ export default function LandingPage() {
             extends the range the panel stays stuck for, and because the panel
             is pinned and opaque it fills the screen for that whole stretch —
             you get a beat with the section in full frame before the black
-            starts to climb. */}
+            starts to climb.
+
+            No overflow clipping any more: the phone sits inside the panel
+            rather than running off it. */}
         <div className="relative z-10">
-          <div className="light-panel sticky top-0 overflow-hidden">
+          <div className="light-panel sticky top-0">
             <section
               id="how"
               className="mx-auto max-w-6xl px-6 pb-20 pt-28 sm:pt-36 lg:pb-32"

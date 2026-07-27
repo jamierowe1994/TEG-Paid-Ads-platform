@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ICONS, { SocialIcon } from "./SocialIcons";
 
 // "How it works", shown through the app itself: two tabs — Paid Ads and
@@ -56,13 +56,58 @@ const STEPS: Record<TabId, { n: string; title: string; body: string }[]> = {
   ],
 };
 
+
+/* The phone runs a looping demo rather than sitting still: leads drop in one
+   at a time, one opens, its contact button presses, and it starts over. Both
+   screens are driven by the same tiny ticker so the timing stays in step.
+
+   Only runs while the phone is actually on screen — and not at all under
+   prefers-reduced-motion, where every stage is shown in its finished state. */
+function useInView<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setInView(true);
+      return;
+    }
+    const o = new IntersectionObserver(
+      (es) => setInView(es.some((e) => e.isIntersecting)),
+      { threshold: 0.35 }
+    );
+    o.observe(el);
+    return () => o.disconnect();
+  }, []);
+  return [ref, inView] as const;
+}
+
+const STILL = -1; // reduced motion: skip the choreography, show the end state
+
+function useTicker(running: boolean, steps: number, ms = 700) {
+  const [t, setT] = useState(0);
+  useEffect(() => {
+    if (!running) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) {
+      setT(STILL);
+      return;
+    }
+    setT(0);
+    const id = window.setInterval(() => setT((v) => (v + 1) % steps), ms);
+    return () => window.clearInterval(id);
+  }, [running, steps, ms]);
+  return t;
+}
+
 export default function HowItWorksPhone() {
   const [tab, setTab] = useState<TabId>("ads");
+  const [phoneRef, inView] = useInView<HTMLDivElement>();
 
   return (
     // items-end so the phone hangs off the bottom of the slab rather than
     // sitting in the middle of it; the slab clips it.
-    <div className="grid items-start gap-16 lg:grid-cols-2 lg:items-end">
+    <div className="grid items-start gap-16 lg:grid-cols-2 lg:items-center">
       <div className="lg:pt-12">
         {/* This section sits on the light slab, so its chrome uses the grey
             scale rather than white — .light-panel restores those greys from
@@ -113,29 +158,33 @@ export default function HowItWorksPhone() {
       </div>
 
       {/* Phone — the frame never moves; the screen slides between the two.
-          Runs off the bottom edge of the light slab and is cut off by it (the
-          slab carries the overflow-hidden). Two things set where the cut
-          lands: this overhang has to EXCEED the section's bottom padding to
-          crop at all, and the dark slab below overlaps the panel by a further
-          ~138px, so the VISIBLE cut is that much higher than the panel edge.
-          Tuned together with the section's pb so the phone starts level with
-          step 1 and the cut lands in the bottom of its nav bar. */}
-      <div className="relative z-10 flex justify-center lg:-mb-36 lg:justify-end">
+          Sits centred against the steps rather than hanging off the panel
+          edge: cropping it fought the copy, since the cut had to climb high
+          enough to matter and that ate the last step. */}
+      <div className="relative z-10 flex justify-center lg:justify-end">
         {/* A soft bloom so the phone's edges separate from the slab. */}
         <span
           aria-hidden
           className="pointer-events-none absolute left-1/2 top-1/2 h-[560px] w-[460px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-40 blur-[90px] lg:left-auto lg:right-[40px] lg:translate-x-0"
           style={{ background: "radial-gradient(circle, rgba(167,42,53,0.26), rgba(167,42,53,0.08) 55%, transparent 72%)" }}
         />
-        <PhoneFrame tab={tab} />
+        <PhoneFrame tab={tab} inView={inView} innerRef={phoneRef} />
       </div>
     </div>
   );
 }
 
-function PhoneFrame({ tab }: { tab: TabId }) {
+function PhoneFrame({
+  tab,
+  inView,
+  innerRef,
+}: {
+  tab: TabId;
+  inView: boolean;
+  innerRef: React.RefObject<HTMLDivElement | null>;
+}) {
   return (
-    <div className="relative w-[300px] shrink-0 rounded-[44px] border-[7px] border-[#1c1c20] bg-[#f4f4f5] shadow-[0_40px_90px_-30px_rgba(0,0,0,0.45),0_0_0_1px_rgba(0,0,0,0.06)] lg:w-[330px]">
+    <div ref={innerRef} className="relative w-[300px] shrink-0 rounded-[44px] border-[7px] border-[#1c1c20] bg-[#f4f4f5] shadow-[0_40px_90px_-30px_rgba(0,0,0,0.45),0_0_0_1px_rgba(0,0,0,0.06)] lg:w-[330px]">
       {/* Dynamic-island style pill */}
       <div className="absolute left-1/2 top-2.5 z-20 h-[22px] w-[86px] -translate-x-1/2 rounded-full bg-[#1c1c20]" />
       <div className="relative h-[600px] overflow-hidden rounded-[37px]">
@@ -145,75 +194,167 @@ function PhoneFrame({ tab }: { tab: TabId }) {
           className="flex h-full w-[200%] transition-transform duration-[600ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
           style={{ transform: tab === "ads" ? "translateX(0)" : "translateX(-50%)" }}
         >
-          <div className="h-full w-1/2"><AdsScreen /></div>
-          <div className="h-full w-1/2"><ReferralScreen /></div>
+          <div className="h-full w-1/2">
+            <AdsScreen running={inView && tab === "ads"} />
+          </div>
+          <div className="h-full w-1/2">
+            <ReferralScreen running={inView && tab === "referrals"} />
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-// A cut-down version of the real Leads screen.
-function AdsScreen() {
+const LEADS = [
+  { n: "Sarah Whitfield", m: "Landed 09:12", tag: "New", src: "LinkedIn", tel: "07700 900 118", area: "Didsbury, M20" },
+  { n: "Tom Baker", m: "Attempt 2 · 18 Jul", src: "Meta / Facebook", tel: "07700 900 461", area: "Chorlton, M21" },
+  { n: "Priya Shah", m: "Attempt 1 · 17 Jul", src: "Instagram", tel: "07700 900 275", area: "Sale, M33" },
+];
+
+function Mark({ src, size = 26 }: { src: string; size?: number }) {
+  const icon = ICONS.find((i) => i.name === src)!;
   return (
-    <div className="flex h-full flex-col bg-[#f4f4f5] px-4 pt-14 text-[#111827]">
-      <p className="text-[20px] font-semibold">Leads</p>
-      <span className="mt-1 block h-[3px] w-7 rounded-full bg-[#8a6f5c]" />
+    <span
+      className="flex shrink-0 items-center justify-center"
+      style={{ color: icon.color, width: size + 14, height: size + 14 }}
+    >
+      <SocialIcon icon={icon} className="h-full w-full" />
+    </span>
+  );
+}
 
-      <div className="mt-5 flex gap-2 text-[11px]">
-        <span className="rounded-full bg-[#111827] px-3 py-1.5 font-medium text-white">
-          Active
-        </span>
-        <span className="rounded-full px-3 py-1.5 text-[#9ca3af]">Lost</span>
-        <span className="rounded-full px-3 py-1.5 text-[#9ca3af]">Archived</span>
-      </div>
+/* Leads screen. The loop: nothing → three leads drop in one at a time → the
+   top one opens → its call button presses → back to an empty list. */
+function AdsScreen({ running }: { running: boolean }) {
+  const t = useTicker(running, 12);
+  const still = t === STILL;
+  const shown = still ? 3 : Math.min(t, 3);
+  const detail = still || (t >= 6 && t <= 10);
+  const pressing = still || t === 8 || t === 9;
 
-      <div className="mt-4 space-y-2.5">
-        {[
-          { n: "Sarah Whitfield", m: "Landed 09:12", tag: "New", src: "LinkedIn" },
-          { n: "Tom Baker", m: "Attempt 2 · 18 Jul", src: "Meta / Facebook" },
-          { n: "Priya Shah", m: "Attempt 1 · 17 Jul", src: "Instagram" },
-        ].map((l) => (
-          <div
-            key={l.n}
-            className="flex items-center gap-3 rounded-2xl border border-black/5 bg-[#ffffff] px-3.5 py-3 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.12)]"
-          >
-            {/* Which platform the lead came in from — the brand mark itself,
-                no tile behind it. */}
-            {(() => {
-              const icon = ICONS.find((i) => i.name === l.src)!;
-              return (
-                <span
-                  className="flex h-10 w-10 shrink-0 items-center justify-center"
-                  style={{ color: icon.color }}
-                >
-                  <SocialIcon icon={icon} className="h-[26px] w-[26px]" />
-                </span>
-              );
-            })()}
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <p className="truncate text-[13px] font-semibold">{l.n}</p>
-                {l.tag && (
-                  <span className="rounded-full bg-[#A72A35] px-1.5 py-0.5 text-[8px] font-bold uppercase text-white">
-                    {l.tag}
-                  </span>
-                )}
+  return (
+    <div className="relative h-full overflow-hidden bg-[#f4f4f5] text-[#111827]">
+      {/* List */}
+      <div
+        className="absolute inset-0 flex flex-col px-4 pt-14 transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]"
+        style={{ transform: detail ? "translateX(-28%)" : "none" }}
+      >
+        <p className="text-[20px] font-semibold">Leads</p>
+        <span className="mt-1 block h-[3px] w-7 rounded-full bg-[#8a6f5c]" />
+
+        <div className="mt-5 flex gap-2 text-[11px]">
+          <span className="rounded-full bg-[#111827] px-3 py-1.5 font-medium text-white">
+            Active
+          </span>
+          <span className="rounded-full px-3 py-1.5 text-[#9ca3af]">Lost</span>
+          <span className="rounded-full px-3 py-1.5 text-[#9ca3af]">Archived</span>
+        </div>
+
+        <div className="mt-4 space-y-2.5">
+          {LEADS.map((l, i) => (
+            <div
+              key={l.n}
+              className="flex items-center gap-3 rounded-2xl border border-black/5 bg-[#ffffff] px-3.5 py-3 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.12)] transition-all duration-500 ease-[cubic-bezier(0.34,1.3,0.5,1)]"
+              style={{
+                opacity: i < shown ? 1 : 0,
+                transform: i < shown ? "none" : "translateY(14px) scale(0.96)",
+              }}
+            >
+              <Mark src={l.src} />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <p className="truncate text-[13px] font-semibold">{l.n}</p>
+                  {l.tag && (
+                    <span className="rounded-full bg-[#A72A35] px-1.5 py-0.5 text-[8px] font-bold uppercase text-white">
+                      {l.tag}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-0.5 text-[11px] text-[#9ca3af]">{l.m}</p>
               </div>
-              <p className="mt-0.5 text-[11px] text-[#9ca3af]">{l.m}</p>
+              <span className="text-[#d1d5db]">›</span>
             </div>
-            <span className="text-[#d1d5db]">›</span>
-          </div>
-        ))}
+          ))}
+        </div>
+
+        <MiniNav />
       </div>
 
-      <MiniNav />
+      {/* The lead itself, sliding in over the list */}
+      <div
+        className="absolute inset-0 flex flex-col bg-[#f4f4f5] px-4 pt-14 shadow-[-18px_0_40px_-20px_rgba(0,0,0,0.35)] transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]"
+        style={{ transform: detail ? "none" : "translateX(100%)" }}
+      >
+        <p className="text-[11px] text-[#9ca3af]">‹ Leads</p>
+        <div className="mt-3 flex items-center gap-3">
+          <Mark src={LEADS[0].src} size={30} />
+          <div>
+            <p className="text-[17px] font-semibold leading-tight">{LEADS[0].n}</p>
+            <p className="text-[11px] text-[#9ca3af]">
+              {LEADS[0].src.replace(" / Facebook", "")} · {LEADS[0].area}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 space-y-2">
+          {[
+            ["Phone", LEADS[0].tel],
+            ["Enquiry", "Free market appraisal"],
+            ["Stage", "New — not yet contacted"],
+          ].map(([k, v]) => (
+            <div
+              key={k}
+              className="rounded-2xl border border-black/5 bg-[#ffffff] px-3.5 py-2.5 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)]"
+            >
+              <p className="text-[9px] font-bold uppercase tracking-widest text-[#9ca3af]">
+                {k}
+              </p>
+              <p className="mt-0.5 text-[13px] font-medium">{v}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* The press: scales in and lifts, as if tapped */}
+        <div className="mt-4 flex gap-2">
+          <span
+            className="flex-1 rounded-full bg-[#A72A35] py-2.5 text-center text-[12px] font-semibold text-white transition-all duration-300"
+            style={{
+              transform: pressing ? "scale(0.96)" : "none",
+              boxShadow: pressing
+                ? "0 2px 8px -2px rgba(167,42,53,0.7)"
+                : "0 10px 22px -8px rgba(167,42,53,0.6)",
+            }}
+          >
+            Call now
+          </span>
+          <span className="rounded-full border border-black/10 px-4 py-2.5 text-center text-[12px] font-semibold text-[#111827]">
+            Log
+          </span>
+        </div>
+
+        <MiniNav />
+      </div>
     </div>
   );
 }
 
-// A cut-down version of the Refer & earn deck.
-function ReferralScreen() {
+const BRANDS_DECK = [
+  { tag: "Estate agents", name: ["The", "Property", "Experts"], fee: "£850", bg: "#A72A35" },
+  { tag: "Mortgages", name: ["The", "Mortgage", "Experts"], fee: "£300", bg: "#2B6193" },
+  { tag: "Lettings", name: ["The", "Lettings", "Experts"], fee: "£450", bg: "#A3C739" },
+  { tag: "Commercial", name: ["Commercial", "Property", "Experts"], fee: "£1,200", bg: "#41AAE1" },
+];
+
+/* Referrals. The loop: flick through the brand deck → the refer button
+   presses → confirmation that it's gone to the closest agent → repeat. */
+function ReferralScreen({ running }: { running: boolean }) {
+  const t = useTicker(running, 10);
+  const still = t === STILL;
+  const brand = BRANDS_DECK[still ? 0 : Math.min(t, 3) % BRANDS_DECK.length];
+  const pressing = t === 4;
+  const sent = still || (t >= 5 && t <= 7);
+
   return (
     <div className="flex h-full flex-col bg-[#f4f4f5] px-4 pt-14 text-[#111827]">
       <p className="text-[20px] font-semibold">Referrals</p>
@@ -226,28 +367,60 @@ function ReferralScreen() {
         <span className="rounded-full px-3.5 py-1.5 text-white/60">Received</span>
       </div>
 
-      {/* Stacked brand cards, as they appear in the rolodex */}
+      {/* Stacked brand cards, as they appear in the rolodex. The front card
+          swaps as the deck is flicked through. */}
       <div className="relative mt-5 flex-1">
-        <div className="absolute inset-x-4 top-0 h-24 rounded-[22px] bg-[#7d1620]" />
-        <div className="absolute inset-x-2 top-3 h-28 rounded-[24px] bg-[#a4192a]" />
-        <div className="absolute inset-x-0 top-7 flex h-[300px] flex-col rounded-[26px] bg-[#A72A35] p-5 text-white shadow-xl">
+        <div className="absolute inset-x-4 top-0 h-24 rounded-[22px] bg-black/25" />
+        <div className="absolute inset-x-2 top-3 h-28 rounded-[24px] bg-black/15" />
+        <div
+          className="absolute inset-x-0 top-7 flex h-[300px] flex-col rounded-[26px] p-5 text-white shadow-xl transition-all duration-500 ease-[cubic-bezier(0.34,1.25,0.5,1)]"
+          style={{
+            background: brand.bg,
+            transform: sent ? "scale(0.97)" : "none",
+            opacity: sent ? 0 : 1,
+          }}
+        >
           <span className="w-fit rounded-full bg-white/20 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide">
-            Estate agents
+            {brand.tag}
           </span>
           <p className="mt-auto text-[26px] font-semibold leading-[0.95]">
-            The
-            <br />
-            Property
-            <br />
-            Experts
+            {brand.name.map((line) => (
+              <span key={line} className="block">
+                {line}
+              </span>
+            ))}
           </p>
           <p className="mt-4 text-[9px] font-bold uppercase tracking-widest text-white/70">
             You earn up to
           </p>
-          <p className="text-[30px] font-semibold leading-none">£850</p>
-          <span className="mt-3 rounded-full bg-[#ffffff] py-2 text-center text-[12px] font-semibold text-[#A72A35]">
+          <p className="text-[30px] font-semibold leading-none">{brand.fee}</p>
+          <span
+            className="mt-3 rounded-full bg-[#ffffff] py-2 text-center text-[12px] font-semibold transition-transform duration-300"
+            style={{
+              color: brand.bg,
+              transform: pressing ? "scale(0.95)" : "none",
+            }}
+          >
             Refer a lead →
           </span>
+        </div>
+
+        {/* Sent confirmation, once the deck clears */}
+        <div
+          className="absolute inset-x-0 top-7 flex h-[300px] flex-col items-center justify-center rounded-[26px] border border-black/5 bg-[#ffffff] p-6 text-center shadow-xl transition-all duration-500"
+          style={{
+            opacity: sent ? 1 : 0,
+            transform: sent ? "none" : "scale(0.97)",
+          }}
+        >
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#A72A35] text-[22px] text-white">
+            ✓
+          </span>
+          <p className="mt-4 text-[15px] font-semibold">Referral sent</p>
+          <p className="mt-1.5 text-[11px] leading-relaxed text-[#9ca3af]">
+            Matched to the closest agent in that patch. You&apos;ll see it move
+            through their pipeline right here.
+          </p>
         </div>
       </div>
 
