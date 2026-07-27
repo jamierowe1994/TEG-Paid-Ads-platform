@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
 import { findById, updateUser } from "@/lib/users-store";
-import { getStripe, lineItemsFor, stripeConfigured } from "@/lib/stripe";
+import { createCheckoutSession } from "@/lib/stripe";
 
 /* Starts a Stripe Checkout Session for the signed-in user's chosen package.
  *
@@ -21,68 +21,30 @@ export async function POST(req: NextRequest) {
   const user = await findById(id);
   if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
 
-  if (!stripeConfigured()) {
-    return NextResponse.json(
-      { error: "Payments aren't configured yet (STRIPE_SECRET_KEY is unset)." },
-      { status: 503 }
-    );
-  }
-
-  const body = await req.json().catch(() => ({}));
-  const resolved = lineItemsFor(String(body?.packageId ?? ""));
-  if (!resolved.ok) {
-    return NextResponse.json(
-      { error: `Payments aren't configured yet — missing ${resolved.missing.join(", ")}.` },
-      { status: 503 }
-    );
-  }
-
-  const stripe = getStripe();
-
-  // Reuse the customer if this account has already been through checkout, so
-  // repeat attempts don't scatter duplicate customers through the dashboard.
-  let customerId = user.stripeCustomerId ?? null;
-  if (!customerId) {
-    const customer = await stripe.customers.create({
-      email: user.email,
-      name: user.name,
-      phone: user.mobile || undefined,
-      metadata: { userId: user.id, brandId: user.brandId },
-    });
-    customerId = customer.id;
-    await updateUser(user.id, { stripeCustomerId: customerId });
-  }
-
   const origin =
     req.headers.get("origin") ??
     process.env.NEXT_PUBLIC_SITE_URL ??
     new URL(req.url).origin;
 
-  const session = await stripe.checkout.sessions.create({
-    mode: "subscription",
-    customer: customerId,
-    line_items: resolved.items,
-    // Both the session and the subscription carry the userId: the webhook
-    // reads it from whichever event arrives, rather than depending on one.
-    metadata: { userId: user.id, packageId: resolved.pkg.id },
-    subscription_data: {
-      metadata: { userId: user.id, packageId: resolved.pkg.id },
-    },
+  const body = await req.json().catch(() => ({}));
+  const packageId = String(body?.packageId ?? "");
+
+  const result = await createCheckoutSession({
+    user,
+    packageId,
+    origin,
     // The wizard's React state is gone after the redirect, so carry the
     // package back in the URL — the signup page already reads ?package= to
-    // seed its state, which means the confirmation screen can name it.
-    success_url: `${origin}/signup?checkout=success&package=${resolved.pkg.id}`,
-    cancel_url: `${origin}/signup?checkout=cancelled`,
-    allow_promotion_codes: true,
-    billing_address_collection: "auto",
+    // seed itself, which lets the confirmation screen name it.
+    successUrl: `${origin}/signup?checkout=success&package=${packageId}`,
+    cancelUrl: `${origin}/signup?checkout=cancelled`,
+    onCustomerCreated: async (customerId) => {
+      await updateUser(user.id, { stripeCustomerId: customerId });
+    },
   });
 
-  if (!session.url) {
-    return NextResponse.json(
-      { error: "Stripe didn't return a checkout URL." },
-      { status: 502 }
-    );
+  if ("error" in result) {
+    return NextResponse.json({ error: result.error }, { status: result.status });
   }
-
-  return NextResponse.json({ url: session.url });
+  return NextResponse.json({ url: result.url });
 }

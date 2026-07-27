@@ -151,9 +151,13 @@ export async function updateProfileChecked(patch: {
 }
 
 // Upgrade a referrals-only account to Paid Ads (demo-mode unlock for now).
+/* Referrals-only → Paid Ads. With Stripe configured the server returns a
+   Checkout URL and the account is NOT upgraded until the webhook confirms
+   payment — so callers must follow `url` rather than assume success. Without
+   Stripe it still returns the upgraded user (demo mode). */
 export async function upgradeAccount(
   packageId: string
-): Promise<{ ok: boolean; user?: UserProfile; error?: string }> {
+): Promise<{ ok: boolean; user?: UserProfile; url?: string; error?: string }> {
   const res = await fetch("/api/auth/upgrade", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -161,6 +165,7 @@ export async function upgradeAccount(
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) return { ok: false, error: data?.error };
+  if (data.url) return { ok: true, url: data.url as string };
   if (data.user) saveUser(data.user);
   return { ok: true, user: data.user };
 }

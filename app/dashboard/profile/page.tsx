@@ -196,6 +196,13 @@ export default function ProfilePage() {
     setUpgradeError("");
     setUpgrading(true);
     const res = await upgradeAccount(upgradePkg);
+    // With Stripe live the server hands back a Checkout URL — the account
+    // isn't upgraded until the webhook confirms payment, so send them to pay
+    // rather than celebrating here.
+    if (res.ok && res.url) {
+      window.location.href = res.url;
+      return;
+    }
     setUpgrading(false);
     if (res.ok && res.user) {
       setUser(res.user);

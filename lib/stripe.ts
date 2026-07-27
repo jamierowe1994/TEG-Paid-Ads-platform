@@ -1,6 +1,7 @@
 import "server-only";
 import Stripe from "stripe";
 import { packageById, type AdPackage } from "./packages";
+import type { StoredUser } from "./users-store";
 
 /* Stripe wiring.
  *
@@ -85,4 +86,73 @@ export function commitmentEnd(from = new Date()): string {
   const d = new Date(from);
   d.setMonth(d.getMonth() + 3);
   return d.toISOString();
+}
+
+/**
+ * Create a Checkout Session for a user + package. Shared by signup and the
+ * referrals→paid upgrade so the two can't drift — in particular so neither can
+ * quietly forget the metadata the webhook needs to find the account again.
+ *
+ * Never grants access. The webhook does that, and only after Stripe confirms.
+ */
+export async function createCheckoutSession(opts: {
+  user: StoredUser;
+  packageId: string;
+  origin: string;
+  successUrl: string;
+  cancelUrl: string;
+  /** Called when a Stripe customer had to be created, so it can be persisted. */
+  onCustomerCreated?: (customerId: string) => Promise<void>;
+}): Promise<{ url: string } | { error: string; status: number }> {
+  if (!stripeConfigured()) {
+    return {
+      error: "Payments aren't configured yet (STRIPE_SECRET_KEY is unset).",
+      status: 503,
+    };
+  }
+
+  const resolved = lineItemsFor(opts.packageId);
+  if (!resolved.ok) {
+    return {
+      error: `Payments aren't configured yet — missing ${resolved.missing.join(", ")}.`,
+      status: 503,
+    };
+  }
+
+  const stripe = getStripe();
+  const { user } = opts;
+
+  // Reuse the customer so repeat attempts don't scatter duplicates.
+  let customerId = user.stripeCustomerId ?? null;
+  if (!customerId) {
+    const customer = await stripe.customers.create({
+      email: user.email,
+      name: user.name,
+      phone: user.mobile || undefined,
+      metadata: { userId: user.id, brandId: user.brandId },
+    });
+    customerId = customer.id;
+    await opts.onCustomerCreated?.(customerId);
+  }
+
+  const session = await stripe.checkout.sessions.create({
+    mode: "subscription",
+    customer: customerId,
+    line_items: resolved.items,
+    // Both the session and the subscription carry the userId: the webhook
+    // reads it from whichever event arrives, rather than depending on one.
+    metadata: { userId: user.id, packageId: resolved.pkg.id },
+    subscription_data: {
+      metadata: { userId: user.id, packageId: resolved.pkg.id },
+    },
+    success_url: opts.successUrl,
+    cancel_url: opts.cancelUrl,
+    allow_promotion_codes: true,
+    billing_address_collection: "auto",
+  });
+
+  if (!session.url) {
+    return { error: "Stripe didn't return a checkout URL.", status: 502 };
+  }
+  return { url: session.url };
 }

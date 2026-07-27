@@ -126,9 +126,18 @@ receipt emails from item 3.
     portal open while Stripe retries.
 - ⬜ James: add STRIPE_SECRET_KEY (test) to .env.local, run the setup script,
   run `stripe listen`, and drive a test card end to end.
-- ⬜ Then: the upgrade path (/api/auth/upgrade still flips accounts to paid
-  with no charge — that's the one real gap left), the Grow top-up, and the
-  Billing Portal for card changes/invoices/cancellation.
+- ✅ (27 Jul) Signup checkout driven end to end on localhost with a test card
+  — session → Stripe → webhook → account flips to paid. Plus a "Payment made"
+  confirmation screen before the last signup step.
+- ✅ (27 Jul) Closed the free-upgrade hole: /api/auth/upgrade used to set
+  paid:true directly, so anyone holding a free referrals account could POST
+  to it and unlock the paid portal for nothing — about to be handed to a few
+  hundred people. It now starts a Checkout Session and grants nothing;
+  verified by attempting the attack (403 on paid APIs afterwards, account
+  still referral/unpaid). Checkout-session creation is shared between signup
+  and upgrade so the two can't drift.
+- ⬜ Then: the Grow top-up / package change, and the Billing Portal for card
+  changes, invoices and cancellation.
 - ⬜ Enforce the 3-month minimum on cancellation using commitment_ends_at.
 - ⬜ Live keys + the production webhook endpoint (its signing secret differs
   from the CLI one).
