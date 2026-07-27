@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -14,7 +14,7 @@ import { PACKAGES, packageById } from "@/lib/packages";
 import BrandMark from "@/components/BrandMark";
 import PasswordInput from "@/components/PasswordInput";
 import DomainDenied from "@/components/DomainDenied";
-import { signUp, checkEmail } from "@/lib/session";
+import { signUp, checkEmail, refreshUser } from "@/lib/session";
 
 // One-question-at-a-time signup. Order:
 // name → email (brand auto-detect) → password → platforms → goal → package →
@@ -31,6 +31,7 @@ type StepId =
   | "goal"
   | "package"
   | "payment"
+  | "paid"
   | "authenticate";
 
 type AccountType = "paid" | "referral";
@@ -50,7 +51,7 @@ function SignupWizard() {
   // isn't — so resume at the step that only needs an account, rather than
   // dumping them back at "what's your name".
   const [step, setStep] = useState<StepId>(
-    checkout === "success" ? "authenticate" : "name"
+    checkout === "success" ? "paid" : "name"
   );
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -87,8 +88,28 @@ function SignupWizard() {
     if (accountType === "referral") return [...base, "authenticate"];
     return [...base, "platforms", "goal", "package", "payment", "authenticate"];
   }, [brand, accountType]);
-  const stepIndex = steps.indexOf(step);
+  const stepIndex = steps.indexOf(step === "paid" ? "authenticate" : step);
   const progress = ((stepIndex + 1) / steps.length) * 100;
+
+  /* Coming back from Stripe the wizard is a fresh mount, so name/email/brand
+     are blank — which left the last step reading "Sign in with  to confirm".
+     The session cookie survives the round trip, so refill from the account
+     that was just created. */
+  useEffect(() => {
+    if (checkout !== "success") return;
+    let cancelled = false;
+    refreshUser().then((u) => {
+      if (cancelled || !u) return;
+      setName((n) => n || u.name);
+      setEmail((e) => e || u.email);
+      setBrand((b) => b ?? BRANDS.find((x) => x.id === u.brandId) ?? null);
+      setPackageId((p) => p || u.packageId);
+      setAccountType((a) => a || (u.accountType === "referral" ? "referral" : "paid"));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [checkout]);
 
   function go(next: StepId) {
     setError("");
@@ -741,6 +762,58 @@ function SignupWizard() {
 
         {/* ---- Authenticate — mandatory: connect the work email to prove
              it's really theirs (and switch on portal email sending) ---- */}
+        {/* ---- Payment confirmed ---- */}
+        {step === "paid" && (
+          <div className="fade-up" key="paid">
+            <div className="flex flex-col items-center py-6 text-center">
+              <div className="relative flex h-24 w-24 items-center justify-center">
+                {/* Ring of colour that expands away once the tick lands. */}
+                <span
+                  aria-hidden
+                  className="pay-pulse absolute inset-0 rounded-full"
+                  style={{ background: "rgba(167,42,53,0.35)" }}
+                />
+                <span
+                  className="pay-ring relative flex h-24 w-24 items-center justify-center rounded-full"
+                  style={{ background: "var(--group)" }}
+                >
+                  <svg
+                    viewBox="0 0 32 32"
+                    className="h-11 w-11"
+                    fill="none"
+                    stroke="#ffffff"
+                    strokeWidth={3}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden
+                  >
+                    <path className="pay-check" d="M8 16.5l5.5 5.5L24 11" />
+                  </svg>
+                </span>
+              </div>
+
+              <h1 className="mt-7 text-3xl font-semibold tracking-tight">
+                Payment made
+              </h1>
+              <p className="mt-3 max-w-sm text-gray-500">
+                You&apos;re on the{" "}
+                <span className="font-medium text-gray-900">
+                  {packageById(packageId)?.name ?? "Launch Pad"}
+                </span>{" "}
+                package. Stripe has emailed your receipt — one more step and
+                you&apos;re in.
+              </p>
+
+              <button
+                className={`${primaryBtn} mt-8`}
+                onClick={() => go("authenticate")}
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        )}
+
         {step === "authenticate" && (
           <div className="fade-up" key="authenticate">
             <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-900 text-xl text-white">

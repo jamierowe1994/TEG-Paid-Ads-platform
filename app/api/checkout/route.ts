@@ -68,7 +68,10 @@ export async function POST(req: NextRequest) {
     subscription_data: {
       metadata: { userId: user.id, packageId: resolved.pkg.id },
     },
-    success_url: `${origin}/signup?checkout=success`,
+    // The wizard's React state is gone after the redirect, so carry the
+    // package back in the URL — the signup page already reads ?package= to
+    // seed its state, which means the confirmation screen can name it.
+    success_url: `${origin}/signup?checkout=success&package=${resolved.pkg.id}`,
     cancel_url: `${origin}/signup?checkout=cancelled`,
     allow_promotion_codes: true,
     billing_address_collection: "auto",

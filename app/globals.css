@@ -228,6 +228,63 @@ h5 {
   }
 }
 
+/* Payment-confirmed tick — the ring springs in, then the check draws itself.
+   Used on the signup step you land on coming back from Stripe. */
+@keyframes pay-ring {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes pay-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.pay-ring {
+  animation: pay-ring 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.pay-check {
+  stroke-dasharray: 32;
+  stroke-dashoffset: 32;
+  animation: pay-draw 0.45s ease-out 0.35s both;
+}
+/* A soft pulse rings out from the tick once it lands. */
+@keyframes pay-pulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+.pay-pulse {
+  animation: pay-pulse 1.1s ease-out 0.5s both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pay-ring,
+  .pay-check,
+  .pay-pulse {
+    animation: none;
+  }
+  .pay-check {
+    stroke-dashoffset: 0;
+  }
+  .pay-pulse {
+    display: none;
+  }
+}
+
 /* Sent-confirmation tick — pops in with a soft overshoot. */
 @keyframes tick-pop {
   0% {
