@@ -151,6 +151,21 @@ receipt emails from item 3.
 - ✅ (27 Jul) 3-month minimum now ENFORCED, not just recorded: commitment_ends_at
   is read on the profile and the cancel flow is replaced with an explanation
   while inside the term.
+- ✅ (27 Jul) In-app cancel now actually cancels: sets cancel_at_period_end on
+  the real subscription instead of only flagging the account (before this, a
+  cancelled customer kept being charged until someone did it by hand). The
+  3-month minimum is enforced server-side in the route, not just hidden in the
+  UI. renews_at is now read from Stripe, so the profile shows the REAL renewal
+  date rather than guessing a monthly anniversary of the signup date, and the
+  profile tells the agent the exact date they can cancel from.
+- ✅ (27 Jul) /terms and /privacy pages added and linked from the footer
+  (which previously showed both as plain text, no pages behind them). Stripe
+  requires both URLs before the customer portal can be activated.
+  ⚠️ DRAFTS — not reviewed by a solicitor. 22 passages are flagged in-page as
+  needing a decision, the big ones being: the contracting entity, VAT and
+  whether ad spend is marked up, retention periods, controller vs processor
+  for lead data, the lawful basis for nurture messages, the liability cap, and
+  the Railway hosting region.
 - ⬜ Then: the Grow top-up / package change.
 - ⬜ Enforce the 3-month minimum on cancellation using commitment_ends_at.
 - ⬜ Live keys + the production webhook endpoint (its signing secret differs

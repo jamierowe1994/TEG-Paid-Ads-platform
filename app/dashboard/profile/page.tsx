@@ -211,7 +211,11 @@ export default function ProfilePage() {
     ? new Date(user.commitmentEndsAt)
     : null;
   const inMinimumTerm = !!commitmentEnds && commitmentEnds.getTime() > Date.now();
-  const nextBill = nextBillingDate(user.createdAt);
+  /* Stripe's real period end when we have it; the signup-anniversary guess is
+     only a fallback for accounts that never went through checkout. */
+  const nextBill = user.renewsAt
+    ? new Date(user.renewsAt)
+    : nextBillingDate(user.createdAt);
   const isReferral = user.accountType === "referral";
 
   async function doUpgrade() {
@@ -706,10 +710,17 @@ export default function ProfilePage() {
                   . Campaigns need that long to settle — it&apos;s why the
                   minimum exists.
                 </p>
+                <p className="mt-2 text-sm text-gray-700">
+                  You can cancel from{" "}
+                  <span className="font-medium text-gray-900">
+                    {fmtDate(user.commitmentEndsAt!)}
+                  </span>
+                  , and it&apos;s rolling monthly from then on — cancel any
+                  time, and your ads run to the end of the month you&apos;ve
+                  paid for.
+                </p>
                 <p className="mt-2 text-xs text-gray-500">
-                  After that it&apos;s rolling monthly and you can cancel any
-                  time. Need to stop sooner? Talk to your Group Marketing
-                  Director.
+                  Need to stop sooner? Talk to your Group Marketing Director.
                 </p>
               </div>
             ) : cancelled ? (

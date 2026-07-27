@@ -82,6 +82,19 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ received: true });
 }
 
+
+/* When the current period ends. Recent Stripe API versions moved
+   current_period_end off the subscription and onto its items, so read the item
+   first and fall back — otherwise this silently returns undefined and the
+   renewal date never updates. */
+function periodEnd(sub: Stripe.Subscription): string | null {
+  const fromItem = sub.items?.data?.[0]?.current_period_end;
+  const legacy = (sub as unknown as { current_period_end?: number })
+    .current_period_end;
+  const secs = fromItem ?? legacy;
+  return typeof secs === "number" ? new Date(secs * 1000).toISOString() : null;
+}
+
 async function handle(event: Stripe.Event, stripe: Stripe) {
   switch (event.type) {
     case "checkout.session.completed": {
@@ -104,9 +117,11 @@ async function handle(event: Stripe.Event, stripe: Stripe) {
       // Read the subscription back rather than assuming it's active — a
       // session can complete with the subscription still incomplete.
       let status: string | null = null;
+      let renewsAt: string | null = null;
       if (subscriptionId) {
         const sub = await stripe.subscriptions.retrieve(subscriptionId);
         status = sub.status;
+        renewsAt = periodEnd(sub);
       }
 
       const pkg = packageById(packageId);
@@ -117,6 +132,7 @@ async function handle(event: Stripe.Event, stripe: Stripe) {
             : user.stripeCustomerId ?? null,
         stripeSubscriptionId: subscriptionId,
         subscriptionStatus: status,
+        renewsAt,
         paid: status ? OPEN.has(status) : false,
         // Paying activates the full system, even if they signed up on the
         // free referrals tier and upgraded.
@@ -142,6 +158,13 @@ async function handle(event: Stripe.Event, stripe: Stripe) {
         subscriptionStatus: status,
         paid: OPEN.has(status),
         stripeSubscriptionId: sub.id,
+        renewsAt: periodEnd(sub),
+        // Mirror Stripe's own cancel_at_period_end so the portal and the app
+        // can't disagree about whether a cancellation is pending — whichever
+        // one it was set from.
+        cancelRequestedAt: sub.cancel_at_period_end
+          ? (user.cancelRequestedAt ?? new Date().toISOString())
+          : null,
       });
       console.log(`[stripe] ${user.email} → ${status}`);
       return;

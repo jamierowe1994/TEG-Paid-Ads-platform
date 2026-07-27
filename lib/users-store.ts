@@ -66,6 +66,7 @@ interface UserRow {
   stripe_subscription_id: string | null;
   subscription_status: string | null;
   commitment_ends_at: string | Date | null;
+  renews_at: string | Date | null;
 }
 
 function fromRow(row: UserRow): StoredUser {
@@ -120,6 +121,7 @@ function fromRow(row: UserRow): StoredUser {
     commitmentEndsAt: row.commitment_ends_at
       ? new Date(row.commitment_ends_at).toISOString()
       : null,
+    renewsAt: row.renews_at ? new Date(row.renews_at).toISOString() : null,
   };
 }
 
@@ -231,7 +233,8 @@ export async function updateUser(
          microsite_url = $22, account_type = $23,
          must_reset_password = $24, deactivated_at = $25,
          stripe_customer_id = $26, stripe_subscription_id = $27,
-         subscription_status = $28, commitment_ends_at = $29
+         subscription_status = $28, commitment_ends_at = $29,
+         renews_at = $30
        WHERE id = $1`,
       [
         next.id,
@@ -263,6 +266,7 @@ export async function updateUser(
         next.stripeSubscriptionId ?? null,
         next.subscriptionStatus ?? null,
         next.commitmentEndsAt ?? null,
+        next.renewsAt ?? null,
       ]
     );
     return next;

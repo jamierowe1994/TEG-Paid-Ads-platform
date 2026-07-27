@@ -1210,3 +1210,47 @@ h5 {
     border-radius: 50% 50% 0 0 / 6rem 6rem 0 0;
   }
 }
+
+/* ── Legal pages ───────────────────────────────────────────────────────────
+   Terms and Privacy are long-form prose. Styling them here keeps the
+   documents themselves as plain, readable markup that a non-developer can
+   edit without touching a single class name. */
+.legal h2 {
+  margin-top: 2.75rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.legal h2:first-child {
+  margin-top: 0;
+}
+.legal h3 {
+  margin-top: 1.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.legal p,
+.legal li {
+  margin-top: 0.85rem;
+  line-height: 1.75;
+  color: #374151;
+}
+.legal ul {
+  margin-top: 0.5rem;
+  padding-left: 1.15rem;
+  list-style: disc;
+}
+.legal a {
+  color: var(--group);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+/* Flags a passage that needs a decision or a solicitor before go-live. */
+.legal .review {
+  margin-top: 1rem;
+  border-left: 3px solid var(--group);
+  background: #fdf5f5;
+  padding: 0.85rem 1rem;
+  font-size: 0.875rem;
+  color: #6b2731;
+}

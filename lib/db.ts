@@ -159,6 +159,9 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS commitment_ends_at TIMESTAMPTZ;
+-- When the current subscription period ends: the real renewal date from
+-- Stripe, rather than guessing a monthly anniversary of the signup date.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS renews_at TIMESTAMPTZ;
 CREATE INDEX IF NOT EXISTS users_stripe_customer_idx ON users(stripe_customer_id);
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS referral_id TEXT;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS notes JSONB NOT NULL DEFAULT '[]';

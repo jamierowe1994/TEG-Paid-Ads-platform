@@ -38,6 +38,8 @@ export interface UserProfile {
   // End of the 3-month minimum term. Stripe has no minimum-term concept, so
   // we record it here and gate cancellation on it.
   commitmentEndsAt?: string | null;
+  // End of the current Stripe billing period — the real renewal/end date.
+  renewsAt?: string | null;
   // Which half of the portal this account has. "paid" = the full paid-ads
   // system (which includes referrals); "referral" = the free, referrals-only
   // tier — the rest of the portal is locked until they upgrade. Absent on

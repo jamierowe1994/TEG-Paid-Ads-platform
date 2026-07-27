@@ -517,8 +517,12 @@ export default function LandingPage() {
             <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-white/10 pt-6 text-xs text-white/40 sm:flex-row">
               <span>© {new Date().getFullYear()} The Experts Group</span>
               <div className="flex gap-6">
-                <span>Privacy</span>
-                <span>Terms</span>
+                <Link href="/privacy" className="transition hover:text-white">
+                  Privacy
+                </Link>
+                <Link href="/terms" className="transition hover:text-white">
+                  Terms
+                </Link>
               </div>
             </div>
           </div>
