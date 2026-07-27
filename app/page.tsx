@@ -234,7 +234,7 @@ export default function LandingPage() {
               </Reveal>
             </section>
           </div>
-          <div aria-hidden className="hidden lg:block lg:h-[145vh]" />
+          <div aria-hidden className="hidden lg:block lg:h-[95vh]" />
         </div>
 
         {/* Back to charcoal, curving over the light panel the same way. */}
@@ -245,7 +245,9 @@ export default function LandingPage() {
             stays pinned — the slab and the release move together. The panel
             is 994px against a ~1050px viewport, so that was 56px, i.e. none.
             This negative margin buys the overlap directly; the spacer above
-            buys the pause before it starts.
+            buys the pause before it starts — deliberately short, so the
+            slab's curve is already cutting into the bottom of the panel when
+            you arrive rather than only appearing once you scroll.
 
             Sized so the slab travels a FULL viewport over the pinned panel —
             it covers it completely and comes to rest with its curve seated
@@ -279,48 +281,48 @@ export default function LandingPage() {
             <h2 className="text-center text-4xl font-semibold tracking-tight">
               Simple, transparent pricing. You are in control.
             </h2>
-            <p className="mx-auto mt-4 max-w-xl text-center text-gray-500">
-              The only difference between packages is how hard you want to
-              push. Everything else is identical.
-            </p>
           </Reveal>
 
-          {/* The flat fee first — it's the same on all three, so it belongs
-              above the tiers rather than repeated inside each one. */}
-          <Reveal>
-            <div className="mx-auto mt-14 max-w-2xl text-center">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
-                Monthly management fee
-              </p>
-              <p className="mt-4 text-5xl font-light tracking-[-0.04em]">
-                £{MANAGEMENT_FEE}
-                <span className="ml-2 align-middle text-base text-gray-400">
-                  per month
-                </span>
-              </p>
-              <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-gray-500">
-                Covers everything: campaign management, creative production,
-                monthly optimisation, your dashboard, lead nurture and
-                reporting.
-              </p>
-            </div>
-          </Reveal>
+          {/* Fee on the left, packages on the right, with a real + between
+              them — the whole pricing model is "one flat fee PLUS the spend
+              you choose", and setting it out as a sum says that faster than
+              two stacked blocks did. */}
+          <div className="mt-16 grid items-center gap-8 lg:grid-cols-[minmax(0,15rem)_auto_minmax(0,1fr)] lg:gap-6">
+            <Reveal>
+              <div className="text-center lg:text-left">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+                  Management
+                </p>
+                <p className="mt-3 text-5xl font-light tracking-[-0.04em]">
+                  £{MANAGEMENT_FEE}
+                </p>
+                <p className="mt-1 text-sm text-gray-400">per month</p>
+                <p className="mt-4 text-sm leading-relaxed text-gray-500">
+                  Covers everything: campaign management, creative production,
+                  monthly optimisation, your dashboard, lead nurture and
+                  reporting.
+                </p>
+              </div>
+            </Reveal>
 
-          <Reveal>
-            <p className="mt-16 text-center text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
-              Choose your daily ad spend
-            </p>
-          </Reveal>
+            <Reveal>
+              <p
+                aria-hidden
+                className="text-center text-6xl font-extralight leading-none text-gray-400 lg:text-7xl"
+              >
+                +
+              </p>
+            </Reveal>
 
-          {/* items-center + a taller middle card: the popular one stands
-              proud of the other two instead of three matching rectangles. */}
-          <div className="mt-8 grid gap-6 lg:grid-cols-3 lg:items-center">
+            {/* items-center + a taller middle card: the popular one stands
+                proud of the other two instead of three matching rectangles. */}
+            <div className="grid gap-4 sm:grid-cols-3 sm:items-center">
             {PACKAGES.map((p, i) => (
               <Reveal key={p.id} delay={i * 120} className="h-full">
                 <div
-                  className={`lift-card relative flex h-full flex-col rounded-2xl border bg-white p-8 ${
+                  className={`lift-card relative flex h-full flex-col rounded-2xl border bg-white p-5 ${
                     p.highlighted
-                      ? "border-gray-900 shadow-lg lg:py-14"
+                      ? "border-gray-900 shadow-lg sm:py-9"
                       : "border-gray-200"
                   }`}
                 >
@@ -334,32 +336,29 @@ export default function LandingPage() {
                   </h3>
                   {/* Headline is the daily figure — that's the number the
                       agent actually chooses. Monthly sits under it. */}
-                  <div className="mt-4 flex items-baseline gap-1.5">
-                    <span className="text-4xl font-semibold tracking-tight">
+                  <div className="mt-3 flex items-baseline gap-1.5">
+                    <span className="text-3xl font-semibold tracking-tight">
                       £{p.dailyAdSpend}
                     </span>
-                    <span className="text-sm text-gray-400">per day</span>
+                    <span className="text-xs text-gray-400">per day</span>
                   </div>
-                  <p className="mt-1.5 text-sm text-gray-400">
+                  <p className="mt-1 text-xs text-gray-400">
                     approx. £{p.adSpend}/month ad spend
                   </p>
-                  <p className="mt-5 text-sm leading-relaxed text-gray-600">
-                    {p.tagline}
-                  </p>
 
-                  <div className="mt-6 border-t border-gray-200 pt-5">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+                  <div className="mt-4 border-t border-gray-200 pt-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
                       Best for
                     </p>
-                    <p className="mt-2 text-sm leading-relaxed text-gray-600">
+                    <p className="mt-1.5 text-[13px] leading-relaxed text-gray-600">
                       {p.bestFor}
                     </p>
                   </div>
 
                   {/* No per-card feature list: every package includes exactly
                       the same things, so it runs once under all three. */}
-                  <p className="mt-6 flex-1 text-sm text-gray-500">
-                    £{p.managementFee} management + £{p.adSpend} ad spend ={" "}
+                  <p className="mt-4 flex-1 text-[13px] text-gray-500">
+                    Total{" "}
                     <span className="font-semibold text-gray-900">
                       approx. £{p.price}/month
                     </span>
@@ -369,7 +368,7 @@ export default function LandingPage() {
                     // The outline buttons used to hover to bg-gray-50. On the
                     // dark page that hover variant isn't remapped, so they
                     // went white-on-white. They fill with the brand red now.
-                    className={`mt-5 rounded-xl py-3 text-center text-sm font-medium transition ${
+                    className={`mt-4 rounded-xl py-2.5 text-center text-[13px] font-medium transition ${
                       p.highlighted
                         ? "btn-group"
                         : "btn-press border border-gray-200 text-gray-900 hover:border-transparent hover:bg-[var(--group)] hover:text-white"
@@ -380,6 +379,7 @@ export default function LandingPage() {
                 </div>
               </Reveal>
             ))}
+            </div>
           </div>
 
           {/* The full included list, folded away behind a button — it's the
