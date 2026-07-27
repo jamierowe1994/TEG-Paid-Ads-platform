@@ -3,14 +3,13 @@ import { BRANDS, EXPERTS_GROUP } from "@/lib/brands";
 import { PACKAGES } from "@/lib/packages";
 import Reveal from "@/components/Reveal";
 import HeroAdWord from "@/components/HeroAdWord";
-import PhysicsIcons from "@/components/PhysicsIcons";
 import HeroIconStrip from "@/components/HeroIconStrip";
 import LeadsStat from "@/components/LeadsStat";
 import PanelReveal from "@/components/PanelReveal";
 import SmoothScroll from "@/components/SmoothScroll";
-import ScrollFillText from "@/components/ScrollFillText";
 import StandaloneGuard from "@/components/StandaloneGuard";
 import Stars from "@/components/Stars";
+import PlugIntoStack from "@/components/PlugIntoStack";
 import HowItWorksPhone from "@/components/HowItWorksPhone";
 
 // The hero's backdrop. Kept as a constant because the rocket's window is
@@ -54,20 +53,21 @@ export default function LandingPage() {
         className="pointer-events-none fixed inset-0 -z-20"
         style={{ backgroundColor: HERO_BG }}
       />
-      {/* Night sky — stars edge to edge, with an occasional shooting star. */}
-      <Stars />
-      {/* A whisper of brand colour in the black, so it isn't flat. */}
+      {/* Brand colour in the black. Painted BEFORE the stars so they sit in
+          front of the gradient as well as behind it. */}
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0 -z-10"
         style={{
           backgroundImage:
-            "radial-gradient(60% 50% at 15% 6%, rgba(227,31,54,0.10), transparent 62%)," +
-            "radial-gradient(50% 45% at 90% 12%, rgba(43,97,147,0.10), transparent 62%)," +
-            "radial-gradient(55% 50% at 78% 92%, rgba(227,31,54,0.08), transparent 62%)," +
-            "radial-gradient(45% 40% at 8% 80%, rgba(43,97,147,0.07), transparent 62%)",
+            "radial-gradient(65% 55% at 12% 4%, rgba(227,31,54,0.30), rgba(227,31,54,0.10) 42%, transparent 70%)," +
+            "radial-gradient(55% 50% at 92% 10%, rgba(43,97,147,0.28), rgba(43,97,147,0.09) 44%, transparent 70%)," +
+            "radial-gradient(60% 55% at 82% 90%, rgba(227,31,54,0.24), rgba(227,31,54,0.08) 44%, transparent 72%)," +
+            "radial-gradient(50% 45% at 6% 78%, rgba(43,97,147,0.22), rgba(43,97,147,0.07) 44%, transparent 72%)",
         }}
       />
+      {/* Night sky — stars edge to edge, with an occasional shooting star. */}
+      <Stars />
 
       {/* Nav — just the Launch Pad mark, then See pricing + Sign in. Sits over
           the black hero, so everything here is white. */}
@@ -186,11 +186,6 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Landing zone so settled icons don't sit on the content — extra
-              room lets them fall lower */}
-          <div className="h-32" />
-          {/* The hero's icons fall in behind the pills and hit the bottom */}
-          <PhysicsIcons />
         </div>
         </PanelReveal>
       </section>
@@ -225,22 +220,12 @@ export default function LandingPage() {
         </Reveal>
       </section>
 
-      {/* Statement piece — right-aligned to the same max-w-6xl right edge as
-          the mock dashboard above it. */}
-      <section className="px-6 py-32">
-        <div className="mx-auto max-w-6xl">
-          <Reveal>
-            <div className="ml-auto max-w-4xl text-right">
-              <ScrollFillText
-                text="“The average person scrolls through their feed every single day. Your next client is in that scroll.”"
-                className="text-4xl font-bold leading-[1.1] tracking-[-0.055em] text-gray-900 sm:text-5xl lg:text-6xl"
-              />
-              <p className="mt-10 text-xl font-semibold tracking-[-0.02em] text-[#E31F36]">
-                #StopTheScroll
-              </p>
-            </div>
-          </Reveal>
-        </div>
+      {/* Everything plugs into one place — sources in, Launch Pad in the
+          middle, the systems you already use out the other side. */}
+      <section className="px-6 py-28">
+        <Reveal>
+          <PlugIntoStack />
+        </Reveal>
       </section>
 
       {/* Showcase — mocked ad creatives until real campaign shots arrive.

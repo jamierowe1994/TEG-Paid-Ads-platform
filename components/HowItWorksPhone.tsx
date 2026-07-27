@@ -59,7 +59,7 @@ export default function HowItWorksPhone() {
   const [tab, setTab] = useState<TabId>("ads");
 
   return (
-    <div className="grid items-center gap-16 lg:grid-cols-2">
+    <div className="grid items-start gap-16 lg:grid-cols-2">
       <div>
         <h2 className="text-4xl font-semibold tracking-tight text-white">
           How it works
@@ -79,7 +79,7 @@ export default function HowItWorksPhone() {
               onClick={() => setTab(id)}
               className={`rounded-full px-6 py-2.5 text-sm font-medium transition ${
                 tab === id
-                  ? "bg-[#111827] text-white"
+                  ? "bg-[#08080a] text-white"
                   : "text-[#6b7280] hover:text-[#111827]"
               }`}
             >
@@ -88,7 +88,7 @@ export default function HowItWorksPhone() {
           ))}
         </div>
 
-        <ol className="mt-10 space-y-7">
+        <ol className="mt-10 min-h-[430px] space-y-7">
           {STEPS[tab].map((s) => (
             <li key={s.n} className="flex gap-5">
               <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/15 text-sm font-semibold text-white/80">
@@ -106,7 +106,7 @@ export default function HowItWorksPhone() {
       </div>
 
       {/* Phone — the frame never moves; the screen slides between the two. */}
-      <div className="relative flex justify-center lg:justify-end">
+      <div className="relative flex justify-center lg:sticky lg:top-24 lg:justify-end">
         {/* A soft red bloom so the phone's edges separate from the black. */}
         <span
           aria-hidden
