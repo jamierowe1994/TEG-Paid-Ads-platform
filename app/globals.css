@@ -1102,12 +1102,12 @@ h5 {
      curve is already obvious as the panel comes up past the bottom of the
      viewport, rather than reading as a flat edge until it's well in view.
      Shadow kept tight — a wide soft one just greys out the panel above. */
-  border-radius: 3rem 3rem 0 0;
+  border-radius: 4rem 4rem 0 0;
   box-shadow: 0 -10px 26px -10px rgba(0, 0, 0, 0.6);
 }
 @media (min-width: 640px) {
   .light-panel {
-    border-radius: 5rem 5rem 0 0;
+    border-radius: 7rem 7rem 0 0;
   }
 }
 .landing-dark .light-panel .text-gray-900 {
@@ -1142,11 +1142,11 @@ h5 {
 /* The dark section that follows the slab curves over it the same way. */
 .dark-slab {
   background: #1b1c20;
-  border-radius: 3rem 3rem 0 0;
+  border-radius: 4rem 4rem 0 0;
   box-shadow: 0 -10px 26px -10px rgba(0, 0, 0, 0.55);
 }
 @media (min-width: 640px) {
   .dark-slab {
-    border-radius: 5rem 5rem 0 0;
+    border-radius: 7rem 7rem 0 0;
   }
 }

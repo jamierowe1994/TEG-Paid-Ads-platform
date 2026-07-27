@@ -234,11 +234,19 @@ export default function LandingPage() {
               </Reveal>
             </section>
           </div>
-          <div aria-hidden className="hidden lg:block lg:h-[45vh]" />
+          <div aria-hidden className="hidden lg:block lg:h-[75vh]" />
         </div>
 
         {/* Back to charcoal, curving over the light panel the same way. */}
-        <section className="dark-slab relative z-20 px-6 pb-32 pt-28 sm:pt-36">
+        {/* Pulled up so it genuinely climbs over the pinned panel above.
+            Worth knowing the arithmetic, because it isn't obvious: with the
+            slab sitting directly after the panel's wrapper, the overlap you
+            get is only (viewport - panel height) no matter how long the panel
+            stays pinned — the slab and the release move together. The panel
+            is 994px against a ~1050px viewport, so that was 56px, i.e. none.
+            This negative margin buys the overlap directly; the spacer above
+            buys the pause before it starts. */}
+        <section className="dark-slab relative z-20 px-6 pb-32 pt-28 sm:pt-36 lg:-mt-80">
           <Reveal>
             <PlugIntoStack />
           </Reveal>
