@@ -106,9 +106,32 @@ Built:
   can't be distance-ranked — they list unranked ("their patch") until someone
   populates location_id (or territory) on TRE TeamMembers in the Team Hub.
 
-## 7. Stripe ⬜
+## 7. Stripe 🔶 in progress
 Account exists — wire it in: taking payment for packages/ad spend, and the
 receipt emails from item 3.
+- ✅ (27 Jul) Signup checkout, end to end in code:
+  · Subscription is TWO line items — a flat £100 management price shared by
+    every package, plus one ad-spend price per tier (£150/£300/£450). Invoices
+    then show the split the site promises, and a tier change swaps one line.
+  · `scripts/stripe-setup.mjs` creates the products/prices and prints the env
+    lines. Re-runnable — it reuses anything with a matching lookup key.
+  · `/api/checkout` creates a hosted Checkout Session (SCA/3-D Secure and
+    receipts are Stripe's problem, not ours); `/api/webhooks/stripe` is the
+    ONLY thing that sets `paid`.
+  · Signup no longer grants paid access itself — EXCEPT when Stripe is
+    unconfigured, where it keeps the old demo behaviour so adding the keys is
+    what switches billing on, rather than a deploy locking everyone out.
+  · Users gained stripe_customer_id / stripe_subscription_id /
+    subscription_status / commitment_ends_at. past_due deliberately keeps the
+    portal open while Stripe retries.
+- ⬜ James: add STRIPE_SECRET_KEY (test) to .env.local, run the setup script,
+  run `stripe listen`, and drive a test card end to end.
+- ⬜ Then: the upgrade path (/api/auth/upgrade still flips accounts to paid
+  with no charge — that's the one real gap left), the Grow top-up, and the
+  Billing Portal for card changes/invoices/cancellation.
+- ⬜ Enforce the 3-month minimum on cancellation using commitment_ends_at.
+- ⬜ Live keys + the production webhook endpoint (its signing secret differs
+  from the CLI one).
 
 ## 8. Rex embed ⬜
 Rex can embed a site. Work out the logistics: how sign-in works inside the

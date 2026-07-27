@@ -8,6 +8,7 @@ import {
 import { findByEmail, createUser, toPublic } from "@/lib/users-store";
 import { brandForEmail, brandById, isAllowedEmailDomain } from "@/lib/brands";
 import { packageById } from "@/lib/packages";
+import { stripeConfigured } from "@/lib/stripe";
 import type { StoredUser } from "@/lib/users-store";
 
 function uid() {
@@ -75,9 +76,16 @@ export async function POST(req: NextRequest) {
     platforms: Array.isArray(body.platforms) ? body.platforms : [],
     goal: String(body.goal ?? ""),
     packageId: packageById(body.packageId)?.id ?? "starter",
-    // TODO(stripe): set true only via the Stripe webhook after payment.
+    // Paid access is granted by the Stripe webhook, never here — finishing
+    // checkout in the browser isn't proof that the card cleared.
+    //
+    // The exception is when Stripe isn't configured at all: without it there
+    // is no way to ever pay, so a new account would be locked out of the
+    // portal it just signed up for. Keeping the old demo behaviour in that
+    // case means adding the keys is what switches real billing on, rather
+    // than a deploy that silently locks everybody out.
     // Referral-only accounts are free, so they're never "paid".
-    paid: accountType === "paid",
+    paid: accountType === "paid" && !stripeConfigured(),
     accountType,
     createdAt: new Date().toISOString(),
     passwordHash: hashPassword(password),

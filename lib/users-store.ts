@@ -62,6 +62,10 @@ interface UserRow {
   account_type: string | null;
   must_reset_password: boolean | null;
   deactivated_at: string | Date | null;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  subscription_status: string | null;
+  commitment_ends_at: string | Date | null;
 }
 
 function fromRow(row: UserRow): StoredUser {
@@ -110,6 +114,12 @@ function fromRow(row: UserRow): StoredUser {
     deactivatedAt: row.deactivated_at
       ? new Date(row.deactivated_at).toISOString()
       : null,
+    stripeCustomerId: row.stripe_customer_id ?? null,
+    stripeSubscriptionId: row.stripe_subscription_id ?? null,
+    subscriptionStatus: row.subscription_status ?? null,
+    commitmentEndsAt: row.commitment_ends_at
+      ? new Date(row.commitment_ends_at).toISOString()
+      : null,
   };
 }
 
@@ -139,6 +149,22 @@ export async function findByEmail(
     return rows[0] ? fromRow(rows[0]) : undefined;
   }
   return (await readAllFile()).find((u) => u.email === needle);
+}
+
+/** Look a user up by their Stripe customer id — used by the webhook when an
+ *  event has no userId metadata (e.g. a subscription edited in the dashboard).
+ *  Indexed on users(stripe_customer_id). */
+export async function findByStripeCustomer(
+  customerId: string
+): Promise<StoredUser | undefined> {
+  if (hasDb()) {
+    const rows = await q<UserRow>(
+      "SELECT * FROM users WHERE stripe_customer_id = $1",
+      [customerId]
+    );
+    return rows[0] ? fromRow(rows[0]) : undefined;
+  }
+  return (await readAllFile()).find((u) => u.stripeCustomerId === customerId);
 }
 
 export async function findById(id: string): Promise<StoredUser | undefined> {
@@ -203,7 +229,9 @@ export async function updateUser(
          campaign_assets = $17, rex_user_id = $18,
          ms_email = $19, ms_connected_at = $20, ms_refresh_token = $21,
          microsite_url = $22, account_type = $23,
-         must_reset_password = $24, deactivated_at = $25
+         must_reset_password = $24, deactivated_at = $25,
+         stripe_customer_id = $26, stripe_subscription_id = $27,
+         subscription_status = $28, commitment_ends_at = $29
        WHERE id = $1`,
       [
         next.id,
@@ -231,6 +259,10 @@ export async function updateUser(
         next.accountType ?? "paid",
         next.mustResetPassword ?? false,
         next.deactivatedAt ?? null,
+        next.stripeCustomerId ?? null,
+        next.stripeSubscriptionId ?? null,
+        next.subscriptionStatus ?? null,
+        next.commitmentEndsAt ?? null,
       ]
     );
     return next;

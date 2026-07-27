@@ -29,7 +29,15 @@ export interface UserProfile {
   // still stored on accounts created before the rename, so it stays valid
   // here and packageById() maps it across.
   packageId: "starter" | "growth" | "accelerate" | "scale";
-  paid: boolean; // set true by the Stripe webhook once payments are live
+  // Owned by the Stripe webhook — never set true by the signup route.
+  paid: boolean;
+  stripeCustomerId?: string | null;
+  stripeSubscriptionId?: string | null;
+  // Mirrors Stripe: active | trialing | past_due | canceled | unpaid | incomplete
+  subscriptionStatus?: string | null;
+  // End of the 3-month minimum term. Stripe has no minimum-term concept, so
+  // we record it here and gate cancellation on it.
+  commitmentEndsAt?: string | null;
   // Which half of the portal this account has. "paid" = the full paid-ads
   // system (which includes referrals); "referral" = the free, referrals-only
   // tier — the rest of the portal is locked until they upgrade. Absent on

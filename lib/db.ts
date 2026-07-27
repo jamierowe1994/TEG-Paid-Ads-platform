@@ -150,6 +150,16 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS microsite_url TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS account_type TEXT DEFAULT 'paid';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS must_reset_password BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS deactivated_at TIMESTAMPTZ;
+-- Stripe. The subscription is two lines: a flat management fee plus the ad
+-- spend for the chosen tier. The paid flag is owned by the webhook, never
+-- by the signup route. commitment_ends_at is the 3-month minimum term —
+-- Stripe has no native concept of a minimum term, so we record it and gate
+-- self-serve cancellation on it.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS commitment_ends_at TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS users_stripe_customer_idx ON users(stripe_customer_id);
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS referral_id TEXT;
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS notes JSONB NOT NULL DEFAULT '[]';
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS appointment_at TIMESTAMPTZ;

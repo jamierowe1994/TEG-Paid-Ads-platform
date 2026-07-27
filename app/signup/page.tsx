@@ -44,8 +44,14 @@ const GOALS = [
 
 function SignupWizard() {
   const params = useSearchParams();
+  const checkout = params.get("checkout");
 
-  const [step, setStep] = useState<StepId>("name");
+  // Coming back from Stripe the wizard's state is gone, but the session cookie
+  // isn't — so resume at the step that only needs an account, rather than
+  // dumping them back at "what's your name".
+  const [step, setStep] = useState<StepId>(
+    checkout === "success" ? "authenticate" : "name"
+  );
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [brand, setBrand] = useState<Brand | null>(null);
@@ -130,8 +136,8 @@ function SignupWizard() {
     go(detected ? "interest" : "brand");
   }
 
-  async function completeSignup() {
-    if (!brand || submitting) return;
+  async function completeSignup(advance = true): Promise<boolean> {
+    if (!brand || submitting) return false;
     setSubmitting(true);
     setError("");
     const { error, code } = await signUp({
@@ -168,13 +174,52 @@ function SignupWizard() {
       } else {
         setError(error);
       }
-      return;
+      return false;
     }
     // Account created + signed in — now the mandatory email authentication
     // step. The OAuth needs a session, which we now have, so it must come
     // after account creation.
+    if (!advance) return true;
     setSubmitting(false);
     go("authenticate");
+    return true;
+  }
+
+  /* Paid signup: create the account (which signs them in, so /api/checkout has
+     a session), then hand off to Stripe Checkout. The account exists at this
+     point but is NOT paid — only the webhook sets that, so abandoning the
+     Stripe page leaves an account that simply hasn't paid yet rather than a
+     free one. */
+  async function payAndContinue() {
+    if (submitting) return;
+    setError("");
+    const created = await completeSignup(false);
+    if (!created) return;
+
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ packageId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.url) {
+        // Payments not configured yet, or Stripe refused. The account is made
+        // and they're signed in, so let them carry on rather than dead-end.
+        setError(
+          data?.error ??
+            "Couldn't start checkout. Your account is created — continue and we'll sort payment."
+        );
+        setSubmitting(false);
+        go("authenticate");
+        return;
+      }
+      window.location.href = data.url as string;
+    } catch {
+      setError("Couldn't reach the payment provider. Please try again.");
+      setSubmitting(false);
+    }
   }
 
   const inputClass =
@@ -640,6 +685,12 @@ function SignupWizard() {
         {step === "payment" && (
           <div className="fade-up" key="payment">
             <h1 className="text-3xl font-semibold tracking-tight">Payment</h1>
+            {checkout === "cancelled" && (
+              <p className="mt-3 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-600">
+                Payment cancelled — nothing has been charged. Your account is
+                saved; pick up where you left off whenever you're ready.
+              </p>
+            )}
             <div className="mt-8 rounded-2xl border border-gray-200 p-6">
               <div className="flex items-center justify-between border-b border-gray-100 pb-4">
                 <span className="text-gray-600">
@@ -663,20 +714,11 @@ function SignupWizard() {
                   <span>approx. £{packageById(packageId)?.adSpend}/month</span>
                 </div>
               </div>
-              {/*
-                TODO(stripe): replace this block with Stripe Checkout.
-                Flow: POST /api/checkout → create Checkout Session with the
-                package's stripePriceId → redirect → webhook marks user paid.
-              */}
-              <div className="mt-6 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-8 text-center">
-                <p className="font-medium text-gray-700">
-                  Stripe checkout coming soon
-                </p>
-                <p className="mx-auto mt-2 max-w-sm text-sm text-gray-500">
-                  Secure card payment will be handled here. For now, continue
-                  in demo mode to preview your dashboard.
-                </p>
-              </div>
+              <p className="mt-6 text-sm leading-relaxed text-gray-500">
+                Card details are taken by Stripe on their own secure page — we
+                never see or store them. Three-month minimum, then rolling
+                monthly; you can change tier at any renewal.
+              </p>
             </div>
             <div className="mt-8 flex gap-3">
               <button
@@ -688,9 +730,9 @@ function SignupWizard() {
               <button
                 className={primaryBtn}
                 disabled={submitting}
-                onClick={completeSignup}
+                onClick={payAndContinue}
               >
-                {submitting ? "Creating account…" : "Complete signup"}
+                {submitting ? "Taking you to Stripe…" : "Continue to payment"}
               </button>
             </div>
             {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
