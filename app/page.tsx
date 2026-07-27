@@ -234,7 +234,7 @@ export default function LandingPage() {
               </Reveal>
             </section>
           </div>
-          <div aria-hidden className="hidden lg:block lg:h-[75vh]" />
+          <div aria-hidden className="hidden lg:block lg:h-[145vh]" />
         </div>
 
         {/* Back to charcoal, curving over the light panel the same way. */}
@@ -245,8 +245,14 @@ export default function LandingPage() {
             stays pinned — the slab and the release move together. The panel
             is 994px against a ~1050px viewport, so that was 56px, i.e. none.
             This negative margin buys the overlap directly; the spacer above
-            buys the pause before it starts. */}
-        <section className="dark-slab relative z-20 px-6 pb-32 pt-28 sm:pt-36 lg:-mt-80">
+            buys the pause before it starts.
+
+            Sized so the slab travels a FULL viewport over the pinned panel —
+            it covers it completely and comes to rest with its curve seated
+            where the panel's was, rather than stopping a third of the way up.
+            Overlap = this margin + (viewport - panel height), so it has to be
+            at least the panel's own height (~994px) to clear it. */}
+        <section className="dark-slab relative z-20 px-6 pb-32 pt-28 sm:pt-36 lg:-mt-[64rem]">
           <Reveal>
             <PlugIntoStack />
           </Reveal>

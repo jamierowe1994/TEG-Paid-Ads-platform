@@ -1097,17 +1097,18 @@ h5 {
 .light-panel {
   background: #f2f2f3;
   color: #111827;
-  /* The curve at the top, plus a lip of shadow so it reads as riding OVER
-     the dark section rather than butting up against it. Big radius so the
-     curve is already obvious as the panel comes up past the bottom of the
-     viewport, rather than reading as a flat edge until it's well in view.
+  /* An ELLIPTICAL top edge, not a corner radius. A plain radius on a
+     full-width panel is a long straight line with two small curls at the far
+     corners — so as it rises into view it reads as a flat edge. Splitting the
+     radius (horizontal / vertical) makes the whole top a shallow dome, which
+     is already, visibly a curve the moment any of it appears.
      Shadow kept tight — a wide soft one just greys out the panel above. */
-  border-radius: 4rem 4rem 0 0;
+  border-radius: 50% 50% 0 0 / 3.5rem 3.5rem 0 0;
   box-shadow: 0 -10px 26px -10px rgba(0, 0, 0, 0.6);
 }
 @media (min-width: 640px) {
   .light-panel {
-    border-radius: 7rem 7rem 0 0;
+    border-radius: 50% 50% 0 0 / 6rem 6rem 0 0;
   }
 }
 .landing-dark .light-panel .text-gray-900 {
@@ -1142,11 +1143,13 @@ h5 {
 /* The dark section that follows the slab curves over it the same way. */
 .dark-slab {
   background: #1b1c20;
-  border-radius: 4rem 4rem 0 0;
+  /* Same curve as .light-panel — that's what makes the slab look like it
+     seats into the panel when it finishes climbing over it. */
+  border-radius: 50% 50% 0 0 / 3.5rem 3.5rem 0 0;
   box-shadow: 0 -10px 26px -10px rgba(0, 0, 0, 0.55);
 }
 @media (min-width: 640px) {
   .dark-slab {
-    border-radius: 7rem 7rem 0 0;
+    border-radius: 50% 50% 0 0 / 6rem 6rem 0 0;
   }
 }
