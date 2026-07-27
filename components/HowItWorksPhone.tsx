@@ -69,7 +69,7 @@ export default function HowItWorksPhone() {
         </p>
 
         {/* Tabs */}
-        <div className="mt-8 inline-flex rounded-full border border-white/12 bg-white/[0.04] p-1">
+        <div className="mt-8 inline-flex rounded-full bg-[#ffffff] p-1 shadow-lg">
           {([
             ["ads", "Paid Ads"],
             ["referrals", "Referrals"],
@@ -79,8 +79,8 @@ export default function HowItWorksPhone() {
               onClick={() => setTab(id)}
               className={`rounded-full px-6 py-2.5 text-sm font-medium transition ${
                 tab === id
-                  ? "bg-white text-[#0f1115]"
-                  : "text-white/60 hover:text-white"
+                  ? "bg-[#111827] text-white"
+                  : "text-[#6b7280] hover:text-[#111827]"
               }`}
             >
               {label}
@@ -105,21 +105,35 @@ export default function HowItWorksPhone() {
         </ol>
       </div>
 
-      {/* Phone */}
-      <div className="flex justify-center lg:justify-end">
-        <PhoneFrame>{tab === "ads" ? <AdsScreen /> : <ReferralScreen />}</PhoneFrame>
+      {/* Phone — the frame never moves; the screen slides between the two. */}
+      <div className="relative flex justify-center lg:justify-end">
+        {/* A soft red bloom so the phone's edges separate from the black. */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 top-1/2 h-[560px] w-[460px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-70 blur-[90px] lg:left-auto lg:right-[40px] lg:translate-x-0"
+          style={{ background: "radial-gradient(circle, rgba(227,31,54,0.30), rgba(227,31,54,0.10) 55%, transparent 72%)" }}
+        />
+        <PhoneFrame tab={tab} />
       </div>
     </div>
   );
 }
 
-function PhoneFrame({ children }: { children: React.ReactNode }) {
+function PhoneFrame({ tab }: { tab: TabId }) {
   return (
-    <div className="relative w-[300px] shrink-0 rounded-[44px] border-[7px] border-[#1c1c20] bg-[#f4f4f5] shadow-[0_40px_90px_-30px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.08)]">
+    <div className="relative w-[300px] shrink-0 rounded-[44px] border-[7px] border-[#1c1c20] bg-[#f4f4f5] shadow-[0_40px_90px_-30px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.12)]">
       {/* Dynamic-island style pill */}
       <div className="absolute left-1/2 top-2.5 z-20 h-[22px] w-[86px] -translate-x-1/2 rounded-full bg-[#1c1c20]" />
       <div className="relative h-[600px] overflow-hidden rounded-[37px]">
-        {children}
+        {/* Both screens sit side by side and slide, so the handset itself
+            stays put — only its display changes. */}
+        <div
+          className="flex h-full w-[200%] transition-transform duration-[600ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
+          style={{ transform: tab === "ads" ? "translateX(0)" : "translateX(-50%)" }}
+        >
+          <div className="h-full w-1/2"><AdsScreen /></div>
+          <div className="h-full w-1/2"><ReferralScreen /></div>
+        </div>
       </div>
     </div>
   );
@@ -148,7 +162,7 @@ function AdsScreen() {
         ].map((l) => (
           <div
             key={l.n}
-            className="flex items-center gap-3 rounded-2xl border border-black/5 bg-white px-3.5 py-3 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.12)]"
+            className="flex items-center gap-3 rounded-2xl border border-black/5 bg-[#ffffff] px-3.5 py-3 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.12)]"
           >
             <span className="h-10 w-10 shrink-0 rounded-xl bg-gradient-to-br from-[#f09433] via-[#dc2743] to-[#bc1888]" />
             <div className="min-w-0 flex-1">
@@ -205,7 +219,7 @@ function ReferralScreen() {
             You earn up to
           </p>
           <p className="text-[30px] font-semibold leading-none">£850</p>
-          <span className="mt-3 rounded-full bg-white py-2 text-center text-[12px] font-semibold text-[#E31F36]">
+          <span className="mt-3 rounded-full bg-[#ffffff] py-2 text-center text-[12px] font-semibold text-[#E31F36]">
             Refer a lead →
           </span>
         </div>
@@ -216,27 +230,44 @@ function ReferralScreen() {
   );
 }
 
+// The real bottom nav: the same four icons as the app, plus the search circle.
+const NAV_ICONS = [
+  "M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10",
+  "M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4z",
+  "M8 7h12m0 0l-4-4m4 4l-4 4M16 17H4m0 0l4 4m-4-4l4-4",
+  "M4 5h16a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1zm2 11l4-5 3 3 2-2 3 4M9 9.5a.5.5 0 11-1 0 .5.5 0 011 0z",
+];
+
 function MiniNav({ active = 1 }: { active?: number }) {
   return (
     <div className="mt-auto mb-4 flex items-center gap-2">
-      <div className="flex flex-1 items-stretch rounded-full border border-white/10 bg-[rgba(28,28,32,0.6)] p-1.5 backdrop-blur">
-        {[0, 1, 2, 3].map((i) => (
+      <div className="flex flex-1 items-stretch rounded-full border border-white/10 bg-[rgba(28,28,32,0.62)] p-1.5 shadow-[0_10px_28px_-8px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.14)] backdrop-blur-xl">
+        {NAV_ICONS.map((d, i) => (
           <span
             key={i}
-            className={`flex flex-1 justify-center rounded-full py-2 ${
+            className={`flex flex-1 items-center justify-center rounded-full py-2 ${
               i === active ? "bg-white/[0.14]" : ""
             }`}
           >
-            <span
-              className={`block h-4 w-4 rounded-[5px] ${
-                i === active ? "bg-white" : "bg-white/35"
-              }`}
-            />
+            <svg
+              viewBox="0 0 24 24"
+              className={`h-[18px] w-[18px] ${i === active ? "text-white" : "text-white/45"}`}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.8}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d={d} />
+            </svg>
           </span>
         ))}
       </div>
-      <span className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full border border-white/10 bg-[rgba(28,28,32,0.6)] backdrop-blur">
-        <span className="block h-4 w-4 rounded-full border-2 border-white/70" />
+      <span className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-full border border-white/10 bg-[rgba(28,28,32,0.62)] shadow-[0_10px_28px_-8px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.14)] backdrop-blur-xl">
+        <svg viewBox="0 0 24 24" className="h-[19px] w-[19px] text-white/85" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="11" cy="11" r="7" />
+          <path d="M21 21l-4.3-4.3" />
+        </svg>
       </span>
     </div>
   );

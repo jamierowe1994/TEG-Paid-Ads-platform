@@ -67,10 +67,10 @@ export default function LeadsStat({
   return (
     <div
       ref={ref}
-      className={`absolute -left-4 bottom-10 w-48 rounded-2xl bg-white p-4 shadow-2xl sm:-left-8 ${className}`}
+      className={`absolute -left-4 bottom-10 w-48 rounded-2xl bg-[#ffffff]/92 p-4 shadow-2xl backdrop-blur-md sm:-left-8 ${className}`}
       style={{ transformOrigin: "center" }}
     >
-      <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
+      <p className="text-xs font-medium uppercase tracking-wide text-[#9ca3af]">
         Leads this month
       </p>
       <p className="mt-1 text-3xl font-semibold text-[#E31F36]">↑ {count}%</p>
@@ -83,7 +83,7 @@ export default function LeadsStat({
           style={{ animationDelay: "0.4s" }}
         />
       </div>
-      <p className="mt-2 text-[10px] text-gray-400">vs last month</p>
+      <p className="mt-2 text-[10px] text-[#9ca3af]">vs last month</p>
     </div>
   );
 }

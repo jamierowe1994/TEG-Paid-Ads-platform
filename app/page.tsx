@@ -168,7 +168,7 @@ export default function LandingPage() {
               <div className="mt-8">
                 <Link
                   href="/signup"
-                  className="btn-group inline-block rounded-xl px-8 py-4 text-base font-semibold shadow-[0_14px_30px_-8px_rgba(227,31,54,0.45)]"
+                  className="btn-group inline-block rounded-xl px-8 py-4 text-base font-semibold"
                 >
                   Start your campaign
                 </Link>
