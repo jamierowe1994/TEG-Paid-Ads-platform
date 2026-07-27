@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Drift from "./Drift";
 
 // "How it works", shown through the app itself: two tabs — Paid Ads and
 // Referrals — each with its own steps and a phone mock of the screen you'd
@@ -59,23 +60,23 @@ export default function HowItWorksPhone() {
   const [tab, setTab] = useState<TabId>("ads");
 
   return (
-    // items-end so the phone hangs off the bottom of the slab rather than
-    // sitting in the middle of it; the slab clips it.
-    <div className="grid items-start gap-16 lg:grid-cols-2 lg:items-end">
-      <div>
-        {/* This section sits on the light slab, so its chrome uses the grey
-            scale rather than white — .light-panel restores those greys from
-            the dark theme's remapping. The phone's own UI below is a device
-            mockup and keeps its own colours. */}
-        <h2 className="text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl">
+    <div className="grid items-center gap-16 lg:grid-cols-2">
+      {/* Copy and phone drift at different rates as the section crosses the
+          viewport, so they separate on the way in and close back up — the
+          space between them does the work rather than more padding. */}
+      <Drift speed={0.05}>
+        {/* Back on the dark page background, so white chrome again. Sized up
+            — this section was carrying the least visual weight of any on the
+            page despite being the one that explains the product. */}
+        <h2 className="text-5xl font-semibold tracking-tight text-white sm:text-6xl">
           How it works
         </h2>
-        <p className="mt-3 max-w-md text-gray-500">
+        <p className="mt-5 max-w-md text-lg text-white/55">
           Two ways to make money in one app. Pick a side.
         </p>
 
         {/* Tabs */}
-        <div className="mt-8 inline-flex rounded-full bg-[#ffffff] p-1 shadow-lg">
+        <div className="mt-10 inline-flex rounded-full bg-[#ffffff] p-1 shadow-lg">
           {([
             ["ads", "Paid Ads"],
             ["referrals", "Referrals"],
@@ -94,47 +95,41 @@ export default function HowItWorksPhone() {
           ))}
         </div>
 
-        <ol className="mt-10 min-h-[470px] space-y-7">
+        <ol className="mt-12 min-h-[470px] space-y-9">
           {STEPS[tab].map((s) => (
-            <li
-              key={s.n}
-              className="group -mx-4 flex gap-5 rounded-2xl px-4 py-3 transition duration-200 hover:bg-white hover:shadow-[0_12px_34px_-18px_rgba(17,24,39,0.4)]"
-            >
-              <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-300 text-sm font-semibold text-gray-500 transition duration-200 group-hover:border-transparent group-hover:bg-[var(--group)] group-hover:text-white">
+            <li key={s.n} className="flex gap-5">
+              <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/20 text-sm font-semibold text-white/80">
                 {s.n}
               </span>
               <div>
-                <p className="text-lg font-semibold text-gray-900">{s.title}</p>
-                <p className="mt-1.5 max-w-md leading-relaxed text-gray-500">
+                <p className="text-xl font-semibold text-white">{s.title}</p>
+                <p className="mt-2 max-w-md text-[17px] leading-relaxed text-white/55">
                   {s.body}
                 </p>
               </div>
             </li>
           ))}
         </ol>
-      </div>
+      </Drift>
 
       {/* Phone — the frame never moves; the screen slides between the two.
-          Pushed down so it runs off the bottom edge of the light slab and is
-          cut off by it (the slab carries the overflow-hidden). The negative
-          margin is what makes it overhang; without it the slab just grows to
-          fit and nothing is cropped. */}
-      <div className="relative z-10 flex justify-center lg:-mb-60 lg:justify-end">
-        {/* A soft bloom so the phone's edges separate from the slab. */}
+          Drifts harder than the copy, so the two pull apart and settle. */}
+      <Drift speed={-0.06} className="relative z-10 flex justify-center lg:justify-end">
+        {/* A soft bloom so the phone's edges separate from the background. */}
         <span
           aria-hidden
-          className="pointer-events-none absolute left-1/2 top-1/2 h-[560px] w-[460px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-40 blur-[90px] lg:left-auto lg:right-[40px] lg:translate-x-0"
-          style={{ background: "radial-gradient(circle, rgba(167,42,53,0.26), rgba(167,42,53,0.08) 55%, transparent 72%)" }}
+          className="pointer-events-none absolute left-1/2 top-1/2 h-[560px] w-[460px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-70 blur-[90px] lg:left-auto lg:right-[40px] lg:translate-x-0"
+          style={{ background: "radial-gradient(circle, rgba(167,42,53,0.30), rgba(167,42,53,0.10) 55%, transparent 72%)" }}
         />
         <PhoneFrame tab={tab} />
-      </div>
+      </Drift>
     </div>
   );
 }
 
 function PhoneFrame({ tab }: { tab: TabId }) {
   return (
-    <div className="relative w-[300px] shrink-0 rounded-[44px] border-[7px] border-[#1c1c20] bg-[#f4f4f5] shadow-[0_40px_90px_-30px_rgba(0,0,0,0.45),0_0_0_1px_rgba(0,0,0,0.06)] lg:w-[360px]">
+    <div className="relative w-[300px] shrink-0 rounded-[44px] border-[7px] border-[#1c1c20] bg-[#f4f4f5] shadow-[0_40px_90px_-30px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.12)] lg:w-[380px]">
       {/* Dynamic-island style pill */}
       <div className="absolute left-1/2 top-2.5 z-20 h-[22px] w-[86px] -translate-x-1/2 rounded-full bg-[#1c1c20]" />
       <div className="relative h-[600px] overflow-hidden rounded-[37px]">
