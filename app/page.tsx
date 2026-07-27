@@ -64,6 +64,14 @@ export default function LandingPage() {
             <LaunchPadMark />
           </Link>
           <div className="flex items-center gap-2.5 sm:gap-3">
+            {/* The marketing pack — same understated treatment as See pricing. */}
+            <a
+              href="/downloads/launch-pad-partner-pack.pdf"
+              download
+              className="hidden px-2 py-2.5 text-sm font-medium text-white/80 underline decoration-white/35 underline-offset-[6px] transition hover:text-white hover:decoration-white sm:inline sm:px-3 sm:text-base"
+            >
+              Get the pack
+            </a>
             <a
               href="#packages"
               className="px-2 py-2.5 text-sm font-medium text-white/80 underline decoration-white/35 underline-offset-[6px] transition hover:text-white hover:decoration-white sm:px-3 sm:text-base"
@@ -155,7 +163,7 @@ export default function LandingPage() {
               <div className="mt-8">
                 <Link
                   href="/signup"
-                  className="btn-group inline-block rounded-xl px-8 py-4 text-base font-semibold"
+                  className="btn-group inline-block rounded-full px-9 py-4 text-base font-semibold"
                 >
                   Start your campaign
                 </Link>

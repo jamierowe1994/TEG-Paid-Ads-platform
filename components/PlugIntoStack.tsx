@@ -11,8 +11,12 @@ const SOURCES = [
   pick("Instagram"),
   pick("LinkedIn"),
 ];
-// Internal systems — no public logos, so these get clean lettermarks.
-const DESTINATIONS = ["REX", "Atlas"];
+// Internal systems. Drop <id>.svg or .png into public/system-logos and the
+// lettermark is replaced by the real logo; without one it stays as text.
+const DESTINATIONS = [
+  { id: "rex", label: "REX" },
+  { id: "atlas", label: "Atlas" },
+];
 
 export default function PlugIntoStack() {
   return (
@@ -67,11 +71,18 @@ export default function PlugIntoStack() {
         {/* Destinations */}
         <div className="flex flex-col gap-9 sm:gap-12">
           {DESTINATIONS.map((d) => (
-            <span
-              key={d}
-              className="text-[13px] font-semibold uppercase tracking-[0.14em] text-white/70 sm:text-sm"
-            >
-              {d}
+            <span key={d.id} className="relative flex h-11 items-center">
+              {/* The logo, if one has been dropped in. */}
+              <span
+                className="absolute inset-0 bg-contain bg-left bg-no-repeat"
+                style={{
+                  backgroundImage: `url(/system-logos/${d.id}.svg), url(/system-logos/${d.id}.png)`,
+                }}
+              />
+              {/* Sits underneath, so it shows through only when there's no file. */}
+              <span className="text-[13px] font-semibold uppercase tracking-[0.14em] text-white/70 sm:text-sm">
+                {d.label}
+              </span>
             </span>
           ))}
         </div>
