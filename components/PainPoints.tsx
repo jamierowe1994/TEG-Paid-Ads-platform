@@ -35,16 +35,6 @@ const POINTS: { pain: string; answer: string; wide?: boolean }[] = [
       "We keep talking to them on your behalf until they're ready for a conversation — so when you do call, they already know who you are.",
     wide: true,
   },
-  {
-    pain: "You never really know where the money went.",
-    answer:
-      "Your own dashboard: spend, reach, engagement, every lead and where it sits in your funnel, in real time. No waiting on a monthly report.",
-  },
-  {
-    pain: "The agent down the road could run the same ad.",
-    answer:
-      "They can't. Your area is yours — no other agent in your patch runs the same campaign.",
-  },
 ];
 
 function Point({

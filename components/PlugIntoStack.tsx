@@ -75,7 +75,7 @@ export default function PlugIntoStack() {
             }}
           />
           <div className="relative flex h-24 w-24 items-center justify-center rounded-[24px] border border-white/15 bg-[#0e0e12] shadow-[0_0_46px_-12px_rgba(255,255,255,0.4),inset_0_1px_0_rgba(255,255,255,0.14)] sm:h-28 sm:w-28">
-            <svg viewBox="0 0 512 512" className="h-12 w-12 sm:h-14 sm:w-14" fill="#ffffff" aria-hidden>
+            <svg viewBox="0 0 512 512" className="h-12 w-12 sm:h-14 sm:w-14" fill="#A72A35" aria-hidden>
               <g transform="rotate(45 256 256) translate(0 -8)">
                 <path d="M256 80 C298 122 300 194 298 268 C298 302 293 330 284 350 L228 350 C219 330 214 302 214 268 C212 194 214 122 256 80 Z" />
                 <path d="M214 266 L172 356 L221 335 Z" />

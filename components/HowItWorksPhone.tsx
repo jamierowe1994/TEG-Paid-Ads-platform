@@ -85,7 +85,7 @@ export default function HowItWorksPhone() {
               onClick={() => setTab(id)}
               className={`rounded-full px-6 py-2.5 text-sm font-medium transition ${
                 tab === id
-                  ? "bg-[#08080a] text-white"
+                  ? "bg-[var(--group)] text-white"
                   : "text-[#6b7280] hover:text-[#111827]"
               }`}
             >
@@ -96,8 +96,11 @@ export default function HowItWorksPhone() {
 
         <ol className="mt-10 min-h-[470px] space-y-7">
           {STEPS[tab].map((s) => (
-            <li key={s.n} className="flex gap-5">
-              <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-300 text-sm font-semibold text-gray-500">
+            <li
+              key={s.n}
+              className="group -mx-4 flex gap-5 rounded-2xl px-4 py-3 transition duration-200 hover:bg-white hover:shadow-[0_12px_34px_-18px_rgba(17,24,39,0.4)]"
+            >
+              <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-300 text-sm font-semibold text-gray-500 transition duration-200 group-hover:border-transparent group-hover:bg-[var(--group)] group-hover:text-white">
                 {s.n}
               </span>
               <div>
@@ -116,7 +119,7 @@ export default function HowItWorksPhone() {
           cut off by it (the slab carries the overflow-hidden). The negative
           margin is what makes it overhang; without it the slab just grows to
           fit and nothing is cropped. */}
-      <div className="relative z-10 flex justify-center lg:-mb-40 lg:justify-end">
+      <div className="relative z-10 flex justify-center lg:-mb-60 lg:justify-end">
         {/* A soft bloom so the phone's edges separate from the slab. */}
         <span
           aria-hidden

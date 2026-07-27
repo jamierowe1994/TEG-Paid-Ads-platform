@@ -18,16 +18,6 @@
 export const MANAGEMENT_FEE = 100;
 
 /**
- * Founding agent offer — first 10 agents only. A £25/month saving on the
- * management fee, held for as long as they stay on the service.
- */
-export const FOUNDING_AGENT = {
-  fee: 75,
-  saving: MANAGEMENT_FEE - 75,
-  limit: 10,
-} as const;
-
-/**
  * Included on every package without exception — the pack's "everything
  * included in every package" grid. Shared rather than per-package because
  * the whole pitch is that the tiers are otherwise identical.

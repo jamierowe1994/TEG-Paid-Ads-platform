@@ -3,7 +3,6 @@ import {
   PACKAGES,
   MANAGEMENT_FEE,
   INCLUDED_IN_EVERY_PACKAGE,
-  FOUNDING_AGENT,
   PACKAGE_TERMS,
 } from "@/lib/packages";
 import Reveal from "@/components/Reveal";
@@ -22,14 +21,14 @@ import PainPoints from "@/components/PainPoints";
 // Kept as a constant because the rocket's window is punched out in it.
 const HERO_BG = "#1b1c20";
 
-// The Launch Pad rocket, matching the installed app icon. White on the dark
-// hero; the porthole is punched in the backdrop colour rather than filled white.
+// The Launch Pad rocket, matching the installed app icon. Brand red, with
+// the porthole punched in the backdrop colour rather than filled white.
 function LaunchPadMark() {
   return (
     <svg
       viewBox="0 0 512 512"
       className="h-12 w-12 sm:h-14 sm:w-14"
-      fill="#ffffff"
+      fill="#A72A35"
       aria-hidden
     >
       <g transform="rotate(45 256 256) translate(0 -8)">
@@ -217,7 +216,7 @@ export default function LandingPage() {
         <div className="light-panel sticky top-0 z-10 overflow-hidden">
           <section
             id="how"
-            className="mx-auto max-w-6xl px-6 pb-0 pt-28 sm:pt-36"
+            className="mx-auto max-w-6xl px-6 pb-20 pt-28 sm:pt-36"
           >
             <Reveal>
               <HowItWorksPhone />
@@ -352,56 +351,55 @@ export default function LandingPage() {
             ))}
           </div>
 
-          {/* The included list in full, once — same as the pack's own
-              "everything included in every package" grid. */}
+          {/* The full included list, folded away behind a button — it's the
+              same six things on every package, so it was adding a screen of
+              height to say something the cards already imply. <details> so
+              it works without JS and stays in the page for search. */}
           <Reveal>
-            <p className="mt-20 text-center text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
-              Everything included in every package
-            </p>
-            <div className="mt-8 grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
-              {INCLUDED_IN_EVERY_PACKAGE.map((f) => (
-                <div key={f.title}>
-                  <div className="flex items-center gap-2.5">
-                    <svg
-                      className="h-4 w-4 shrink-0 text-[var(--group)]"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M16.7 5.3a1 1 0 010 1.4l-8 8a1 1 0 01-1.4 0l-4-4a1 1 0 111.4-1.4L8 12.6l7.3-7.3a1 1 0 011.4 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <p className="font-semibold text-gray-900">{f.title}</p>
+            <details className="group mx-auto mt-14 max-w-4xl">
+              <summary className="mx-auto flex w-fit cursor-pointer list-none items-center gap-2 rounded-full border border-gray-200 px-6 py-3 text-sm font-medium text-gray-900 transition hover:border-transparent hover:bg-[var(--group)] hover:text-white [&::-webkit-details-marker]:hidden">
+                What&apos;s included in every package
+                <svg
+                  className="h-4 w-4 transition-transform duration-200 group-open:rotate-180"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M5 8l5 5 5-5" />
+                </svg>
+              </summary>
+              <div className="mt-10 grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+                {INCLUDED_IN_EVERY_PACKAGE.map((f) => (
+                  <div key={f.title}>
+                    <div className="flex items-center gap-2.5">
+                      <svg
+                        className="h-4 w-4 shrink-0 text-[var(--group)]"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M16.7 5.3a1 1 0 010 1.4l-8 8a1 1 0 01-1.4 0l-4-4a1 1 0 111.4-1.4L8 12.6l7.3-7.3a1 1 0 011.4 0z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      <p className="font-semibold text-gray-900">{f.title}</p>
+                    </div>
+                    <p className="mt-2 text-sm leading-relaxed text-gray-600">
+                      {f.detail}
+                    </p>
                   </div>
-                  <p className="mt-2 text-sm leading-relaxed text-gray-600">
-                    {f.detail}
-                  </p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </details>
           </Reveal>
 
-          {/* Founding agent offer + the commitment terms. */}
+          {/* Just the commitment terms now — the founding agent offer is out. */}
           <Reveal>
-            <div className="mx-auto mt-12 max-w-3xl rounded-3xl border border-gray-200 bg-white p-8 text-center">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
-                Founding agent offer — first {FOUNDING_AGENT.limit} agents only
-              </p>
-              <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-gray-600">
-                Pay just{" "}
-                <span className="font-semibold text-gray-900">
-                  £{FOUNDING_AGENT.fee}/month
-                </span>{" "}
-                for management — a £{FOUNDING_AGENT.saving} saving on the
-                standard rate — held for as long as you stay on the service.
-              </p>
-            </div>
-          </Reveal>
-
-          <Reveal>
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+            <div className="mt-12 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
               {PACKAGE_TERMS.map((t) => (
                 <span key={t} className="text-sm text-gray-500">
                   {t}
