@@ -24,9 +24,9 @@ export default function HeroAdWord() {
         className="ad-reveal"
         style={{ "--ad-card-w": "324px" } as React.CSSProperties}
       >
-        <span className="mx-6 inline-block w-[276px] whitespace-normal rounded-2xl border border-gray-100 bg-white p-4 text-left align-middle font-normal normal-case tracking-normal shadow-xl">
+        <span className="mx-6 inline-block w-[276px] whitespace-normal rounded-2xl border border-[#f3f4f6] bg-[#ffffff] p-4 text-left align-middle font-normal normal-case tracking-normal shadow-xl">
           <span className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-[#9ca3af]">
               New lead
             </span>
             <span className="flex items-center gap-1 text-[10px] font-medium text-green-600">
@@ -35,14 +35,14 @@ export default function HeroAdWord() {
             </span>
           </span>
           <span className="mt-2.5 flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-xs font-semibold text-gray-600">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f3f4f6] text-xs font-semibold text-[#4b5563]">
               SM
             </span>
             <span className="leading-tight">
-              <span className="block text-xs font-semibold text-gray-900">
+              <span className="block text-xs font-semibold text-[#111827]">
                 Sarah Mitchell
               </span>
-              <span className="block text-[10px] text-gray-400">
+              <span className="block text-[10px] text-[#9ca3af]">
                 via Facebook ad
               </span>
             </span>

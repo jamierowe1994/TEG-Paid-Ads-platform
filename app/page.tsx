@@ -144,15 +144,25 @@ export default function LandingPage() {
           <div className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-10 px-8 py-12 sm:px-12 lg:grid-cols-2">
             <div className="p-words">
               <span className="inline-block rounded-full bg-[#E31F36] px-4 py-1.5 text-sm font-medium text-white">
-                Built for agents
+                Mission briefing
               </span>
               <h2 className="mt-5 max-w-lg text-4xl font-semibold leading-[1.05] tracking-tight text-gray-900 sm:text-5xl">
-                Paid ads that stop the scroll.
+                What is Launch Pad?
               </h2>
               <p className="mt-5 max-w-md text-lg leading-relaxed text-gray-600">
-                Seven businesses, one engine. We run your campaigns on the
-                platforms that matter, branded as you — so your patch sees
-                your face, not a faceless portal.
+                We build your ads, run them on the platforms your patch
+                actually uses, and drop every lead that comes back into one
+                dashboard — with the phone number already there, ready to call.
+              </p>
+              <p className="mt-4 max-w-md text-lg leading-relaxed text-gray-600">
+                You do the part you&apos;re good at: talking to people. We do
+                the part that involves arguing with Meta&apos;s ad manager at
+                two in the morning.
+              </p>
+              <p className="mt-5 max-w-md text-sm leading-relaxed text-gray-400">
+                Why all the space stuff? Because &ldquo;launching your patch
+                into the stratosphere&rdquo; tested better than &ldquo;we run
+                your Facebook ads&rdquo;. Both are true. Only one has a planet.
               </p>
               <div className="mt-8">
                 <Link
@@ -627,24 +637,10 @@ export default function LandingPage() {
           behind the content and the page ends on it. */}
       <footer className="relative overflow-hidden pt-16">
         <div className="horizon" aria-hidden>
-          <div className="horizon-bloom" />
           <div className="horizon-planet" />
         </div>
         <div className="relative z-10 px-8 pb-20 pt-4 text-white sm:px-14 sm:pb-24">
           <div className="mx-auto max-w-6xl">
-            {/* CTA row */}
-            <div className="flex flex-col items-start justify-between gap-8 border-b border-white/10 pb-12 lg:flex-row lg:items-center">
-              <h2 className="max-w-md text-3xl font-semibold tracking-tight sm:text-4xl">
-                Ready to be unmissable in your patch?
-              </h2>
-              <Link
-                href="/signup"
-                className="btn-press rounded-xl bg-white px-8 py-4 text-base font-semibold text-gray-900 shadow-lg transition hover:bg-gray-200"
-              >
-                Choose your package
-              </Link>
-            </div>
-
             {/* Links — kept to one tight row (the per-brand list is gone, so
                 the horizon isn't pushed miles down the page). */}
             {/* Padded down so this row and the legal line below land ON the
