@@ -212,16 +212,27 @@ export default function LandingPage() {
         </section>
 
         {/* The one light panel — curved top, and it clips the phone that
-            runs off its bottom edge. */}
-        <div className="light-panel sticky top-0 z-10 overflow-hidden">
-          <section
-            id="how"
-            className="mx-auto max-w-6xl px-6 pb-20 pt-28 sm:pt-36 lg:pb-32"
-          >
-            <Reveal>
-              <HowItWorksPhone />
-            </Reveal>
-          </section>
+            runs off its bottom edge.
+
+            The wrapper exists purely to buy dwell time. Without it the dark
+            slab began covering this panel the moment it pinned, so step 4 was
+            being wiped before you could read it. The spacer below the panel
+            extends the range the panel stays stuck for, and because the panel
+            is pinned and opaque it fills the screen for that whole stretch —
+            you get a beat with the section in full frame before the black
+            starts to climb. */}
+        <div className="relative z-10">
+          <div className="light-panel sticky top-0 overflow-hidden">
+            <section
+              id="how"
+              className="mx-auto max-w-6xl px-6 pb-20 pt-28 sm:pt-36 lg:pb-32"
+            >
+              <Reveal>
+                <HowItWorksPhone />
+              </Reveal>
+            </section>
+          </div>
+          <div aria-hidden className="hidden lg:block lg:h-[45vh]" />
         </div>
 
         {/* Back to charcoal, curving over the light panel the same way. */}

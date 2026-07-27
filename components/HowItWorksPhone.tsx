@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import ICONS, { SocialIcon } from "./SocialIcons";
 
 // "How it works", shown through the app itself: two tabs — Paid Ads and
 // Referrals — each with its own steps and a phone mock of the screen you'd
@@ -62,7 +63,7 @@ export default function HowItWorksPhone() {
     // items-end so the phone hangs off the bottom of the slab rather than
     // sitting in the middle of it; the slab clips it.
     <div className="grid items-start gap-16 lg:grid-cols-2 lg:items-end">
-      <div>
+      <div className="lg:pt-12">
         {/* This section sits on the light slab, so its chrome uses the grey
             scale rather than white — .light-panel restores those greys from
             the dark theme's remapping. The phone's own UI below is a device
@@ -134,7 +135,7 @@ export default function HowItWorksPhone() {
 
 function PhoneFrame({ tab }: { tab: TabId }) {
   return (
-    <div className="relative w-[300px] shrink-0 rounded-[44px] border-[7px] border-[#1c1c20] bg-[#f4f4f5] shadow-[0_40px_90px_-30px_rgba(0,0,0,0.45),0_0_0_1px_rgba(0,0,0,0.06)] lg:w-[360px]">
+    <div className="relative w-[300px] shrink-0 rounded-[44px] border-[7px] border-[#1c1c20] bg-[#f4f4f5] shadow-[0_40px_90px_-30px_rgba(0,0,0,0.45),0_0_0_1px_rgba(0,0,0,0.06)] lg:w-[330px]">
       {/* Dynamic-island style pill */}
       <div className="absolute left-1/2 top-2.5 z-20 h-[22px] w-[86px] -translate-x-1/2 rounded-full bg-[#1c1c20]" />
       <div className="relative h-[600px] overflow-hidden rounded-[37px]">
@@ -169,15 +170,27 @@ function AdsScreen() {
 
       <div className="mt-4 space-y-2.5">
         {[
-          { n: "Sarah Whitfield", m: "Landed 09:12", tag: "New" },
-          { n: "Tom Baker", m: "Attempt 2 · 18 Jul" },
-          { n: "Priya Shah", m: "Attempt 1 · 17 Jul" },
+          { n: "Sarah Whitfield", m: "Landed 09:12", tag: "New", src: "LinkedIn" },
+          { n: "Tom Baker", m: "Attempt 2 · 18 Jul", src: "Meta / Facebook" },
+          { n: "Priya Shah", m: "Attempt 1 · 17 Jul", src: "Instagram" },
         ].map((l) => (
           <div
             key={l.n}
             className="flex items-center gap-3 rounded-2xl border border-black/5 bg-[#ffffff] px-3.5 py-3 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.12)]"
           >
-            <span className="h-10 w-10 shrink-0 rounded-xl bg-gradient-to-br from-[#f09433] via-[#dc2743] to-[#bc1888]" />
+            {/* Which platform the lead came in from — the brand mark itself,
+                no tile behind it. */}
+            {(() => {
+              const icon = ICONS.find((i) => i.name === l.src)!;
+              return (
+                <span
+                  className="flex h-10 w-10 shrink-0 items-center justify-center"
+                  style={{ color: icon.color }}
+                >
+                  <SocialIcon icon={icon} className="h-[26px] w-[26px]" />
+                </span>
+              );
+            })()}
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 <p className="truncate text-[13px] font-semibold">{l.n}</p>
