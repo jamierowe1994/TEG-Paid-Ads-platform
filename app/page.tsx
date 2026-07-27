@@ -11,6 +11,7 @@ import SmoothScroll from "@/components/SmoothScroll";
 import ScrollFillText from "@/components/ScrollFillText";
 import StandaloneGuard from "@/components/StandaloneGuard";
 import Stars from "@/components/Stars";
+import HowItWorksPhone from "@/components/HowItWorksPhone";
 
 // The hero's backdrop. Kept as a constant because the rocket's window is
 // punched out in this exact colour.
@@ -140,7 +141,7 @@ export default function LandingPage() {
             panel's backdrop-filter — so the frost must sit on the same element
             that carries the transform, not a parent. */}
         <PanelReveal>
-        <div className="glass-panel relative flex min-h-[64vh] flex-col overflow-hidden rounded-[2.5rem]">
+        <div className="relative flex min-h-[64vh] flex-col overflow-hidden rounded-[2.5rem]">
           <div className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-10 px-8 py-12 sm:px-12 lg:grid-cols-2">
             <div className="p-words">
               <span className="inline-block rounded-full bg-[#E31F36] px-4 py-1.5 text-sm font-medium text-white">
@@ -216,210 +217,12 @@ export default function LandingPage() {
         </Reveal>
       </section>
 
-      {/* How it works — steps left, mock dashboard right */}
+      {/* How it works — the process shown through the app itself, with a tab
+          for each way of earning. */}
       <section id="how" className="mx-auto max-w-6xl px-6 py-28">
-        <div>
-        <div className="grid items-center gap-16 lg:grid-cols-2">
-          {/* Steps */}
-          <div>
-            <Reveal>
-              <h2 className="text-4xl font-semibold tracking-tight">
-                How it works
-              </h2>
-              <p className="mt-3 max-w-md text-gray-500">
-                From signup to signed business in three steps — everything
-                tracked in your own dashboard.
-              </p>
-            </Reveal>
-            <div className="mt-12 space-y-0">
-              {[
-                {
-                  n: "1",
-                  title: "Pick a package",
-                  body: "Choose the level that fits your goals and pay securely online. Sign up with your work email and we route you straight to your business's portal.",
-                },
-                {
-                  n: "2",
-                  title: "We build your ads",
-                  body: "Tell us your platforms and goals. Our team prepares your creatives and launches your campaigns — marketed as you, personalised to your patch.",
-                },
-                {
-                  n: "3",
-                  title: "Track every lead",
-                  body: "Leads land in your portal in real time. Work them through your funnel, convert them, and push them straight into your CRM with one click.",
-                },
-              ].map((s, i) => (
-                <Reveal key={s.n} delay={i * 120}>
-                  <div className="group flex gap-5 pb-10 last:pb-0">
-                    <div className="flex flex-col items-center">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-gray-200 text-sm font-semibold text-gray-900 transition group-hover:border-[#E31F36] group-hover:bg-[#E31F36] group-hover:text-white">
-                        {s.n}
-                      </div>
-                      {i < 2 && (
-                        <div className="mt-2 w-px flex-1 bg-gray-100" />
-                      )}
-                    </div>
-                    <div className="pt-1.5">
-                      <h3 className="text-lg font-semibold">{s.title}</h3>
-                      <p className="mt-2 max-w-sm text-sm leading-relaxed text-gray-500">
-                        {s.body}
-                      </p>
-                    </div>
-                  </div>
-                </Reveal>
-              ))}
-            </div>
-          </div>
-
-          {/* Mock dashboard */}
-          <Reveal direction="right" delay={150}>
-            <div className="relative">
-              {/* soft backdrop blob */}
-              <div className="absolute -inset-6 -z-10 rounded-[2.5rem] bg-gradient-to-br from-red-50 via-white to-gray-50" />
-              <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
-                {/* window chrome */}
-                <div className="flex items-center gap-1.5 border-b border-gray-100 bg-gray-50/60 px-4 py-3">
-                  <span className="h-2.5 w-2.5 rounded-full bg-gray-200" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-gray-200" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-gray-200" />
-                  <span className="ml-3 text-[10px] text-gray-400">
-                    portal.theexpertsgroup.co.uk/dashboard
-                  </span>
-                </div>
-                <div className="flex">
-                  {/* mini sidebar */}
-                  <div className="hidden w-36 shrink-0 border-r border-gray-100 bg-gray-50/40 p-3 sm:block">
-                    <div className="flex items-center gap-1.5">
-                      <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#E31F36] text-[9px] font-bold text-white">
-                        E
-                      </div>
-                      <div className="text-[9px] font-semibold leading-tight">
-                        The Property
-                        <br />
-                        Experts
-                      </div>
-                    </div>
-                    <div className="mt-4 space-y-1">
-                      {["Overview", "Leads", "Referrals", "Grow"].map(
-                        (item, i) => (
-                          <div
-                            key={item}
-                            className={`rounded-md px-2 py-1.5 text-[10px] font-medium ${
-                              i === 1
-                                ? "bg-white text-gray-900 shadow-sm ring-1 ring-gray-100"
-                                : "text-gray-400"
-                            }`}
-                          >
-                            {item}
-                          </div>
-                        )
-                      )}
-                    </div>
-                  </div>
-                  {/* main */}
-                  <div className="flex-1 p-4">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold">Morning, James 👋</p>
-                      <span className="flex items-center gap-1.5 rounded-full bg-green-50 px-2 py-0.5 text-[9px] font-semibold text-green-600">
-                        <span className="pulse-dot h-1.5 w-1.5 rounded-full bg-green-500" />
-                        Ads live
-                      </span>
-                    </div>
-                    {/* stats */}
-                    <div className="mt-3 grid grid-cols-3 gap-2">
-                      {[
-                        { label: "Leads", value: "24" },
-                        { label: "Cost / lead", value: "£4.12" },
-                        { label: "MAs booked", value: "6" },
-                      ].map((s) => (
-                        <div
-                          key={s.label}
-                          className="rounded-lg border border-gray-100 p-2"
-                        >
-                          <p className="text-[9px] text-gray-400">{s.label}</p>
-                          <p className="mt-0.5 text-sm font-semibold">
-                            {s.value}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                    {/* funnel */}
-                    <div className="mt-3 rounded-lg border border-gray-100 p-2.5">
-                      <p className="text-[9px] font-medium text-gray-400">
-                        YOUR FUNNEL
-                      </p>
-                      <div className="mt-1.5 flex items-center gap-1">
-                        {[100, 75, 45, 25].map((w, i) => (
-                          <div
-                            key={i}
-                            className="h-1.5 rounded-full"
-                            style={{
-                              width: `${w / 4}%`,
-                              backgroundColor:
-                                i < 3 ? "#E31F36" : "#FECDD3",
-                            }}
-                          />
-                        ))}
-                      </div>
-                      <div className="mt-1 flex justify-between text-[8px] text-gray-400">
-                        <span>New</span>
-                        <span>Contacted</span>
-                        <span>MA booked</span>
-                        <span>In REX</span>
-                      </div>
-                    </div>
-                    {/* lead rows */}
-                    {[
-                      {
-                        name: "Sarah Mitchell",
-                        src: "Facebook",
-                        stage: "New",
-                        stageColor: "#FEF2F2",
-                        stageText: "#E31F36",
-                      },
-                      {
-                        name: "Tom Barker",
-                        src: "Instagram",
-                        stage: "MA booked",
-                        stageColor: "#F0FDF4",
-                        stageText: "#16A34A",
-                      },
-                    ].map((l) => (
-                      <div
-                        key={l.name}
-                        className="mt-2 flex items-center justify-between rounded-lg border border-gray-100 p-2.5"
-                      >
-                        <div>
-                          <p className="text-[10px] font-semibold">{l.name}</p>
-                          <p className="text-[9px] text-gray-400">
-                            via {l.src}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <span
-                            className="rounded-full px-2 py-0.5 text-[8px] font-semibold"
-                            style={{
-                              backgroundColor: l.stageColor,
-                              color: l.stageText,
-                            }}
-                          >
-                            {l.stage}
-                          </span>
-                          {l.stage === "MA booked" && (
-                            <span className="rounded-md bg-gray-900 px-2 py-1 text-[8px] font-semibold text-white">
-                              Push to REX →
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Reveal>
-        </div>
-        </div>
+        <Reveal>
+          <HowItWorksPhone />
+        </Reveal>
       </section>
 
       {/* Statement piece — right-aligned to the same max-w-6xl right edge as
@@ -645,7 +448,7 @@ export default function LandingPage() {
                 the horizon isn't pushed miles down the page). */}
             {/* Padded down so this row and the legal line below land ON the
                 planet, under the lit rim, rather than floating above it. */}
-            <div className="flex flex-col justify-between gap-8 pt-[124px] sm:flex-row sm:gap-14 sm:pt-[132px]">
+            <div className="flex flex-col justify-between gap-8 pt-[190px] sm:flex-row sm:gap-14 sm:pt-[205px]">
               <div className="max-w-xs">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img

@@ -1,0 +1,243 @@
+"use client";
+
+import { useState } from "react";
+
+// "How it works", shown through the app itself: two tabs — Paid Ads and
+// Referrals — each with its own steps and a phone mock of the screen you'd
+// actually be looking at.
+
+type TabId = "ads" | "referrals";
+
+const STEPS: Record<TabId, { n: string; title: string; body: string }[]> = {
+  ads: [
+    {
+      n: "1",
+      title: "Pick a package",
+      body: "Choose the level that fits, pay online, and you land straight in your business's portal.",
+    },
+    {
+      n: "2",
+      title: "We build and launch",
+      body: "We write the ads, design the creatives and set the targeting for your patch. You approve; we go live.",
+    },
+    {
+      n: "3",
+      title: "Leads land in your pocket",
+      body: "Every enquiry arrives in the app with the phone number already there — no chasing a spreadsheet.",
+    },
+    {
+      n: "4",
+      title: "Work them to booked",
+      body: "Log each attempt, book the appointment, push it to your CRM. The app nudges you when one goes cold.",
+    },
+  ],
+  referrals: [
+    {
+      n: "1",
+      title: "Spot one you can't help",
+      body: "A landlord when you sell. A buyer needing a mortgage. Someone worth money to another business in the group.",
+    },
+    {
+      n: "2",
+      title: "Pick who gets it",
+      body: "Flick through the businesses, see exactly what you'd earn, and send them on in about twenty seconds.",
+    },
+    {
+      n: "3",
+      title: "We find the closest agent",
+      body: "Matched on real distance to their patch, so it lands with someone who can actually act on it.",
+    },
+    {
+      n: "4",
+      title: "Get paid when it converts",
+      body: "Watch it move through their pipeline in your app, right up until your fee is paid.",
+    },
+  ],
+};
+
+export default function HowItWorksPhone() {
+  const [tab, setTab] = useState<TabId>("ads");
+
+  return (
+    <div className="grid items-center gap-16 lg:grid-cols-2">
+      <div>
+        <h2 className="text-4xl font-semibold tracking-tight text-white">
+          How it works
+        </h2>
+        <p className="mt-3 max-w-md text-white/55">
+          Two ways to make money in one app. Pick a side.
+        </p>
+
+        {/* Tabs */}
+        <div className="mt-8 inline-flex rounded-full border border-white/12 bg-white/[0.04] p-1">
+          {([
+            ["ads", "Paid Ads"],
+            ["referrals", "Referrals"],
+          ] as const).map(([id, label]) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className={`rounded-full px-6 py-2.5 text-sm font-medium transition ${
+                tab === id
+                  ? "bg-white text-[#0f1115]"
+                  : "text-white/60 hover:text-white"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <ol className="mt-10 space-y-7">
+          {STEPS[tab].map((s) => (
+            <li key={s.n} className="flex gap-5">
+              <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/15 text-sm font-semibold text-white/80">
+                {s.n}
+              </span>
+              <div>
+                <p className="text-lg font-semibold text-white">{s.title}</p>
+                <p className="mt-1.5 max-w-md leading-relaxed text-white/55">
+                  {s.body}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      {/* Phone */}
+      <div className="flex justify-center lg:justify-end">
+        <PhoneFrame>{tab === "ads" ? <AdsScreen /> : <ReferralScreen />}</PhoneFrame>
+      </div>
+    </div>
+  );
+}
+
+function PhoneFrame({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative w-[300px] shrink-0 rounded-[44px] border-[7px] border-[#1c1c20] bg-[#f4f4f5] shadow-[0_40px_90px_-30px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.08)]">
+      {/* Dynamic-island style pill */}
+      <div className="absolute left-1/2 top-2.5 z-20 h-[22px] w-[86px] -translate-x-1/2 rounded-full bg-[#1c1c20]" />
+      <div className="relative h-[600px] overflow-hidden rounded-[37px]">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// A cut-down version of the real Leads screen.
+function AdsScreen() {
+  return (
+    <div className="flex h-full flex-col bg-[#f4f4f5] px-4 pt-14 text-[#111827]">
+      <p className="text-[20px] font-semibold">Leads</p>
+      <span className="mt-1 block h-[3px] w-7 rounded-full bg-[#8a6f5c]" />
+
+      <div className="mt-5 flex gap-2 text-[11px]">
+        <span className="rounded-full bg-[#111827] px-3 py-1.5 font-medium text-white">
+          Active
+        </span>
+        <span className="rounded-full px-3 py-1.5 text-[#9ca3af]">Lost</span>
+        <span className="rounded-full px-3 py-1.5 text-[#9ca3af]">Archived</span>
+      </div>
+
+      <div className="mt-4 space-y-2.5">
+        {[
+          { n: "Sarah Whitfield", m: "Landed 09:12", tag: "New" },
+          { n: "Tom Baker", m: "Attempt 2 · 18 Jul" },
+          { n: "Priya Shah", m: "Attempt 1 · 17 Jul" },
+        ].map((l) => (
+          <div
+            key={l.n}
+            className="flex items-center gap-3 rounded-2xl border border-black/5 bg-white px-3.5 py-3 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.12)]"
+          >
+            <span className="h-10 w-10 shrink-0 rounded-xl bg-gradient-to-br from-[#f09433] via-[#dc2743] to-[#bc1888]" />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                <p className="truncate text-[13px] font-semibold">{l.n}</p>
+                {l.tag && (
+                  <span className="rounded-full bg-[#E31F36] px-1.5 py-0.5 text-[8px] font-bold uppercase text-white">
+                    {l.tag}
+                  </span>
+                )}
+              </div>
+              <p className="mt-0.5 text-[11px] text-[#9ca3af]">{l.m}</p>
+            </div>
+            <span className="text-[#d1d5db]">›</span>
+          </div>
+        ))}
+      </div>
+
+      <MiniNav />
+    </div>
+  );
+}
+
+// A cut-down version of the Refer & earn deck.
+function ReferralScreen() {
+  return (
+    <div className="flex h-full flex-col bg-[#f4f4f5] px-4 pt-14 text-[#111827]">
+      <p className="text-[20px] font-semibold">Referrals</p>
+      <span className="mt-1 block h-[3px] w-7 rounded-full bg-[#8a6f5c]" />
+
+      <div className="mt-5 inline-flex w-fit rounded-full bg-[rgba(28,28,32,0.5)] p-1 text-[11px] backdrop-blur">
+        <span className="rounded-full bg-white/[0.16] px-3.5 py-1.5 font-medium text-white">
+          Send
+        </span>
+        <span className="rounded-full px-3.5 py-1.5 text-white/60">Received</span>
+      </div>
+
+      {/* Stacked brand cards, as they appear in the rolodex */}
+      <div className="relative mt-5 flex-1">
+        <div className="absolute inset-x-4 top-0 h-24 rounded-[22px] bg-[#7d1620]" />
+        <div className="absolute inset-x-2 top-3 h-28 rounded-[24px] bg-[#a4192a]" />
+        <div className="absolute inset-x-0 top-7 flex h-[300px] flex-col rounded-[26px] bg-[#E31F36] p-5 text-white shadow-xl">
+          <span className="w-fit rounded-full bg-white/20 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide">
+            Estate agents
+          </span>
+          <p className="mt-auto text-[26px] font-semibold leading-[0.95]">
+            The
+            <br />
+            Property
+            <br />
+            Experts
+          </p>
+          <p className="mt-4 text-[9px] font-bold uppercase tracking-widest text-white/70">
+            You earn up to
+          </p>
+          <p className="text-[30px] font-semibold leading-none">£850</p>
+          <span className="mt-3 rounded-full bg-white py-2 text-center text-[12px] font-semibold text-[#E31F36]">
+            Refer a lead →
+          </span>
+        </div>
+      </div>
+
+      <MiniNav active={2} />
+    </div>
+  );
+}
+
+function MiniNav({ active = 1 }: { active?: number }) {
+  return (
+    <div className="mt-auto mb-4 flex items-center gap-2">
+      <div className="flex flex-1 items-stretch rounded-full border border-white/10 bg-[rgba(28,28,32,0.6)] p-1.5 backdrop-blur">
+        {[0, 1, 2, 3].map((i) => (
+          <span
+            key={i}
+            className={`flex flex-1 justify-center rounded-full py-2 ${
+              i === active ? "bg-white/[0.14]" : ""
+            }`}
+          >
+            <span
+              className={`block h-4 w-4 rounded-[5px] ${
+                i === active ? "bg-white" : "bg-white/35"
+              }`}
+            />
+          </span>
+        ))}
+      </div>
+      <span className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full border border-white/10 bg-[rgba(28,28,32,0.6)] backdrop-blur">
+        <span className="block h-4 w-4 rounded-full border-2 border-white/70" />
+      </span>
+    </div>
+  );
+}
