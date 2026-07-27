@@ -170,6 +170,19 @@ export async function upgradeAccount(
   return { ok: true, user: data.user };
 }
 
+/* Open Stripe's hosted billing portal (card, invoices, cancellation). Returns
+   the URL to send the browser to; anything changed there comes back to us as a
+   webhook rather than through this call. */
+export async function openBillingPortal(): Promise<{
+  url?: string;
+  error?: string;
+}> {
+  const res = await fetch("/api/billing-portal", { method: "POST" });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return { error: data?.error ?? "Couldn't open billing." };
+  return { url: data?.url as string };
+}
+
 export async function signOut() {
   try {
     await fetch("/api/auth/logout", { method: "POST" });

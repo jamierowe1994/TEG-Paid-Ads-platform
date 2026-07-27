@@ -7,6 +7,7 @@ import {
   refreshUser,
   updateProfile,
   upgradeAccount,
+  openBillingPortal,
   disconnectMicrosoft,
   cancelSubscription,
   deleteAccount,
@@ -56,6 +57,8 @@ export default function ProfilePage() {
   const [toast, setToast] = useState("");
   const [disconnecting, setDisconnecting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [openingBilling, setOpeningBilling] = useState(false);
+  const [billingError, setBillingError] = useState("");
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
@@ -134,6 +137,19 @@ export default function ProfilePage() {
     reader.readAsDataURL(file);
   }
 
+  async function goToBilling() {
+    if (openingBilling) return;
+    setBillingError("");
+    setOpeningBilling(true);
+    const { url, error } = await openBillingPortal();
+    if (url) {
+      window.location.href = url;
+      return;
+    }
+    setOpeningBilling(false);
+    setBillingError(error ?? "Couldn't open billing.");
+  }
+
   async function toggleCancel(cancel: boolean) {
     setCancelling(true);
     const next = await cancelSubscription(cancel);
@@ -188,6 +204,13 @@ export default function ProfilePage() {
 
   const pkg = packageById(user.packageId);
   const cancelled = !!user.cancelRequestedAt;
+  /* The pack sells a 3-month minimum term. Stripe has no concept of one, so
+     the commitment date is stamped on the account at first payment and read
+     here — without this it was being recorded and never enforced. */
+  const commitmentEnds = user.commitmentEndsAt
+    ? new Date(user.commitmentEndsAt)
+    : null;
+  const inMinimumTerm = !!commitmentEnds && commitmentEnds.getTime() > Date.now();
   const nextBill = nextBillingDate(user.createdAt);
   const isReferral = user.accountType === "referral";
 
@@ -637,26 +660,34 @@ export default function ProfilePage() {
             </div>
           </section>
 
-          {/* Payment + invoices — placeholders until Stripe is live */}
+          {/* Payment + invoices — handed off to Stripe's hosted portal, so we
+              never touch card details and don't rebuild an invoice list. */}
           <section className={CARD}>
             <h2 className="font-semibold">Payment &amp; invoices</h2>
-            <div className="mt-4 flex items-center justify-between rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4">
-              <div className="flex items-center gap-3">
-                <span className="flex h-9 w-12 items-center justify-center rounded-md border border-gray-200 bg-white text-xs font-semibold text-gray-400">
-                  CARD
-                </span>
-                <p className="text-sm text-gray-500">
-                  Card details are added securely at checkout.
+            {user.stripeCustomerId ? (
+              <>
+                <p className="mt-3 text-sm text-gray-500">
+                  Update your card, download invoices and receipts, or change
+                  your plan. Handled securely by Stripe — we never see your
+                  card details.
                 </p>
-              </div>
-              <span className="text-xs font-medium text-gray-400">
-                Coming soon
-              </span>
-            </div>
-            <p className="mt-3 text-xs text-gray-400">
-              Your monthly invoices and receipts will appear here once card
-              payments are switched on.
-            </p>
+                <button
+                  onClick={goToBilling}
+                  disabled={openingBilling}
+                  className="mt-4 rounded-xl bg-gray-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-gray-700 disabled:opacity-40"
+                >
+                  {openingBilling ? "Opening…" : "Manage billing"}
+                </button>
+                {billingError && (
+                  <p className="mt-3 text-sm text-red-600">{billingError}</p>
+                )}
+              </>
+            ) : (
+              <p className="mt-3 text-sm text-gray-500">
+                No billing set up on this account yet. Once you&apos;re on a
+                paid package your card, invoices and receipts all live here.
+              </p>
+            )}
           </section>
 
           {/* Danger zone — cancel + delete */}
@@ -664,7 +695,24 @@ export default function ProfilePage() {
             <h2 className="font-semibold text-red-800">Manage subscription</h2>
 
             {/* Cancel / resume */}
-            {cancelled ? (
+            {inMinimumTerm && !cancelled ? (
+              <div className="mt-4 rounded-xl border border-red-200 bg-white p-4">
+                <p className="text-sm text-gray-700">
+                  You&apos;re inside the three-month minimum term, which runs
+                  until{" "}
+                  <span className="font-medium text-gray-900">
+                    {fmtDate(user.commitmentEndsAt!)}
+                  </span>
+                  . Campaigns need that long to settle — it&apos;s why the
+                  minimum exists.
+                </p>
+                <p className="mt-2 text-xs text-gray-500">
+                  After that it&apos;s rolling monthly and you can cancel any
+                  time. Need to stop sooner? Talk to your Group Marketing
+                  Director.
+                </p>
+              </div>
+            ) : cancelled ? (
               <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
                 <p className="text-sm font-medium text-amber-900">
                   Cancellation requested on {fmtDate(user.cancelRequestedAt!)}

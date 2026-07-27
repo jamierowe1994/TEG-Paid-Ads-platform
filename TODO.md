@@ -124,8 +124,15 @@ receipt emails from item 3.
   · Users gained stripe_customer_id / stripe_subscription_id /
     subscription_status / commitment_ends_at. past_due deliberately keeps the
     portal open while Stripe retries.
-- ⬜ James: add STRIPE_SECRET_KEY (test) to .env.local, run the setup script,
-  run `stripe listen`, and drive a test card end to end.
+- ✅ (27 Jul) Local: keys in, products created, test card driven end to end.
+- ✅ (27 Jul) Production (Railway, TEST keys): all six vars set and verified —
+  endpoint registered with the right four events, env loaded, forged
+  signatures rejected, both payment routes auth-guarded, and a real
+  Stripe-signed delivery came back 200 (1 delivered / 0 failed).
+  NOTE: the dashboard endpoint's signing secret is NOT the one `stripe listen`
+  prints — that catches people out. Going live needs BOTH a new endpoint
+  (no /test/ in the URL) and fresh price ids, since test prices don't work
+  with a live key.
 - ✅ (27 Jul) Signup checkout driven end to end on localhost with a test card
   — session → Stripe → webhook → account flips to paid. Plus a "Payment made"
   confirmation screen before the last signup step.
@@ -136,8 +143,15 @@ receipt emails from item 3.
   verified by attempting the attack (403 on paid APIs afterwards, account
   still referral/unpaid). Checkout-session creation is shared between signup
   and upgrade so the two can't drift.
-- ⬜ Then: the Grow top-up / package change, and the Billing Portal for card
-  changes, invoices and cancellation.
+- ✅ (27 Jul) Billing Portal wired: /api/billing-portal hands off to Stripe's
+  hosted screens for card changes, invoices/receipts and cancellation, so we
+  never touch card details and don't rebuild an invoice list. Anything changed
+  there returns as a subscription webhook, so `paid` still has exactly one
+  owner. Needs enabling once in Stripe → Settings → Billing → Customer portal.
+- ✅ (27 Jul) 3-month minimum now ENFORCED, not just recorded: commitment_ends_at
+  is read on the profile and the cancel flow is replaced with an explanation
+  while inside the term.
+- ⬜ Then: the Grow top-up / package change.
 - ⬜ Enforce the 3-month minimum on cancellation using commitment_ends_at.
 - ⬜ Live keys + the production webhook endpoint (its signing secret differs
   from the CLI one).
