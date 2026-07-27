@@ -186,64 +186,60 @@ export default function LandingPage() {
       {/* Proof — the real three-month trial. Deliberately between "What is
           Launch Pad?" and "How it works": say what it is, earn the trust, then
           explain the mechanics. */}
-      <section id="proof" className="pb-28 pt-24">
-        <Reveal>
-          <TrialProof />
-        </Reveal>
-      </section>
-
-      {/* ── The light band starts here ────────────────────────────────────
-          "How it works" and "Everything plugs into one place" are one
-          continuous stretch of light grey. Only this first one carries
-          .slab-top — the curve and shadow that make the band read as riding
-          up over the trial section. The second takes the colour without an
-          edge, so there's no seam between them.
-
-          This half sits OUTSIDE the sticky container below on purpose: its
-          columns drift against each other (see Drift), and a transform on an
-          ancestor becomes the containing block for sticky descendants, which
-          would break the stacking. */}
-      <div className="light-panel slab-top relative z-0">
-        <section id="how" className="mx-auto max-w-6xl px-6 py-32 sm:py-40">
-          <Reveal>
-            <HowItWorksPhone />
-          </Reveal>
-        </section>
-      </div>
-
       {/* ── The stack ─────────────────────────────────────────────────────
-          Two panels that scroll over one another: the light one pins to the
-          top of the viewport while the pain points slide up over it, which
-          is what takes the page back to charcoal.
+          Three panels that scroll over one another. Each layer that gets
+          covered is `sticky top-0`, so it pins to the top of the viewport
+          while the next panel slides up over it.
 
-          It has to be `sticky top`, not `bottom`: bottom-anchored sticky only
+          It has to be `top`, not `bottom`: bottom-anchored sticky only
           engages when scrolling UP, so scrolling down just carried the panel
           off-screen and nothing pinned at all.
 
-          They are siblings in one relative container — that shared containing
-          block is what gives the sticky layer something to travel against.
-          Splitting them into separate wrappers kills the effect, because a
-          layer can't stick past its own parent. */}
+          They are siblings in one relative container — that shared
+          containing block is what gives the sticky layers something to
+          travel against. Splitting them into separate wrappers kills the
+          effect, because a layer can't stick past its own parent.
+
+          z-index climbs with each layer so the newer one covers the older. */}
       <div className="relative">
-        {/* The second half of the light band — no .slab-top, so it runs on
-            from "How it works" with no seam. This is the layer that pins. */}
-        <div className="light-panel sticky top-0 z-0">
-          <section className="px-6 pb-40 pt-4">
+        <section
+          id="proof"
+          className="sticky top-0 z-0 pb-28 pt-24"
+        >
+          <Reveal>
+            <TrialProof />
+          </Reveal>
+        </section>
+
+        {/* The one light panel — curved top, and it clips the phone that
+            runs off its bottom edge. */}
+        <div className="light-panel sticky top-0 z-10 overflow-hidden">
+          <section
+            id="how"
+            className="mx-auto max-w-6xl px-6 pb-20 pt-28 sm:pt-36"
+          >
             <Reveal>
-              <PlugIntoStack />
+              <HowItWorksPhone />
             </Reveal>
           </section>
         </div>
 
-        {/* Pain points — curves up over the light band and returns the page
-            to charcoal. */}
-        <section
-          id="pain"
-          className="dark-slab slab-top relative z-10 pb-28 pt-32 sm:pt-40"
-        >
-          <PainPoints />
+        {/* Back to charcoal, curving over the light panel the same way. */}
+        <section className="dark-slab relative z-20 px-6 pb-32 pt-28 sm:pt-36">
+          <Reveal>
+            <PlugIntoStack />
+          </Reveal>
         </section>
       </div>
+
+      {/* Pain points — the empathy beat, deliberately the last thing before
+          the price. No curve of its own: the section above it is already
+          charcoal, so a second slab edge here would sit dark-on-dark and
+          read as nothing. Replaced the mocked ad showcase, which was
+          pretending to be real campaigns we don't have yet. */}
+      <section id="pain" className="relative z-30 py-28">
+        <PainPoints />
+      </section>
 
       {/* Packages */}
       <section id="packages">
