@@ -8,16 +8,15 @@ import LeadsStat from "@/components/LeadsStat";
 import PanelReveal from "@/components/PanelReveal";
 import SmoothScroll from "@/components/SmoothScroll";
 import StandaloneGuard from "@/components/StandaloneGuard";
-import Stars from "@/components/Stars";
 import PlugIntoStack from "@/components/PlugIntoStack";
 import HowItWorksPhone from "@/components/HowItWorksPhone";
 
-// The hero's backdrop. Kept as a constant because the rocket's window is
-// punched out in this exact colour.
-const HERO_BG = "#08080a";
+// The site's backdrop — a dark charcoal that runs the length of the page.
+// Kept as a constant because the rocket's window is punched out in it.
+const HERO_BG = "#1b1c20";
 
-// The Launch Pad rocket, matching the installed app icon. White on the black
-// hero; the porthole is punched in the hero colour rather than filled white.
+// The Launch Pad rocket, matching the installed app icon. White on the dark
+// hero; the porthole is punched in the backdrop colour rather than filled white.
 function LaunchPadMark() {
   return (
     <svg
@@ -47,17 +46,14 @@ export default function LandingPage() {
     <main className="landing-dark relative min-h-screen overflow-x-clip">
       <StandaloneGuard />
       <SmoothScroll />
-      {/* The black itself. Sits below the stars so they read against it. */}
+      {/* The charcoal backdrop, fixed so it runs the whole length of the page. */}
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0 -z-20"
         style={{ backgroundColor: HERO_BG }}
       />
-      {/* Night sky — stars edge to edge, with an occasional shooting star. */}
-      <Stars />
-
-      {/* Nav — just the Launch Pad mark, then See pricing + Sign in. Sits over
-          the black hero, so everything here is white. */}
+      {/* Nav — just the Launch Pad mark, then the pack, pricing and Sign in.
+          Sits over the dark hero, so everything here is white. */}
       <header className="absolute inset-x-0 top-0 z-40">
         <div className="mx-auto flex h-24 max-w-7xl items-center justify-between px-6 sm:h-28 sm:px-10">
           <Link href="/" aria-label="Launch Pad" className="flex items-center">
@@ -88,9 +84,8 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* Hero — one screen tall in total, black, with the heading self-centred
-          in the space above and the platform icons sitting inside the same
-          frame rather than below the fold. */}
+      {/* Hero — one screen tall in total, with the heading self-centred in the
+          space above and the platform icons inside the same frame. */}
       <section className="relative flex min-h-screen flex-col text-white">
         <div className="flex flex-1 flex-col items-center justify-center px-6 pb-8 pt-28 text-center">
           <Reveal>
