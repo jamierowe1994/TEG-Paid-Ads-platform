@@ -53,19 +53,6 @@ export default function LandingPage() {
         className="pointer-events-none fixed inset-0 -z-20"
         style={{ backgroundColor: HERO_BG }}
       />
-      {/* Brand colour in the black. Painted BEFORE the stars so they sit in
-          front of the gradient as well as behind it. */}
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 -z-10"
-        style={{
-          backgroundImage:
-            "radial-gradient(65% 55% at 12% 4%, rgba(227,31,54,0.30), rgba(227,31,54,0.10) 42%, transparent 70%)," +
-            "radial-gradient(55% 50% at 92% 10%, rgba(43,97,147,0.28), rgba(43,97,147,0.09) 44%, transparent 70%)," +
-            "radial-gradient(60% 55% at 82% 90%, rgba(227,31,54,0.24), rgba(227,31,54,0.08) 44%, transparent 72%)," +
-            "radial-gradient(50% 45% at 6% 78%, rgba(43,97,147,0.22), rgba(43,97,147,0.07) 44%, transparent 72%)",
-        }}
-      />
       {/* Night sky — stars edge to edge, with an occasional shooting star. */}
       <Stars />
 

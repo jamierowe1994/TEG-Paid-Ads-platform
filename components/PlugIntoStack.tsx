@@ -1,70 +1,55 @@
-// "Everything plugs into one place" — the platforms we pull from on the left,
-// Launch Pad in the middle, the systems we push out to on the right, wired
-// together. Pure SVG + CSS so it stays crisp and ships no images.
+import ICONS, { SocialIcon } from "./SocialIcons";
 
-const LEFT = [
-  { name: "Meta", short: "Meta", colour: "#1877F2" },
-  { name: "Instagram", short: "IG", colour: "#E4405F" },
-  { name: "Facebook", short: "FB", colour: "#1877F2" },
-];
-const RIGHT = [
-  { name: "REX", short: "REX", colour: "#8a6f5c" },
-  { name: "Atlas", short: "Atlas", colour: "#2b6193" },
-  { name: "Your inbox", short: "Mail", colour: "#9ca3af" },
-];
+// "Everything plugs into one place" — the platforms leads come from on the
+// left, Launch Pad in the middle, the systems you already work in on the
+// right, joined by wires that flow into and out of the hub. Icons only; the
+// logos speak for themselves.
 
-function Node({
-  label,
-  short,
-  colour,
-  flip,
-}: {
-  label: string;
-  short: string;
-  colour: string;
-  flip?: boolean;
-}) {
-  return (
-    <div className={`flex items-center gap-3 ${flip ? "flex-row-reverse" : ""}`}>
-      <span
-        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/12 bg-white/[0.05] text-[11px] font-bold text-white/90 backdrop-blur"
-        style={{ boxShadow: `inset 0 0 22px -8px ${colour}` }}
-      >
-        {short}
-      </span>
-      <span className="text-sm text-white/70">{label}</span>
-    </div>
-  );
-}
+const pick = (name: string) => ICONS.find((i) => i.name === name)!;
+const SOURCES = [
+  pick("Meta / Facebook"),
+  pick("Instagram"),
+  pick("LinkedIn"),
+];
+// Internal systems — no public logos, so these get clean lettermarks.
+const DESTINATIONS = ["REX", "Atlas"];
 
 export default function PlugIntoStack() {
   return (
-    <div className="mx-auto max-w-5xl text-center">
+    <div className="mx-auto max-w-4xl text-center">
       <h2 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
         Everything plugs into one place.
       </h2>
       <p className="mx-auto mt-4 max-w-xl text-white/55">
-        We pull from the platforms your leads come from, and push into the
+        We pull from the platforms your leads come from and push into the
         systems you already work in. You just open one app.
       </p>
 
-      <div className="relative mt-16 grid items-center gap-10 sm:grid-cols-[1fr_auto_1fr]">
+      <div className="relative mt-16 flex items-center justify-between gap-4 sm:gap-8">
         {/* Sources */}
-        <div className="flex flex-col items-start gap-6 sm:items-end">
-          {LEFT.map((n) => (
-            <Node key={n.name} label={n.name} short={n.short} colour={n.colour} flip />
+        <div className="flex flex-col gap-9 sm:gap-12">
+          {SOURCES.map((icon) => (
+            <span key={icon.name} className="text-white/85">
+              <SocialIcon icon={icon} className="h-9 w-9 sm:h-11 sm:w-11" />
+            </span>
           ))}
         </div>
 
+        {/* Wires in */}
+        <Wires direction="in" rows={[30, 100, 170]} />
+
         {/* The hub */}
-        <div className="relative flex justify-center">
+        <div className="relative shrink-0">
           <span
             aria-hidden
-            className="pointer-events-none absolute left-1/2 top-1/2 h-52 w-52 -translate-x-1/2 -translate-y-1/2 rounded-full blur-[60px]"
-            style={{ background: "radial-gradient(circle, rgba(255,255,255,0.30), transparent 68%)" }}
+            className="pointer-events-none absolute left-1/2 top-1/2 h-44 w-44 -translate-x-1/2 -translate-y-1/2 rounded-full blur-[55px]"
+            style={{
+              background:
+                "radial-gradient(circle, rgba(255,255,255,0.28), transparent 68%)",
+            }}
           />
-          <div className="relative flex h-28 w-28 flex-col items-center justify-center rounded-[26px] border border-white/15 bg-[#0e0e12] shadow-[0_0_50px_-10px_rgba(255,255,255,0.35),inset_0_1px_0_rgba(255,255,255,0.15)]">
-            <svg viewBox="0 0 512 512" className="h-11 w-11" fill="#ffffff" aria-hidden>
+          <div className="relative flex h-24 w-24 items-center justify-center rounded-[24px] border border-white/15 bg-[#0e0e12] shadow-[0_0_46px_-12px_rgba(255,255,255,0.4),inset_0_1px_0_rgba(255,255,255,0.14)] sm:h-28 sm:w-28">
+            <svg viewBox="0 0 512 512" className="h-12 w-12 sm:h-14 sm:w-14" fill="#ffffff" aria-hidden>
               <g transform="rotate(45 256 256) translate(0 -8)">
                 <path d="M256 80 C298 122 300 194 298 268 C298 302 293 330 284 350 L228 350 C219 330 214 302 214 268 C212 194 214 122 256 80 Z" />
                 <path d="M214 266 L172 356 L221 335 Z" />
@@ -73,39 +58,67 @@ export default function PlugIntoStack() {
                 <circle cx="256" cy="172" r="32" fill="#0e0e12" />
               </g>
             </svg>
-            <span className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-white/70">
-              Launch Pad
-            </span>
           </div>
         </div>
 
+        {/* Wires out */}
+        <Wires direction="out" rows={[62, 138]} />
+
         {/* Destinations */}
-        <div className="flex flex-col items-start gap-6">
-          {RIGHT.map((n) => (
-            <Node key={n.name} label={n.name} short={n.short} colour={n.colour} />
+        <div className="flex flex-col gap-9 sm:gap-12">
+          {DESTINATIONS.map((d) => (
+            <span
+              key={d}
+              className="text-[13px] font-semibold uppercase tracking-[0.14em] text-white/70 sm:text-sm"
+            >
+              {d}
+            </span>
           ))}
         </div>
-
-        {/* Wires — drawn behind, hidden on small screens where the grid stacks */}
-        <svg
-          aria-hidden
-          className="pointer-events-none absolute inset-0 -z-10 hidden h-full w-full sm:block"
-          preserveAspectRatio="none"
-          viewBox="0 0 100 100"
-        >
-          {[18, 50, 82].map((y) => (
-            <g key={y} stroke="rgba(255,255,255,0.18)" strokeWidth="0.35" fill="none">
-              <path d={`M30 ${y} H40 Q44 ${y} 44 50 H48`} />
-              <path d={`M70 ${y} H60 Q56 ${y} 56 50 H52`} />
-            </g>
-          ))}
-        </svg>
       </div>
 
       <p className="mt-14 text-sm text-white/40">
-        More going in and out all the time — if you use it, tell us and we&apos;ll
-        wire it up.
+        If you use it, tell us and we&apos;ll wire it up.
       </p>
     </div>
+  );
+}
+
+// Three wires fanning between a column of items and the hub, with an
+// arrowhead showing which way the data flows.
+function Wires({ direction, rows }: { direction: "in" | "out"; rows: number[] }) {
+  const flip = direction === "out";
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 100 200"
+      preserveAspectRatio="none"
+      className="h-[190px] flex-1 sm:h-[230px]"
+      style={flip ? { transform: "scaleX(-1)" } : undefined}
+    >
+      <defs>
+        <marker
+          id={`arrow-${direction}`}
+          markerWidth="6"
+          markerHeight="6"
+          refX="5"
+          refY="3"
+          orient="auto"
+        >
+          <path d="M0 0 L6 3 L0 6 z" fill="rgba(255,255,255,0.45)" />
+        </marker>
+      </defs>
+      {rows.map((y) => (
+        <path
+          key={y}
+          d={`M0 ${y} H26 L74 100 H90`}
+          fill="none"
+          stroke="rgba(255,255,255,0.22)"
+          strokeWidth="1.6"
+          vectorEffect="non-scaling-stroke"
+          markerEnd={`url(#arrow-${direction})`}
+        />
+      ))}
+    </svg>
   );
 }

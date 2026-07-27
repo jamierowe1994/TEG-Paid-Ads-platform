@@ -88,7 +88,7 @@ export default function HowItWorksPhone() {
           ))}
         </div>
 
-        <ol className="mt-10 min-h-[430px] space-y-7">
+        <ol className="mt-10 min-h-[470px] space-y-7">
           {STEPS[tab].map((s) => (
             <li key={s.n} className="flex gap-5">
               <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/15 text-sm font-semibold text-white/80">
@@ -106,7 +106,7 @@ export default function HowItWorksPhone() {
       </div>
 
       {/* Phone — the frame never moves; the screen slides between the two. */}
-      <div className="relative flex justify-center lg:sticky lg:top-24 lg:justify-end">
+      <div className="relative flex justify-center lg:justify-end">
         {/* A soft red bloom so the phone's edges separate from the black. */}
         <span
           aria-hidden
