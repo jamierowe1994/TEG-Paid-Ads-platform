@@ -113,7 +113,10 @@ export default function TrialProof() {
           so the figures themselves stay white and legible on charcoal. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -z-10 h-[520px] w-[min(92vw,900px)] rounded-full opacity-25 blur-[130px] max-lg:left-1/2 max-lg:top-1/3 max-lg:-translate-x-1/2 lg:-right-20 lg:top-0"
+        // Kept inside the right edge: main no longer clips overflow on
+        // desktop (that clip was breaking the sticky stack), so a bloom
+        // hanging past the viewport now widens the document.
+        className="pointer-events-none absolute -z-10 h-[520px] w-[min(92vw,900px)] rounded-full opacity-25 blur-[130px] max-lg:left-1/2 max-lg:top-1/3 max-lg:-translate-x-1/2 lg:right-0 lg:top-0"
         style={{
           background:
             "radial-gradient(50% 50% at 50% 50%, #a72a35 0%, transparent 72%)",

@@ -59,7 +59,9 @@ export default function HowItWorksPhone() {
   const [tab, setTab] = useState<TabId>("ads");
 
   return (
-    <div className="grid items-start gap-16 lg:grid-cols-2">
+    // items-end so the phone hangs off the bottom of the slab rather than
+    // sitting in the middle of it; the slab clips it.
+    <div className="grid items-start gap-16 lg:grid-cols-2 lg:items-end">
       <div>
         {/* This section sits on the light slab, so its chrome uses the grey
             scale rather than white — .light-panel restores those greys from
@@ -110,16 +112,16 @@ export default function HowItWorksPhone() {
       </div>
 
       {/* Phone — the frame never moves; the screen slides between the two.
-          Pulled up so it breaks out through the top curve of the light slab
-          and overlaps the dark section above it. z-10 keeps it above the
-          slab's own background; the slab must not clip it. */}
-      <div className="relative z-10 flex justify-center lg:-mt-[21rem] lg:justify-end">
-        {/* A soft bloom so the phone's edges separate from whichever half of
-            the background it's crossing. */}
+          Pushed down so it runs off the bottom edge of the light slab and is
+          cut off by it (the slab carries the overflow-hidden). The negative
+          margin is what makes it overhang; without it the slab just grows to
+          fit and nothing is cropped. */}
+      <div className="relative z-10 flex justify-center lg:-mb-40 lg:justify-end">
+        {/* A soft bloom so the phone's edges separate from the slab. */}
         <span
           aria-hidden
-          className="pointer-events-none absolute left-1/2 top-1/2 h-[560px] w-[460px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-50 blur-[90px] lg:left-auto lg:right-[40px] lg:translate-x-0"
-          style={{ background: "radial-gradient(circle, rgba(167,42,53,0.30), rgba(167,42,53,0.10) 55%, transparent 72%)" }}
+          className="pointer-events-none absolute left-1/2 top-1/2 h-[560px] w-[460px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-40 blur-[90px] lg:left-auto lg:right-[40px] lg:translate-x-0"
+          style={{ background: "radial-gradient(circle, rgba(167,42,53,0.26), rgba(167,42,53,0.08) 55%, transparent 72%)" }}
         />
         <PhoneFrame tab={tab} />
       </div>
@@ -129,7 +131,7 @@ export default function HowItWorksPhone() {
 
 function PhoneFrame({ tab }: { tab: TabId }) {
   return (
-    <div className="relative w-[300px] shrink-0 rounded-[44px] border-[7px] border-[#1c1c20] bg-[#f4f4f5] shadow-[0_40px_90px_-30px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.12)]">
+    <div className="relative w-[300px] shrink-0 rounded-[44px] border-[7px] border-[#1c1c20] bg-[#f4f4f5] shadow-[0_40px_90px_-30px_rgba(0,0,0,0.45),0_0_0_1px_rgba(0,0,0,0.06)] lg:w-[360px]">
       {/* Dynamic-island style pill */}
       <div className="absolute left-1/2 top-2.5 z-20 h-[22px] w-[86px] -translate-x-1/2 rounded-full bg-[#1c1c20]" />
       <div className="relative h-[600px] overflow-hidden rounded-[37px]">

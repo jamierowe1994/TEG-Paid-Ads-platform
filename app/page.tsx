@@ -50,7 +50,13 @@ export default function LandingPage() {
   // No bg-white on <main> — the body provides the white base so the fixed
   // -z-10 texture/glows show through the transparent sections.
   return (
-    <main className="landing-dark relative min-h-screen overflow-x-clip">
+    // overflow-x-clip is scoped to mobile now. An ancestor with any non-visible
+    // overflow becomes the sticky containing block, and since <main> doesn't
+    // scroll, `position: sticky` on the panels below had nothing to stick to —
+    // they just scrolled normally. Desktop gets the stacking effect; mobile
+    // keeps the sideways-drift guard (which is only a mobile problem anyway,
+    // and <html> already carries overflow-x: hidden under 1024px).
+    <main className="landing-dark relative min-h-screen max-lg:overflow-x-clip">
       <StandaloneGuard />
       <SmoothScroll />
       {/* The charcoal backdrop, fixed so it runs the whole length of the page. */}
@@ -181,36 +187,46 @@ export default function LandingPage() {
       {/* Proof — the real three-month trial. Deliberately between "What is
           Launch Pad?" and "How it works": say what it is, earn the trust, then
           explain the mechanics. */}
-      {/* Deep bottom padding on large screens: the phone from the section
-          below rises up into this space, and without the clearance it lands
-          on top of the third stat. */}
-      <section id="proof" className="pb-28 pt-28 lg:pb-80">
-        <Reveal>
-          <TrialProof />
-        </Reveal>
-      </section>
+      {/* ── The stack ─────────────────────────────────────────────────────
+          Three panels that scroll over one another. Each layer that gets
+          covered is `sticky top-0`, so it pins to the top of the viewport
+          while the next panel slides up over it.
 
-      {/* ── The light slab ────────────────────────────────────────────────
-          "How it works" and "Everything plugs into one place" ride on a
-          near-white panel that scrolls up over the dark section above it —
-          negative margin + rounded top + a higher z-index, so it genuinely
-          overlaps rather than butting up against it. The phone breaks back
-          out through the top curve.
+          It has to be `top`, not `bottom`: bottom-anchored sticky only
+          engages when scrolling UP, so scrolling down just carried the panel
+          off-screen and nothing pinned at all.
 
-          No overflow clipping here: the phone's overhang depends on it. */}
-      <div className="light-panel relative z-10 -mt-16 sm:-mt-24">
-        {/* How it works — the process shown through the app itself, with a
-            tab for each way of earning. Extra top padding leaves room for
-            the phone to rise out of the curve without hitting the copy. */}
-        <section id="how" className="mx-auto max-w-6xl px-6 pb-24 pt-28 lg:pt-56">
+          They are siblings in one relative container — that shared
+          containing block is what gives the sticky layers something to
+          travel against. Splitting them into separate wrappers kills the
+          effect, because a layer can't stick past its own parent.
+
+          z-index climbs with each layer so the newer one covers the older. */}
+      <div className="relative">
+        <section
+          id="proof"
+          className="sticky top-0 z-0 pb-28 pt-24"
+        >
           <Reveal>
-            <HowItWorksPhone />
+            <TrialProof />
           </Reveal>
         </section>
 
-        {/* Everything plugs into one place — sources in, Launch Pad in the
-            middle, the systems you already use out the other side. */}
-        <section className="px-6 pb-40 pt-16">
+        {/* The one light panel — curved top, and it clips the phone that
+            runs off its bottom edge. */}
+        <div className="light-panel sticky top-0 z-10 overflow-hidden">
+          <section
+            id="how"
+            className="mx-auto max-w-6xl px-6 pb-0 pt-28 sm:pt-36"
+          >
+            <Reveal>
+              <HowItWorksPhone />
+            </Reveal>
+          </section>
+        </div>
+
+        {/* Back to charcoal, curving over the light panel the same way. */}
+        <section className="dark-slab relative z-20 px-6 pb-32 pt-28 sm:pt-36">
           <Reveal>
             <PlugIntoStack />
           </Reveal>
@@ -218,13 +234,11 @@ export default function LandingPage() {
       </div>
 
       {/* Pain points — the empathy beat, deliberately the last thing before
-          the price. Rides back over the light slab the same way, which is
-          what returns the page to charcoal. Replaced the mocked ad showcase,
-          which was pretending to be real campaigns we don't have yet. */}
-      <section
-        id="pain"
-        className="dark-slab relative z-20 -mt-16 pb-28 pt-32 sm:-mt-24 sm:pt-40"
-      >
+          the price. No curve of its own: the section above it is already
+          charcoal, so a second slab edge here would sit dark-on-dark and
+          read as nothing. Replaced the mocked ad showcase, which was
+          pretending to be real campaigns we don't have yet. */}
+      <section id="pain" className="relative z-30 py-28">
         <PainPoints />
       </section>
 
