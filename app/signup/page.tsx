@@ -593,7 +593,7 @@ function SignupWizard() {
                       : "border-gray-200 hover:border-gray-400"
                   }`}
                 >
-                  <div>
+                  <div className="pr-4">
                     <span className="font-semibold">{p.name}</span>
                     {p.highlighted && (
                       <span className="ml-2 rounded-full bg-gray-900 px-2 py-0.5 text-xs font-medium text-white">
@@ -602,10 +602,17 @@ function SignupWizard() {
                     )}
                     <p className="mt-0.5 text-sm text-gray-500">{p.tagline}</p>
                   </div>
-                  <span className="text-lg font-semibold">
-                    £{p.price}
-                    <span className="text-sm font-normal text-gray-400">
-                      /mo
+                  {/* Daily spend is what's being chosen; the monthly total
+                      (management + ad spend) sits under it. */}
+                  <span className="shrink-0 text-right">
+                    <span className="block text-lg font-semibold">
+                      £{p.dailyAdSpend}
+                      <span className="text-sm font-normal text-gray-400">
+                        /day
+                      </span>
+                    </span>
+                    <span className="mt-0.5 block text-xs text-gray-400">
+                      approx. £{p.price}/mo
                     </span>
                   </span>
                 </button>
@@ -641,6 +648,20 @@ function SignupWizard() {
                 <span className="font-semibold">
                   £{packageById(packageId)?.price}/month
                 </span>
+              </div>
+              {/* The split, spelled out — "simple, transparent pricing" is the
+                  whole pitch, so don't show a single lump sum. */}
+              <div className="mt-4 space-y-1.5 text-sm text-gray-500">
+                <div className="flex items-center justify-between">
+                  <span>Management fee</span>
+                  <span>£{packageById(packageId)?.managementFee}/month</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>
+                    Ad spend (£{packageById(packageId)?.dailyAdSpend}/day)
+                  </span>
+                  <span>approx. £{packageById(packageId)?.adSpend}/month</span>
+                </div>
               </div>
               {/*
                 TODO(stripe): replace this block with Stripe Checkout.

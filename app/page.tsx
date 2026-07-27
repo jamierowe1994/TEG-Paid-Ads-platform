@@ -1,6 +1,11 @@
 import Link from "next/link";
-import { BRANDS, EXPERTS_GROUP } from "@/lib/brands";
-import { PACKAGES } from "@/lib/packages";
+import {
+  PACKAGES,
+  MANAGEMENT_FEE,
+  INCLUDED_IN_EVERY_PACKAGE,
+  FOUNDING_AGENT,
+  PACKAGE_TERMS,
+} from "@/lib/packages";
 import Reveal from "@/components/Reveal";
 import HeroAdWord from "@/components/HeroAdWord";
 import HeroIconStrip from "@/components/HeroIconStrip";
@@ -123,7 +128,10 @@ export default function LandingPage() {
             that carries the transform, not a parent. */}
         <PanelReveal>
         <div className="relative flex min-h-[64vh] flex-col overflow-hidden rounded-[2.5rem]">
-          <div className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-10 px-8 py-12 sm:px-12 lg:grid-cols-2">
+          {/* Wide column gap on desktop: the infographic card hangs off the
+              photo's left edge, so a tight gap put it right up against the
+              copy. */}
+          <div className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-10 px-8 py-12 sm:px-12 lg:grid-cols-2 lg:gap-24">
             <div className="p-words">
               <span className="inline-block rounded-full bg-[#A72A35] px-4 py-1.5 text-sm font-medium text-white">
                 Mission briefing
@@ -169,28 +177,6 @@ export default function LandingPage() {
 
         </div>
         </PanelReveal>
-      </section>
-
-      {/* One group, seven businesses — moved out below the frosted panel.
-          Monochrome black-and-white pills that fill with their own brand
-          colour only when you hover that individual pill. */}
-      <section className="px-6 pb-10">
-        <Reveal>
-          <p className="text-center text-xs font-medium uppercase tracking-widest text-gray-900">
-            One group, seven businesses
-          </p>
-          <div className="mx-auto mt-5 flex max-w-5xl flex-wrap items-center justify-center gap-3">
-            {BRANDS.map((b) => (
-              <span
-                key={b.id}
-                className="brand-pill rounded-full px-4 py-2 text-sm font-medium"
-                style={{ "--pill": b.accent } as React.CSSProperties}
-              >
-                {b.name}
-              </span>
-            ))}
-          </div>
-        </Reveal>
       </section>
 
       {/* Proof — the real three-month trial. Deliberately between "What is
@@ -344,14 +330,42 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl px-6 py-28">
           <Reveal>
             <h2 className="text-center text-4xl font-semibold tracking-tight">
-              Simple packages, no surprises
+              Simple, transparent pricing. You are in control.
             </h2>
-            <p className="mx-auto mt-3 max-w-md text-center text-gray-500">
-              Every package includes your own lead-tracking dashboard and
-              access to the Experts Group referral network.
+            <p className="mx-auto mt-4 max-w-xl text-center text-gray-500">
+              The only difference between packages is how hard you want to
+              push. Everything else is identical.
             </p>
           </Reveal>
-          <div className="mt-16 grid gap-6 lg:grid-cols-3">
+
+          {/* The flat fee first — it's the same on all three, so it belongs
+              above the tiers rather than repeated inside each one. */}
+          <Reveal>
+            <div className="mx-auto mt-14 max-w-2xl rounded-3xl border border-gray-200 bg-white p-8 text-center">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+                Monthly management fee
+              </p>
+              <p className="mt-4 text-5xl font-light tracking-[-0.04em]">
+                £{MANAGEMENT_FEE}
+                <span className="ml-2 align-middle text-base text-gray-400">
+                  per month
+                </span>
+              </p>
+              <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-gray-500">
+                Covers everything: campaign management, creative production,
+                monthly optimisation, your dashboard, lead nurture and
+                reporting.
+              </p>
+            </div>
+          </Reveal>
+
+          <Reveal>
+            <p className="mt-16 text-center text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+              Choose your daily ad spend
+            </p>
+          </Reveal>
+
+          <div className="mt-8 grid gap-6 lg:grid-cols-3">
             {PACKAGES.map((p, i) => (
               <Reveal key={p.id} delay={i * 120} className="h-full">
                 <div
@@ -366,36 +380,71 @@ export default function LandingPage() {
                       Most popular
                     </span>
                   )}
-                  <h3 className="text-lg font-semibold">{p.name}</h3>
-                  <p className="mt-1 text-sm text-gray-500">{p.tagline}</p>
-                  <div className="mt-6 flex items-baseline gap-1">
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+                    {p.name}
+                  </h3>
+                  {/* Headline is the daily figure — that's the number the
+                      agent actually chooses. Monthly sits under it. */}
+                  <div className="mt-4 flex items-baseline gap-1.5">
                     <span className="text-4xl font-semibold tracking-tight">
-                      £{p.price}
+                      £{p.dailyAdSpend}
                     </span>
-                    <span className="text-sm text-gray-400">/month</span>
+                    <span className="text-sm text-gray-400">per day</span>
                   </div>
-                  <ul className="mt-8 flex-1 space-y-3">
-                    {p.features.map((f) => (
-                      <li key={f} className="flex gap-3 text-sm text-gray-600">
-                        <svg
-                          className="mt-0.5 h-4 w-4 shrink-0"
-                          style={{ color: EXPERTS_GROUP.accent }}
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
+                  <p className="mt-1.5 text-sm text-gray-400">
+                    approx. £{p.adSpend}/month ad spend
+                  </p>
+                  <p className="mt-5 text-sm leading-relaxed text-gray-600">
+                    {p.tagline}
+                  </p>
+
+                  <div className="mt-6 border-t border-gray-200 pt-5">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+                      Best for
+                    </p>
+                    <p className="mt-2 text-sm leading-relaxed text-gray-600">
+                      {p.bestFor}
+                    </p>
+                  </div>
+
+                  {/* Titles only — the full descriptions run once below the
+                      three cards rather than three times over. */}
+                  <div className="mt-6 flex-1 border-t border-gray-200 pt-5">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+                      What&apos;s included
+                    </p>
+                    <ul className="mt-3 space-y-2.5">
+                      {INCLUDED_IN_EVERY_PACKAGE.map((f) => (
+                        <li
+                          key={f.title}
+                          className="flex gap-3 text-sm text-gray-600"
                         >
-                          <path
-                            fillRule="evenodd"
-                            d="M16.7 5.3a1 1 0 010 1.4l-8 8a1 1 0 01-1.4 0l-4-4a1 1 0 111.4-1.4L8 12.6l7.3-7.3a1 1 0 011.4 0z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
+                          <svg
+                            className="mt-0.5 h-4 w-4 shrink-0 text-[var(--group)]"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M16.7 5.3a1 1 0 010 1.4l-8 8a1 1 0 01-1.4 0l-4-4a1 1 0 111.4-1.4L8 12.6l7.3-7.3a1 1 0 011.4 0z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          {f.title}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <p className="mt-6 text-sm text-gray-500">
+                    £{p.managementFee} management + £{p.adSpend} ad spend ={" "}
+                    <span className="font-semibold text-gray-900">
+                      approx. £{p.price}/month
+                    </span>
+                  </p>
                   <Link
                     href={`/signup?package=${p.id}`}
-                    className={`mt-8 rounded-xl py-3 text-center text-sm font-medium transition ${
+                    className={`mt-5 rounded-xl py-3 text-center text-sm font-medium transition ${
                       p.highlighted
                         ? "btn-group"
                         : "btn-press border border-gray-200 text-gray-900 hover:bg-gray-50"
@@ -407,6 +456,64 @@ export default function LandingPage() {
               </Reveal>
             ))}
           </div>
+
+          {/* The included list in full, once — same as the pack's own
+              "everything included in every package" grid. */}
+          <Reveal>
+            <p className="mt-20 text-center text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+              Everything included in every package
+            </p>
+            <div className="mt-8 grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+              {INCLUDED_IN_EVERY_PACKAGE.map((f) => (
+                <div key={f.title}>
+                  <div className="flex items-center gap-2.5">
+                    <svg
+                      className="h-4 w-4 shrink-0 text-[var(--group)]"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.7 5.3a1 1 0 010 1.4l-8 8a1 1 0 01-1.4 0l-4-4a1 1 0 111.4-1.4L8 12.6l7.3-7.3a1 1 0 011.4 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <p className="font-semibold text-gray-900">{f.title}</p>
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-gray-600">
+                    {f.detail}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </Reveal>
+
+          {/* Founding agent offer + the commitment terms. */}
+          <Reveal>
+            <div className="mx-auto mt-12 max-w-3xl rounded-3xl border border-gray-200 bg-white p-8 text-center">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+                Founding agent offer — first {FOUNDING_AGENT.limit} agents only
+              </p>
+              <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-gray-600">
+                Pay just{" "}
+                <span className="font-semibold text-gray-900">
+                  £{FOUNDING_AGENT.fee}/month
+                </span>{" "}
+                for management — a £{FOUNDING_AGENT.saving} saving on the
+                standard rate — held for as long as you stay on the service.
+              </p>
+            </div>
+          </Reveal>
+
+          <Reveal>
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+              {PACKAGE_TERMS.map((t) => (
+                <span key={t} className="text-sm text-gray-500">
+                  {t}
+                </span>
+              ))}
+            </div>
+          </Reveal>
         </div>
       </section>
 

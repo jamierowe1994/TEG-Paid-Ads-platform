@@ -72,7 +72,7 @@ function Stat({
 }) {
   const n = useCountUp(value, on);
   return (
-    <div className="px-8 py-10 text-center">
+    <div className="px-4 text-center">
       <p className="text-4xl font-light tabular-nums tracking-[-0.03em] text-white sm:text-5xl">
         {n.toLocaleString("en-GB")}
       </p>
@@ -144,7 +144,9 @@ export default function TrialProof() {
         </p>
       </div>
 
-      <div className="mt-14 grid divide-y divide-white/10 rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-sm sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+      {/* No card, no rules — the figures sit straight on the page so the 555
+          above stays the only thing with weight. */}
+      <div className="mt-16 grid gap-12 sm:grid-cols-3 sm:gap-8">
         {SUPPORTING.map((s) => (
           <Stat key={s.label} {...s} on={on} />
         ))}

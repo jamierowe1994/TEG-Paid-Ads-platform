@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BRANDS, brandById, type Brand } from "@/lib/brands";
 import Collapse from "@/components/Collapse";
-import { packageById, PACKAGES } from "@/lib/packages";
+import { packageById, PACKAGES, type AdPackage } from "@/lib/packages";
 import { stageLabel } from "@/lib/onboarding";
 import BrandMark from "@/components/BrandMark";
 import AgentProfile from "@/components/AgentProfile";
@@ -354,9 +354,7 @@ export default function AdminPage() {
   const [crmSort, setCrmSort] = useState<"recent" | "oldest" | "payHigh" | "payLow">(
     "recent"
   );
-  const [crmPackage, setCrmPackage] = useState<"all" | "starter" | "growth" | "scale">(
-    "all"
-  );
+  const [crmPackage, setCrmPackage] = useState<"all" | AdPackage["id"]>("all");
   const [crmSearch, setCrmSearch] = useState("");
   const [vp, setVp] = useState({ w: 0, h: 0 });
 
@@ -752,7 +750,10 @@ export default function AdminPage() {
   const crmUsers = useMemo(() => {
     const q = crmSearch.trim().toLowerCase();
     let list = users.filter((u) => {
-      if (crmPackage !== "all" && u.packageId !== crmPackage) return false;
+      // Compare through packageById so accounts still stored under the old
+      // "scale" id are found by the "Accelerate" filter.
+      if (crmPackage !== "all" && packageById(u.packageId)?.id !== crmPackage)
+        return false;
       if (
         q &&
         !`${u.name} ${u.email} ${u.location ?? ""}`.toLowerCase().includes(q)

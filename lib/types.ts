@@ -25,7 +25,10 @@ export interface UserProfile {
   brandId: BrandId;
   platforms: ("instagram" | "facebook")[];
   goal: string;
-  packageId: "starter" | "growth" | "scale";
+  // "scale" is the old id for what the partner pack calls "Accelerate" —
+  // still stored on accounts created before the rename, so it stays valid
+  // here and packageById() maps it across.
+  packageId: "starter" | "growth" | "accelerate" | "scale";
   paid: boolean; // set true by the Stripe webhook once payments are live
   // Which half of the portal this account has. "paid" = the full paid-ads
   // system (which includes referrals); "referral" = the free, referrals-only
