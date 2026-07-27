@@ -15,6 +15,34 @@ import ContourClip from "@/components/ContourClip";
 import ScrollFillText from "@/components/ScrollFillText";
 import StandaloneGuard from "@/components/StandaloneGuard";
 
+// The hero's backdrop. Kept as a constant because the rocket's window is
+// punched out in this exact colour.
+const HERO_BG = "#08080a";
+
+// The Launch Pad rocket, matching the installed app icon. White on the black
+// hero; the porthole is punched in the hero colour rather than filled white.
+function LaunchPadMark() {
+  return (
+    <svg
+      viewBox="0 0 512 512"
+      className="h-11 w-11 sm:h-12 sm:w-12"
+      fill="#ffffff"
+      aria-hidden
+    >
+      <g transform="rotate(45 256 256) translate(0 -8)">
+        <path d="M256 80 C298 122 300 194 298 268 C298 302 293 330 284 350 L228 350 C219 330 214 302 214 268 C212 194 214 122 256 80 Z" />
+        <path d="M214 266 L172 356 L221 335 Z" />
+        <path d="M298 266 L340 356 L291 335 Z" />
+        <path d="M232 350 L239 372 L273 372 L280 350 Z" />
+        <rect x="248" y="392" width="16" height="78" rx="8" />
+        <rect x="214" y="404" width="14" height="56" rx="7" />
+        <rect x="284" y="404" width="14" height="56" rx="7" />
+        <circle cx="256" cy="172" r="32" fill={HERO_BG} />
+      </g>
+    </svg>
+  );
+}
+
 export default function LandingPage() {
   // No bg-white on <main> — the body provides the white base so the fixed
   // -z-10 texture/glows show through the transparent sections.
@@ -43,35 +71,27 @@ export default function LandingPage() {
       {/* Red copy of the same texture, revealed only under the frosted panel */}
       <BackgroundTexture tint />
 
-      {/* Nav — hashtag wordmark + a big Sign in */}
+      {/* Nav — just the Launch Pad mark, then See pricing + Sign in. Sits over
+          the black hero, so everything here is white. */}
       <header className="absolute inset-x-0 top-0 z-40">
-        <div className="mx-auto flex h-28 max-w-7xl items-center justify-between px-6 sm:px-10">
-          <Link
-            href="/"
-            aria-label="The Experts Group"
-            className="hashtag-logo flex items-center gap-3"
-          >
-            {/* Red chat-bubble with a white # and a little tail */}
-            <span className="hashtag-bubble relative flex h-12 w-12 items-center justify-center rounded-[1.1rem] bg-[#E31F36] shadow-sm sm:h-14 sm:w-14">
-              <span className="text-2xl font-extrabold leading-none text-white sm:text-3xl">
-                #
-              </span>
-              <span className="absolute -bottom-1 left-3 h-4 w-4 rotate-45 rounded-[4px] bg-[#E31F36]" />
-            </span>
-            <span className="text-lg font-extrabold leading-[0.9] tracking-[-0.02em] text-gray-900 sm:text-xl">
-              The
-              <br />
-              Experts
-              <br />
-              Group
-            </span>
+        <div className="mx-auto flex h-24 max-w-7xl items-center justify-between px-6 sm:h-28 sm:px-10">
+          <Link href="/" aria-label="Launch Pad" className="flex items-center">
+            <LaunchPadMark />
           </Link>
-          <Link
-            href="/login"
-            className="btn-group rounded-full px-7 py-3 text-base font-medium sm:px-9 sm:py-3.5"
-          >
-            Sign in
-          </Link>
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <a
+              href="#packages"
+              className="rounded-full border border-white/25 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-white/10 sm:px-7 sm:py-3 sm:text-base"
+            >
+              See pricing
+            </a>
+            <Link
+              href="/login"
+              className="rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-gray-900 transition hover:bg-white/90 sm:px-7 sm:py-3 sm:text-base"
+            >
+              Sign in
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -79,39 +99,40 @@ export default function LandingPage() {
           block owns min-h-screen and self-centres, so the heading sits dead
           centre of the viewport at any screen height (the icon strip adds
           height below without shifting the centre). */}
-      <section className="flex flex-col">
+      <section
+        className="relative flex flex-col text-white"
+        style={{ backgroundColor: HERO_BG }}
+      >
         <Parallax speed={0.46} max={360} className="flex min-h-screen flex-col items-center justify-center px-6 py-24 text-center">
           <Reveal>
-            <p className="mb-5 text-sm font-medium uppercase tracking-widest text-gray-400">
-              Paid ads, done for you
-            </p>
             {/* nowrap keeps "Our ad engine." on one line while the hidden
                 card expands on hover */}
-            <h1 className="mx-auto max-w-6xl text-6xl font-semibold leading-[0.95] tracking-[-0.06em] text-gray-900 sm:text-7xl lg:text-8xl">
+            <h1 className="mx-auto max-w-6xl text-5xl font-light leading-[0.95] tracking-[-0.05em] text-white sm:text-7xl lg:text-8xl">
               Your personal brand.
               <br />
               <span className="lg:whitespace-nowrap">
                 Our <HeroAdWord /> engine.
               </span>
             </h1>
-            <p className="mx-auto mt-8 max-w-2xl text-lg text-gray-500 sm:text-xl">
+            <p className="mx-auto mt-8 max-w-2xl text-lg font-light text-white/60 sm:text-xl">
               We build and run paid social campaigns for Experts Group agents
               — you track every lead from first click to your CRM, all in one
               clean dashboard.
             </p>
             <div className="mt-12 flex items-center justify-center gap-4">
+              {/* .btn-glass hard-sets a near-black label for light pages, so
+                  the hero's copy is forced white over the black backdrop. */}
               <GlowButton
                 href="/signup"
-                className="px-10 py-4 text-base font-semibold"
+                className="px-10 py-4 text-base font-semibold !text-white"
               >
                 Choose your package
               </GlowButton>
             </div>
           </Reveal>
         </Parallax>
-        {/* Social platforms strip — outside the box with breathing room,
-            falls into the next screen on scroll */}
-        <div className="mx-auto w-full max-w-5xl px-6 py-12">
+        {/* Social platforms strip — sits quietly at the foot of the hero. */}
+        <div className="mx-auto w-full max-w-5xl px-6 pb-14">
           <HeroIconStrip />
         </div>
       </section>

@@ -742,7 +742,8 @@ h5 {
    in, held while hovered and springing back on leave. */
 .hero-pop-icon {
   transform-origin: center bottom;
-  color: #111827;
+  /* White: the hero is black. Hovering bleeds in the platform's own colour. */
+  color: #ffffff;
   transition:
     transform 0.42s cubic-bezier(0.34, 1.7, 0.5, 1),
     color 0.35s ease;
@@ -750,7 +751,7 @@ h5 {
 }
 .hero-icon-hit:hover .hero-pop-icon {
   transform: translateY(-26px) scale(1.18, 1.34);
-  color: var(--icon-color, #111827);
+  color: var(--icon-color, #ffffff);
 }
 
 /* ── Stat card bars: spring up from the baseline with a bounce ─────────── */
