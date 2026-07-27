@@ -904,3 +904,63 @@ h5 {
     animation: none;
   }
 }
+
+/* ── Hero CTA: understated rim-light pill ──────────────────────────────────
+   Sits at the page's own black so it barely announces itself, with a soft
+   light that travels around the rim — the draw comes from the moving edge,
+   not from the fill. Lightens a touch on hover. */
+.btn-rim {
+  position: relative;
+  isolation: isolate;
+  display: inline-block;
+  border-radius: 9999px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.035);
+  transition:
+    background 0.4s ease,
+    transform 0.18s cubic-bezier(0.34, 1.4, 0.5, 1);
+}
+.btn-rim:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.btn-rim:active {
+  transform: scale(0.97);
+}
+/* The rim itself: a constant hairline with a bright arc sweeping round it.
+   Masked to a 1px ring; the drop-shadow gives the arc its bloom. */
+.btn-rim-edge {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background:
+    conic-gradient(
+      from var(--rim-angle),
+      rgba(255, 255, 255, 0) 0deg,
+      rgba(255, 255, 255, 0) 215deg,
+      rgba(255, 255, 255, 0.9) 300deg,
+      rgba(255, 255, 255, 0) 360deg
+    ),
+    linear-gradient(rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.13));
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.4));
+  opacity: 0.85;
+  transition: opacity 0.45s ease;
+  animation: rim-spin 5.5s linear infinite;
+}
+.btn-rim:hover .btn-rim-edge {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn-rim-edge {
+    animation: none;
+  }
+}

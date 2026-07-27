@@ -5,7 +5,6 @@ import Reveal from "@/components/Reveal";
 import HeroAdWord from "@/components/HeroAdWord";
 import PhysicsIcons from "@/components/PhysicsIcons";
 import HeroIconStrip from "@/components/HeroIconStrip";
-import GlowButton from "@/components/GlowButton";
 import LeadsStat from "@/components/LeadsStat";
 import PanelReveal from "@/components/PanelReveal";
 import BackgroundTexture from "@/components/BackgroundTexture";
@@ -25,7 +24,7 @@ function LaunchPadMark() {
   return (
     <svg
       viewBox="0 0 512 512"
-      className="h-11 w-11 sm:h-12 sm:w-12"
+      className="h-8 w-8 sm:h-9 sm:w-9"
       fill="#ffffff"
       aria-hidden
     >
@@ -81,7 +80,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-2.5 sm:gap-3">
             <a
               href="#packages"
-              className="rounded-full border border-white/25 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-white/10 sm:px-7 sm:py-3 sm:text-base"
+              className="px-2 py-2.5 text-sm font-medium text-white/80 underline decoration-white/35 underline-offset-[6px] transition hover:text-white hover:decoration-white sm:px-3 sm:text-base"
             >
               See pricing
             </a>
@@ -95,15 +94,14 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* Hero — full screen, clean white, icons along the bottom. The hero
-          block owns min-h-screen and self-centres, so the heading sits dead
-          centre of the viewport at any screen height (the icon strip adds
-          height below without shifting the centre). */}
+      {/* Hero — one screen tall in total, black, with the heading self-centred
+          in the space above and the platform icons sitting inside the same
+          frame rather than below the fold. */}
       <section
-        className="relative flex flex-col text-white"
+        className="relative flex min-h-screen flex-col text-white"
         style={{ backgroundColor: HERO_BG }}
       >
-        <Parallax speed={0.46} max={360} className="flex min-h-screen flex-col items-center justify-center px-6 py-24 text-center">
+        <Parallax speed={0.46} max={360} className="flex flex-1 flex-col items-center justify-center px-6 pb-8 pt-28 text-center">
           <Reveal>
             {/* nowrap keeps "Our ad engine." on one line while the hidden
                 card expands on hover */}
@@ -120,19 +118,19 @@ export default function LandingPage() {
               clean dashboard.
             </p>
             <div className="mt-12 flex items-center justify-center gap-4">
-              {/* .btn-glass hard-sets a near-black label for light pages, so
-                  the hero's copy is forced white over the black backdrop. */}
-              <GlowButton
-                href="/signup"
-                className="px-10 py-4 text-base font-semibold !text-white"
-              >
-                Choose your package
-              </GlowButton>
+              {/* Understated: the fill is barely off the page's black — the
+                  draw is the light travelling round the rim. */}
+              <Link href="/signup" className="btn-rim px-10 py-4 text-base font-medium">
+                <span className="btn-rim-edge" aria-hidden />
+                <span className="relative z-[2]">Choose your package</span>
+              </Link>
             </div>
           </Reveal>
         </Parallax>
-        {/* Social platforms strip — sits quietly at the foot of the hero. */}
-        <div className="mx-auto w-full max-w-5xl px-6 pb-14">
+        {/* Social platforms strip — sits quietly at the foot of the hero. The
+            generous bottom padding keeps it clear of the next section's panel,
+            which parallaxes UP by ~190px and would otherwise clip it. */}
+        <div className="relative z-10 mx-auto w-full max-w-5xl px-6 pb-32">
           <HeroIconStrip />
         </div>
       </section>
