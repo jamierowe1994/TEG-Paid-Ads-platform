@@ -72,7 +72,7 @@ function Stat({
 }) {
   const n = useCountUp(value, on);
   return (
-    <div className="px-4 text-center">
+    <div className="text-center sm:text-left">
       <p className="text-4xl font-light tabular-nums tracking-[-0.03em] text-white sm:text-5xl">
         {n.toLocaleString("en-GB")}
       </p>
@@ -108,66 +108,61 @@ export default function TrialProof() {
   }, []);
 
   return (
-    <div ref={ref} className="relative mx-auto max-w-5xl px-6">
-      {/* Brand-red bloom behind the numbers — the only colour in the section,
+    <div ref={ref} className="relative mx-auto w-full max-w-7xl px-6 sm:px-10">
+      {/* Brand-red bloom behind the number — the only colour in the section,
           so the figures themselves stay white and legible on charcoal. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute left-1/2 top-40 -z-10 h-[420px] w-[min(92vw,860px)] -translate-x-1/2 rounded-full opacity-25 blur-[120px]"
+        className="pointer-events-none absolute -z-10 h-[520px] w-[min(92vw,900px)] rounded-full opacity-25 blur-[130px] max-lg:left-1/2 max-lg:top-1/3 max-lg:-translate-x-1/2 lg:-right-20 lg:top-0"
         style={{
           background:
             "radial-gradient(50% 50% at 50% 50%, #a72a35 0%, transparent 72%)",
         }}
       />
 
-      <div className="text-center">
-        <span className="inline-block rounded-full bg-[#A72A35] px-4 py-1.5 text-sm font-medium text-white">
-          Flight tested
-        </span>
-        <h2 className="mx-auto mt-5 max-w-3xl text-4xl font-light leading-[1.05] tracking-[-0.035em] text-white sm:text-5xl">
-          We ran it for three months before we offered it to you.
-        </h2>
-        <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-white/60">
-          One agent. One patch. The same ads, the same dashboard and the same
-          lead nurture you&apos;d get on day one — no special treatment. Here is
-          exactly what came back.
-        </p>
+      {/* Deliberately off the centre line: copy holds a narrow column on the
+          left while the number runs oversized on the right, so this section
+          doesn't read as another centred block like the ones either side. */}
+      <div className="grid items-center gap-14 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-20">
+        <div className="max-w-xl">
+          <h2 className="text-4xl font-light leading-[1.05] tracking-[-0.035em] text-white sm:text-5xl">
+            We ran it for three months before we offered it to you.
+          </h2>
+          <p className="mt-6 text-lg leading-relaxed text-white/60">
+            One agent. One patch. The same ads, the same dashboard and the same
+            lead nurture you&apos;d get on day one — no special treatment. Here
+            is exactly what came back.
+          </p>
+          <p className="mt-8 text-lg text-white/70">
+            That was one patch, for three months. Yours is still open.
+          </p>
+          <div className="mt-7">
+            <Link
+              href="/signup"
+              className="btn-group inline-block rounded-full px-9 py-4 text-base font-semibold"
+            >
+              Choose your package
+            </Link>
+          </div>
+        </div>
+
+        {/* The headline number. Everything else here is supporting cast. */}
+        <div className="lg:text-right">
+          <p className="text-[7rem] font-light leading-[0.78] tabular-nums tracking-[-0.06em] text-white sm:text-[11rem] lg:text-[14rem]">
+            {leads.toLocaleString("en-GB")}
+          </p>
+          <p className="mt-5 max-w-[15rem] text-lg text-white/70 lg:ml-auto">
+            leads delivered, in three months, to one agent
+          </p>
+        </div>
       </div>
 
-      {/* The headline number. Everything else on this page is supporting cast. */}
-      <div className="mt-14 text-center">
-        <p className="text-[5.5rem] font-light leading-[0.85] tabular-nums tracking-[-0.055em] text-white sm:text-[9.5rem]">
-          {leads.toLocaleString("en-GB")}
-        </p>
-        <p className="mt-5 text-lg text-white/70 sm:text-xl">
-          leads delivered, in three months, to one agent
-        </p>
-      </div>
-
-      {/* No card, no rules — the figures sit straight on the page so the 555
-          above stays the only thing with weight. */}
-      <div className="mt-16 grid gap-12 sm:grid-cols-3 sm:gap-8">
+      {/* Supporting figures run the full width under a hairline — no cards,
+          so the 555 stays the only thing with real weight. */}
+      <div className="mt-24 grid gap-12 border-t border-white/10 pt-12 sm:grid-cols-3 sm:gap-8">
         {SUPPORTING.map((s) => (
           <Stat key={s.label} {...s} on={on} />
         ))}
-      </div>
-
-      <div className="mt-12 text-center">
-        <p className="mx-auto max-w-lg text-lg text-white/70">
-          That was one patch, for three months. Yours is still open.
-        </p>
-        <div className="mt-7">
-          <Link
-            href="/signup"
-            className="btn-group inline-block rounded-full px-9 py-4 text-base font-semibold"
-          >
-            Choose your package
-          </Link>
-        </div>
-        <p className="mt-6 text-xs text-white/30">
-          Real figures from The Experts Group&apos;s three-month Launch Pad
-          trial. Meta campaigns only — LinkedIn is next.
-        </p>
       </div>
     </div>
   );

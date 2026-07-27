@@ -87,10 +87,6 @@ export default function PlugIntoStack() {
           ))}
         </div>
       </div>
-
-      <p className="mt-14 text-sm text-white/40">
-        If you use it, tell us and we&apos;ll wire it up.
-      </p>
     </div>
   );
 }

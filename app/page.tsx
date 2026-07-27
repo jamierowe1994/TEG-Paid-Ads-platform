@@ -130,13 +130,11 @@ export default function LandingPage() {
         <div className="relative flex min-h-[64vh] flex-col overflow-hidden rounded-[2.5rem]">
           {/* Wide column gap on desktop: the infographic card hangs off the
               photo's left edge, so a tight gap put it right up against the
-              copy. */}
-          <div className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-10 px-8 py-12 sm:px-12 lg:grid-cols-2 lg:gap-24">
+              copy. Columns are deliberately uneven — the photo takes the
+              larger share so this doesn't read as a symmetrical two-up. */}
+          <div className="mx-auto grid w-full max-w-7xl flex-1 items-center gap-10 px-8 py-12 sm:px-12 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-24">
             <div className="p-words">
-              <span className="inline-block rounded-full bg-[#A72A35] px-4 py-1.5 text-sm font-medium text-white">
-                Mission briefing
-              </span>
-              <h2 className="mt-5 max-w-lg text-4xl font-semibold leading-[1.05] tracking-tight text-gray-900 sm:text-5xl">
+              <h2 className="max-w-lg text-4xl font-semibold leading-[1.05] tracking-tight text-gray-900 sm:text-5xl">
                 What is Launch Pad?
               </h2>
               <p className="mt-5 max-w-md text-lg leading-relaxed text-gray-600">
@@ -182,7 +180,7 @@ export default function LandingPage() {
       {/* Proof — the real three-month trial. Deliberately between "What is
           Launch Pad?" and "How it works": say what it is, earn the trust, then
           explain the mechanics. */}
-      <section id="proof" className="px-6 py-28">
+      <section id="proof" className="py-28">
         <Reveal>
           <TrialProof />
         </Reveal>
@@ -341,7 +339,7 @@ export default function LandingPage() {
           {/* The flat fee first — it's the same on all three, so it belongs
               above the tiers rather than repeated inside each one. */}
           <Reveal>
-            <div className="mx-auto mt-14 max-w-2xl rounded-3xl border border-gray-200 bg-white p-8 text-center">
+            <div className="mx-auto mt-14 max-w-2xl text-center">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
                 Monthly management fee
               </p>
@@ -365,13 +363,15 @@ export default function LandingPage() {
             </p>
           </Reveal>
 
-          <div className="mt-8 grid gap-6 lg:grid-cols-3">
+          {/* items-center + a taller middle card: the popular one stands
+              proud of the other two instead of three matching rectangles. */}
+          <div className="mt-8 grid gap-6 lg:grid-cols-3 lg:items-center">
             {PACKAGES.map((p, i) => (
               <Reveal key={p.id} delay={i * 120} className="h-full">
                 <div
                   className={`lift-card relative flex h-full flex-col rounded-2xl border bg-white p-8 ${
                     p.highlighted
-                      ? "border-gray-900 shadow-lg"
+                      ? "border-gray-900 shadow-lg lg:py-14"
                       : "border-gray-200"
                   }`}
                 >
@@ -407,36 +407,9 @@ export default function LandingPage() {
                     </p>
                   </div>
 
-                  {/* Titles only — the full descriptions run once below the
-                      three cards rather than three times over. */}
-                  <div className="mt-6 flex-1 border-t border-gray-200 pt-5">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
-                      What&apos;s included
-                    </p>
-                    <ul className="mt-3 space-y-2.5">
-                      {INCLUDED_IN_EVERY_PACKAGE.map((f) => (
-                        <li
-                          key={f.title}
-                          className="flex gap-3 text-sm text-gray-600"
-                        >
-                          <svg
-                            className="mt-0.5 h-4 w-4 shrink-0 text-[var(--group)]"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M16.7 5.3a1 1 0 010 1.4l-8 8a1 1 0 01-1.4 0l-4-4a1 1 0 111.4-1.4L8 12.6l7.3-7.3a1 1 0 011.4 0z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                          {f.title}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <p className="mt-6 text-sm text-gray-500">
+                  {/* No per-card feature list: every package includes exactly
+                      the same things, so it runs once under all three. */}
+                  <p className="mt-6 flex-1 text-sm text-gray-500">
                     £{p.managementFee} management + £{p.adSpend} ad spend ={" "}
                     <span className="font-semibold text-gray-900">
                       approx. £{p.price}/month
@@ -444,10 +417,13 @@ export default function LandingPage() {
                   </p>
                   <Link
                     href={`/signup?package=${p.id}`}
+                    // The outline buttons used to hover to bg-gray-50. On the
+                    // dark page that hover variant isn't remapped, so they
+                    // went white-on-white. They fill with the brand red now.
                     className={`mt-5 rounded-xl py-3 text-center text-sm font-medium transition ${
                       p.highlighted
                         ? "btn-group"
-                        : "btn-press border border-gray-200 text-gray-900 hover:bg-gray-50"
+                        : "btn-press border border-gray-200 text-gray-900 hover:border-transparent hover:bg-[var(--group)] hover:text-white"
                     }`}
                   >
                     Choose {p.name}
