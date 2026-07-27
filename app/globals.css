@@ -1074,24 +1074,23 @@ h5 {
 }
 
 /* ── Footer horizon ────────────────────────────────────────────────────────
-   The bottom of the page is the edge of a planet: a huge dark sphere rising
-   from below with a thin lit atmosphere along its rim and a soft bloom above,
-   so the page ends on a horizon rather than a hard edge. */
+   The bottom of the page is the edge of a planet. The arc sits partway down
+   the footer so the links and legal row land ON the planet's surface rather
+   than in empty space above it. */
 .horizon {
   position: absolute;
-  inset-inline: 0;
-  bottom: 0;
-  height: 360px;
+  inset: 0;
   overflow: hidden;
   pointer-events: none;
 }
-/* The light spilling up off the rim. */
+/* The light spilling up off the rim — strongest at its own bottom edge, which
+   is lined up with the planet's top. */
 .horizon-bloom {
   position: absolute;
   left: 50%;
-  bottom: 130px;
+  top: 20px;
   width: 120%;
-  height: 260px;
+  height: 215px;
   transform: translateX(-50%);
   background: radial-gradient(
     62% 100% at 50% 100%,
@@ -1104,9 +1103,11 @@ h5 {
 /* The planet itself — only the top cap of a very large sphere is visible. */
 .horizon-planet {
   position: absolute;
-  top: 150px;
+  top: 240px;
   left: 50%;
-  width: 240%;
+  /* Wide: a gentler curve means the surface doesn't fall away so steeply at
+     the left/right edges, where the footer's outer columns sit. */
+  width: 380%;
   aspect-ratio: 1 / 1;
   transform: translateX(-50%);
   border-radius: 50%;
@@ -1122,10 +1123,10 @@ h5 {
     0 -12px 90px rgba(255, 255, 255, 0.14);
 }
 @media (min-width: 640px) {
-  .horizon {
-    height: 440px;
+  .horizon-bloom {
+    height: 255px;
   }
   .horizon-planet {
-    top: 190px;
+    top: 250px;
   }
 }

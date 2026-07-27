@@ -630,7 +630,7 @@ export default function LandingPage() {
           <div className="horizon-bloom" />
           <div className="horizon-planet" />
         </div>
-        <div className="relative z-10 px-8 pb-[300px] pt-4 text-white sm:px-14 sm:pb-[380px]">
+        <div className="relative z-10 px-8 pb-20 pt-4 text-white sm:px-14 sm:pb-24">
           <div className="mx-auto max-w-6xl">
             {/* CTA row */}
             <div className="flex flex-col items-start justify-between gap-8 border-b border-white/10 pb-12 lg:flex-row lg:items-center">
@@ -647,7 +647,9 @@ export default function LandingPage() {
 
             {/* Links — kept to one tight row (the per-brand list is gone, so
                 the horizon isn't pushed miles down the page). */}
-            <div className="flex flex-col justify-between gap-8 pt-10 sm:flex-row sm:gap-14">
+            {/* Padded down so this row and the legal line below land ON the
+                planet, under the lit rim, rather than floating above it. */}
+            <div className="flex flex-col justify-between gap-8 pt-[124px] sm:flex-row sm:gap-14 sm:pt-[132px]">
               <div className="max-w-xs">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
