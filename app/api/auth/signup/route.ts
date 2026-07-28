@@ -9,6 +9,8 @@ import { findByEmail, createUser, toPublic } from "@/lib/users-store";
 import { brandForEmail, brandById, isAllowedEmailDomain } from "@/lib/brands";
 import { packageById } from "@/lib/packages";
 import { stripeConfigured } from "@/lib/stripe";
+import { sendSystemEmail } from "@/lib/mailer";
+import { newSignupEmail } from "@/lib/emails";
 import type { StoredUser } from "@/lib/users-store";
 
 function uid() {
@@ -95,6 +97,25 @@ export async function POST(req: NextRequest) {
   };
 
   await createUser(user);
+
+  /* Tell the team. Deliberately not awaited and deliberately swallowing
+     errors: a signup must never fail — or even slow down — because a
+     notification couldn't go out. sendSystemEmail already reports rather
+     than throws; this catch is belt and braces. */
+  const notify = process.env.SIGNUP_NOTIFY_EMAIL ?? "Hayley.Cox@TheExpertsGroup.co.uk";
+  const mail = newSignupEmail({
+    name: user.name,
+    email: user.email,
+    brandName: brand.name,
+    packageName: packageById(user.packageId)?.name,
+    userId: user.id,
+  });
+  sendSystemEmail({
+    to: notify,
+    subject: mail.subject,
+    body: mail.html,
+    html: true,
+  }).catch(() => {});
 
   const res = NextResponse.json({ user: toPublic(user) });
   res.cookies.set(

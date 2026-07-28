@@ -81,7 +81,21 @@ Takes effect within ~5 minutes of saving. Key also re-added to local
     send failing silently.
 - ⬜ James: create the leads@ mailbox, then connect it in Admin → Connections.
   Needs AZURE_CLIENT_ID / AZURE_CLIENT_SECRET set (they aren't, locally).
-- ⬜ Then wire the senders (each is now a small job):
+- ✅ (28 Jul) All three senders built:
+  · New signup → Hayley (SIGNUP_NOTIFY_EMAIL overrides). Deep-links to that
+    customer's record. Fired without awaiting — a signup must never fail or
+    slow down because a notification couldn't go out.
+  · Forgot password → one-time link, 2h expiry, lands on /reset/[token].
+    Always returns the same response whether or not the account exists, so it
+    can't be used to enumerate who works here.
+  · Invites → POST /api/admin/send-invites for bulk-imported accounts still
+    holding the shared launch password. 14-day links, sent sequentially (a few
+    hundred parallel Graph calls would throttle), and reports per recipient.
+  · Tokens are stored as SHA-256 only, single-use, purpose-scoped, and
+    issuing a new one kills the previous one of the same kind.
+- ⬜ NOT YET EXERCISED END TO END — needs the mailbox connected. Nothing has
+  actually been delivered to an inbox; the routes are verified but the send
+  path is unproven.
 
 Stand up a system mailbox that sends:
 - Admin notifications — e.g. email Hayley when someone signs up for paid leads.

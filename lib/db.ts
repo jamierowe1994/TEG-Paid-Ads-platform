@@ -129,6 +129,18 @@ ALTER TABLE brand_meta ADD COLUMN IF NOT EXISTS linkedin_ad_account TEXT;
 -- Connected once by a super admin via Microsoft OAuth; everything the
 -- platform sends on its own behalf — invites, password resets, admin alerts —
 -- goes out from here rather than from an agent's mailbox.
+-- One-time links for password resets and invites. The raw token is NEVER
+-- stored: only its SHA-256, so a database leak can't be used to log in as
+-- anybody. purpose keeps a reset link from being reused as an invite.
+CREATE TABLE IF NOT EXISTS auth_tokens (
+  token_hash TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  purpose TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS auth_tokens_user_idx ON auth_tokens(user_id);
 CREATE TABLE IF NOT EXISTS system_mailbox (
   id INTEGER PRIMARY KEY,
   email TEXT NOT NULL,

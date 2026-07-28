@@ -27,7 +27,8 @@ function LoginForm() {
   // Deliberately NOT auto-focusing the email on mobile — people should see the
   // sheet settle before the keyboard opens, so they tap in themselves.
   const mobileEmailRef = useRef<HTMLInputElement | null>(null);
-  // Forgot password — logs an ask for the team (no reset email yet).
+  // Forgot password — sends a one-time reset link from the system mailbox
+  // (and still logs the ask for the team, in case the mailbox is down).
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotBusy, setForgotBusy] = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
@@ -46,7 +47,7 @@ function LoginForm() {
     }
     setForgotBusy(true);
     try {
-      const res = await fetch("/api/auth/forgot-password", {
+      const res = await fetch("/api/auth/request-reset", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: trimmed }),

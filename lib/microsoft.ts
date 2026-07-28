@@ -229,7 +229,7 @@ export function msForgetUser(userId: string): void {
 // Send an email AS the connected agent (lands in their own Sent items).
 export async function msSendMail(
   accessToken: string,
-  opts: { to: string; subject: string; body: string }
+  opts: { to: string; subject: string; body: string; html?: boolean }
 ): Promise<void> {
   const res = await fetch(`${GRAPH}/me/sendMail`, {
     method: "POST",
@@ -240,7 +240,10 @@ export async function msSendMail(
     body: JSON.stringify({
       message: {
         subject: opts.subject,
-        body: { contentType: "Text", content: opts.body },
+        body: {
+          contentType: opts.html ? "HTML" : "Text",
+          content: opts.body,
+        },
         toRecipients: [{ emailAddress: { address: opts.to } }],
       },
       saveToSentItems: true,

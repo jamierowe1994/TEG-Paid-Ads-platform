@@ -25,6 +25,7 @@ export async function sendSystemEmail(opts: {
   to: string;
   subject: string;
   body: string;
+  html?: boolean;
 }): Promise<SendResult> {
   const mailbox = await getSystemMailbox();
   if (!mailbox) return { sent: false, reason: "not_connected" };

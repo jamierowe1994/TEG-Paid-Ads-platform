@@ -1,0 +1,139 @@
+import "server-only";
+import { appOrigin } from "./microsoft";
+
+/* The platform's own emails.
+ *
+ * Kept as one file of plain template functions rather than a templating
+ * dependency: there are three of them, they change rarely, and someone
+ * non-technical can read and edit the copy here.
+ *
+ * Inline styles only, and a table for the button. Outlook ignores <style>
+ * blocks and most flexbox, so anything clever renders as a broken mess in
+ * exactly the client The Experts Group runs on.
+ */
+
+const BRAND = "#a72a35";
+const INK = "#111827";
+const MUTED = "#6b7280";
+
+function shell(opts: { heading: string; body: string; preheader?: string }) {
+  return `<!doctype html>
+<html><body style="margin:0;padding:0;background:#f4f4f5;">
+${
+  opts.preheader
+    ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${opts.preheader}</div>`
+    : ""
+}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:32px 16px;">
+  <tr><td align="center">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;padding:36px 32px;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;">
+      <tr><td>
+        <p style="margin:0 0 26px;font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:${BRAND};">Launch Pad</p>
+        <h1 style="margin:0 0 18px;font-size:23px;line-height:1.3;color:${INK};font-weight:600;">${opts.heading}</h1>
+        ${opts.body}
+      </td></tr>
+    </table>
+    <p style="margin:22px 0 0;font-size:12px;color:${MUTED};font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;">
+      The Experts Group · Launch Pad
+    </p>
+  </td></tr>
+</table>
+</body></html>`;
+}
+
+function para(text: string) {
+  return `<p style="margin:0 0 14px;font-size:15px;line-height:1.65;color:#374151;">${text}</p>`;
+}
+
+// A table, not an <a> with padding — Outlook collapses the latter.
+function button(href: string, label: string) {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:26px 0 8px;">
+  <tr><td style="border-radius:9999px;background:${BRAND};">
+    <a href="${href}" style="display:inline-block;padding:13px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;">${label}</a>
+  </td></tr>
+</table>`;
+}
+
+function fallbackLink(href: string) {
+  return `<p style="margin:14px 0 0;font-size:12px;line-height:1.6;color:${MUTED};">
+  If the button doesn't work, copy this into your browser:<br>
+  <span style="color:${MUTED};word-break:break-all;">${href}</span>
+</p>`;
+}
+
+/* ── 1. New signup → the team ─────────────────────────────────────────────
+   Deep-links to the customer's own record, so it's one click from "someone
+   signed up" to seeing who. */
+export function newSignupEmail(opts: {
+  name: string;
+  email: string;
+  brandName: string;
+  packageName?: string;
+  userId: string;
+}) {
+  const link = `${appOrigin()}/admin?tab=crm&agent=${encodeURIComponent(opts.userId)}`;
+  return {
+    subject: `New Launch Pad signup — ${opts.name} (${opts.brandName})`,
+    html: shell({
+      heading: "You've had a new signup",
+      preheader: `${opts.name} — ${opts.brandName}`,
+      body:
+        para(`<strong>${opts.name}</strong> has just signed up for Launch Pad.`) +
+        `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:18px 0 4px;font-size:14px;color:#374151;">
+          <tr><td style="padding:4px 18px 4px 0;color:${MUTED};">Business</td><td style="padding:4px 0;">${opts.brandName}</td></tr>
+          <tr><td style="padding:4px 18px 4px 0;color:${MUTED};">Email</td><td style="padding:4px 0;">${opts.email}</td></tr>
+          ${opts.packageName ? `<tr><td style="padding:4px 18px 4px 0;color:${MUTED};">Package</td><td style="padding:4px 0;">${opts.packageName}</td></tr>` : ""}
+        </table>` +
+        button(link, "Open their file") +
+        fallbackLink(link),
+    }),
+  };
+}
+
+/* ── 2. Password reset ───────────────────────────────────────────────────── */
+export function passwordResetEmail(opts: { name: string; link: string; hours: number }) {
+  return {
+    subject: "Reset your Launch Pad password",
+    html: shell({
+      heading: "Reset your password",
+      preheader: "A link to set a new password",
+      body:
+        para(`Hi ${opts.name.split(" ")[0]},`) +
+        para(
+          "Someone asked to reset the password on your Launch Pad account. Use the button below to set a new one."
+        ) +
+        button(opts.link, "Set a new password") +
+        fallbackLink(opts.link) +
+        para(
+          `<span style="color:${MUTED};font-size:13px;">This link works once and expires in ${opts.hours} hours. If you didn't ask for it you can ignore this email — your password won't change.</span>`
+        ),
+    }),
+  };
+}
+
+/* ── 3. Invite for a pre-provisioned account ─────────────────────────────── */
+export function inviteEmail(opts: {
+  name: string;
+  link: string;
+  brandName: string;
+  days: number;
+}) {
+  return {
+    subject: "Your Launch Pad account is ready",
+    html: shell({
+      heading: "Your account is ready",
+      preheader: "Set your password and finish your profile",
+      body:
+        para(`Hi ${opts.name.split(" ")[0]},`) +
+        para(
+          `We've created a Launch Pad account for you as part of ${opts.brandName}. It's where referrals you send and receive are tracked, and where paid-ads leads land if you take that on.`
+        ) +
+        para("Set your password to get started — it takes about a minute.") +
+        button(opts.link, "Set up my account") +
+        fallbackLink(opts.link) +
+        para(
+          `<span style="color:${MUTED};font-size:13px;">This link is just for you and expires in ${opts.days} days. If it does, ask for a new one and we'll send it straight over.</span>`
+        ),
+    }),
+  };
+}
