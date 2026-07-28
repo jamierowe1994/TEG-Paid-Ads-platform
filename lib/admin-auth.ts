@@ -36,6 +36,7 @@ function mdPassword(): string {
 }
 
 const DEFAULT_DIRECTORY: AdminEntry[] = [
+  // ── Super: every brand, plus connections, billing and provisioning ──────
   {
     email: "james@therecruitmentexperts.co.uk",
     role: "super",
@@ -51,15 +52,60 @@ const DEFAULT_DIRECTORY: AdminEntry[] = [
     role: "super",
     name: "Hayley Cox",
   },
-  // The Letting Experts' MD. (More MDs can be added here, or via the
-  // ADMIN_DIRECTORY env var — but note that setting ADMIN_DIRECTORY REPLACES
-  // this whole list, so it must include the super admins above too.)
+  // CEO of all brands. "super" because it's the only tier that sees every
+  // business — note that it also carries the operational powers (system
+  // mailbox, bulk invites, Stripe-facing screens), which a read-only
+  // group-wide tier would not. Worth splitting if that ever matters.
+  {
+    email: "sean@theexpertsgroup.co.uk",
+    role: "super",
+    name: "Sean Newman",
+  },
+
+  // ── MDs: their own business only ────────────────────────────────────────
+  // Adding people here is a deploy. They can also be managed without one via
+  // the ADMIN_DIRECTORY env var — but that REPLACES this whole list, so it
+  // must repeat the super admins above or you lock yourself out.
+  {
+    email: "jim@thepropertyexperts.co.uk",
+    role: "md",
+    brandId: "property",
+    name: "Jim Harris",
+  },
   {
     email: "susan@thelettingexperts.co.uk",
     role: "md",
     brandId: "lettings",
     name: "Susan Liles",
   },
+  {
+    email: "steve@commercialpropertyexperts.co.uk",
+    role: "md",
+    brandId: "commercial",
+    name: "Steve Bell",
+  },
+  // Deliberately not an Experts Group domain — MAB is the Mortgage Experts'
+  // parent. Admin sign-in matches on this directory, not on email domain, so
+  // this works; agent signup would reject it.
+  {
+    email: "gareth.love1@mab.org.uk",
+    role: "md",
+    brandId: "mortgage",
+    name: "Gareth Love",
+  },
+  {
+    email: "ray@theauctioncompany.co.uk",
+    role: "md",
+    brandId: "auction",
+    name: "Ray Purchase",
+  },
+  {
+    email: "lee.armstrong@fineandcountry.com",
+    role: "md",
+    brandId: "fineandcountry",
+    name: "Lee Armstrong",
+  },
+  // The Recruitment Experts' MD is James, who is already a super admin above.
 ];
 
 function directory(): AdminEntry[] {
