@@ -151,6 +151,58 @@ export async function activePartnersForBrand(
 // Location rather than carrying their own territory postcodes, so this is how
 // we position them: the office's full postcode (most precise), or the centroid
 // of its district outward codes.
+/* Staff list for PROVISIONING portal accounts.
+ *
+ * Deliberately a separate call from activePartnersForBrand rather than adding
+ * `email` to that one: it's used for referral matching and comments that it
+ * only asks for non-sensitive fields. It shouldn't start carrying 260 email
+ * addresses just because provisioning needs them.
+ *
+ * Returns every live Partner across all brands — the caller maps them to a
+ * portal brand by email domain, which is the same rule signup uses.
+ */
+export interface TeamHubStaff {
+  id: string;
+  name: string;
+  email: string;
+  brandHubId: string | null;
+  jobTitle: string | null;
+}
+
+export async function allPartnersForImport(): Promise<TeamHubStaff[]> {
+  const rows: Record<string, unknown>[] = await call("search", "TeamMember", {
+    query: { active: true },
+    limit: 1000,
+    fields: [
+      "id",
+      "first_name",
+      "last_name",
+      "email",
+      "person_type",
+      "status",
+      "job_title",
+      "primary_brand_id",
+    ],
+  });
+  return (rows || [])
+    .filter(
+      (r) =>
+        r.person_type === "Partner" && !DEAD_STATUS.has(String(r.status ?? ""))
+    )
+    .map((r) => {
+      const first = String(r.first_name ?? "").trim();
+      const last = String(r.last_name ?? "").trim();
+      return {
+        id: String(r.id),
+        name: `${first} ${last}`.trim() || "Partner",
+        email: String(r.email ?? "").trim().toLowerCase(),
+        brandHubId: (r.primary_brand_id as string) || null,
+        jobTitle: (r.job_title as string) || null,
+      };
+    })
+    .filter((p) => p.email.includes("@"));
+}
+
 export interface TeamHubLocation {
   id: string;
   name: string;

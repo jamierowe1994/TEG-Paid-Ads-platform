@@ -49,7 +49,13 @@ export const BRANDS: Brand[] = [
     id: "property",
     name: "The Property Experts",
     shortName: "Property",
-    domains: ["thepropertyexperts.co.uk", "propertyexperts.co.uk"],
+    // Prestige Property Experts is a higher-end sub-brand of The Property
+    // Experts, not a separate business — its people sit under this brand.
+    domains: [
+      "thepropertyexperts.co.uk",
+      "propertyexperts.co.uk",
+      "prestigepropertyexperts.co.uk",
+    ],
     accent: "#E31F36", // red (shared group/estate colour)
     accentSoft: "#FEF2F2",
     crmName: "REX",
@@ -85,7 +91,13 @@ export const BRANDS: Brand[] = [
     id: "mortgage",
     name: "The Mortgage Experts",
     shortName: "Mortgage",
-    domains: ["themortgageexperts.co.uk", "mortgageexperts.co.uk"],
+    // mab.org.uk is Mortgage Advice Bureau, this brand's parent — a large
+    // share of Mortgage Experts partners are on that domain.
+    domains: [
+      "themortgageexperts.co.uk",
+      "mortgageexperts.co.uk",
+      "mab.org.uk",
+    ],
     accent: "#2B6193", // blue
     accentSoft: "#EEF4FA",
     crmName: "CRM",
