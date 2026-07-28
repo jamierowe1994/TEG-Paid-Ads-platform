@@ -65,7 +65,24 @@ Website restrictions): add `https://launchpad.theexpertsgroup.co.uk/*`
 Takes effect within ~5 minutes of saving. Key also re-added to local
 `.env.local` on 23 Jul.
 
-## 3. Email sending (leads@theexpertsgroup.co.uk) ⬜
+## 3. Email sending (leads@theexpertsgroup.co.uk) 🔶 in progress
+- ✅ (28 Jul) The connection itself. Super admin → Connections → "System
+  mailbox (leads@)" → Connect with Microsoft. Stored globally in
+  `system_mailbox` (one row), NOT against a user — deliberately separate from
+  the per-agent connection, which exists so lead emails come from the agent's
+  own address. Those two must never share a token.
+  · Reuses the existing Microsoft callback, branching on a nonce cookie, so
+    only ONE redirect URI is registered in Azure.
+  · Super-admin only: an MD must not be able to repoint the address the whole
+    platform sends from.
+  · `lib/mailer.ts` → sendSystemEmail(). Reports rather than throws, so a
+    signup can never fail because a notification couldn't go out. A revoked
+    grant self-disconnects, so the admin sees "not connected" instead of every
+    send failing silently.
+- ⬜ James: create the leads@ mailbox, then connect it in Admin → Connections.
+  Needs AZURE_CLIENT_ID / AZURE_CLIENT_SECRET set (they aren't, locally).
+- ⬜ Then wire the senders (each is now a small job):
+
 Stand up a system mailbox that sends:
 - Admin notifications — e.g. email Hayley when someone signs up for paid leads.
 - "Forgot your password" — reset link flow driven from that mailbox (a request

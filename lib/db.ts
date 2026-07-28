@@ -125,6 +125,17 @@ CREATE TABLE IF NOT EXISTS brand_meta (
 ALTER TABLE brand_meta ADD COLUMN IF NOT EXISTS linkedin_ad_account TEXT;
 
 -- Single-row store for the LinkedIn OAuth token (one app/token for the group).
+-- The single system mailbox (leads@theexpertsgroup.co.uk). One row, id = 1.
+-- Connected once by a super admin via Microsoft OAuth; everything the
+-- platform sends on its own behalf — invites, password resets, admin alerts —
+-- goes out from here rather than from an agent's mailbox.
+CREATE TABLE IF NOT EXISTS system_mailbox (
+  id INTEGER PRIMARY KEY,
+  email TEXT NOT NULL,
+  refresh_token TEXT NOT NULL,
+  connected_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  connected_by TEXT
+);
 CREATE TABLE IF NOT EXISTS linkedin_token (
   id            INT PRIMARY KEY DEFAULT 1,
   access_token  TEXT,

@@ -206,6 +206,22 @@ export async function msAccessTokenFor(user: StoredUser): Promise<string> {
   return token;
 }
 
+/* Access token for the SYSTEM mailbox. Deliberately separate from
+   msAccessTokenFor(user): that one persists rotated refresh tokens against a
+   user record with a compare-and-swap, which makes no sense for a single
+   global mailbox. Microsoft returns a long-lived refresh token here, so the
+   stored one keeps working; if it is ever rejected the mailer clears it and
+   the admin reconnects. */
+export async function msRefreshSystemToken(
+  refreshToken: string
+): Promise<string> {
+  const data = await tokenRequest({
+    grant_type: "refresh_token",
+    refresh_token: refreshToken,
+  });
+  return data.access_token!;
+}
+
 export function msForgetUser(userId: string): void {
   accessCache.delete(userId);
 }

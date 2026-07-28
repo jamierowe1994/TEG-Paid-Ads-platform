@@ -273,6 +273,15 @@ function agoDur(ms: number): string {
 export default function AdminPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  // System mailbox (leads@) — the address the platform itself sends from.
+  const [mailbox, setMailbox] = useState<{
+    connected: boolean;
+    email?: string;
+    connectedAt?: string;
+    microsoftConfigured?: boolean;
+  } | null>(null);
+  const [mailboxBusy, setMailboxBusy] = useState(false);
+  const [mailboxError, setMailboxError] = useState("");
   const [authed, setAuthed] = useState(false);
   // "super" → the full dashboard below; "md" → the stripped brand view.
   const [role, setRole] = useState<"super" | "md" | null>(null);
@@ -366,8 +375,51 @@ export default function AdminPage() {
     return () => window.removeEventListener("resize", on);
   }, []);
 
+  async function loadMailbox(pass: string) {
+    try {
+      const res = await fetch("/api/admin/mailbox", {
+        headers: { Authorization: `Bearer ${pass}` },
+      });
+      if (res.ok) setMailbox(await res.json());
+    } catch {
+      /* non-fatal: the rest of the admin page still works */
+    }
+  }
+
+  async function mailboxAction(action: "start" | "disconnect") {
+    if (mailboxBusy) return;
+    setMailboxError("");
+    setMailboxBusy(true);
+    try {
+      const res = await fetch("/api/admin/mailbox", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${password}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMailboxError(data?.error ?? "Something went wrong.");
+        setMailboxBusy(false);
+        return;
+      }
+      if (action === "start" && data.url) {
+        // The nonce cookie is set by that response; navigate to consent.
+        window.location.href = data.url as string;
+        return;
+      }
+      await loadMailbox(password);
+    } catch {
+      setMailboxError("Couldn't reach the server.");
+    }
+    setMailboxBusy(false);
+  }
+
   async function loadData(pass: string): Promise<boolean> {
     const headers = { Authorization: `Bearer ${pass}` };
+    loadMailbox(pass);
     const [fb, us, ev, ls, mt, li, at, ac, rf, rx, pw] = await Promise.all([
       fetch("/api/feedback", { headers }),
       fetch("/api/admin/users", { headers }),
@@ -1831,6 +1883,71 @@ export default function AdminPage() {
         {/* ═══ CONNECTIONS ═══ */}
         {tab === "connections" && (
           <>
+            {/* System mailbox — the address the platform sends from. Invite
+                emails, password resets and admin alerts all depend on it. */}
+            <section className="mb-10">
+              <h2 className="text-lg font-semibold">
+                System mailbox (leads@)
+              </h2>
+              <p className="mt-1 text-sm text-gray-500">
+                The address Launch Pad sends from: invite emails, password
+                resets and admin notifications. Separate from an agent&apos;s
+                own connected mailbox, which is only used to email their leads.
+              </p>
+
+              {mailbox?.connected ? (
+                <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-5">
+                  <p className="text-sm font-medium text-green-900">
+                    Connected — {mailbox.email}
+                  </p>
+                  {mailbox.connectedAt && (
+                    <p className="mt-0.5 text-xs text-green-800/70">
+                      Since{" "}
+                      {new Date(mailbox.connectedAt).toLocaleDateString(
+                        "en-GB",
+                        { day: "numeric", month: "long", year: "numeric" }
+                      )}
+                    </p>
+                  )}
+                  <button
+                    onClick={() => mailboxAction("disconnect")}
+                    disabled={mailboxBusy}
+                    className="mt-3 rounded-lg border border-green-300 bg-white px-4 py-2 text-sm font-medium text-green-900 hover:bg-green-100 disabled:opacity-50"
+                  >
+                    {mailboxBusy ? "Working…" : "Disconnect"}
+                  </button>
+                </div>
+              ) : mailbox?.microsoftConfigured === false ? (
+                <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-700">
+                  <p className="font-medium">Microsoft isn&apos;t configured.</p>
+                  <p className="mt-1">
+                    Set <code>AZURE_CLIENT_ID</code> and{" "}
+                    <code>AZURE_CLIENT_SECRET</code> in Railway, then reload.
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                  <p className="text-sm font-medium text-amber-900">
+                    Not connected — nothing can be emailed yet.
+                  </p>
+                  <p className="mt-1 text-sm text-amber-800/80">
+                    Sign in as leads@theexpertsgroup.co.uk to authorise it.
+                    You&apos;ll be asked to grant send-on-behalf permission.
+                  </p>
+                  <button
+                    onClick={() => mailboxAction("start")}
+                    disabled={mailboxBusy}
+                    className="mt-3 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+                  >
+                    {mailboxBusy ? "Opening…" : "Connect with Microsoft"}
+                  </button>
+                </div>
+              )}
+              {mailboxError && (
+                <p className="mt-3 text-sm text-red-600">{mailboxError}</p>
+              )}
+            </section>
+
             {/* Live Meta stats — one card per connected brand */}
             <section className="mb-10">
               <h2 className="text-lg font-semibold">Meta connection (live)</h2>

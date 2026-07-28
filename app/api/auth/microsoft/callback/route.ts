@@ -13,6 +13,7 @@ import {
   msForgetUser,
   appOrigin,
 } from "@/lib/microsoft";
+import { setSystemMailbox } from "@/lib/system-mailbox";
 import { rexFindUserIdByEmail } from "@/lib/rex";
 import { atlasHasUser } from "@/lib/atlas";
 
@@ -28,6 +29,16 @@ export async function GET(req: NextRequest) {
     NextResponse.redirect(
       new URL(`/dashboard/profile?${params}`, appOrigin())
     );
+
+  /* Two flows land here. The system-mailbox one (started from the admin
+     Connections tab) is identified by its own nonce cookie, and is handled
+     first because it has no portal session at all — an admin isn't
+     necessarily a portal user. Sharing this callback means only ONE redirect
+     URI has to be registered in Azure. */
+  const adminNonce = req.cookies.get("teg_admin_mb_state")?.value;
+  if (adminNonce) {
+    return handleSystemMailbox(req, adminNonce);
+  }
 
   const userId = verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
   if (!userId) {
@@ -139,5 +150,48 @@ export async function GET(req: NextRequest) {
     return res;
   } catch {
     return back("email=error");
+  }
+}
+
+/* Consent for the shared system mailbox. Stored globally rather than against
+   a user: everything the platform sends on its own behalf (invites, password
+   resets, admin alerts) goes out from here. */
+async function handleSystemMailbox(req: NextRequest, cookieNonce: string) {
+  const back = (params: string) =>
+    NextResponse.redirect(
+      new URL(`/admin?tab=connections&${params}`, appOrigin())
+    );
+
+  const code = req.nextUrl.searchParams.get("code");
+  const state = req.nextUrl.searchParams.get("state");
+
+  const clear = (res: NextResponse) => {
+    res.cookies.delete("teg_admin_mb_state");
+    return res;
+  };
+
+  if (!code || !state || state !== cookieNonce) {
+    return clear(back("mailbox=error"));
+  }
+
+  try {
+    const tokens = await msExchangeCode(code);
+    if (!tokens.refresh_token) {
+      // offline_access wasn't granted — we could send once and never again.
+      return clear(back("mailbox=norefresh"));
+    }
+    const me = await msGetMe(tokens.access_token!);
+
+    await setSystemMailbox({
+      email: me.email,
+      refreshToken: tokens.refresh_token,
+      connectedAt: new Date().toISOString(),
+      connectedBy: me.email,
+    });
+
+    return clear(back(`mailbox=connected&address=${encodeURIComponent(me.email)}`));
+  } catch (err) {
+    console.error("[mailbox] system mailbox connect failed:", err);
+    return clear(back("mailbox=error"));
   }
 }
