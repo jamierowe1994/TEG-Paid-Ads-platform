@@ -183,6 +183,27 @@ export async function openBillingPortal(): Promise<{
   return { url: data?.url as string };
 }
 
+/* Move to a different ad-spend tier. The new rate lands on the next invoice
+   rather than being charged on the spot — the pack promises changes "at any
+   renewal", not an immediate top-up. Returns the renewal date it takes effect
+   from, when we know it. */
+export async function changePackage(packageId: string): Promise<{
+  ok: boolean;
+  user?: UserProfile;
+  effectiveFrom?: string | null;
+  error?: string;
+}> {
+  const res = await fetch("/api/billing/change-package", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ packageId }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return { ok: false, error: data?.error };
+  if (data.user) saveUser(data.user);
+  return { ok: true, user: data.user, effectiveFrom: data.effectiveFrom ?? null };
+}
+
 export async function signOut() {
   try {
     await fetch("/api/auth/logout", { method: "POST" });

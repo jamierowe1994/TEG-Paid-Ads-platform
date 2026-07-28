@@ -1,16 +1,24 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { getUser, fetchLeads } from "@/lib/session";
+import { getUser, fetchLeads, changePackage } from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
 import { PACKAGES, packageById } from "@/lib/packages";
 
 // Grow: show the agent their monthly ad-spend cap, let them model a higher
 // spend with a slider, and project how many leads/conversions that would
-// generate based on their current performance. Upgrading routes to a Stripe
-// top-up (placeholder) which will raise their cap.
+// generate based on their current performance. Moving tier changes the
+// ad-spend line on their Stripe subscription, effective at the next renewal.
 
 const MAX_SPEND = 1000;
+
+function fmtDate(d: string): string {
+  return new Date(d).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
 
 export default function GrowPage() {
   const [brand, setBrand] = useState<Brand | null>(null);
@@ -20,6 +28,12 @@ export default function GrowPage() {
   const [convertedCount, setConvertedCount] = useState(0);
   const [desired, setDesired] = useState(0);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [changing, setChanging] = useState(false);
+  const [changeError, setChangeError] = useState("");
+  const [changed, setChanged] = useState<string | null>(null);
+  // Stripe's real renewal date, so the modal can name the day the new rate
+  // starts rather than saying a vague "next renewal".
+  const [nextRenewal, setNextRenewal] = useState<string | null>(null);
 
   useEffect(() => {
     const u = getUser();
@@ -29,6 +43,7 @@ export default function GrowPage() {
     setCurrentSpend(pkg?.adSpend ?? 0);
     setDesired(pkg?.adSpend ?? 0);
     setPackageId(u.packageId);
+    setNextRenewal(u.renewsAt ?? null);
     fetchLeads().then((leads) => {
       setLeadCount(leads.length);
       setConvertedCount(
@@ -61,6 +76,20 @@ export default function GrowPage() {
   if (!brand) return null;
 
   const uplift = desired - currentSpend;
+
+  async function confirmChange() {
+    if (!suggestedPackage || changing) return;
+    setChangeError("");
+    setChanging(true);
+    const res = await changePackage(suggestedPackage.id);
+    setChanging(false);
+    if (!res.ok) {
+      setChangeError(res.error ?? "Couldn't change your package.");
+      return;
+    }
+    setPackageId(suggestedPackage.id);
+    setChanged(res.effectiveFrom ?? null);
+  }
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -201,31 +230,49 @@ export default function GrowPage() {
                 </div>
               )}
             </div>
-            {/* TODO(stripe): create a Checkout Session / update the
-                subscription here, then raise the ad-spend cap on success. */}
-            <div className="mt-5 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-6 text-center">
-              <p className="font-medium text-gray-700">
-                Stripe top-up coming soon
+            {changed !== null ? (
+              <div className="mt-5 rounded-xl border border-green-200 bg-green-50 p-4">
+                <p className="text-sm font-medium text-green-900">
+                  Package changed ✓
+                </p>
+                <p className="mt-1 text-sm text-green-800/80">
+                  {changed
+                    ? `Your new rate starts on ${fmtDate(changed)} — nothing is charged today.`
+                    : "Your new rate starts at your next renewal — nothing is charged today."}
+                </p>
+              </div>
+            ) : (
+              <p className="mt-5 text-sm leading-relaxed text-gray-500">
+                Nothing is charged today. Your card stays as it is, and the new
+                amount appears on your next invoice
+                {nextRenewal ? ` on ${fmtDate(nextRenewal)}` : ""} — you can
+                change tier at any renewal.
               </p>
-              <p className="mx-auto mt-1 max-w-xs text-sm text-gray-500">
-                We'll take payment securely here and raise your cap
-                automatically.
-              </p>
-            </div>
+            )}
+            {changeError && (
+              <p className="mt-3 text-sm text-red-600">{changeError}</p>
+            )}
             <div className="mt-6 flex justify-end gap-3">
               <button
-                onClick={() => setShowUpgrade(false)}
+                onClick={() => {
+                  setShowUpgrade(false);
+                  setChanged(null);
+                  setChangeError("");
+                }}
                 className="rounded-lg px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50"
               >
-                Not now
+                {changed !== null ? "Done" : "Not now"}
               </button>
-              <button
-                disabled
-                className="rounded-lg px-5 py-2 text-sm font-medium text-white opacity-40"
-                style={{ backgroundColor: brand.accent }}
-              >
-                Continue to payment
-              </button>
+              {changed === null && (
+                <button
+                  onClick={confirmChange}
+                  disabled={changing || !suggestedPackage}
+                  className="rounded-lg px-5 py-2 text-sm font-medium text-white transition disabled:opacity-40"
+                  style={{ backgroundColor: brand.accent }}
+                >
+                  {changing ? "Updating…" : "Confirm change"}
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -51,8 +51,8 @@ policy can't say where data lives until someone checks.
 
 ## 3. Ready for me whenever you are
 
-- **Grow page** — top-ups and package changes are the last Stripe
-  placeholder.
+- ~~Grow page~~ — **done 28 Jul.** Package changes swap the ad-spend line
+  and take effect at the next renewal.
 - **Going live on Stripe.** Not just swapping the key: needs a *second*
   webhook endpoint (no `/test/` in the URL) **and** fresh price ids, because
   test prices don't work with a live key. Re-running

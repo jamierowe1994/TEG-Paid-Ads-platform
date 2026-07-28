@@ -166,7 +166,18 @@ receipt emails from item 3.
   whether ad spend is marked up, retention periods, controller vs processor
   for lead data, the lawful basis for nurture messages, the liability cap, and
   the Railway hosting region.
-- ⬜ Then: the Grow top-up / package change.
+- ✅ (28 Jul) App owns the customer portal config. Stripe's auto-created
+  default had cancellation ENABLED and no terms/privacy URLs, which made the
+  3-month minimum unenforceable via the portal. Two configs now, chosen per
+  customer: no cancellation inside the term, cancel-at-period-end after.
+- ✅ (28 Jul) Grow page change-package is live (last Stripe placeholder).
+  Swaps only the ad-spend line with proration_behavior "none", so the new
+  rate lands on the next invoice — the pack promises "adjust at any renewal",
+  not an immediate top-up. Finds the ad-spend item by elimination rather than
+  position, since swapping the management fee by mistake would be expensive.
+  Verified against a real test subscription: Starter -> Accelerate moved
+  £150 -> £450, management untouched at £100, next invoice £550, nothing
+  charged on the day.
 - ⬜ Live keys + the production webhook endpoint (its signing secret differs
   from the CLI one).
 
