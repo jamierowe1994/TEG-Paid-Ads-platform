@@ -156,3 +156,70 @@ export async function createCheckoutSession(opts: {
   }
   return { url: session.url };
 }
+
+/* ── Customer portal configurations ────────────────────────────────────────
+ *
+ * We do NOT use Stripe's default portal configuration. The default has
+ * cancellation switched on, which would let someone inside the three-month
+ * minimum term cancel from the portal and walk straight around the rule the
+ * app enforces — the term would be unenforceable in practice, however the
+ * dashboard toggle happens to be set on any given day.
+ *
+ * So the app owns two configurations and picks per customer:
+ *   · in the minimum term  → no cancellation offered
+ *   · out of it            → cancellation offered, at period end
+ *
+ * Both are created on demand and found again by lookup metadata, so this is
+ * idempotent and survives someone editing the dashboard.
+ */
+const PORTAL_TAG = "launchpad_portal_v1";
+
+function portalUrls() {
+  const site =
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://launchpad.theexpertsgroup.co.uk";
+  return {
+    terms_of_service_url: `${site}/terms`,
+    privacy_policy_url: `${site}/privacy`,
+  };
+}
+
+// Cache within the process so a busy page doesn't re-list on every click.
+const portalCache = new Map<string, string>();
+
+export async function portalConfigurationFor(
+  allowCancel: boolean
+): Promise<string | undefined> {
+  const key = allowCancel ? `${PORTAL_TAG}_cancel` : `${PORTAL_TAG}_nocancel`;
+  const cached = portalCache.get(key);
+  if (cached) return cached;
+
+  const stripe = getStripe();
+
+  const existing = await stripe.billingPortal.configurations.list({ limit: 100 });
+  const found = existing.data.find((c) => c.metadata?.launchpad === key);
+  if (found) {
+    portalCache.set(key, found.id);
+    return found.id;
+  }
+
+  const created = await stripe.billingPortal.configurations.create({
+    business_profile: portalUrls(),
+    metadata: { launchpad: key },
+    features: {
+      invoice_history: { enabled: true },
+      payment_method_update: { enabled: true },
+      customer_update: {
+        enabled: true,
+        allowed_updates: ["email", "address"],
+      },
+      // Plan switching stays off in both: the pack promises changes "at any
+      // renewal", and the portal would apply them immediately with proration.
+      subscription_update: { enabled: false },
+      subscription_cancel: allowCancel
+        ? { enabled: true, mode: "at_period_end" }
+        : { enabled: false },
+    },
+  });
+  portalCache.set(key, created.id);
+  return created.id;
+}

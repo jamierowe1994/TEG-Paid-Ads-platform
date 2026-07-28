@@ -9,23 +9,20 @@ production (real signed webhook delivery, 200, 1 delivered / 0 failed).
 
 ---
 
-## 1. Ten minutes, and it unblocks the rest
+## 1. ~~Enable the Stripe customer portal~~ — DONE IN CODE (28 Jul)
 
-**Enable the Stripe customer portal.**
-Stripe → Settings → Billing → Customer portal.
+Checked Stripe first thing: the portal was on Stripe's auto-created default,
+which had **cancellation enabled** and no terms/privacy URLs. That would have
+let anyone inside their three-month minimum cancel from the portal, walking
+straight around the rule the app enforces.
 
-- Invoice history — **ON**
-- Payment methods (update card) — **ON**
-- Customer information → email + billing address — **ON**
-- Cancel subscriptions — **OFF** (it would bypass the 3-month minimum)
-- Switch plans — **OFF** (it changes immediately; we promise "at renewal")
-- Terms URL: `https://launchpad.theexpertsgroup.co.uk/terms`
-- Privacy URL: `https://launchpad.theexpertsgroup.co.uk/privacy`
+Rather than leave it to a dashboard toggle, the app now owns two portal
+configurations and picks per customer — cancellation off during the minimum
+term, on (at period end) after it. Plan switching is off in both, since the
+pack promises changes "at any renewal" and the portal applies them
+immediately. Both carry the terms and privacy URLs.
 
-Until this is done, "Manage billing" in Profile returns an error. Both
-those pages now exist — that was the blocker yesterday.
-
----
+Nothing left to do here. The dashboard default is now unused.
 
 ## 2. Needs a person, not a developer
 

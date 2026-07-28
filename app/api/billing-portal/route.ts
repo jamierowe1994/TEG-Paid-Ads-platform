@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
 import { findById } from "@/lib/users-store";
-import { getStripe, stripeConfigured } from "@/lib/stripe";
+import {
+  getStripe,
+  stripeConfigured,
+  portalConfigurationFor,
+} from "@/lib/stripe";
 
 /* Stripe's hosted Billing Portal: update the card, download invoices and
  * receipts, cancel. All three are Stripe's own screens, which is why this
@@ -45,9 +49,19 @@ export async function POST(req: NextRequest) {
     process.env.NEXT_PUBLIC_SITE_URL ??
     new URL(req.url).origin;
 
+  /* Cancellation is offered in the portal ONLY once the minimum term is up.
+     Without this, Stripe's portal would happily cancel a subscription that
+     the app itself refuses to cancel — making the three-month term the pack
+     sells unenforceable in practice. */
+  const inMinimumTerm =
+    !!user.commitmentEndsAt &&
+    new Date(user.commitmentEndsAt).getTime() > Date.now();
+
   try {
+    const configuration = await portalConfigurationFor(!inMinimumTerm);
     const session = await getStripe().billingPortal.sessions.create({
       customer: user.stripeCustomerId,
+      configuration,
       return_url: `${origin}/dashboard/profile`,
     });
     return NextResponse.json({ url: session.url });
