@@ -11,6 +11,7 @@ import AgentProfile from "@/components/AgentProfile";
 import AccountImport from "@/components/AccountImport";
 import PasswordInput from "@/components/PasswordInput";
 import type { UserProfile, Referral } from "@/lib/types";
+import ICONS, { SocialIcon } from "@/components/SocialIcons";
 
 // Admin backend. Password-gated (ADMIN_PASSWORD env var, default
 // "experts-admin") — upgrade to proper admin accounts later.
@@ -3369,6 +3370,41 @@ function MdSocials({
 // A clean, brand-scoped overview for a business's MD: their team, their leads
 // and how the ads are performing at a high level. Every call uses the
 // brand-scoped admin routes, so an MD only ever sees their own business.
+/* ── MD dashboard ─────────────────────────────────────────────────────────
+   Deliberately the SAME shell as the super-admin view — the wrap-around
+   chrome, a fixed sidebar, tabs down the left — so an MD isn't looking at a
+   different product from the one the group team uses. The differences are
+   subtractive: fewer tabs, and every figure scoped to their own business by
+   the API (verified: an MD token only ever returns their brand's rows).
+
+   The sidebar carries the brand's own colour rather than the neutral grey the
+   super view uses, so it's obvious at a glance whose business you're in. */
+
+type MdTab = "overview" | "team" | "connections" | "invites";
+
+const MD_TABS: { id: MdTab; label: string; icon: string }[] = [
+  { id: "overview", label: "Overview", icon: "M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10" },
+  {
+    id: "team",
+    label: "Team",
+    icon: "M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4z",
+  },
+  {
+    id: "connections",
+    label: "Connections",
+    icon: "M13.5 10.5 21 3m0 0h-5m5 0v5M10.5 13.5 3 21m0 0h5m-5 0v-5",
+  },
+  { id: "invites", label: "Invites", icon: "M4 4h16v16H4z M22 6l-10 7L2 6" },
+];
+
+const RANGES = [
+  { id: "7", label: "7 days", days: 7 },
+  { id: "30", label: "30 days", days: 30 },
+  { id: "90", label: "90 days", days: 90 },
+  { id: "all", label: "All time", days: null as number | null },
+  { id: "custom", label: "Custom", days: null as number | null },
+];
+
 function MdDashboard({
   token,
   brandId,
@@ -3381,10 +3417,25 @@ function MdDashboard({
   onSignOut: () => void;
 }) {
   const brand = brandById(brandId);
+  const [tab, setTab] = useState<MdTab>("overview");
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [summaries, setSummaries] = useState<LeadSummary[]>([]);
   const [activity, setActivity] = useState<ActivityData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [vp, setVp] = useState({ w: 0, h: 0 });
+
+  // Date range. "custom" reveals two date inputs; everything else is a
+  // rolling window ending now.
+  const [range, setRange] = useState("30");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+
+  useEffect(() => {
+    const on = () => setVp({ w: window.innerWidth, h: window.innerHeight });
+    on();
+    window.addEventListener("resize", on);
+    return () => window.removeEventListener("resize", on);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -3409,6 +3460,31 @@ function MdDashboard({
     () => new Map(summaries.map((s) => [s.userId, s])),
     [summaries]
   );
+
+  // The window as real dates, so the leads list and the in-range counts agree.
+  const window_ = useMemo(() => {
+    if (range === "all") return null;
+    if (range === "custom") {
+      if (!from || !to) return null;
+      const a = new Date(from);
+      const b = new Date(to);
+      b.setHours(23, 59, 59, 999);
+      return { from: a, to: b };
+    }
+    const days = Number(range);
+    const b = new Date();
+    const a = new Date(b.getTime() - days * 86_400_000);
+    return { from: a, to: b };
+  }, [range, from, to]);
+
+  const leadsInRange = useMemo(() => {
+    const all = activity?.leads ?? [];
+    if (!window_) return all;
+    return all.filter((l) => {
+      const t = new Date(l.receivedAt).getTime();
+      return t >= window_.from.getTime() && t <= window_.to.getTime();
+    });
+  }, [activity, window_]);
 
   const totals = useMemo(() => {
     let leads = 0;
@@ -3436,219 +3512,617 @@ function MdDashboard({
   }, [users, byUser]);
 
   if (!brand) return null;
+  const accent = brand.accent;
   const attention = activity?.attention ?? [];
-  const recentLeads = (activity?.leads ?? []).slice(0, 12);
 
   const card =
     "rounded-2xl border border-gray-200 bg-white p-5 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.12),inset_0_1px_1px_rgba(255,255,255,0.7),inset_0_0_30px_rgba(0,0,0,0.06)]";
 
-  const stats = [
-    { label: "Team", value: String(users.length) },
-    { label: "Leads", value: String(totals.leads) },
-    { label: "Conversion", value: `${totals.rate}%` },
-    {
-      label: "Speed to lead",
-      value: totals.speed === null ? "—" : fmtDuration(totals.speed),
-    },
-    {
-      label: "Monthly ad spend",
-      value: `£${totals.spend.toLocaleString("en-GB")}`,
-    },
-  ];
-
   return (
-    <div className="min-h-screen" style={{ background: "#f6f6f7" }}>
-      {/* Header band in the brand's own colour */}
-      <header
-        className="px-6 py-8 text-white sm:px-10"
-        style={{
-          background: `radial-gradient(120% 160% at 0% 0%, ${brand.accent}, ${brand.accent}cc 55%, rgba(0,0,0,0.55))`,
-        }}
-      >
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-white/70">
-              Managing director
-            </p>
-            <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-              {brand.name}
-            </h1>
-            <p className="mt-1 text-sm text-white/80">
-              {name ? `Welcome back, ${name.split(" ")[0]}. ` : ""}
-              Here&apos;s how your business is doing.
-            </p>
+    <div className="relative isolate min-h-screen" style={{ background: "#f6f6f7" }}>
+      {vp.w > 0 && <ChromeSurface vw={vp.w} vh={vp.h} />}
+
+      {/* Sidebar — brand colour, so it's obvious whose business this is. */}
+      <aside className="fixed inset-y-0 left-0 z-30 flex w-60 flex-col">
+        <div className="px-5 pt-14">
+          <div className="flex items-center gap-2.5">
+            <span
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold text-white"
+              style={{ background: accent }}
+            >
+              {brand.name.replace(/^The\s+/, "").charAt(0)}
+            </span>
+            <div className="leading-tight">
+              <p className="text-sm font-semibold">{brand.name}</p>
+              <p className="text-xs text-gray-400">Managing Director</p>
+            </div>
           </div>
+        </div>
+
+        <nav className="mt-10 flex-1 px-3">
+          {MD_TABS.map((t) => {
+            const on = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className="mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition"
+                style={
+                  on
+                    ? { background: `${accent}14`, color: accent }
+                    : { color: "#6b7280" }
+                }
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-[18px] w-[18px]"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.8}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d={t.icon} />
+                </svg>
+                {t.label}
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="px-5 pb-6">
+          <p className="truncate text-xs text-gray-400">{name}</p>
           <button
             onClick={onSignOut}
-            className="shrink-0 rounded-lg bg-white/15 px-4 py-2 text-sm font-medium text-white backdrop-blur transition hover:bg-white/25"
+            className="mt-1 text-xs font-medium text-gray-500 hover:text-gray-900"
           >
             Sign out
           </button>
         </div>
-      </header>
+      </aside>
 
-      <main className="mx-auto max-w-5xl px-6 py-8 sm:px-10">
-        {loading ? (
-          <p className="py-20 text-center text-sm text-gray-400">Loading…</p>
-        ) : (
-          <>
-            {/* Headline stats */}
-            <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
-              {stats.map((s) => (
-                <div key={s.label} className={card}>
-                  <p className="text-sm text-gray-500">{s.label}</p>
-                  <p
-                    className="mt-2 text-3xl font-semibold tracking-tight"
-                    style={
-                      s.label === "Conversion"
-                        ? { color: brand.accent }
-                        : undefined
-                    }
-                  >
-                    {s.value}
-                  </p>
+      {/* Top bar */}
+      <div className="fixed inset-x-0 top-0 z-20 h-16 pl-60">
+        <div className="flex h-16 items-center justify-between px-8">
+          <h1 className="text-sm font-semibold capitalize">{tab}</h1>
+          {(tab === "overview" || tab === "team") && (
+            <RangePicker
+              range={range}
+              setRange={setRange}
+              from={from}
+              setFrom={setFrom}
+              to={to}
+              setTo={setTo}
+              accent={accent}
+            />
+          )}
+        </div>
+      </div>
+
+      <main className="pl-60 pt-16">
+        <div className="mx-auto max-w-5xl px-8 py-8">
+          {loading ? (
+            <p className="text-sm text-gray-400">Loading…</p>
+          ) : tab === "overview" ? (
+            <MdOverview
+              card={card}
+              accent={accent}
+              users={users}
+              byUser={byUser}
+              totals={totals}
+              leadsInRange={leadsInRange}
+              attention={attention}
+              rangeLabel={
+                RANGES.find((r) => r.id === range)?.label ?? "30 days"
+              }
+            />
+          ) : tab === "team" ? (
+            <MdTeam card={card} accent={accent} users={users} byUser={byUser} />
+          ) : tab === "connections" ? (
+            <MdConnections card={card} brandName={brand.name} />
+          ) : (
+            <MdInvites card={card} accent={accent} users={users} />
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+/* 7 / 30 / 90 / all, plus a real custom window. The buttons are a single
+   segmented control rather than loose pills — it reads as one control and
+   stops the row looking like stock bootstrap. */
+function RangePicker({
+  range,
+  setRange,
+  from,
+  setFrom,
+  to,
+  setTo,
+  accent,
+}: {
+  range: string;
+  setRange: (v: string) => void;
+  from: string;
+  setFrom: (v: string) => void;
+  to: string;
+  setTo: (v: string) => void;
+  accent: string;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      {range === "custom" && (
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          <input
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            className="rounded-lg border border-gray-200 px-2 py-1.5 text-xs outline-none focus:border-gray-400"
+          />
+          <span>to</span>
+          <input
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            className="rounded-lg border border-gray-200 px-2 py-1.5 text-xs outline-none focus:border-gray-400"
+          />
+        </div>
+      )}
+      <div className="inline-flex rounded-full border border-gray-200 bg-white p-0.5 shadow-sm">
+        {RANGES.map((r) => {
+          const on = range === r.id;
+          return (
+            <button
+              key={r.id}
+              onClick={() => setRange(r.id)}
+              className="rounded-full px-3 py-1.5 text-xs font-medium transition"
+              style={
+                on
+                  ? { background: accent, color: "#fff" }
+                  : { color: "#6b7280" }
+              }
+            >
+              {r.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* A horizontal bar per team member. Deliberately CSS rather than a charting
+   dependency: it's one chart, and a library would be more bytes than the
+   whole admin page. */
+function BarList({
+  rows,
+  accent,
+}: {
+  rows: { label: string; value: number }[];
+  accent: string;
+}) {
+  const max = Math.max(1, ...rows.map((r) => r.value));
+  if (!rows.length) {
+    return <p className="text-sm text-gray-400">Nothing to show yet.</p>;
+  }
+  return (
+    <div className="space-y-3">
+      {rows.map((r) => (
+        <div key={r.label}>
+          <div className="flex items-baseline justify-between text-sm">
+            <span className="truncate pr-3 text-gray-700">{r.label}</span>
+            <span className="font-semibold tabular-nums">{r.value}</span>
+          </div>
+          <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-gray-100">
+            <div
+              className="h-full rounded-full transition-all duration-700"
+              style={{
+                width: `${(r.value / max) * 100}%`,
+                background: accent,
+              }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* Conversion as a ring. An SVG circle with a dash offset — no dependency,
+   and it animates for free via the CSS transition. */
+function Donut({ pct, accent }: { pct: number; accent: string }) {
+  const r = 46;
+  const c = 2 * Math.PI * r;
+  return (
+    <div className="relative h-32 w-32">
+      <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
+        <circle cx="60" cy="60" r={r} fill="none" stroke="#f1f2f4" strokeWidth="12" />
+        <circle
+          cx="60"
+          cy="60"
+          r={r}
+          fill="none"
+          stroke={accent}
+          strokeWidth="12"
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={c - (Math.min(100, pct) / 100) * c}
+          style={{ transition: "stroke-dashoffset 900ms ease-out" }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-2xl font-semibold tabular-nums">{pct}%</span>
+        <span className="text-[11px] text-gray-400">converted</span>
+      </div>
+    </div>
+  );
+}
+
+function MdOverview({
+  card,
+  accent,
+  users,
+  byUser,
+  totals,
+  leadsInRange,
+  attention,
+  rangeLabel,
+}: {
+  card: string;
+  accent: string;
+  users: UserProfile[];
+  byUser: Map<string, LeadSummary>;
+  totals: { leads: number; converted: number; spend: number; rate: number; speed: number | null };
+  leadsInRange: ActivityLead[];
+  attention: AttentionItem[];
+  rangeLabel: string;
+}) {
+  // Leads by source, for the split. Sources are free text, so anything
+  // unrecognised is grouped rather than dropped.
+  const bySource = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const l of leadsInRange) {
+      const k = (l.source || "other").toLowerCase();
+      m.set(k, (m.get(k) ?? 0) + 1);
+    }
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+  }, [leadsInRange]);
+
+  const perMember = useMemo(
+    () =>
+      users
+        .map((u) => ({ label: u.name, value: byUser.get(u.id)?.total ?? 0 }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 8),
+    [users, byUser]
+  );
+
+  const stats = [
+    { label: `Leads (${rangeLabel.toLowerCase()})`, value: String(leadsInRange.length) },
+    { label: "Leads all time", value: String(totals.leads) },
+    { label: "Team", value: String(users.length) },
+    {
+      label: "Speed to lead",
+      value: totals.speed === null ? "—" : fmtDuration(totals.speed),
+    },
+    { label: "Monthly ad spend", value: `£${totals.spend.toLocaleString("en-GB")}` },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        {stats.map((s) => (
+          <div key={s.label} className={card}>
+            <p className="text-xs text-gray-500">{s.label}</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums">{s.value}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto]">
+        <div className={card}>
+          <h2 className="text-sm font-semibold">Leads by team member</h2>
+          <p className="mt-0.5 text-xs text-gray-400">All time</p>
+          <div className="mt-5">
+            <BarList rows={perMember} accent={accent} />
+          </div>
+        </div>
+
+        <div className={`${card} flex flex-col items-center justify-center`}>
+          <h2 className="mb-3 self-start text-sm font-semibold">Conversion</h2>
+          <Donut pct={totals.rate} accent={accent} />
+          <p className="mt-3 text-xs text-gray-400">
+            {totals.converted} of {totals.leads} leads
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className={card}>
+          <h2 className="text-sm font-semibold">Where leads came from</h2>
+          <p className="mt-0.5 text-xs text-gray-400">{rangeLabel}</p>
+          <div className="mt-5">
+            <BarList
+              rows={bySource.map(([k, v]) => ({
+                label: k.charAt(0).toUpperCase() + k.slice(1),
+                value: v,
+              }))}
+              accent={accent}
+            />
+          </div>
+        </div>
+
+        <div className={card}>
+          <h2 className="text-sm font-semibold">Needs attention</h2>
+          <p className="mt-0.5 text-xs text-gray-400">
+            Leads going cold across your business
+          </p>
+          {attention.length ? (
+            <div className="mt-4 space-y-2.5">
+              {attention.slice(0, 6).map((a, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between rounded-xl border border-gray-100 px-3 py-2.5"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{a.leadName}</p>
+                    <p className="text-xs text-gray-400">{a.agentName}</p>
+                  </div>
+                  <span className="shrink-0 text-xs text-gray-400">
+                    {a.kind === "unanswered" ? "No answer" : "Going cold"} ·{" "}
+                    {fmtDuration(a.ageMs)}
+                  </span>
                 </div>
               ))}
             </div>
+          ) : (
+            <p className="mt-4 text-sm text-gray-400">
+              Nothing needs chasing — everything&apos;s being worked.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
-            {/* Socials — high-level followers + growth for this brand */}
-            <MdSocials brandId={brandId} token={token} />
+function MdTeam({
+  card,
+  accent,
+  users,
+  byUser,
+}: {
+  card: string;
+  accent: string;
+  users: UserProfile[];
+  byUser: Map<string, LeadSummary>;
+}) {
+  const rows = useMemo(
+    () =>
+      users
+        .map((u) => {
+          const s = byUser.get(u.id);
+          const leads = s?.total ?? 0;
+          const converted = s?.converted ?? 0;
+          return {
+            u,
+            leads,
+            converted,
+            rate: leads ? Math.round((converted / leads) * 100) : 0,
+            // mustResetPassword means the account was created for them and
+            // they've never set their own password — i.e. never got started.
+            started: !u.mustResetPassword,
+          };
+        })
+        .sort((a, b) => b.leads - a.leads),
+    [users, byUser]
+  );
 
-            {/* Needs attention */}
-            {attention.length > 0 && (
-              <section className="mt-8">
-                <h2 className="text-lg font-semibold">Needs attention</h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  Leads going unanswered or cold across your team.
-                </p>
-                <div className="mt-4 space-y-2">
-                  {attention.slice(0, 8).map((a, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center justify-between rounded-xl border border-gray-200 bg-white p-4"
-                    >
-                      <div>
-                        <p className="text-sm font-medium">{a.leadName}</p>
-                        <p className="text-xs text-gray-400">
-                          {a.agentName} ·{" "}
-                          {a.kind === "unanswered"
-                            ? "Not yet contacted"
-                            : "No activity recently"}
-                        </p>
-                      </div>
+  const notStarted = rows.filter((r) => !r.started).length;
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className={card}>
+          <p className="text-xs text-gray-500">Team</p>
+          <p className="mt-1 text-2xl font-semibold">{rows.length}</p>
+        </div>
+        <div className={card}>
+          <p className="text-xs text-gray-500">Active</p>
+          <p className="mt-1 text-2xl font-semibold">
+            {rows.length - notStarted}
+          </p>
+        </div>
+        <div className={card}>
+          <p className="text-xs text-gray-500">Not yet started</p>
+          <p className="mt-1 text-2xl font-semibold">{notStarted}</p>
+        </div>
+      </div>
+
+      <div className={card}>
+        <h2 className="text-sm font-semibold">Your team</h2>
+        {rows.length ? (
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 text-left text-xs uppercase tracking-wide text-gray-400">
+                  <th className="pb-2 pr-4 font-medium">Name</th>
+                  <th className="pb-2 pr-4 font-medium">Status</th>
+                  <th className="pb-2 pr-4 text-right font-medium">Leads</th>
+                  <th className="pb-2 pr-4 text-right font-medium">Converted</th>
+                  <th className="pb-2 text-right font-medium">Rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(({ u, leads, converted, rate, started }) => (
+                  <tr key={u.id} className="border-b border-gray-50 last:border-0">
+                    <td className="py-3 pr-4">
+                      <p className="font-medium">{u.name}</p>
+                      <p className="text-xs text-gray-400">{u.email}</p>
+                    </td>
+                    <td className="py-3 pr-4">
                       <span
-                        className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                          a.kind === "unanswered"
-                            ? "bg-red-50 text-red-600"
-                            : "bg-amber-50 text-amber-600"
-                        }`}
+                        className="rounded-full px-2.5 py-1 text-xs font-medium"
+                        style={
+                          started
+                            ? { background: `${accent}14`, color: accent }
+                            : { background: "#fef3c7", color: "#92400e" }
+                        }
                       >
-                        {fmtDuration(a.ageMs)}
+                        {started ? "Active" : "Not started"}
                       </span>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Team */}
-            <section className="mt-8">
-              <h2 className="text-lg font-semibold">Your team</h2>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {users.map((u) => {
-                  const s = byUser.get(u.id);
-                  return (
-                    <div key={u.id} className={card}>
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-100 text-sm font-semibold text-gray-500">
-                          {u.photo ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={u.photo}
-                              alt={u.name}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            u.name.charAt(0).toUpperCase()
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="truncate font-semibold">{u.name}</p>
-                          <p className="truncate text-xs text-gray-400">
-                            {u.location || packageById(u.packageId)?.name}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-4 flex items-center justify-between text-sm">
-                        <div>
-                          <p className="text-xs text-gray-400">Leads</p>
-                          <p className="font-semibold">{s?.total ?? 0}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-400">Converted</p>
-                          <p className="font-semibold">{s?.converted ?? 0}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs text-gray-400">Speed</p>
-                          <p className="font-semibold">
-                            {s?.speedMs != null ? fmtDuration(s.speedMs) : "—"}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                {users.length === 0 && (
-                  <p className="text-sm text-gray-400">
-                    No agents signed up under {brand.name} yet.
-                  </p>
-                )}
-              </div>
-            </section>
-
-            {/* Recent leads */}
-            <section className="mt-8">
-              <h2 className="text-lg font-semibold">Recent leads</h2>
-              <div className="mt-4 overflow-hidden rounded-2xl border border-gray-200 bg-white">
-                {recentLeads.length === 0 ? (
-                  <p className="p-6 text-center text-sm text-gray-400">
-                    Leads will appear here as they come in.
-                  </p>
-                ) : (
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-400">
-                      <tr>
-                        <th className="px-4 py-3 font-medium">Lead</th>
-                        <th className="px-4 py-3 font-medium">Agent</th>
-                        <th className="px-4 py-3 font-medium">Stage</th>
-                        <th className="px-4 py-3 font-medium">Source</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recentLeads.map((l) => (
-                        <tr key={l.id} className="border-t border-gray-100">
-                          <td className="px-4 py-3 font-medium">{l.leadName}</td>
-                          <td className="px-4 py-3 text-gray-500">
-                            {l.agentName}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-                              {LEAD_STAGE_LABEL[l.stage] ?? l.stage}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 capitalize text-gray-500">
-                            {l.source}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </section>
-          </>
+                    </td>
+                    <td className="py-3 pr-4 text-right tabular-nums">{leads}</td>
+                    <td className="py-3 pr-4 text-right tabular-nums">{converted}</td>
+                    <td className="py-3 text-right tabular-nums">{rate}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="mt-4 text-sm text-gray-400">
+            Nobody in this business has an account yet.
+          </p>
         )}
-      </main>
+      </div>
+    </div>
+  );
+}
+
+/* Social icons in their own brand colours — a grey Instagram glyph reads as
+   "disabled" rather than "Instagram". LinkedIn is listed ahead of launch so
+   the shape of the page doesn't change when it goes live. */
+const MD_SOCIALS = [
+  { name: "Meta / Facebook", label: "Facebook", colour: "#1877F2" },
+  { name: "Instagram", label: "Instagram", colour: "#E4405F" },
+  { name: "LinkedIn", label: "LinkedIn", colour: "#0A66C2" },
+];
+
+function MdConnections({ card, brandName }: { card: string; brandName: string }) {
+  return (
+    <div className="space-y-6">
+      <div className={card}>
+        <h2 className="text-sm font-semibold">Connected accounts</h2>
+        <p className="mt-0.5 text-xs text-gray-400">
+          The platforms {brandName} advertises on
+        </p>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          {MD_SOCIALS.map((s) => {
+            const icon = ICONS.find((i) => i.name === s.name);
+            const live = s.label !== "LinkedIn";
+            return (
+              <div
+                key={s.label}
+                className="rounded-xl border border-gray-100 p-4"
+              >
+                <span
+                  className="flex h-9 w-9 items-center justify-center"
+                  style={{ color: s.colour }}
+                >
+                  {icon && <SocialIcon icon={icon} className="h-7 w-7" />}
+                </span>
+                <p className="mt-3 text-sm font-medium">{s.label}</p>
+                <p className="mt-0.5 text-xs text-gray-400">
+                  {live ? "Campaigns run here" : "Coming soon"}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Honest placeholder: follower counts and growth need the Meta/LinkedIn
+          stats pull scoped per brand, which doesn't exist for MDs yet. Better
+          to say so than to render a chart of nothing. */}
+      <div className={card}>
+        <h2 className="text-sm font-semibold">Audience growth</h2>
+        <p className="mt-3 text-sm leading-relaxed text-gray-500">
+          Follower counts and growth for {brandName} aren&apos;t wired into
+          this view yet — the group team can see live Meta figures, and the
+          per-business version is next.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function MdInvites({
+  card,
+  accent,
+  users,
+}: {
+  card: string;
+  accent: string;
+  users: UserProfile[];
+}) {
+  const pending = users.filter((u) => u.mustResetPassword && !u.deactivatedAt);
+
+  return (
+    <div className="space-y-6">
+      <div className={card}>
+        <h2 className="text-sm font-semibold">Invite your team</h2>
+        <p className="mt-2 text-sm leading-relaxed text-gray-500">
+          Accounts are created for your people in advance. An invite emails
+          them a one-time link to set their own password and get started —
+          they don&apos;t need to pay for anything to use referrals.
+        </p>
+
+        {pending.length ? (
+          <>
+            <p className="mt-5 text-xs font-medium uppercase tracking-wide text-gray-400">
+              {pending.length} waiting to be invited
+            </p>
+            <div className="mt-3 space-y-2">
+              {pending.slice(0, 10).map((u) => (
+                <div
+                  key={u.id}
+                  className="flex items-center justify-between rounded-xl border border-gray-100 px-3 py-2.5"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{u.name}</p>
+                    <p className="truncate text-xs text-gray-400">{u.email}</p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800">
+                    Not started
+                  </span>
+                </div>
+              ))}
+            </div>
+            {pending.length > 10 && (
+              <p className="mt-3 text-xs text-gray-400">
+                …and {pending.length - 10} more
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="mt-5 text-sm text-gray-400">
+            Everyone in your business has already got started.
+          </p>
+        )}
+
+        {/* Sending is deliberately not wired to a button yet: the send route
+            is super-admin only, and the system mailbox isn't connected. A
+            button that silently does nothing is worse than none. */}
+        <div className="mt-6 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4">
+          <p className="text-sm font-medium text-gray-700">
+            Sending isn&apos;t switched on yet
+          </p>
+          <p className="mt-1 text-sm text-gray-500">
+            The group team needs to connect the Launch Pad mailbox first. Once
+            that&apos;s done, you&apos;ll be able to invite people straight
+            from here.
+          </p>
+          <button
+            disabled
+            className="mt-3 rounded-lg px-4 py-2 text-sm font-medium text-white opacity-40"
+            style={{ background: accent }}
+          >
+            Send invites
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
