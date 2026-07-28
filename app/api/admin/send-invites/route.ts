@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isSuperAdmin } from "@/lib/admin-auth";
+import { adminScope } from "@/lib/admin-auth";
 import { listUsers, findById } from "@/lib/users-store";
 import { createAuthToken } from "@/lib/auth-tokens";
 import { sendSystemEmail, systemMailboxConnected } from "@/lib/mailer";
@@ -20,9 +20,14 @@ const TTL_DAYS = 14;
  * Graph calls would hit throttling and we'd have no idea which ones landed.
  * The response reports per-recipient, so a partial failure is visible instead
  * of silent.
+ *
+ * Both admin tiers can send. An MD is confined to their OWN brand — enforced
+ * here on the server, by intersecting the target list with their brandId,
+ * rather than trusting the ids the client passed up.
  */
 export async function POST(req: NextRequest) {
-  if (!isSuperAdmin(req)) {
+  const scope = adminScope(req);
+  if (!scope) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
   if (!(await systemMailboxConnected())) {
@@ -42,7 +47,9 @@ export async function POST(req: NextRequest) {
     (u) =>
       u.mustResetPassword &&
       !u.deactivatedAt &&
-      (!requested || requested.includes(u.id))
+      (!requested || requested.includes(u.id)) &&
+      // An MD can only ever invite their own people, whatever they asked for.
+      (scope.role === "super" || u.brandId === scope.brandId)
   );
 
   if (!targets.length) {

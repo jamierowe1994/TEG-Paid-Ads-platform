@@ -61,6 +61,23 @@ policy can't say where data lives until someone checks.
 
 ---
 
+## Meta: The Mortgage Experts
+
+Admin → Connections shows a Meta error for this brand:
+"(#200) Ad account owner has NOT grant ads_management or ads_read permission".
+
+It's a Meta permission, not code. One System User token serves every brand;
+it hasn't been granted access to that ad account.
+
+  Business Settings → Users → System Users → your System User
+  → Assign Assets → Ad Accounts → tick The Mortgage Experts
+  → Manage campaigns (ads_management) → Save. No redeploy needed.
+
+If the account isn't listed, it's almost certainly in Mortgage Advice
+Bureau's Business Manager rather than yours (Gareth is on mab.org.uk). Then
+it's Business Settings → Accounts → Ad Accounts → Add → Request access, and
+someone at MAB approves before the step above will work.
+
 ## 4. Still open from before Stripe
 
 Nothing here moved yesterday — listed so it doesn't get lost:

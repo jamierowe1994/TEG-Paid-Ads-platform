@@ -3621,7 +3621,7 @@ function MdDashboard({
           ) : tab === "connections" ? (
             <MdConnections card={card} brandName={brand.name} />
           ) : (
-            <MdInvites card={card} accent={accent} users={users} />
+            <MdInvites card={card} accent={accent} users={users} token={token} />
           )}
         </div>
       </main>
@@ -4052,12 +4052,60 @@ function MdInvites({
   card,
   accent,
   users,
+  token,
 }: {
   card: string;
   accent: string;
   users: UserProfile[];
+  token: string;
 }) {
-  const pending = users.filter((u) => u.mustResetPassword && !u.deactivatedAt);
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState<{
+    sent: number;
+    failed: number;
+    error?: string;
+  } | null>(null);
+  const [done, setDone] = useState<string[]>([]);
+
+  const pending = users.filter(
+    (u) => u.mustResetPassword && !u.deactivatedAt && !done.includes(u.id)
+  );
+
+  async function send() {
+    if (sending || !pending.length) return;
+    setResult(null);
+    setSending(true);
+    try {
+      const res = await fetch("/api/admin/send-invites", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        // Send only who's on screen. The server re-checks brand scope anyway.
+        body: JSON.stringify({ userIds: pending.map((u) => u.id) }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setResult({ sent: 0, failed: 0, error: data?.error ?? "Couldn't send." });
+      } else {
+        setResult({ sent: data.sent ?? 0, failed: data.failed ?? 0 });
+        // Anyone who got one drops off the list without a full reload.
+        const ok = new Set(
+          (data.results ?? [])
+            .filter((r: { sent: boolean }) => r.sent)
+            .map((r: { email: string }) => r.email)
+        );
+        setDone((d) => [
+          ...d,
+          ...pending.filter((u) => ok.has(u.email)).map((u) => u.id),
+        ]);
+      }
+    } catch {
+      setResult({ sent: 0, failed: 0, error: "Couldn't reach the server." });
+    }
+    setSending(false);
+  }
 
   return (
     <div className="space-y-6">
@@ -4102,26 +4150,42 @@ function MdInvites({
           </p>
         )}
 
-        {/* Sending is deliberately not wired to a button yet: the send route
-            is super-admin only, and the system mailbox isn't connected. A
-            button that silently does nothing is worse than none. */}
-        <div className="mt-6 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4">
-          <p className="text-sm font-medium text-gray-700">
-            Sending isn&apos;t switched on yet
-          </p>
-          <p className="mt-1 text-sm text-gray-500">
-            The group team needs to connect the Launch Pad mailbox first. Once
-            that&apos;s done, you&apos;ll be able to invite people straight
-            from here.
-          </p>
+        {pending.length > 0 && (
           <button
-            disabled
-            className="mt-3 rounded-lg px-4 py-2 text-sm font-medium text-white opacity-40"
+            onClick={send}
+            disabled={sending}
+            className="mt-6 rounded-lg px-5 py-2.5 text-sm font-medium text-white transition disabled:opacity-40"
             style={{ background: accent }}
           >
-            Send invites
+            {sending
+              ? "Sending…"
+              : `Invite ${pending.length} ${pending.length === 1 ? "person" : "people"}`}
           </button>
-        </div>
+        )}
+
+        {result && (
+          <div
+            className={`mt-4 rounded-xl border p-4 text-sm ${
+              result.error || result.failed
+                ? "border-amber-200 bg-amber-50 text-amber-900"
+                : "border-green-200 bg-green-50 text-green-900"
+            }`}
+          >
+            {result.error ? (
+              <p>{result.error}</p>
+            ) : (
+              <p>
+                Sent {result.sent}
+                {result.failed > 0 && (
+                  <>
+                    {" "}— {result.failed} didn&apos;t go through. They&apos;ll
+                    still be listed here to try again.
+                  </>
+                )}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
