@@ -718,7 +718,17 @@ function firstActionDelta(
   return delta >= 0 ? delta : null;
 }
 
-export async function summariseLeadsByUser(): Promise<UserLeadSummary[]> {
+/**
+ * Per-user lead totals. `range` narrows to leads RECEIVED in the window —
+ * without it the admin date picker moved some figures and not others, which
+ * reads as a bug even though every number was individually correct.
+ * Filtering on received_at (not on activity) keeps "leads in July" meaning
+ * the leads that arrived in July.
+ */
+export async function summariseLeadsByUser(range?: {
+  from: Date;
+  to: Date;
+}): Promise<UserLeadSummary[]> {
   type Row = {
     user_id: string;
     stage: string;
@@ -727,16 +737,26 @@ export async function summariseLeadsByUser(): Promise<UserLeadSummary[]> {
   };
   let rows: Row[];
   if (hasDb()) {
-    rows = await q<Row>(
-      "SELECT user_id, stage, received_at, history FROM leads"
-    );
+    rows = range
+      ? await q<Row>(
+          "SELECT user_id, stage, received_at, history FROM leads WHERE received_at >= $1 AND received_at <= $2",
+          [range.from.toISOString(), range.to.toISOString()]
+        )
+      : await q<Row>("SELECT user_id, stage, received_at, history FROM leads");
   } else {
-    rows = (await readAllFile()).map((l) => ({
-      user_id: l.userId,
-      stage: l.stage,
-      received_at: l.receivedAt,
-      history: l.history,
-    }));
+    rows = (await readAllFile())
+      .filter(
+        (l) =>
+          !range ||
+          (new Date(l.receivedAt).getTime() >= range.from.getTime() &&
+            new Date(l.receivedAt).getTime() <= range.to.getTime())
+      )
+      .map((l) => ({
+        user_id: l.userId,
+        stage: l.stage,
+        received_at: l.receivedAt,
+        history: l.history,
+      }));
   }
 
   const acc = new Map<

@@ -66,8 +66,14 @@ policy can't say where data lives until someone checks.
 Admin → Connections shows a Meta error for this brand:
 "(#200) Ad account owner has NOT grant ads_management or ads_read permission".
 
-It's a Meta permission, not code. One System User token serves every brand;
-it hasn't been granted access to that ad account.
+It's a Meta permission, not code, and NOT a missing ad account id.
+
+The id is set — it's stored in the brand_meta table via the Connections tab
+(lib/meta.ts prefers the DB, then META_AD_ACCOUNT_<BRAND> as a fallback). The
+(#200) error is proof of that: it only happens once Meta has actually been
+called and has refused. A missing id gives no call at all.
+
+What's missing is the System User's ACCESS to that ad account.
 
   Business Settings → Users → System Users → your System User
   → Assign Assets → Ad Accounts → tick The Mortgage Experts
@@ -77,6 +83,9 @@ If the account isn't listed, it's almost certainly in Mortgage Advice
 Bureau's Business Manager rather than yours (Gareth is on mab.org.uk). Then
 it's Business Settings → Accounts → Ad Accounts → Add → Request access, and
 someone at MAB approves before the step above will work.
+
+(Ad account ids are set in Admin → Connections, not in Railway. An earlier
+note here said otherwise — that was wrong.)
 
 ## 4. Still open from before Stripe
 

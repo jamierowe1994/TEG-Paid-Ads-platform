@@ -3437,17 +3437,18 @@ function MdDashboard({
     return () => window.removeEventListener("resize", on);
   }, []);
 
+  // Users and activity are range-independent; only the per-user summary is
+  // refetched when the window changes, so changing the range doesn't reload
+  // the whole page.
   useEffect(() => {
     let cancelled = false;
     const headers = { Authorization: `Bearer ${token}` };
     Promise.all([
       fetch("/api/admin/users", { headers }),
-      fetch("/api/admin/leads-summary", { headers }),
       fetch("/api/admin/activity", { headers }),
-    ]).then(async ([us, ls, ac]) => {
+    ]).then(async ([us, ac]) => {
       if (cancelled) return;
       if (us.ok) setUsers(await us.json());
-      if (ls.ok) setSummaries(await ls.json());
       if (ac.ok) setActivity(await ac.json());
       setLoading(false);
     });
@@ -3476,6 +3477,24 @@ function MdDashboard({
     const a = new Date(b.getTime() - days * 86_400_000);
     return { from: a, to: b };
   }, [range, from, to]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const qs = window_
+      ? `?from=${window_.from.toISOString()}&to=${window_.to.toISOString()}`
+      : "";
+    fetch(`/api/admin/leads-summary${qs}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => {
+        if (!cancelled) setSummaries(d);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [token, window_]);
 
   const leadsInRange = useMemo(() => {
     const all = activity?.leads ?? [];
@@ -3798,8 +3817,8 @@ function MdOverview({
   );
 
   const stats = [
-    { label: `Leads (${rangeLabel.toLowerCase()})`, value: String(leadsInRange.length) },
-    { label: "Leads all time", value: String(totals.leads) },
+    { label: "Leads", value: String(totals.leads) },
+    { label: "Converted", value: String(totals.converted) },
     { label: "Team", value: String(users.length) },
     {
       label: "Speed to lead",
@@ -3822,7 +3841,7 @@ function MdOverview({
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto]">
         <div className={card}>
           <h2 className="text-sm font-semibold">Leads by team member</h2>
-          <p className="mt-0.5 text-xs text-gray-400">All time</p>
+          <p className="mt-0.5 text-xs text-gray-400">{rangeLabel}</p>
           <div className="mt-5">
             <BarList rows={perMember} accent={accent} />
           </div>
