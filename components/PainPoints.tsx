@@ -72,7 +72,7 @@ function Point({
   return (
     <div
       ref={ref}
-      className="group border-t border-white/12 pt-7 transition-[opacity,transform] duration-700 ease-out"
+      className="group border-t border-gray-900/10 pt-7 transition-[opacity,transform] duration-700 ease-out"
       style={{
         opacity: on ? 1 : 0,
         // Staggered down the list rather than all at once — the eye reads
@@ -87,10 +87,10 @@ function Point({
         className="absolute -mt-7 block h-px bg-[var(--group)] transition-[width] duration-1000 ease-out"
         style={{ width: on ? "3rem" : "0rem", transitionDelay: `${(index % 3) * 110 + 220}ms` }}
       />
-      <p className="text-xl font-medium leading-snug text-white sm:text-2xl">
+      <p className="text-xl font-medium leading-snug text-gray-900 sm:text-2xl">
         {pain}
       </p>
-      <p className="mt-3 max-w-md text-[15px] leading-relaxed text-white/55">
+      <p className="mt-3 max-w-md text-[15px] leading-relaxed text-gray-600">
         {answer}
       </p>
     </div>
@@ -104,11 +104,11 @@ export default function PainPoints() {
           uneven grid beside it — no centred header, no equal columns. */}
       <div className="grid gap-14 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.6fr)] lg:gap-20">
         <div>
-          <h2 className="text-4xl font-light leading-[1.05] tracking-[-0.035em] text-white sm:text-5xl">
+          <h2 className="text-4xl font-light leading-[1.05] tracking-[-0.035em] text-gray-900 sm:text-5xl">
             We know what
             <br className="hidden sm:block" /> you&apos;re up against.
           </h2>
-          <p className="mt-6 max-w-sm text-lg leading-relaxed text-white/60">
+          <p className="mt-6 max-w-sm text-lg leading-relaxed text-gray-600">
             Nobody needs another invoice for something that didn&apos;t work.
             Here&apos;s what we hear from agents — and what we actually do
             about it.

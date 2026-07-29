@@ -35,6 +35,11 @@
   --group: #a72a35;
   --group-dark: #c11a2e;
   --group-soft: #fef2f2;
+  /* Derived shades for gradients/shadows. The landing page's brand-colour
+     picker (BrandColorPicker) overrides all three --group* variables inline
+     on <html>, so everything keyed off them repaints live. */
+  --group-bright: #cd3744;
+  --group-deep: #87222b;
 
   /* Per-brand accent — overridden inside the dashboard via inline style */
   --accent: #111827;
@@ -115,12 +120,17 @@ h5 {
    pops off the page, lifts on hover and presses in on click. */
 .btn-group {
   color: #fff;
-  background: linear-gradient(180deg, #cd3744 0%, var(--group) 52%, #87222b 100%);
+  background: linear-gradient(
+    180deg,
+    var(--group-bright) 0%,
+    var(--group) 52%,
+    var(--group-deep) 100%
+  );
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.5), /* top gloss highlight */
-    inset 0 -3px 6px rgba(88, 20, 26, 0.4), /* inner bottom shadow = depth */
-    0 2px 5px rgba(167, 42, 53, 0.35),
-    0 12px 24px -6px rgba(167, 42, 53, 0.45); /* red float shadow */
+    inset 0 -3px 6px color-mix(in srgb, var(--group-deep) 55%, transparent), /* inner bottom shadow = depth */
+    0 2px 5px color-mix(in srgb, var(--group) 35%, transparent),
+    0 12px 24px -6px color-mix(in srgb, var(--group) 45%, transparent); /* brand float shadow */
   transition:
     transform 0.18s cubic-bezier(0.34, 1.4, 0.5, 1),
     box-shadow 0.25s ease,
@@ -131,16 +141,16 @@ h5 {
   filter: brightness(1.05);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    inset 0 -3px 6px rgba(88, 20, 26, 0.42),
-    0 3px 7px rgba(167, 42, 53, 0.4),
-    0 18px 34px -8px rgba(167, 42, 53, 0.55);
+    inset 0 -3px 6px color-mix(in srgb, var(--group-deep) 58%, transparent),
+    0 3px 7px color-mix(in srgb, var(--group) 40%, transparent),
+    0 18px 34px -8px color-mix(in srgb, var(--group) 55%, transparent);
 }
 .btn-group:active {
   transform: translateY(0) scale(0.95);
   box-shadow:
-    inset 0 2px 5px rgba(88, 20, 26, 0.45), /* pressed-in inner shadow */
+    inset 0 2px 5px color-mix(in srgb, var(--group-deep) 62%, transparent), /* pressed-in inner shadow */
     inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    0 1px 3px rgba(167, 42, 53, 0.3);
+    0 1px 3px color-mix(in srgb, var(--group) 30%, transparent);
 }
 
 /* Shared press/lift for other buttons — hover lifts, click presses in. */
@@ -347,13 +357,16 @@ h5 {
   opacity: 0;
 }
 .revealed .p-words {
-  animation: p-fade 0.8s ease forwards;
+  animation: p-fade 0.7s cubic-bezier(0.3, 1.3, 0.5, 1) forwards;
 }
 .revealed .p-image {
-  animation: p-expand 0.75s cubic-bezier(0.22, 1, 0.36, 1) 0.3s forwards;
+  /* The photo starts small at the bottom and BOUNCES into place — at half
+     speed, so the bounce reads rather than blinks. */
+  animation: p-bounce-in 1.8s cubic-bezier(0.34, 1.3, 0.5, 1) 0.25s forwards;
 }
 .revealed .p-stat {
-  animation: p-expand 0.55s cubic-bezier(0.22, 1, 0.36, 1) 1.15s forwards;
+  /* Waits for the photo to finish its slower landing. */
+  animation: p-pop 0.6s cubic-bezier(0.34, 1.45, 0.5, 1) 2.1s forwards;
 }
 .revealed .p-pill {
   /* animation-delay set inline per pill for the staggered float-up */
@@ -362,19 +375,39 @@ h5 {
 @keyframes p-fade {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateX(-36px);
   }
   to {
     opacity: 1;
     transform: none;
   }
 }
-@keyframes p-expand {
-  from {
+@keyframes p-bounce-in {
+  0% {
     opacity: 0;
-    transform: scale(0.2);
+    transform: translateY(110px) scale(0.55);
   }
-  to {
+  55% {
+    opacity: 1;
+  }
+  72% {
+    transform: translateY(-10px) scale(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes p-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
     opacity: 1;
     transform: scale(1);
   }
@@ -718,20 +751,23 @@ h5 {
   }
 }
 
-/* ── Scroll reveal (used by <Reveal>) ───────────────────────────────── */
+/* ── Scroll reveal (used by <Reveal>) ───────────────────────────────────
+   Deliberately bouncy: content pushes up from below and settles with a
+   slight overshoot (the >1 y-value in the bezier), so scrolling feels like
+   it's springing things into place rather than politely fading them in. */
 .reveal {
   opacity: 0;
-  transform: translateY(24px);
+  transform: translateY(44px) scale(0.97);
   transition:
-    opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    opacity 0.55s ease,
+    transform 0.75s cubic-bezier(0.3, 1.45, 0.45, 1);
   transition-delay: var(--reveal-delay, 0ms);
 }
 .reveal-left {
-  transform: translateX(-28px);
+  transform: translateX(-44px) scale(0.97);
 }
 .reveal-right {
-  transform: translateX(28px);
+  transform: translateX(44px) scale(0.97);
 }
 .reveal.revealed {
   opacity: 1;
@@ -801,14 +837,19 @@ h5 {
 /* Hover squeeze-up: springs up taller/bigger and pops out, colour bleeding
    in, held while hovered and springing back on leave. */
 .hero-pop-icon {
-  /* White: the hero is black. Hovering bleeds in the platform's own colour. */
-  color: #ffffff;
+  /* Near-black: the hero is light grey. Hovering bleeds in the platform's
+     own colour. */
+  color: #16171a;
+  /* Tight, straight-down drop shadow so the icons sit proud of the page.
+     Kept very crisp (1px blur) — a softer one hazed the glyph edges and
+     made the whole row read as blurry. */
+  filter: drop-shadow(0 3px 1px rgba(17, 24, 39, 0.25));
   transition: color 0.35s ease;
   will-change: color;
 }
 /* Hover simply bleeds the platform's own colour in — no lift, no squeeze. */
 .hero-icon-hit:hover .hero-pop-icon {
-  color: var(--icon-color, #ffffff);
+  color: var(--icon-color, #16171a);
 }
 
 /* ── Stat card bars: spring up from the baseline with a bounce ─────────── */
@@ -962,45 +1003,72 @@ h5 {
   }
 }
 
-/* ── Hero CTA: understated rim-light pill ──────────────────────────────────
-   Sits at the page's own black so it barely announces itself, with a soft
-   light that travels around the rim — the draw comes from the moving edge,
-   not from the fill. Lightens a touch on hover. */
-.btn-rim {
+/* ── "Choose your package" CTA: clear glass pill ───────────────────────────
+   The one treatment for every "Choose your package" button on the page.
+   Built like actual glass rather than a flat frosted fill:
+
+   · The RIM (::before) is a thin ring whose brightness is deliberately
+     uneven — a strong shine wrapping the top-right corner and finishing
+     towards the left, dark low-spots at the top-left corner and mid-right,
+     and a small glint on the bottom-left corner. That unevenness (high spots
+     against low spots, fighting the background) is what reads as a polished
+     glass edge instead of a printed border.
+   · The BODY (::after) carries the internal light: a curved top highlight,
+     a soft glint pooling in the bottom-left, and a shaded pocket in the
+     lower right — so the inside isn't flat.
+   · The pill itself keeps a whisper of fill, real blur, an inner bottom
+     shadow for thickness, and a tight, deep drop shadow underneath. */
+.btn-hero-glass {
   position: relative;
   isolation: isolate;
   display: inline-block;
   border-radius: 9999px;
-  color: #ffffff;
-  /* Exactly the page's charcoal — the pill only exists via its outline. */
-  background: #1b1c20;
+  color: #0f1115;
+  /* The Ali Braid glass recipe (.btn-glass above): a TRULY transparent body
+     — no milky fill, no frosting blur — with every bit of depth carved by
+     shadow. Thin top gloss line, deep dark inner shadows in the bottom and
+     sides (the glass thickness), a hairline edge, and a heavy-but-tight
+     drop shadow underneath. */
+  background: transparent;
+  box-shadow:
+    inset 0 2px 1px rgba(255, 255, 255, 0.85),
+    inset 0 8px 10px -7px rgba(17, 24, 39, 0.1),
+    inset 0 -11px 13px -4px rgba(17, 24, 39, 0.3),
+    inset 0 -2px 2px rgba(17, 24, 39, 0.16),
+    inset 6px 0 9px -4px rgba(17, 24, 39, 0.18),
+    inset -6px 0 9px -4px rgba(17, 24, 39, 0.18),
+    0 1px 0 rgba(255, 255, 255, 0.8),
+    0 0 0 1px rgba(17, 24, 39, 0.06),
+    0 6px 14px rgba(17, 24, 39, 0.14),
+    0 26px 44px -14px rgba(17, 24, 39, 0.45);
   transition:
-    background 0.4s ease,
+    box-shadow 0.3s ease,
     transform 0.18s cubic-bezier(0.34, 1.4, 0.5, 1);
 }
-.btn-rim:hover {
-  background: rgba(255, 255, 255, 0.06);
-}
-.btn-rim:active {
-  transform: scale(0.97);
-}
-/* The rim itself: a constant hairline with a bright arc sweeping round it.
-   Masked to a 1px ring; the drop-shadow gives the arc its bloom. */
-.btn-rim-edge {
+/* The uneven rim. Conic angles run clockwise from 12 o'clock: bright across
+   the top wrapping the top-right corner (0–70°), a dark low-spot mid-right
+   (~110°), shadow under the bottom edge (~190°), a glint on the bottom-left
+   corner (~235°), and a dark low-spot at the top-left corner (~320°). */
+.btn-hero-glass::before {
+  content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  padding: 1px;
+  padding: 1.5px;
   pointer-events: none;
-  background:
-    conic-gradient(
-      from var(--rim-angle),
-      rgba(255, 255, 255, 0) 0deg,
-      rgba(255, 255, 255, 0) 215deg,
-      rgba(255, 255, 255, 0.9) 300deg,
-      rgba(255, 255, 255, 0) 360deg
-    ),
-    linear-gradient(rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.13));
+  background: conic-gradient(
+    from 0deg,
+    rgba(255, 255, 255, 0.95) 0deg,
+    rgba(255, 255, 255, 1) 45deg,
+    rgba(255, 255, 255, 0.45) 80deg,
+    rgba(31, 41, 55, 0.38) 110deg,
+    rgba(255, 255, 255, 0.5) 150deg,
+    rgba(31, 41, 55, 0.32) 190deg,
+    rgba(255, 255, 255, 0.95) 235deg,
+    rgba(255, 255, 255, 0.4) 275deg,
+    rgba(31, 41, 55, 0.42) 320deg,
+    rgba(255, 255, 255, 0.95) 360deg
+  );
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
@@ -1009,206 +1077,99 @@ h5 {
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   mask-composite: exclude;
-  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.4));
-  opacity: 0.85;
-  transition: opacity 0.45s ease;
-  animation: rim-spin 5.5s linear infinite;
 }
-.btn-rim:hover .btn-rim-edge {
-  opacity: 1;
-}
-@media (prefers-reduced-motion: reduce) {
-  .btn-rim-edge {
-    animation: none;
-  }
-}
-
-/* ── Landing page: dark theme ──────────────────────────────────────────────
-   The marketing page was built light. Rather than rewrite every utility on
-   every section, the page is wrapped in .landing-dark and the handful of
-   colour utilities it uses are remapped here. Scoped, so the app itself and
-   any genuinely-white element (which opts out by using an arbitrary value like
-   bg-[#ffffff]) are untouched. */
-.landing-dark {
-  /* Deliberately transparent: the black is a fixed layer at -z-20 inside the
-     page, so the star field (-z-10) paints ON TOP of the black but still
-     BEHIND the content. A background here would bury both. */
-  background: transparent;
-  color: #ffffff;
-}
-.landing-dark .text-gray-900 {
-  color: #ffffff;
-}
-.landing-dark .text-gray-800 {
-  color: rgba(255, 255, 255, 0.88);
-}
-.landing-dark .text-gray-700 {
-  color: rgba(255, 255, 255, 0.78);
-}
-.landing-dark .text-gray-600 {
-  color: rgba(255, 255, 255, 0.68);
-}
-.landing-dark .text-gray-500 {
-  color: rgba(255, 255, 255, 0.58);
-}
-.landing-dark .text-gray-400 {
-  color: rgba(255, 255, 255, 0.45);
-}
-.landing-dark .bg-white {
-  background-color: rgba(255, 255, 255, 0.045);
-}
-.landing-dark .bg-gray-50 {
-  background-color: rgba(255, 255, 255, 0.035);
-}
-.landing-dark .bg-gray-100 {
-  background-color: rgba(255, 255, 255, 0.07);
-}
-.landing-dark .bg-gray-200 {
-  background-color: rgba(255, 255, 255, 0.12);
-}
-.landing-dark .border-gray-100,
-.landing-dark .border-gray-200,
-.landing-dark .border-gray-300 {
-  border-color: rgba(255, 255, 255, 0.12);
-}
-/* Cards that were white now need their own hairline to separate from black. */
-.landing-dark .bg-white {
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
-}
-
-/* The big frosted panel was tuned for a white page — bright gloss and dark
-   inner shadows. On black it needs the opposite: a faint lift with a hairline. */
-.landing-dark .glass-panel {
-  background: rgba(255, 255, 255, 0.035);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.07),
-    0 30px 70px -30px rgba(0, 0, 0, 0.8);
-}
-
-/* ── Footer horizon ────────────────────────────────────────────────────────
-   The bottom of the page is the edge of a planet. The arc sits partway down
-   the footer so the links and legal row land ON the planet's surface rather
-   than in empty space above it. */
-.horizon {
+/* The internal light — faint, so the body stays genuinely clear: a whisper
+   of curved highlight at the top and a small glint pooling bottom-left. */
+.btn-hero-glass::after {
+  content: "";
   position: absolute;
-  inset: 0;
-  overflow: hidden;
+  inset: 1.5px;
+  border-radius: inherit;
   pointer-events: none;
+  background:
+    radial-gradient(
+      120% 90% at 50% -35%,
+      rgba(255, 255, 255, 0.38),
+      rgba(255, 255, 255, 0) 50%
+    ),
+    radial-gradient(
+      40% 60% at 9% 94%,
+      rgba(255, 255, 255, 0.32),
+      rgba(255, 255, 255, 0) 60%
+    );
 }
-/* The light spilling up off the rim. Layered OUTER shadows on the sphere
-   itself, so the glow traces the curve — a rectangular blurred gradient sat
-   flat above the arc and read as a straight band. */
-.horizon-planet {
-  position: absolute;
-  top: 112px;
-  left: 50%;
-  /* Wide: a gentler curve means the surface doesn't fall away so steeply at
-     the left/right edges, where the footer's outer columns sit. */
-  width: 380%;
-  aspect-ratio: 1 / 1;
-  transform: translateX(-50%);
-  border-radius: 50%;
-  background: radial-gradient(
-    100% 100% at 50% 0%,
-    #16171a 0%,
-    #101114 34%,
-    #0b0b0d 58%
+.btn-hero-glass:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 2px 1px rgba(255, 255, 255, 0.9),
+    inset 0 8px 10px -7px rgba(17, 24, 39, 0.12),
+    inset 0 -12px 15px -4px rgba(17, 24, 39, 0.33),
+    inset 0 -2px 2px rgba(17, 24, 39, 0.18),
+    inset 6px 0 9px -4px rgba(17, 24, 39, 0.2),
+    inset -6px 0 9px -4px rgba(17, 24, 39, 0.2),
+    0 1px 0 rgba(255, 255, 255, 0.8),
+    0 0 0 1px rgba(17, 24, 39, 0.07),
+    0 8px 18px rgba(17, 24, 39, 0.16),
+    0 32px 54px -16px rgba(17, 24, 39, 0.52);
+}
+.btn-hero-glass:active {
+  transform: scale(0.97);
+}
+
+/* ── Landing page: light theme ─────────────────────────────────────────────
+   The marketing page is light-built, so the grey utilities apply natively —
+   no remapping needed. The very light grey backdrop is a fixed layer at
+   -z-20 inside the page (HERO_BG in page.tsx); this stays transparent so
+   that layer shows through every section. Only .charcoal-panel below (How it
+   works) remaps anything. */
+.landing-light {
+  background: transparent;
+  color: #111827;
+}
+
+/* ── Footer wordmark ───────────────────────────────────────────────────────
+   The giant name across the foot of the page, à la the big faded wordmark
+   footers: white type on the light grey page, fading out towards the bottom
+   and cropped by the page edge — readable, but deliberately cut off. The
+   gradient is painted through the glyphs with background-clip so the fade
+   travels down the letterforms themselves. */
+.footer-wordmark {
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 0.75;
+  white-space: nowrap;
+  text-align: center;
+  user-select: none;
+  background: linear-gradient(
+    180deg,
+    #ffffff 25%,
+    rgba(255, 255, 255, 0.28) 100%
   );
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.8),
-    inset 0 16px 44px -8px rgba(255, 255, 255, 0.24),
-    0 -2px 10px rgba(255, 255, 255, 0.45),
-    0 -8px 34px rgba(255, 255, 255, 0.26),
-    0 -18px 80px rgba(255, 255, 255, 0.16),
-    0 -34px 150px rgba(255, 255, 255, 0.1);
-}
-@media (min-width: 640px) {
-  .horizon-planet {
-    top: 124px;
-  }
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
 }
 
-/* On the dark landing page the red button's wide soft bloom reads as fuzz
-   against black. Keep the gloss, drop the halo. */
-.landing-dark .btn-group {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    inset 0 -3px 6px rgba(88, 20, 26, 0.4),
-    0 2px 6px rgba(0, 0, 0, 0.45);
-}
-.landing-dark .btn-group:hover {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    inset 0 -3px 6px rgba(88, 20, 26, 0.42),
-    0 3px 9px rgba(0, 0, 0, 0.5);
-}
+/* ── Landing page: the charcoal slab ───────────────────────────────────────
+   "How it works" rides on a charcoal panel — a touch lighter than the old
+   dark theme's #1b1c20 backdrop — that scrolls up over the light section
+   above it; the next light section then rides up over the panel. The panel
+   sits inside the light page, so the grey utilities its content uses are
+   remapped to white here. Arbitrary values like bg-[#ffffff] opt out — the
+   phone mockup and the tab pill keep their own colours. */
+/* (The "How it works" passage stays on the light page now — the charcoal
+   panel and its remapping scale are gone. The desktop choreography lives in
+   <ProofHowScene>, which writes element transforms directly.) */
 
-/* ── Landing page: the light slab ──────────────────────────────────────────
-   "How it works" and "Everything plugs into one place" ride on a near-white
-   panel that scrolls up over the dark section above it; the next dark section
-   then rides up over the panel. The slab sits INSIDE .landing-dark, so every
-   remap that block makes has to be undone here. Selectors are deliberately
-   three-deep (.landing-dark .light-panel .x) so they beat the two-deep dark
-   rules on specificity rather than relying on source order. */
-.light-panel {
-  background: #f2f2f3;
-  color: #111827;
-  /* An ELLIPTICAL top edge, not a corner radius. A plain radius on a
-     full-width panel is a long straight line with two small curls at the far
-     corners — so as it rises into view it reads as a flat edge. Splitting the
-     radius (horizontal / vertical) makes the whole top a shallow dome, which
-     is already, visibly a curve the moment any of it appears.
-     Shadow kept tight — a wide soft one just greys out the panel above. */
+/* The pricing finale — a white slab that <ExpandingSlab> brings in as a
+   near-circle, unfolding as it rises. This is only the pre-JS starting
+   state; the scroll drives the radius live. Shadow deliberately very
+   subtle — a heavy one under the curve read as far too harsh. */
+.pricing-slab {
+  background: #ffffff;
   border-radius: 50% 50% 0 0 / 3.5rem 3.5rem 0 0;
-  box-shadow: 0 -10px 26px -10px rgba(0, 0, 0, 0.6);
-}
-@media (min-width: 640px) {
-  .light-panel {
-    border-radius: 50% 50% 0 0 / 6rem 6rem 0 0;
-  }
-}
-.landing-dark .light-panel .text-gray-900 {
-  color: #111827;
-}
-.landing-dark .light-panel .text-gray-800 {
-  color: #1f2937;
-}
-.landing-dark .light-panel .text-gray-700 {
-  color: #374151;
-}
-.landing-dark .light-panel .text-gray-600 {
-  color: #4b5563;
-}
-.landing-dark .light-panel .text-gray-500 {
-  color: #6b7280;
-}
-.landing-dark .light-panel .text-gray-400 {
-  color: #9ca3af;
-}
-.landing-dark .light-panel .bg-white {
-  background-color: #ffffff;
-  box-shadow: none;
-}
-.landing-dark .light-panel .border-gray-200 {
-  border-color: #e5e7eb;
-}
-.landing-dark .light-panel .border-gray-300 {
-  border-color: #d1d5db;
-}
-
-/* The dark section that follows the slab curves over it the same way. */
-.dark-slab {
-  background: #1b1c20;
-  /* Same curve as .light-panel — that's what makes the slab look like it
-     seats into the panel when it finishes climbing over it. */
-  border-radius: 50% 50% 0 0 / 3.5rem 3.5rem 0 0;
-  box-shadow: 0 -10px 26px -10px rgba(0, 0, 0, 0.55);
-}
-@media (min-width: 640px) {
-  .dark-slab {
-    border-radius: 50% 50% 0 0 / 6rem 6rem 0 0;
-  }
+  box-shadow: 0 -8px 24px -18px rgba(17, 24, 39, 0.14);
 }
 
 /* ── Legal pages ───────────────────────────────────────────────────────────

@@ -10,25 +10,31 @@ import HeroAdWord from "@/components/HeroAdWord";
 import HeroIconStrip from "@/components/HeroIconStrip";
 import LeadsStat from "@/components/LeadsStat";
 import PanelReveal from "@/components/PanelReveal";
+import ProofHowScene from "@/components/ProofHowScene";
+import ExpandingSlab from "@/components/ExpandingSlab";
 import SmoothScroll from "@/components/SmoothScroll";
 import StandaloneGuard from "@/components/StandaloneGuard";
 import PlugIntoStack from "@/components/PlugIntoStack";
 import HowItWorksPhone from "@/components/HowItWorksPhone";
 import TrialProof from "@/components/TrialProof";
 import PainPoints from "@/components/PainPoints";
+import BackToTop from "@/components/BackToTop";
+import BrandColorPicker from "@/components/BrandColorPicker";
+import ICONS, { SocialIcon } from "@/components/SocialIcons";
 
-// The site's backdrop — a dark charcoal that runs the length of the page.
+// The site's backdrop — a very light grey that runs the length of the page.
 // Kept as a constant because the rocket's window is punched out in it.
-const HERO_BG = "#1b1c20";
+const HERO_BG = "#f4f4f5";
 
-// The Launch Pad rocket, matching the installed app icon. White on the dark
-// hero; the porthole is punched in the backdrop colour rather than filled white.
+// The Launch Pad rocket, matching the installed app icon. Near-black on the
+// light hero; the porthole is punched in the backdrop colour rather than
+// filled in.
 function LaunchPadMark() {
   return (
     <svg
       viewBox="0 0 512 512"
       className="h-12 w-12 sm:h-14 sm:w-14"
-      fill="#ffffff"
+      fill="#16171a"
       aria-hidden
     >
       <g transform="rotate(45 256 256) translate(0 -8)">
@@ -55,17 +61,20 @@ export default function LandingPage() {
     // they just scrolled normally. Desktop gets the stacking effect; mobile
     // keeps the sideways-drift guard (which is only a mobile problem anyway,
     // and <html> already carries overflow-x: hidden under 1024px).
-    <main className="landing-dark relative min-h-screen max-lg:overflow-x-clip">
+    <main className="landing-light relative min-h-screen max-lg:overflow-x-clip">
       <StandaloneGuard />
       <SmoothScroll />
-      {/* The charcoal backdrop, fixed so it runs the whole length of the page. */}
+      {/* Floating brand-colour switcher — lets the group audition a new
+          brand colour against the live page. Remove once they've chosen. */}
+      <BrandColorPicker />
+      {/* The light grey backdrop, fixed so it runs the whole length of the page. */}
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0 -z-20"
         style={{ backgroundColor: HERO_BG }}
       />
       {/* Nav — just the Launch Pad mark, then the pack, pricing and Sign in.
-          Sits over the dark hero, so everything here is white. */}
+          Sits over the light hero, so everything here is near-black. */}
       <header className="absolute inset-x-0 top-0 z-40">
         <div className="mx-auto flex h-24 max-w-7xl items-center justify-between px-6 sm:h-28 sm:px-10">
           <Link href="/" aria-label="Launch Pad" className="flex items-center">
@@ -74,13 +83,13 @@ export default function LandingPage() {
           <div className="flex items-center gap-2.5 sm:gap-3">
             <a
               href="#packages"
-              className="px-2 py-2.5 text-sm font-medium text-white/80 underline decoration-white/35 underline-offset-[6px] transition hover:text-white hover:decoration-white sm:px-3 sm:text-base"
+              className="px-2 py-2.5 text-sm font-medium text-gray-600 underline decoration-gray-400 underline-offset-[6px] transition hover:text-gray-900 hover:decoration-gray-900 sm:px-3 sm:text-base"
             >
               See pricing
             </a>
             <Link
               href="/login"
-              className="rounded-full bg-[#ffffff] px-5 py-2.5 text-sm font-semibold text-[#0f1115] transition hover:bg-white/90 sm:px-7 sm:py-3 sm:text-base"
+              className="rounded-full bg-[#16171a] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2a2b30] sm:px-7 sm:py-3 sm:text-base"
             >
               Sign in
             </Link>
@@ -90,29 +99,31 @@ export default function LandingPage() {
 
       {/* Hero — one screen tall in total, with the heading self-centred in the
           space above and the platform icons inside the same frame. */}
-      <section className="relative flex min-h-screen flex-col text-white">
+      <section className="relative flex min-h-screen flex-col text-gray-900">
         <div className="flex flex-1 flex-col items-center justify-center px-6 pb-4 pt-24 text-center">
           <Reveal>
             {/* nowrap keeps "Our ad engine." on one line while the hidden
                 card expands on hover */}
-            <h1 className="mx-auto max-w-6xl text-5xl font-light leading-[0.95] tracking-[-0.05em] text-white sm:text-7xl lg:text-8xl">
+            <h1 className="mx-auto max-w-6xl text-5xl font-light leading-[0.95] tracking-[-0.05em] text-gray-900 sm:text-7xl lg:text-8xl">
               Your personal brand.
               <br />
               <span className="lg:whitespace-nowrap">
                 Our <HeroAdWord /> engine.
               </span>
             </h1>
-            <p className="mx-auto mt-8 max-w-2xl text-lg font-light text-white/60 sm:text-xl">
+            <p className="mx-auto mt-8 max-w-2xl text-lg font-light text-gray-600 sm:text-xl">
               We build and run paid social campaigns for Experts Group agents
               — you track every lead from first click to your CRM, all in one
               clean dashboard.
             </p>
             <div className="mt-12 flex items-center justify-center gap-4">
-              {/* Understated: the fill is barely off the page's black — the
-                  draw is the light travelling round the rim. */}
-              <Link href="/signup" className="btn-rim px-10 py-4 text-base font-medium">
-                <span className="btn-rim-edge" aria-hidden />
-                <span className="relative z-[2]">Choose your package</span>
+              {/* A near-invisible glass box with a deep, tight drop shadow —
+                  it pops off the flat grey without shouting. */}
+              <Link
+                href="/signup"
+                className="btn-hero-glass px-10 py-4 text-base font-medium"
+              >
+                Choose your package
               </Link>
             </div>
           </Reveal>
@@ -133,7 +144,10 @@ export default function LandingPage() {
             panel's backdrop-filter — so the frost must sit on the same element
             that carries the transform, not a parent. */}
         <PanelReveal>
-        <div className="relative flex min-h-[64vh] flex-col overflow-hidden rounded-[2.5rem]">
+        {/* No overflow clipping: the photo and stat card throw real drop
+            shadows that need to spill past the section edge onto the next
+            one, or the section reads as a cut-out. */}
+        <div className="relative flex min-h-[64vh] flex-col rounded-[2.5rem]">
           {/* Wide column gap on desktop: the infographic card hangs off the
               photo's left edge, so a tight gap put it right up against the
               copy. Columns are deliberately uneven — the photo takes the
@@ -183,78 +197,32 @@ export default function LandingPage() {
         </PanelReveal>
       </section>
 
-      {/* Proof — the real three-month trial. Deliberately between "What is
-          Launch Pad?" and "How it works": say what it is, earn the trust, then
-          explain the mechanics. */}
-      {/* ── The stack ─────────────────────────────────────────────────────
-          Three panels that scroll over one another. Each layer that gets
-          covered is `sticky top-0`, so it pins to the top of the viewport
-          while the next panel slides up over it.
-
-          It has to be `top`, not `bottom`: bottom-anchored sticky only
-          engages when scrolling UP, so scrolling down just carried the panel
-          off-screen and nothing pinned at all.
-
-          They are siblings in one relative container — that shared
-          containing block is what gives the sticky layers something to
-          travel against. Splitting them into separate wrappers kills the
-          effect, because a layer can't stick past its own parent.
-
-          z-index climbs with each layer so the newer one covers the older. */}
+      {/* Proof + How it works — one continuous, light-grey passage.
+          Desktop runs them as a single pinned presentation (ProofHowScene):
+          the proof reveals beat by beat, flies off the top, and the phone
+          rises into the second slide — the page feels stationary while the
+          content moves. Mobile gets the same content as plain sections. */}
       <div className="relative">
-        <section
-          id="proof"
-          className="sticky top-0 z-0 pb-28 pt-24"
-        >
-          <Reveal>
-            <TrialProof />
-          </Reveal>
-        </section>
-
-        {/* The one light panel — curved top.
-
-            The wrapper exists purely to buy dwell time. Without it the dark
-            slab began covering this panel the moment it pinned, so step 4 was
-            being wiped before you could read it. The spacer below the panel
-            extends the range the panel stays stuck for, and because the panel
-            is pinned and opaque it fills the screen for that whole stretch —
-            you get a beat with the section in full frame before the black
-            starts to climb.
-
-            No overflow clipping any more: the phone sits inside the panel
-            rather than running off it. */}
-        <div className="relative z-10">
-          <div className="light-panel sticky top-0">
-            <section
-              id="how"
-              className="mx-auto max-w-6xl px-6 pb-20 pt-28 sm:pt-36 lg:pb-32"
-            >
-              <Reveal>
-                <HowItWorksPhone />
-              </Reveal>
-            </section>
-          </div>
-          <div aria-hidden className="hidden lg:block lg:h-[95vh]" />
+        <div className="lg:hidden">
+          <section id="proof" className="py-24">
+            <Reveal>
+              <TrialProof />
+            </Reveal>
+          </section>
+          <section className="px-6 pb-24 pt-6">
+            <Reveal>
+              <HowItWorksPhone />
+            </Reveal>
+          </section>
+        </div>
+        <div className="hidden lg:block">
+          <ProofHowScene />
         </div>
 
-        {/* Back to charcoal, curving over the light panel the same way. */}
-        {/* Pulled up so it genuinely climbs over the pinned panel above.
-            Worth knowing the arithmetic, because it isn't obvious: with the
-            slab sitting directly after the panel's wrapper, the overlap you
-            get is only (viewport - panel height) no matter how long the panel
-            stays pinned — the slab and the release move together. The panel
-            is 994px against a ~1050px viewport, so that was 56px, i.e. none.
-            This negative margin buys the overlap directly; the spacer above
-            buys the pause before it starts — deliberately short, so the
-            slab's curve is already cutting into the bottom of the panel when
-            you arrive rather than only appearing once you scroll.
-
-            Sized so the slab travels a FULL viewport over the pinned panel —
-            it covers it completely and comes to rest with its curve seated
-            where the panel's was, rather than stopping a third of the way up.
-            Overlap = this margin + (viewport - panel height), so it has to be
-            at least the panel's own height (~994px) to clear it. */}
-        <section className="dark-slab relative z-20 px-6 pb-32 pt-28 sm:pt-36 lg:-mt-[64rem]">
+        {/* "Everything plugs into one place" — a plain section now; the page
+            just scrolls into it. (The expanding-circle entrance moved down
+            to the pricing section.) */}
+        <section className="relative z-20 px-6 pb-32 pt-28 sm:pt-36">
           <Reveal>
             <PlugIntoStack />
           </Reveal>
@@ -263,25 +231,36 @@ export default function LandingPage() {
 
       {/* Pain points — the empathy beat, deliberately the last thing before
           the price. No curve of its own: the section above it is already
-          charcoal, so a second slab edge here would sit dark-on-dark and
-          read as nothing. Replaced the mocked ad showcase, which was
+          the page grey, so a second slab edge here would sit tone-on-tone
+          and read as nothing. Replaced the mocked ad showcase, which was
           pretending to be real campaigns we don't have yet. */}
       {/* Explicit background, not transparent: the section above it is an
           opaque slab, so anything sitting behind the page (a bloom, the
           texture layer) shows through this one and not that one — which drew
           a hard line across the join. Same colour, both opaque, no seam. */}
-      <section id="pain" className="relative z-30 bg-[#1b1c20] py-28">
+      <section id="pain" className="relative z-30 bg-[#f4f4f5] py-28">
         <PainPoints />
       </section>
 
-      {/* Packages */}
-      <section id="packages">
-        <div className="mx-auto max-w-6xl px-6 py-28">
-          <Reveal>
-            <h2 className="text-center text-4xl font-semibold tracking-tight">
-              Simple, transparent pricing. You are in control.
-            </h2>
-          </Reveal>
+      {/* Packages — the finale before the footer. Enters as a white
+          near-circle that expands outwards as it rises (ExpandingSlab), with
+          the heading and the pricing riding at different speeds. Full-screen,
+          with the included list out in the open rather than folded away. */}
+      <ExpandingSlab
+        id="packages"
+        className="pricing-slab relative z-30 min-h-screen px-6"
+      >
+        <div className="mx-auto max-w-6xl py-28">
+          {/* par-slow / par-fast are ExpandingSlab's parallax hooks — kept on
+              their own wrappers so they never fight Reveal's transitions. */}
+          <div className="par-slow">
+            <Reveal>
+              <h2 className="text-center text-4xl font-semibold tracking-tight">
+                Simple, transparent pricing. You are in control.
+              </h2>
+            </Reveal>
+          </div>
+          <div className="par-fast">
 
           {/* Fee on the left, packages on the right, with a real + between
               them — the whole pricing model is "one flat fee PLUS the spend
@@ -365,9 +344,9 @@ export default function LandingPage() {
                   </p>
                   <Link
                     href={`/signup?package=${p.id}`}
-                    // The outline buttons used to hover to bg-gray-50. On the
-                    // dark page that hover variant isn't remapped, so they
-                    // went white-on-white. They fill with the brand red now.
+                    // The outline buttons fill with the brand red on hover —
+                    // a deliberate choice kept from the dark theme, where the
+                    // old bg-gray-50 hover went white-on-white.
                     className={`mt-4 rounded-xl py-2.5 text-center text-[13px] font-medium transition ${
                       p.highlighted
                         ? "btn-group"
@@ -382,26 +361,13 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* The full included list, folded away behind a button — it's the
-              same six things on every package, so it was adding a screen of
-              height to say something the cards already imply. <details> so
-              it works without JS and stays in the page for search. */}
+          {/* The included list, out in the open — the same six things on
+              every package, shown rather than folded behind a toggle. */}
           <Reveal>
-            <details className="group mx-auto mt-14 max-w-4xl">
-              <summary className="mx-auto flex w-fit cursor-pointer list-none items-center gap-2 rounded-full border border-gray-200 px-6 py-3 text-sm font-medium text-gray-900 transition hover:border-transparent hover:bg-[var(--group)] hover:text-white [&::-webkit-details-marker]:hidden">
+            <div className="mx-auto mt-20 max-w-4xl">
+              <p className="text-center text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
                 What&apos;s included in every package
-                <svg
-                  className="h-4 w-4 transition-transform duration-200 group-open:rotate-180"
-                  viewBox="0 0 20 20"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M5 8l5 5 5-5" />
-                </svg>
-              </summary>
+              </p>
               <div className="mt-10 grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
                 {INCLUDED_IN_EVERY_PACKAGE.map((f) => (
                   <div key={f.title}>
@@ -425,12 +391,12 @@ export default function LandingPage() {
                   </div>
                 ))}
               </div>
-            </details>
+            </div>
           </Reveal>
 
           {/* Just the commitment terms now — the founding agent offer is out. */}
           <Reveal>
-            <div className="mt-12 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+            <div className="mt-14 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
               {PACKAGE_TERMS.map((t) => (
                 <span key={t} className="text-sm text-gray-500">
                   {t}
@@ -438,95 +404,123 @@ export default function LandingPage() {
               ))}
             </div>
           </Reveal>
+          </div>
         </div>
-      </section>
+      </ExpandingSlab>
 
-      {/* Footer — black panel, big rounded corners, inset from the edges */}
-      {/* Footer — mission control at the edge of the planet. The horizon sits
-          behind the content and the page ends on it. */}
-      <footer className="relative overflow-hidden pt-16">
-        <div className="horizon" aria-hidden>
-          <div className="horizon-planet" />
-        </div>
-        <div className="relative z-10 px-8 pb-20 pt-4 text-white sm:px-14 sm:pb-24">
-          <div className="mx-auto max-w-6xl">
-            {/* Links — kept to one tight row (the per-brand list is gone, so
-                the horizon isn't pushed miles down the page). */}
-            {/* Padded down so this row and the legal line below land ON the
-                planet, under the lit rim, rather than floating above it. */}
-            <div className="flex flex-col justify-between gap-8 pt-[190px] sm:flex-row sm:gap-14 sm:pt-[205px]">
-              <div className="max-w-xs">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/brand-logos/group-white.png"
-                  alt="The Experts Group"
-                  className="h-10 w-auto"
-                />
-                <p className="mt-4 text-sm text-white/50">
-                  Paid ads, built and run for Experts Group agents — tracked
-                  from first click to your CRM.
-                </p>
-              </div>
-              <div className="flex gap-12 sm:gap-16">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-white/40">
-                    Portal
-                  </p>
-                  <ul className="mt-4 space-y-2.5 text-sm text-white/70">
-                    <li>
-                      <Link href="/login" className="hover:text-white">
-                        Sign in
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="/signup" className="hover:text-white">
-                        Create your account
-                      </Link>
-                    </li>
-                    <li>
-                      <a href="#packages" className="hover:text-white">
-                        Packages
-                      </a>
-                    </li>
-                  </ul>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-white/40">
-                    Contact
-                  </p>
-                  <ul className="mt-4 space-y-2.5 text-sm text-white/70">
-                    <li>
+      {/* Footer — the planet horizon is gone. The links, socials and legal
+          line live in a white card on the light grey page, and the page ends
+          on a giant white wordmark that fades out and is cut off by the
+          bottom edge. "Launch Pad" on desktop; "TEG" on mobile, where the
+          long name wouldn't survive the narrow screen. */}
+      <footer className="relative z-30 overflow-hidden bg-[#f4f4f5] px-4 pt-10 sm:px-8">
+        <div className="relative mx-auto max-w-6xl rounded-[2rem] bg-white p-8 shadow-[0_18px_44px_-24px_rgba(17,24,39,0.18)] sm:p-12">
+          <BackToTop className="absolute right-6 top-6 sm:right-10 sm:top-10" />
+          <div className="flex flex-col justify-between gap-10 sm:flex-row sm:gap-14">
+            <div className="max-w-xs">
+              <p className="whitespace-nowrap text-lg font-semibold tracking-tight text-black/85">
+                The Experts Group
+              </p>
+              <p className="mt-3 text-sm leading-relaxed text-gray-500">
+                Paid ads, built and run for Experts Group agents — tracked
+                from first click to your CRM.
+              </p>
+              {/* Socials — in the brand colour, so they follow whatever the
+                  colour picker is auditioning. hrefs are placeholders until
+                  marketing supplies the group's real profile URLs. */}
+              <div className="mt-5 flex items-center gap-4 text-[var(--group)]">
+                {["Meta / Facebook", "Instagram", "LinkedIn", "YouTube", "TikTok"].map(
+                  (name) => {
+                    const icon = ICONS.find((i) => i.name === name)!;
+                    return (
                       <a
-                        href="mailto:leads@theexpertsgroup.co.uk"
-                        className="hover:text-white"
+                        key={name}
+                        href="#"
+                        aria-label={name}
+                        className="transition hover:-translate-y-0.5 hover:text-[var(--group-deep)]"
                       >
-                        leads@theexpertsgroup.co.uk
+                        <SocialIcon icon={icon} className="h-5 w-5" />
                       </a>
-                    </li>
-                    <li>
-                      <Link href="/admin" className="hover:text-white">
-                        Admin
-                      </Link>
-                    </li>
-                  </ul>
-                </div>
+                    );
+                  }
+                )}
               </div>
             </div>
-
-            {/* Legal row */}
-            <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-white/10 pt-6 text-xs text-white/40 sm:flex-row">
-              <span>© {new Date().getFullYear()} The Experts Group</span>
-              <div className="flex gap-6">
-                <Link href="/privacy" className="transition hover:text-white">
-                  Privacy
-                </Link>
-                <Link href="/terms" className="transition hover:text-white">
-                  Terms
-                </Link>
+            <div className="flex gap-12 pr-0 sm:gap-16 sm:pr-20">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+                  Portal
+                </p>
+                <ul className="mt-4 space-y-2.5 text-sm text-gray-600">
+                  <li>
+                    <Link href="/login" className="hover:text-gray-900">
+                      Sign in
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/signup" className="hover:text-gray-900">
+                      Create your account
+                    </Link>
+                  </li>
+                  <li>
+                    <a href="#packages" className="hover:text-gray-900">
+                      Packages
+                    </a>
+                  </li>
+                </ul>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+                  Contact
+                </p>
+                <ul className="mt-4 space-y-2.5 text-sm text-gray-600">
+                  <li>
+                    <a
+                      href="mailto:leads@theexpertsgroup.co.uk"
+                      className="hover:text-gray-900"
+                    >
+                      leads@theexpertsgroup.co.uk
+                    </a>
+                  </li>
+                  <li>
+                    <Link href="/admin" className="hover:text-gray-900">
+                      Admin
+                    </Link>
+                  </li>
+                </ul>
               </div>
             </div>
           </div>
+
+          {/* Legal row */}
+          <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-gray-200 pt-6 text-xs text-gray-400 sm:flex-row">
+            <span>© {new Date().getFullYear()} The Experts Group</span>
+            <div className="flex gap-6">
+              <Link href="/privacy" className="transition hover:text-gray-900">
+                Privacy
+              </Link>
+              <Link href="/terms" className="transition hover:text-gray-900">
+                Terms
+              </Link>
+            </div>
+          </div>
         </div>
+
+        {/* The giant wordmark. The negative bottom margin pushes the base of
+            the letters past the footer's edge, and overflow-hidden on the
+            footer does the cropping. */}
+        <p
+          aria-hidden
+          className="footer-wordmark hidden text-[15vw] sm:block sm:-mb-[0.16em] sm:mt-10"
+        >
+          Launch Pad
+        </p>
+        <p
+          aria-hidden
+          className="footer-wordmark -mb-[0.16em] mt-10 text-[36vw] sm:hidden"
+        >
+          TEG
+        </p>
       </footer>
     </main>
   );

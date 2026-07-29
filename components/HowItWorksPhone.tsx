@@ -108,11 +108,10 @@ export default function HowItWorksPhone() {
     // items-end so the phone hangs off the bottom of the slab rather than
     // sitting in the middle of it; the slab clips it.
     <div className="grid items-start gap-16 lg:grid-cols-2 lg:items-center">
-      <div className="lg:pt-12">
-        {/* This section sits on the light slab, so its chrome uses the grey
-            scale rather than white — .light-panel restores those greys from
-            the dark theme's remapping. The phone's own UI below is a device
-            mockup and keeps its own colours. */}
+      {/* hiw-copy / hiw-phone are hooks for the desktop scroll scene
+          (ProofHowScene drives their opacity/position); outside the scene
+          they do nothing. */}
+      <div className="hiw-copy lg:pt-12">
         <h2 className="text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl">
           How it works
         </h2>
@@ -161,12 +160,12 @@ export default function HowItWorksPhone() {
           Sits centred against the steps rather than hanging off the panel
           edge: cropping it fought the copy, since the cut had to climb high
           enough to matter and that ate the last step. */}
-      <div className="relative z-10 flex justify-center lg:justify-end">
+      <div className="hiw-phone relative z-10 flex justify-center lg:justify-end">
         {/* A soft bloom so the phone's edges separate from the slab. */}
         <span
           aria-hidden
           className="pointer-events-none absolute left-1/2 top-1/2 h-[560px] w-[460px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-40 blur-[90px] lg:left-auto lg:right-[40px] lg:translate-x-0"
-          style={{ background: "radial-gradient(circle, rgba(167,42,53,0.26), rgba(167,42,53,0.08) 55%, transparent 72%)" }}
+          style={{ background: "radial-gradient(circle, color-mix(in srgb, var(--group) 26%, transparent), color-mix(in srgb, var(--group) 8%, transparent) 55%, transparent 72%)" }}
         />
         <PhoneFrame tab={tab} inView={inView} innerRef={phoneRef} />
       </div>
@@ -266,7 +265,7 @@ function AdsScreen({ running }: { running: boolean }) {
                 <div className="flex items-center gap-1.5">
                   <p className="truncate text-[13px] font-semibold">{l.n}</p>
                   {l.tag && (
-                    <span className="rounded-full bg-[#A72A35] px-1.5 py-0.5 text-[8px] font-bold uppercase text-white">
+                    <span className="rounded-full bg-[var(--group)] px-1.5 py-0.5 text-[8px] font-bold uppercase text-white">
                       {l.tag}
                     </span>
                   )}
@@ -318,12 +317,12 @@ function AdsScreen({ running }: { running: boolean }) {
         {/* The press: scales in and lifts, as if tapped */}
         <div className="mt-4 flex gap-2">
           <span
-            className="flex-1 rounded-full bg-[#A72A35] py-2.5 text-center text-[12px] font-semibold text-white transition-all duration-300"
+            className="flex-1 rounded-full bg-[var(--group)] py-2.5 text-center text-[12px] font-semibold text-white transition-all duration-300"
             style={{
               transform: pressing ? "scale(0.96)" : "none",
               boxShadow: pressing
-                ? "0 2px 8px -2px rgba(167,42,53,0.7)"
-                : "0 10px 22px -8px rgba(167,42,53,0.6)",
+                ? "0 2px 8px -2px color-mix(in srgb, var(--group) 70%, transparent)"
+                : "0 10px 22px -8px color-mix(in srgb, var(--group) 60%, transparent)",
             }}
           >
             Call now
@@ -340,7 +339,7 @@ function AdsScreen({ running }: { running: boolean }) {
 }
 
 const BRANDS_DECK = [
-  { tag: "Estate agents", name: ["The", "Property", "Experts"], fee: "£850", bg: "#A72A35" },
+  { tag: "Estate agents", name: ["The", "Property", "Experts"], fee: "£850", bg: "var(--group)" },
   { tag: "Mortgages", name: ["The", "Mortgage", "Experts"], fee: "£300", bg: "#2B6193" },
   { tag: "Lettings", name: ["The", "Lettings", "Experts"], fee: "£450", bg: "#A3C739" },
   { tag: "Commercial", name: ["Commercial", "Property", "Experts"], fee: "£1,200", bg: "#41AAE1" },
@@ -413,7 +412,7 @@ function ReferralScreen({ running }: { running: boolean }) {
             transform: sent ? "none" : "scale(0.97)",
           }}
         >
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#A72A35] text-[22px] text-white">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--group)] text-[22px] text-white">
             ✓
           </span>
           <p className="mt-4 text-[15px] font-semibold">Referral sent</p>
