@@ -79,28 +79,41 @@ function Point({
 export default function PainPoints() {
   // One trigger for the whole set: the heading and subtext arrive with the
   // section, then a small scroll brings the grid into view and every point
-  // drops down in sequence.
+  // drops down in sequence. A direct scroll-position check rather than an
+  // IntersectionObserver, plus a failsafe timer — this content starts
+  // hidden, so it must never get stuck invisible.
   const gridRef = useRef<HTMLDivElement>(null);
   const [on, setOn] = useState(false);
 
   useEffect(() => {
     const el = gridRef.current;
     if (!el) return;
-    if (typeof IntersectionObserver === "undefined") {
-      setOn(true);
-      return;
-    }
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          setOn(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.2 }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
+    let done = false;
+
+    const check = () => {
+      if (done) return;
+      const vh = window.innerHeight || 800;
+      const r = el.getBoundingClientRect();
+      // Fire once the top of the grid is well inside the viewport.
+      if (r.top < vh * 0.85 && r.bottom > 0) {
+        done = true;
+        setOn(true);
+        window.removeEventListener("scroll", onScroll);
+        window.removeEventListener("resize", onScroll);
+      }
+    };
+    const onScroll = () => check();
+
+    check();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    // Safety net: never leave the points hidden.
+    const failSafe = setTimeout(() => setOn(true), 6000);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      clearTimeout(failSafe);
+    };
   }, []);
 
   return (
@@ -109,9 +122,11 @@ export default function PainPoints() {
           uneven grid beside it — no centred header, no equal columns. */}
       <div className="grid gap-14 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.6fr)] lg:gap-20">
         <div>
+          {/* Always exactly two lines — the second is kept whole. */}
           <h2 className="text-4xl font-light leading-[1.05] tracking-[-0.035em] text-gray-900 sm:text-5xl">
             We know what
-            <br className="hidden sm:block" /> you&apos;re up against.
+            <br />
+            <span className="whitespace-nowrap">you&apos;re up against.</span>
           </h2>
           <p className="mt-6 max-w-sm text-lg leading-relaxed text-gray-600">
             Nobody needs another invoice for something that didn&apos;t work.

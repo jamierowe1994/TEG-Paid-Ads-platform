@@ -77,10 +77,14 @@ export default function LandingPage() {
           Sits over the light hero, so everything here is near-black. */}
       <header className="absolute inset-x-0 top-0 z-40">
         <div className="mx-auto flex h-24 max-w-7xl items-center justify-between px-6 sm:h-28 sm:px-10">
-          <Link href="/" aria-label="Launch Pad" className="flex items-center">
+          <Link
+            href="/"
+            aria-label="Launch Pad"
+            className="hero-nav flex items-center"
+          >
             <LaunchPadMark />
           </Link>
-          <div className="flex items-center gap-2.5 sm:gap-3">
+          <div className="hero-nav flex items-center gap-2.5 sm:gap-3">
             <a
               href="#packages"
               className="px-2 py-2.5 text-sm font-medium text-gray-600 underline decoration-gray-400 underline-offset-[6px] transition hover:text-gray-900 hover:decoration-gray-900 sm:px-3 sm:text-base"
@@ -100,33 +104,34 @@ export default function LandingPage() {
       {/* Hero — one screen tall in total, with the heading self-centred in the
           space above and the platform icons inside the same frame. */}
       <section className="relative flex min-h-screen flex-col text-gray-900">
+        {/* The load sequence, not a scroll reveal — this is the first thing
+            anyone sees. The headline grows from tiny, overshoots and bounces
+            into place; the subtext and button pop in after it; the icons
+            flash on one by one while the nav fades in (see HeroIconStrip and
+            the .hero-* rules). */}
         <div className="flex flex-1 flex-col items-center justify-center px-6 pb-4 pt-24 text-center">
-          <Reveal>
-            {/* nowrap keeps "Our ad engine." on one line while the hidden
-                card expands on hover */}
-            <h1 className="mx-auto max-w-6xl text-5xl font-light leading-[0.95] tracking-[-0.05em] text-gray-900 sm:text-7xl lg:text-8xl">
-              Your personal brand.
-              <br />
-              <span className="lg:whitespace-nowrap">
-                Our <HeroAdWord /> engine.
-              </span>
-            </h1>
-            <p className="mx-auto mt-8 max-w-2xl text-lg font-light text-gray-600 sm:text-xl">
-              We build and run paid social campaigns for Experts Group agents
-              — you track every lead from first click to your CRM, all in one
-              clean dashboard.
-            </p>
-            <div className="mt-12 flex items-center justify-center gap-4">
-              {/* A near-invisible glass box with a deep, tight drop shadow —
-                  it pops off the flat grey without shouting. */}
-              <Link
-                href="/signup"
-                className="btn-hero-glass px-10 py-4 text-base font-medium"
-              >
-                Choose your package
-              </Link>
-            </div>
-          </Reveal>
+          {/* nowrap keeps "Our ad engine." on one line while the hidden
+              card expands on hover */}
+          <h1 className="hero-title mx-auto max-w-6xl text-5xl font-light leading-[0.95] tracking-[-0.05em] text-gray-900 sm:text-7xl lg:text-8xl">
+            Your personal brand.
+            <br />
+            <span className="lg:whitespace-nowrap">
+              Our <HeroAdWord /> engine.
+            </span>
+          </h1>
+          <p className="hero-sub mx-auto mt-8 max-w-2xl text-lg font-light text-gray-600 sm:text-xl">
+            We build and run paid social campaigns for Experts Group agents
+            — you track every lead from first click to your CRM, all in one
+            clean dashboard.
+          </p>
+          <div className="hero-cta mt-12 flex items-center justify-center gap-4">
+            <Link
+              href="/signup"
+              className="btn-hero-glass px-10 py-4 text-base font-medium"
+            >
+              Choose your package
+            </Link>
+          </div>
         </div>
         {/* Social platforms strip — right across the foot of the hero. */}
         <div className="relative z-10 mx-auto w-full max-w-6xl px-8 pb-12 sm:px-12">
@@ -153,26 +158,37 @@ export default function LandingPage() {
               copy. Columns are deliberately uneven — the photo takes the
               larger share so this doesn't read as a symmetrical two-up. */}
           <div className="mx-auto grid w-full max-w-7xl flex-1 items-center gap-10 px-8 py-12 sm:px-12 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-24">
-            <div className="p-words">
-              <h2 className="max-w-lg text-4xl font-semibold leading-[1.05] tracking-tight text-gray-900 sm:text-5xl">
+            {/* Same rhythm as the hero: the heading grows in and bounces,
+                the subtext drops in line by line, the button fades last. */}
+            <div>
+              <h2 className="p-title max-w-lg text-4xl font-semibold leading-[1.05] tracking-tight text-gray-900 sm:text-5xl">
                 What is Launch Pad?
               </h2>
-              <p className="mt-5 max-w-md text-lg leading-relaxed text-gray-600">
+              <p
+                className="p-sub mt-5 max-w-md text-lg leading-relaxed text-gray-600"
+                style={{ "--d": "0s" } as React.CSSProperties}
+              >
                 We build your ads, run them on the platforms your patch
                 actually uses, and drop every lead that comes back into one
                 dashboard — with the phone number already there, ready to call.
               </p>
-              <p className="mt-4 max-w-md text-lg leading-relaxed text-gray-600">
+              <p
+                className="p-sub mt-4 max-w-md text-lg leading-relaxed text-gray-600"
+                style={{ "--d": "0.14s" } as React.CSSProperties}
+              >
                 You do the part you&apos;re good at: talking to people. We do
                 the part that involves arguing with Meta&apos;s ad manager at
                 two in the morning.
               </p>
-              <p className="mt-5 max-w-md text-sm leading-relaxed text-gray-400">
+              <p
+                className="p-sub mt-5 max-w-md text-sm leading-relaxed text-gray-400"
+                style={{ "--d": "0.28s" } as React.CSSProperties}
+              >
                 Why all the space stuff? Because &ldquo;launching your patch
                 into the stratosphere&rdquo; tested better than &ldquo;we run
                 your Facebook ads&rdquo;. Both are true. Only one has a planet.
               </p>
-              <div className="mt-8">
+              <div className="p-cta mt-8">
                 <Link
                   href="/signup"
                   className="btn-group inline-block rounded-full px-9 py-4 text-base font-semibold"

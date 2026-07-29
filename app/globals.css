@@ -350,14 +350,45 @@ h5 {
 /* ── Panel reveal sequence — words fade, image expands, stat expands, each
    business pill floats up from the bottom, all staggered. Elements start
    hidden; the animations only run once the panel has `revealed`. */
-.p-words,
+.p-title,
+.p-sub,
+.p-cta,
 .p-image,
 .p-stat,
 .p-pill {
   opacity: 0;
 }
-.revealed .p-words {
-  animation: p-fade 0.7s cubic-bezier(0.3, 1.3, 0.5, 1) forwards;
+/* Same rhythm as the hero: the heading grows in from tiny and bounces, the
+   subtext drops in line by line (--d staggers, set inline), and the button
+   fades in last. */
+.revealed .p-title {
+  animation: hero-grow 1s cubic-bezier(0.3, 1.2, 0.4, 1) forwards;
+  transform-origin: left 60%;
+}
+.revealed .p-sub {
+  animation: p-drop 0.55s cubic-bezier(0.34, 1.4, 0.5, 1) both;
+  animation-delay: calc(0.75s + var(--d, 0s));
+}
+@keyframes p-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-22px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.revealed .p-cta {
+  animation: p-fade-in 0.6s ease 1.35s both;
+}
+@keyframes p-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 .revealed .p-image {
   /* The photo starts small at the bottom and BOUNCES into place — at half
@@ -371,16 +402,6 @@ h5 {
 .revealed .p-pill {
   /* animation-delay set inline per pill for the staggered float-up */
   animation: p-float 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-@keyframes p-fade {
-  from {
-    opacity: 0;
-    transform: translateX(-36px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
 }
 @keyframes p-bounce-in {
   0% {
@@ -1035,10 +1056,17 @@ h5 {
     animation: none;
     transform: scaleY(1);
   }
-  .p-words,
+  .p-title,
+  .p-sub,
+  .p-cta,
   .p-image,
   .p-stat,
-  .p-pill {
+  .p-pill,
+  .hero-title,
+  .hero-sub,
+  .hero-cta,
+  .hero-nav,
+  .hero-icon-in {
     opacity: 1;
     animation: none;
   }
@@ -1100,6 +1128,68 @@ h5 {
      lower right — so the inside isn't flat.
    · The pill itself keeps a whisper of fill, real blur, an inner bottom
      shadow for thickness, and a tight, deep drop shadow underneath. */
+/* ── Hero load sequence ────────────────────────────────────────────────────
+   The first thing anyone sees, so it earns a proper entrance: the headline
+   grows from tiny, gets slightly too big, shrinks back and bounces into
+   place. The subtext then pops in, the button after it, and the platform
+   icons flash on one by one while the nav fades in. All plain CSS with
+   staggered delays — no scroll involvement. */
+.hero-title {
+  animation: hero-grow 1.25s cubic-bezier(0.3, 1.2, 0.4, 1) 0.15s both;
+  transform-origin: 50% 60%;
+}
+@keyframes hero-grow {
+  0% {
+    opacity: 0;
+    transform: scale(0.08);
+  }
+  40% {
+    opacity: 1;
+  }
+  62% {
+    transform: scale(1.08); /* almost too big… */
+  }
+  82% {
+    transform: scale(0.982); /* …settles back… */
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1); /* …and lands with a bounce. */
+  }
+}
+.hero-sub {
+  animation: hero-pop 0.55s cubic-bezier(0.34, 1.45, 0.5, 1) 1.35s both;
+}
+.hero-cta {
+  animation: hero-pop 0.55s cubic-bezier(0.34, 1.45, 0.5, 1) 1.55s both;
+}
+@keyframes hero-pop {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.hero-nav {
+  animation: hero-fade 0.7s ease 1.7s both;
+}
+@keyframes hero-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/* The platform icons flash on one after another (--i set per icon). */
+.hero-icon-in {
+  animation: hero-pop 0.45s cubic-bezier(0.34, 1.45, 0.5, 1) both;
+  animation-delay: calc(1.65s + var(--i, 0) * 90ms);
+}
+
 /* Modelled directly on the "Authentication" reference: a soft slab of glass
    sitting just proud of the page — its face a touch LIGHTER than the
    background, a crisp bevel (bright top edge, shaded bottom edge), and two
@@ -1118,6 +1208,7 @@ h5 {
   box-shadow:
     inset 0 1.5px 1px rgba(255, 255, 255, 0.95), /* top bevel */
     inset 0 -2px 3px rgba(17, 24, 39, 0.09), /* bottom bevel */
+    inset 0 -9px 14px -6px rgba(17, 24, 39, 0.14), /* inner shadow — depth */
     inset 0 0 0 1px rgba(255, 255, 255, 0.6), /* glass edge */
     0 1px 2px rgba(17, 24, 39, 0.12), /* contact line */
     0 10px 18px -6px rgba(17, 24, 39, 0.16),
@@ -1132,6 +1223,7 @@ h5 {
   box-shadow:
     inset 0 1.5px 1px rgba(255, 255, 255, 0.95),
     inset 0 -2px 3px rgba(17, 24, 39, 0.09),
+    inset 0 -9px 14px -6px rgba(17, 24, 39, 0.14),
     inset 0 0 0 1px rgba(255, 255, 255, 0.65),
     0 1px 2px rgba(17, 24, 39, 0.12),
     0 13px 22px -6px rgba(17, 24, 39, 0.18),

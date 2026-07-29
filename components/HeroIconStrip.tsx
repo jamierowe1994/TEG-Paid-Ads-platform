@@ -10,14 +10,17 @@ import ICONS, { SocialIcon } from "./SocialIcons";
 export default function HeroIconStrip() {
   return (
     <div className="flex items-center justify-between text-[#16171a]">
-      {ICONS.map((icon) => (
+      {ICONS.map((icon, i) => (
         // Outer hit area is wider than the icon and stays put, so lifting the
         // inner icon never pulls it out from under the cursor (no flicker).
+        // --i staggers the load-sequence flash, one icon after the next.
         <span
           key={icon.name}
-          className="hero-icon-hit"
+          className="hero-icon-hit hero-icon-in"
           // The platform brand colour that bleeds in on hover.
-          style={{ "--icon-color": icon.color } as React.CSSProperties}
+          style={
+            { "--icon-color": icon.color, "--i": i } as React.CSSProperties
+          }
         >
           <span data-hero-icon={icon.name} className="hero-pop-icon inline-flex">
             <SocialIcon icon={icon} className="h-8 w-8 sm:h-11 sm:w-11" />
