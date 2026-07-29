@@ -467,36 +467,56 @@ h5 {
     stroke-dashoffset: 0;
   }
 }
-/* Rings pulsing outwards from behind the hub. */
-.plug-ring {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  height: 150px;
-  width: 150px;
-  margin: -75px 0 0 -75px;
-  border-radius: 9999px;
-  border: 1.5px solid color-mix(in srgb, var(--group) 45%, transparent);
+/* The data pulses — comet segments running each wire on repeat once the
+   wires have drawn, all in the brand colour. The mirrored (out) wires run
+   the animation in reverse so every pulse still travels source → hub →
+   destination. */
+.plug-pulse-line {
+  stroke-dasharray: 0.12 0.88;
+  stroke-dashoffset: 1;
   opacity: 0;
-  pointer-events: none;
 }
-.revealed .plug-ring {
-  animation: plug-pulse 2.8s ease-out 0.9s infinite;
+.revealed .plug-pulse-line {
+  opacity: 0.9;
+  transition: opacity 0.4s ease 1.5s;
+  animation: wire-pulse 2.6s linear infinite;
+  animation-delay: calc(1.5s + var(--pulse-delay, 0s));
 }
-.revealed .plug-ring-late {
-  animation-delay: 2.3s;
-}
-@keyframes plug-pulse {
-  0% {
-    transform: scale(0.45);
-    opacity: 0.75;
+@keyframes wire-pulse {
+  from {
+    stroke-dashoffset: 1;
   }
-  70% {
-    opacity: 0;
+  to {
+    stroke-dashoffset: 0;
   }
+}
+.revealed .plug-pulse-rev {
+  animation-name: wire-pulse-rev;
+}
+@keyframes wire-pulse-rev {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: 1;
+  }
+}
+/* The mini dashboard's lead rows glow in turn as pulses arrive. */
+.plug-row {
+  border-radius: 0.5rem;
+}
+.revealed .plug-row {
+  animation: lead-glow 7.8s ease-in-out infinite;
+  animation-delay: calc(2.2s + var(--row-delay, 0s));
+}
+@keyframes lead-glow {
+  0%,
+  10%,
   100% {
-    transform: scale(1.65);
-    opacity: 0;
+    background-color: transparent;
+  }
+  4% {
+    background-color: color-mix(in srgb, var(--group) 14%, transparent);
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -510,7 +530,12 @@ h5 {
     stroke-dashoffset: 0;
     animation: none;
   }
-  .revealed .plug-ring {
+  .plug-pulse-line,
+  .revealed .plug-pulse-line {
+    opacity: 0;
+    animation: none;
+  }
+  .revealed .plug-row {
     animation: none;
   }
 }

@@ -33,27 +33,29 @@ const smooth = (t: number) => t * t * (3 - 2 * t);
 // and later fly off). `in` reveals (rise + fade over 0.05); `out` flies off
 // the top (over 0.08), in document order, top of the screen first.
 const SEQ: Record<string, { in: number; out: number; always?: boolean }> = {
-  head: { in: 0, out: 0.52, always: true },
-  p1: { in: 0, out: 0.535, always: true },
-  p2: { in: 0, out: 0.55, always: true },
-  rule: { in: 0.06, out: 0.585 },
-  f0: { in: 0.09, out: 0.6 },
-  f1: { in: 0.14, out: 0.615 },
-  f2: { in: 0.19, out: 0.63 },
-  big: { in: 0.25, out: 0.565 },
-  btn: { in: 0.25, out: 0.565 },
+  head: { in: 0, out: 0.44, always: true },
+  p1: { in: 0, out: 0.455, always: true },
+  p2: { in: 0, out: 0.47, always: true },
+  rule: { in: 0.1, out: 0.5 },
+  f0: { in: 0.13, out: 0.515 },
+  f1: { in: 0.18, out: 0.53 },
+  f2: { in: 0.23, out: 0.545 },
+  big: { in: 0.29, out: 0.485 },
+  btn: { in: 0.29, out: 0.485 },
 };
 const WIN = 0.05;
 const WOUT = 0.08;
-// The always-on copy starts this much higher and settles by p=0.24 — it
-// "covers the distance" with the scroll instead of sitting static.
-const SETTLE = 140;
+// The always-on copy glides down slowly as you scroll — a long travel over
+// the first 0.3 of the scene, so entering the pinned region never feels
+// like hitting a wall — and the figures start arriving once it's centred.
+const SETTLE = 220;
 
-// Phone/copy phases. The rise starts as the exit begins, so the two slides
-// pass each other mid-screen.
-const RISE = { from: 0.5, to: 0.74 };
-const MOVE = { from: 0.76, to: 0.87 };
-const COPY = { from: 0.84, to: 0.94 };
+// Phone phases. The rise starts with the exit and is quicker, so the phone
+// is in the frame while the last lines are still leaving; the words of the
+// second slide are then REVEALED by the phone's slide to the right (see the
+// copy handling in update()).
+const RISE = { from: 0.44, to: 0.62 };
+const MOVE = { from: 0.64, to: 0.8 };
 
 export default function ProofHowScene() {
   const region = useRef<HTMLDivElement>(null);
@@ -94,8 +96,8 @@ export default function ProofHowScene() {
       const vh = window.innerHeight;
       const denom = el.offsetHeight - vh;
       const p = clamp01(-rect.top / denom);
-      // The always-on copy travelling down to its resting spot.
-      const settle = -(1 - smooth(clamp01(p / 0.24))) * SETTLE;
+      // The always-on copy gliding down to its resting spot.
+      const settle = -(1 - smooth(clamp01(p / 0.3))) * SETTLE;
 
       for (const [k, cfg] of Object.entries(SEQ)) {
         const n = els.current[k];
@@ -121,20 +123,24 @@ export default function ProofHowScene() {
       });
       setBigOn((prev) => prev || p >= SEQ.big.in);
 
-      // Slide two: the phone rises into the centre, slides right, and the
-      // copy fades up.
+      // Slide two: the phone rises into the centre, then slides right —
+      // and the words emerge from BEHIND it: they track left out of the
+      // phone's position while it moves away, as if it had been covering
+      // them the whole time.
       const rise = smooth(clamp01((p - RISE.from) / (RISE.to - RISE.from)));
       const move = smooth(clamp01((p - MOVE.from) / (MOVE.to - MOVE.from)));
-      const copy = smooth(clamp01((p - COPY.from) / (COPY.to - COPY.from)));
       if (phoneEl && grid) {
         const shift = grid.offsetWidth / 2 - 165;
         const x = -(1 - move) * shift;
         const y = (1 - rise) * vh * 1.05;
         phoneEl.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
-      }
-      if (copyEl) {
-        copyEl.style.opacity = String(copy);
-        copyEl.style.transform = `translateY(${((1 - copy) * 32).toFixed(1)}px)`;
+        if (copyEl) {
+          // Starts tucked under the phone's centred position, slides left to
+          // its column as the phone slides right. Opacity ramps over the
+          // first half of the move so the reveal reads as uncovering.
+          copyEl.style.opacity = String(clamp01(move * 1.8));
+          copyEl.style.transform = `translateX(${((1 - move) * shift * 0.6).toFixed(1)}px)`;
+        }
       }
     };
     const onScroll = () => {

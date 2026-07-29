@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Browser-tab favicon: the Launch Pad rocket, matching the installed
+       app icon — white rocket on the charcoal square, porthole punched in
+       the background colour. -->
+  <rect width="512" height="512" rx="112" fill="#1b1c20"/>
+  <g transform="rotate(45 256 256) translate(0 -8)" fill="#ffffff">
+    <path d="M256 80 C298 122 300 194 298 268 C298 302 293 330 284 350 L228 350 C219 330 214 302 214 268 C212 194 214 122 256 80 Z"/>
+    <path d="M214 266 L172 356 L221 335 Z"/>
+    <path d="M298 266 L340 356 L291 335 Z"/>
+    <path d="M232 350 L239 372 L273 372 L280 350 Z"/>
+    <rect x="248" y="392" width="16" height="78" rx="8"/>
+    <rect x="214" y="404" width="14" height="56" rx="7"/>
+    <rect x="284" y="404" width="14" height="56" rx="7"/>
+    <circle cx="256" cy="172" r="32" fill="#1b1c20"/>
+  </g>
+</svg>

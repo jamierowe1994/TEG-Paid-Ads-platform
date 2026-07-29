@@ -68,32 +68,54 @@ export default function PlugIntoStack() {
         {/* Wires in */}
         <Wires direction="in" rows={[30, 100, 170]} />
 
-        {/* The hub — no box any more: the rocket with the name over two
-            lines, left-aligned, with rings pulsing outwards behind it as
-            the wires connect. */}
-        <div className="relative shrink-0 text-left">
-          <span aria-hidden className="plug-ring" />
-          <span aria-hidden className="plug-ring plug-ring-late" />
-          <div className="relative">
-            <svg
-              viewBox="0 0 512 512"
-              className="h-11 w-11 sm:h-12 sm:w-12"
-              fill="var(--group)"
-              aria-hidden
-            >
-              <g transform="rotate(45 256 256) translate(0 -8)">
-                <path d="M256 80 C298 122 300 194 298 268 C298 302 293 330 284 350 L228 350 C219 330 214 302 214 268 C212 194 214 122 256 80 Z" />
-                <path d="M214 266 L172 356 L221 335 Z" />
-                <path d="M298 266 L340 356 L291 335 Z" />
-                <path d="M232 350 L239 372 L273 372 L280 350 Z" />
-                <circle cx="256" cy="172" r="32" fill="#f4f4f5" />
-              </g>
-            </svg>
-            <p className="mt-2 text-2xl font-semibold leading-[1.02] tracking-tight text-gray-900 sm:text-3xl">
-              Launch
-              <br />
-              Pad
+        {/* The hub — a miniature of the app itself. Everything the wires
+            carry lands HERE: pulses run down every line into the card, and
+            the lead rows inside light up in turn as they arrive. That's the
+            whole pitch drawn live: we connect it all, it lands in one place. */}
+        <div className="plug-node relative w-40 shrink-0 sm:w-48" style={{ "--node-delay": "260ms" } as React.CSSProperties}>
+          <div className="relative rounded-2xl border border-black/5 bg-white p-3 text-left shadow-[0_26px_50px_-22px_rgba(17,24,39,0.45)] sm:p-3.5">
+            <div className="flex items-center gap-2">
+              <svg
+                viewBox="0 0 512 512"
+                className="h-5 w-5 shrink-0"
+                fill="var(--group)"
+                aria-hidden
+              >
+                <g transform="rotate(45 256 256) translate(0 -8)">
+                  <path d="M256 80 C298 122 300 194 298 268 C298 302 293 330 284 350 L228 350 C219 330 214 302 214 268 C212 194 214 122 256 80 Z" />
+                  <path d="M214 266 L172 356 L221 335 Z" />
+                  <path d="M298 266 L340 356 L291 335 Z" />
+                  <path d="M232 350 L239 372 L273 372 L280 350 Z" />
+                  <circle cx="256" cy="172" r="32" fill="#ffffff" />
+                </g>
+              </svg>
+              <p className="text-[13px] font-semibold tracking-tight text-gray-900">
+                Launch Pad
+              </p>
+              {/* Live dot — the app is on, listening. */}
+              <span className="pulse-dot ml-auto h-1.5 w-1.5 rounded-full bg-green-500" />
+            </div>
+            <p className="mt-1.5 text-[8px] font-semibold uppercase tracking-[0.16em] text-gray-400">
+              Every lead · one place
             </p>
+            <div className="mt-2 space-y-1">
+              {/* Skeleton lead rows, tinted with each platform's colour on
+                  the left; each glows as a pulse lands. */}
+              {["#1877F2", "#E4405F", "#0A66C2"].map((c, i) => (
+                <div
+                  key={c}
+                  className="plug-row flex items-center gap-2 px-1.5 py-1.5"
+                  style={{ "--row-delay": `${i * 2.6}s` } as React.CSSProperties}
+                >
+                  <span
+                    className="h-2 w-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: c }}
+                  />
+                  <span className="h-1.5 flex-1 rounded-full bg-gray-200" />
+                  <span className="h-1.5 w-6 rounded-full bg-gray-100" />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -173,24 +195,43 @@ function Wires({ direction, rows }: { direction: "in" | "out"; rows: number[] })
         </marker>
       </defs>
       {rows.map((y, i) => (
-        <path
-          key={y}
-          // pathLength=1 normalises every wire so one dash animation draws
-          // them all; each wire starts after its node has popped in.
-          className="plug-wire"
-          pathLength={1}
-          style={
-            {
-              "--wire-delay": `${(direction === "out" ? 560 : 140) + i * 160}ms`,
-            } as React.CSSProperties
-          }
-          d={`M0 ${y} H26 L74 100 H90`}
-          fill="none"
-          stroke="rgba(17,24,39,0.22)"
-          strokeWidth="1.6"
-          vectorEffect="non-scaling-stroke"
-          markerEnd={`url(#arrow-${direction})`}
-        />
+        <g key={y}>
+          <path
+            // pathLength=1 normalises every wire so one dash animation draws
+            // them all; each wire starts after its node has popped in.
+            className="plug-wire"
+            pathLength={1}
+            style={
+              {
+                "--wire-delay": `${(direction === "out" ? 560 : 140) + i * 160}ms`,
+              } as React.CSSProperties
+            }
+            d={`M0 ${y} H26 L74 100 H90`}
+            fill="none"
+            stroke="rgba(17,24,39,0.22)"
+            strokeWidth="1.6"
+            vectorEffect="non-scaling-stroke"
+            markerEnd={`url(#arrow-${direction})`}
+          />
+          {/* The data pulse — a comet running the wire on repeat. The svg
+              for "out" is mirrored, so its pulses run in reverse to keep
+              travelling hub → destination. */}
+          <path
+            className={`plug-pulse-line${flip ? " plug-pulse-rev" : ""}`}
+            pathLength={1}
+            style={
+              {
+                "--pulse-delay": `${(direction === "out" ? 1.3 : 0) + i * 0.85}s`,
+              } as React.CSSProperties
+            }
+            d={`M0 ${y} H26 L74 100 H90`}
+            fill="none"
+            stroke="var(--group)"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        </g>
       ))}
     </svg>
   );
