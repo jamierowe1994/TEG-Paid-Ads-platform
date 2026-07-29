@@ -41,51 +41,30 @@ function Point({
   pain,
   answer,
   index,
+  on,
 }: {
   pain: string;
   answer: string;
   index: number;
+  on: boolean;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [on, setOn] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (typeof IntersectionObserver === "undefined") {
-      setOn(true);
-      return;
-    }
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          setOn(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.3 }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
   return (
     <div
-      ref={ref}
       className="group border-t border-gray-900/10 pt-7 transition-[opacity,transform] duration-700 ease-out"
       style={{
         opacity: on ? 1 : 0,
-        // Staggered down the list rather than all at once — the eye reads
-        // one pain at a time.
-        transform: on ? "none" : "translateY(28px)",
-        transitionDelay: `${(index % 3) * 110}ms`,
+        // The whole set cascades from ONE trigger — each point drops DOWN
+        // into place a beat after the previous, the same presentation
+        // rhythm as the proof section.
+        transform: on ? "none" : "translateY(-36px)",
+        transitionDelay: `${index * 120}ms`,
       }}
     >
       {/* The rule above each point draws itself in from the left. */}
       <span
         aria-hidden
         className="absolute -mt-7 block h-px bg-[var(--group)] transition-[width] duration-1000 ease-out"
-        style={{ width: on ? "3rem" : "0rem", transitionDelay: `${(index % 3) * 110 + 220}ms` }}
+        style={{ width: on ? "3rem" : "0rem", transitionDelay: `${index * 120 + 220}ms` }}
       />
       <p className="text-xl font-medium leading-snug text-gray-900 sm:text-2xl">
         {pain}
@@ -98,6 +77,32 @@ function Point({
 }
 
 export default function PainPoints() {
+  // One trigger for the whole set: the heading and subtext arrive with the
+  // section, then a small scroll brings the grid into view and every point
+  // drops down in sequence.
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [on, setOn] = useState(false);
+
+  useEffect(() => {
+    const el = gridRef.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setOn(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setOn(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.2 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div className="mx-auto w-full max-w-7xl px-6 sm:px-10">
       {/* Heading holds a narrow column on the left and the points run in an
@@ -117,13 +122,13 @@ export default function PainPoints() {
 
         {/* Uneven on purpose: two of the six run full width, so the column
             doesn't march down the page in matching pairs. */}
-        <div className="grid gap-x-10 gap-y-10 sm:grid-cols-2">
+        <div ref={gridRef} className="grid gap-x-10 gap-y-10 sm:grid-cols-2">
           {POINTS.map((p, i) => (
             <div
               key={p.pain}
               className={`relative ${p.wide ? "sm:col-span-2" : ""}`}
             >
-              <Point pain={p.pain} answer={p.answer} index={i} />
+              <Point pain={p.pain} answer={p.answer} index={i} on={on} />
             </div>
           ))}
         </div>

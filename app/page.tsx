@@ -408,17 +408,17 @@ export default function LandingPage() {
         </div>
       </ExpandingSlab>
 
-      {/* Footer — the planet horizon is gone. The links, socials and legal
-          line live in a white card on the light grey page, and the page ends
-          on a giant white wordmark that fades out and is cut off by the
-          bottom edge. "Launch Pad" on desktop; "TEG" on mobile, where the
-          long name wouldn't survive the narrow screen. */}
-      <footer className="relative z-30 overflow-hidden bg-[#f4f4f5] px-4 pt-10 sm:px-8">
-        <div className="relative mx-auto max-w-6xl rounded-[2rem] bg-white p-8 shadow-[0_18px_44px_-24px_rgba(17,24,39,0.18)] sm:p-12">
+      {/* Footer — inverted against the white pricing finale above it: white
+          background, light grey card, grey wording. The page ends on a giant
+          faint wordmark that fades out and is cut off by the bottom edge.
+          "Launch Pad" on desktop; "TEG" on mobile, where the long name
+          wouldn't survive the narrow screen. */}
+      <footer className="relative z-30 overflow-hidden bg-[#ffffff] px-4 pt-10 sm:px-8">
+        <div className="relative mx-auto max-w-6xl rounded-[2rem] bg-[#f4f4f5] p-8 shadow-[0_18px_44px_-30px_rgba(17,24,39,0.14)] sm:p-12">
           <BackToTop className="absolute right-6 top-6 sm:right-10 sm:top-10" />
           <div className="flex flex-col justify-between gap-10 sm:flex-row sm:gap-14">
             <div className="max-w-xs">
-              <p className="whitespace-nowrap text-lg font-semibold tracking-tight text-black/85">
+              <p className="whitespace-nowrap text-lg font-semibold tracking-tight text-gray-700">
                 The Experts Group
               </p>
               <p className="mt-3 text-sm leading-relaxed text-gray-500">

@@ -412,6 +412,88 @@ h5 {
     transform: scale(1);
   }
 }
+/* ── "Everything plugs into one place" — the connection sequence ─────────
+   Runs when the section's <Reveal> wrapper gains `revealed`: the platform
+   icons pop in one by one, the wires draw themselves towards the hub, and
+   rings pulse outwards from the Launch Pad mark as everything connects. */
+.plug-node {
+  opacity: 0;
+}
+.revealed .plug-node {
+  animation: plug-pop 0.55s cubic-bezier(0.34, 1.45, 0.5, 1) both;
+  animation-delay: var(--node-delay, 0ms);
+}
+@keyframes plug-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.plug-wire {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+.revealed .plug-wire {
+  animation: wire-draw 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation-delay: var(--wire-delay, 0ms);
+}
+@keyframes wire-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+/* Rings pulsing outwards from behind the hub. */
+.plug-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  height: 150px;
+  width: 150px;
+  margin: -75px 0 0 -75px;
+  border-radius: 9999px;
+  border: 1.5px solid color-mix(in srgb, var(--group) 45%, transparent);
+  opacity: 0;
+  pointer-events: none;
+}
+.revealed .plug-ring {
+  animation: plug-pulse 2.8s ease-out 0.9s infinite;
+}
+.revealed .plug-ring-late {
+  animation-delay: 2.3s;
+}
+@keyframes plug-pulse {
+  0% {
+    transform: scale(0.45);
+    opacity: 0.75;
+  }
+  70% {
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.65);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .plug-node,
+  .revealed .plug-node {
+    opacity: 1;
+    animation: none;
+  }
+  .plug-wire,
+  .revealed .plug-wire {
+    stroke-dashoffset: 0;
+    animation: none;
+  }
+  .revealed .plug-ring {
+    animation: none;
+  }
+}
+
 @keyframes p-float {
   from {
     opacity: 0;
@@ -1018,102 +1100,54 @@ h5 {
      lower right — so the inside isn't flat.
    · The pill itself keeps a whisper of fill, real blur, an inner bottom
      shadow for thickness, and a tight, deep drop shadow underneath. */
+/* Modelled directly on the "Authentication" reference: a soft slab of glass
+   sitting just proud of the page — its face a touch LIGHTER than the
+   background, a crisp bevel (bright top edge, shaded bottom edge), and two
+   soft shadows underneath (one tight, one wide). No painted-on rims.
+
+   The press is the party piece: the button squashes right down into the
+   screen (significantly smaller), its face brightens as if catching the
+   light flat-on, and the drop shadow fades away underneath it — then it
+   springs back out and the shadow returns behind it. */
 .btn-hero-glass {
   position: relative;
-  isolation: isolate;
   display: inline-block;
   border-radius: 9999px;
-  color: #0f1115;
-  /* The Ali Braid glass recipe (.btn-glass above): a TRULY transparent body
-     — no milky fill, no frosting blur — with every bit of depth carved by
-     shadow. Thin top gloss line, deep dark inner shadows in the bottom and
-     sides (the glass thickness), a hairline edge, and a heavy-but-tight
-     drop shadow underneath. */
-  background: transparent;
+  color: #111827;
+  background: linear-gradient(180deg, #fdfdfe 0%, #f3f3f5 55%, #ebebee 100%);
   box-shadow:
-    inset 0 2px 1px rgba(255, 255, 255, 0.85),
-    inset 0 8px 10px -7px rgba(17, 24, 39, 0.1),
-    inset 0 -11px 13px -4px rgba(17, 24, 39, 0.3),
-    inset 0 -2px 2px rgba(17, 24, 39, 0.16),
-    inset 6px 0 9px -4px rgba(17, 24, 39, 0.18),
-    inset -6px 0 9px -4px rgba(17, 24, 39, 0.18),
-    0 1px 0 rgba(255, 255, 255, 0.8),
-    0 0 0 1px rgba(17, 24, 39, 0.06),
-    0 6px 14px rgba(17, 24, 39, 0.14),
-    0 26px 44px -14px rgba(17, 24, 39, 0.45);
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.95), /* top bevel */
+    inset 0 -2px 3px rgba(17, 24, 39, 0.09), /* bottom bevel */
+    inset 0 0 0 1px rgba(255, 255, 255, 0.6), /* glass edge */
+    0 1px 2px rgba(17, 24, 39, 0.12), /* contact line */
+    0 10px 18px -6px rgba(17, 24, 39, 0.16),
+    0 30px 44px -18px rgba(17, 24, 39, 0.26); /* soft float */
   transition:
-    box-shadow 0.3s ease,
-    transform 0.18s cubic-bezier(0.34, 1.4, 0.5, 1);
-}
-/* The uneven rim. Conic angles run clockwise from 12 o'clock: bright across
-   the top wrapping the top-right corner (0–70°), a dark low-spot mid-right
-   (~110°), shadow under the bottom edge (~190°), a glint on the bottom-left
-   corner (~235°), and a dark low-spot at the top-left corner (~320°). */
-.btn-hero-glass::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1.5px;
-  pointer-events: none;
-  background: conic-gradient(
-    from 0deg,
-    rgba(255, 255, 255, 0.95) 0deg,
-    rgba(255, 255, 255, 1) 45deg,
-    rgba(255, 255, 255, 0.45) 80deg,
-    rgba(31, 41, 55, 0.38) 110deg,
-    rgba(255, 255, 255, 0.5) 150deg,
-    rgba(31, 41, 55, 0.32) 190deg,
-    rgba(255, 255, 255, 0.95) 235deg,
-    rgba(255, 255, 255, 0.4) 275deg,
-    rgba(31, 41, 55, 0.42) 320deg,
-    rgba(255, 255, 255, 0.95) 360deg
-  );
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-}
-/* The internal light — faint, so the body stays genuinely clear: a whisper
-   of curved highlight at the top and a small glint pooling bottom-left. */
-.btn-hero-glass::after {
-  content: "";
-  position: absolute;
-  inset: 1.5px;
-  border-radius: inherit;
-  pointer-events: none;
-  background:
-    radial-gradient(
-      120% 90% at 50% -35%,
-      rgba(255, 255, 255, 0.38),
-      rgba(255, 255, 255, 0) 50%
-    ),
-    radial-gradient(
-      40% 60% at 9% 94%,
-      rgba(255, 255, 255, 0.32),
-      rgba(255, 255, 255, 0) 60%
-    );
+    transform 0.16s cubic-bezier(0.34, 1.3, 0.5, 1),
+    box-shadow 0.16s ease,
+    filter 0.16s ease;
 }
 .btn-hero-glass:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow:
-    inset 0 2px 1px rgba(255, 255, 255, 0.9),
-    inset 0 8px 10px -7px rgba(17, 24, 39, 0.12),
-    inset 0 -12px 15px -4px rgba(17, 24, 39, 0.33),
-    inset 0 -2px 2px rgba(17, 24, 39, 0.18),
-    inset 6px 0 9px -4px rgba(17, 24, 39, 0.2),
-    inset -6px 0 9px -4px rgba(17, 24, 39, 0.2),
-    0 1px 0 rgba(255, 255, 255, 0.8),
-    0 0 0 1px rgba(17, 24, 39, 0.07),
-    0 8px 18px rgba(17, 24, 39, 0.16),
-    0 32px 54px -16px rgba(17, 24, 39, 0.52);
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.95),
+    inset 0 -2px 3px rgba(17, 24, 39, 0.09),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.65),
+    0 1px 2px rgba(17, 24, 39, 0.12),
+    0 13px 22px -6px rgba(17, 24, 39, 0.18),
+    0 36px 52px -18px rgba(17, 24, 39, 0.3);
 }
 .btn-hero-glass:active {
-  transform: scale(0.97);
+  /* Pressed flat into the screen. */
+  transform: scale(0.9);
+  filter: brightness(1.04);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.75),
+    inset 0 -1px 2px rgba(17, 24, 39, 0.06),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.45),
+    inset 0 3px 7px rgba(17, 24, 39, 0.09), /* pressed-in pocket */
+    0 1px 1px rgba(17, 24, 39, 0.08),
+    0 4px 8px -4px rgba(17, 24, 39, 0.1); /* shadow all but gone */
 }
 
 /* ── Landing page: light theme ─────────────────────────────────────────────
@@ -1129,10 +1163,10 @@ h5 {
 
 /* ── Footer wordmark ───────────────────────────────────────────────────────
    The giant name across the foot of the page, à la the big faded wordmark
-   footers: white type on the light grey page, fading out towards the bottom
-   and cropped by the page edge — readable, but deliberately cut off. The
-   gradient is painted through the glyphs with background-clip so the fade
-   travels down the letterforms themselves. */
+   footers: pale grey type on the white footer, fading out towards the
+   bottom and cropped by the page edge — readable, but deliberately cut off.
+   The gradient is painted through the glyphs with background-clip so the
+   fade travels down the letterforms themselves. */
 .footer-wordmark {
   font-weight: 700;
   letter-spacing: -0.045em;
@@ -1142,8 +1176,8 @@ h5 {
   user-select: none;
   background: linear-gradient(
     180deg,
-    #ffffff 25%,
-    rgba(255, 255, 255, 0.28) 100%
+    #e9eaee 25%,
+    rgba(233, 234, 238, 0.22) 100%
   );
   -webkit-background-clip: text;
   background-clip: text;

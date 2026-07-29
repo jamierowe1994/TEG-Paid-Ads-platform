@@ -52,10 +52,14 @@ export default function PlugIntoStack() {
       </p>
 
       <div className="relative mt-16 flex items-center justify-between gap-4 sm:gap-8">
-        {/* Sources */}
+        {/* Sources — pop in one by one before their wires draw. */}
         <div className="flex flex-col gap-9 sm:gap-12">
-          {SOURCES.map((icon) => (
-            <span key={icon.name} className="text-gray-800">
+          {SOURCES.map((icon, i) => (
+            <span
+              key={icon.name}
+              className="plug-node text-gray-800"
+              style={{ "--node-delay": `${i * 140}ms` } as React.CSSProperties}
+            >
               <SocialIcon icon={icon} className="h-9 w-9 sm:h-11 sm:w-11" />
             </span>
           ))}
@@ -64,26 +68,32 @@ export default function PlugIntoStack() {
         {/* Wires in */}
         <Wires direction="in" rows={[30, 100, 170]} />
 
-        {/* The hub */}
-        <div className="relative shrink-0">
-          <span
-            aria-hidden
-            className="pointer-events-none absolute left-1/2 top-1/2 h-44 w-44 -translate-x-1/2 -translate-y-1/2 rounded-full blur-[55px]"
-            style={{
-              background:
-                "radial-gradient(circle, rgba(17,24,39,0.16), transparent 68%)",
-            }}
-          />
-          <div className="relative flex h-24 w-24 items-center justify-center rounded-[24px] border border-white/15 bg-[#0e0e12] shadow-[0_18px_40px_-16px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.14)] sm:h-28 sm:w-28">
-            <svg viewBox="0 0 512 512" className="h-12 w-12 sm:h-14 sm:w-14" fill="var(--group)" aria-hidden>
+        {/* The hub — no box any more: the rocket with the name over two
+            lines, left-aligned, with rings pulsing outwards behind it as
+            the wires connect. */}
+        <div className="relative shrink-0 text-left">
+          <span aria-hidden className="plug-ring" />
+          <span aria-hidden className="plug-ring plug-ring-late" />
+          <div className="relative">
+            <svg
+              viewBox="0 0 512 512"
+              className="h-11 w-11 sm:h-12 sm:w-12"
+              fill="var(--group)"
+              aria-hidden
+            >
               <g transform="rotate(45 256 256) translate(0 -8)">
                 <path d="M256 80 C298 122 300 194 298 268 C298 302 293 330 284 350 L228 350 C219 330 214 302 214 268 C212 194 214 122 256 80 Z" />
                 <path d="M214 266 L172 356 L221 335 Z" />
                 <path d="M298 266 L340 356 L291 335 Z" />
                 <path d="M232 350 L239 372 L273 372 L280 350 Z" />
-                <circle cx="256" cy="172" r="32" fill="#0e0e12" />
+                <circle cx="256" cy="172" r="32" fill="#f4f4f5" />
               </g>
             </svg>
+            <p className="mt-2 text-2xl font-semibold leading-[1.02] tracking-tight text-gray-900 sm:text-3xl">
+              Launch
+              <br />
+              Pad
+            </p>
           </div>
         </div>
 
@@ -92,20 +102,38 @@ export default function PlugIntoStack() {
 
         {/* Destinations */}
         <div className="flex flex-col gap-9 sm:gap-12">
-          {DESTINATIONS.map((d) => {
+          {DESTINATIONS.map((d, i) => {
             const src = logoSrc(d.id);
             return (
-              <span key={d.id} className="flex h-11 items-center">
+              <span
+                key={d.id}
+                className="plug-node flex h-11 items-center"
+                style={
+                  { "--node-delay": `${420 + i * 140}ms` } as React.CSSProperties
+                }
+              >
                 {src ? (
                   // brightness-0 flattens whatever colour the supplied mark
                   // is to solid black, matching the platform icons opposite
-                  // on the light background.
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={src}
-                    alt={d.label}
-                    className="h-11 w-auto max-w-[130px] object-contain object-left opacity-80 brightness-0"
-                  />
+                  // on the light background. Rex ships as icon + wordmark;
+                  // the square crop keeps just the icon, like the rest.
+                  d.id === "rex" ? (
+                    <span className="block h-11 w-11 overflow-hidden">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={src}
+                        alt={d.label}
+                        className="h-11 w-auto max-w-none object-left opacity-80 brightness-0"
+                      />
+                    </span>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={src}
+                      alt={d.label}
+                      className="h-11 w-auto max-w-[130px] object-contain object-left opacity-80 brightness-0"
+                    />
+                  )
                 ) : (
                   <span className="text-[13px] font-semibold uppercase tracking-[0.14em] text-gray-500 sm:text-sm">
                     {d.label}
@@ -144,9 +172,18 @@ function Wires({ direction, rows }: { direction: "in" | "out"; rows: number[] })
           <path d="M0 0 L6 3 L0 6 z" fill="rgba(17,24,39,0.45)" />
         </marker>
       </defs>
-      {rows.map((y) => (
+      {rows.map((y, i) => (
         <path
           key={y}
+          // pathLength=1 normalises every wire so one dash animation draws
+          // them all; each wire starts after its node has popped in.
+          className="plug-wire"
+          pathLength={1}
+          style={
+            {
+              "--wire-delay": `${(direction === "out" ? 560 : 140) + i * 160}ms`,
+            } as React.CSSProperties
+          }
           d={`M0 ${y} H26 L74 100 H90`}
           fill="none"
           stroke="rgba(17,24,39,0.22)"
