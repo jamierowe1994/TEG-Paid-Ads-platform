@@ -180,14 +180,6 @@ export default function LandingPage() {
                 the part that involves arguing with Meta&apos;s ad manager at
                 two in the morning.
               </p>
-              <p
-                className="p-sub mt-5 max-w-md text-sm leading-relaxed text-gray-400"
-                style={{ "--d": "0.28s" } as React.CSSProperties}
-              >
-                Why all the space stuff? Because &ldquo;launching your patch
-                into the stratosphere&rdquo; tested better than &ldquo;we run
-                your Facebook ads&rdquo;. Both are true. Only one has a planet.
-              </p>
               <div className="p-cta mt-8">
                 <Link
                   href="/signup"

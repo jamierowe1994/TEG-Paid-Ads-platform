@@ -11,7 +11,12 @@ import { useEffect, useRef, useState } from "react";
    impressions and 555 leads. They go out to prospects as a genuine result, and
    this repo auto-deploys on push — do not round them up, embellish them, or add
    a cost-per-lead until the trial's actual ad spend is confirmed. LEADS / MONTH
-   is derived from the two figures above, not a separate claim. */
+   is derived from the two figures above, not a separate claim.
+
+   The trial ran with Jon at The Lettings Experts, covering Edinburgh. Named
+   with permission — if that ever changes, take the name out rather than
+   softening it back to "one agent", which reads as though we're hiding
+   something. */
 
 export const LEADS = 555;
 const IMPRESSIONS = 208999;
@@ -21,7 +26,7 @@ export const SUPPORTING = [
   {
     value: IMPRESSIONS,
     label: "Times the ads were seen",
-    sub: "Across one agent's patch",
+    sub: "Across Jon's patch in Edinburgh",
   },
   {
     value: Math.round(LEADS / MONTHS),
@@ -120,12 +125,14 @@ export default function TrialProof() {
             We ran it for three months before we offered it to you.
           </h2>
           <p className="mt-6 text-lg leading-relaxed text-gray-600">
-            One agent. One patch. The same ads, the same dashboard and the same
-            lead nurture you&apos;d get on day one — no special treatment. Here
-            is exactly what came back.
+            We ran it with Jon at The Lettings Experts, covering Edinburgh.
+            The same ads, the same dashboard and the same lead nurture
+            you&apos;d get on day one — no special treatment. Here is exactly
+            what came back.
           </p>
           <p className="mt-8 text-lg text-gray-600">
-            That was one patch, for three months. Yours is still open.
+            That was one agent, in one city, for three months. Your patch is
+            still open.
           </p>
         </div>
 
@@ -137,7 +144,7 @@ export default function TrialProof() {
             {leads.toLocaleString("en-GB")}
           </p>
           <p className="mt-5 max-w-[15rem] text-lg text-gray-600 lg:ml-auto">
-            leads delivered, in three months, to one agent
+            leads delivered to Jon, in three months
           </p>
           <div className="mt-8 flex lg:justify-end">
             <Link

@@ -179,15 +179,17 @@ export default function ProofHowScene() {
                   ref={setEl("p1")}
                   className="mt-6 text-lg leading-relaxed text-gray-600"
                 >
-                  One agent. One patch. The same ads, the same dashboard and
-                  the same lead nurture you&apos;d get on day one — no special
-                  treatment. Here is exactly what came back.
+                  We ran it with Jon at The Lettings Experts, covering
+                  Edinburgh. The same ads, the same dashboard and the same lead
+                  nurture you&apos;d get on day one — no special treatment.
+                  Here is exactly what came back.
                 </p>
                 <p
                   ref={setEl("p2")}
                   className="mt-8 text-lg text-gray-600"
                 >
-                  That was one patch, for three months. Yours is still open.
+                  That was one agent, in one city, for three months. Your
+                  patch is still open.
                 </p>
               </div>
               {/* The 555 lands second-to-last; the CTA is the finale. */}
@@ -197,7 +199,7 @@ export default function ProofHowScene() {
                     {leads.toLocaleString("en-GB")}
                   </p>
                   <p className="mt-5 max-w-[15rem] text-lg text-gray-600 lg:ml-auto">
-                    leads delivered, in three months, to one agent
+                    leads delivered to Jon, in three months
                   </p>
                 </div>
                 <div
