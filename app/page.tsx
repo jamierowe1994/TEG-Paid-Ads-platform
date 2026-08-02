@@ -168,7 +168,7 @@ export default function LandingPage() {
                 className="p-sub mt-5 max-w-md text-lg leading-relaxed text-gray-600"
                 style={{ "--d": "0s" } as React.CSSProperties}
               >
-                We build your ads, run them on the platforms your patch
+                We build your ads, run them on the platforms your local audience
                 actually uses, and drop every lead that comes back into one
                 dashboard — with the phone number already there, ready to call.
               </p>

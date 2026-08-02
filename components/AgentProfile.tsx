@@ -1101,7 +1101,7 @@ export default function AgentProfile({
           <EditRow
             label="Location"
             defaultValue={agent.location ?? ""}
-            placeholder="Town / patch"
+            placeholder="Town / location"
             onSave={(v) => patch({ location: v })}
           />
           <EditRow

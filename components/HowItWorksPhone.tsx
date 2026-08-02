@@ -19,16 +19,16 @@ const STEPS: Record<TabId, { n: string; title: string; body: string }[]> = {
     {
       n: "2",
       title: "We build and launch",
-      body: "We write the ads, design the creatives and set the targeting for your patch. You approve; we go live.",
+      body: "We write the ads, design the creatives and set the targeting for your location. You approve; we go live.",
     },
     {
       n: "3",
       title: "Leads land in your pocket",
-      body: "Every enquiry arrives in the app with the phone number already there — no chasing a spreadsheet.",
+      body: "Every enquiry arrives in the app with the phone number already there — no spreadsheets.",
     },
     {
       n: "4",
-      title: "Work them to booked",
+      title: "A record of each interaction",
       body: "Log each attempt, book the appointment, push it to your CRM. The app nudges you when one goes cold.",
     },
   ],
@@ -46,7 +46,7 @@ const STEPS: Record<TabId, { n: string; title: string; body: string }[]> = {
     {
       n: "3",
       title: "We find the closest agent",
-      body: "Matched on real distance to their patch, so it lands with someone who can actually act on it.",
+      body: "Matched on real distance to their location, so it lands with someone who can actually act on it.",
     },
     {
       n: "4",
@@ -116,7 +116,7 @@ export default function HowItWorksPhone() {
           How it works
         </h2>
         <p className="mt-3 max-w-md text-gray-500">
-          Two ways to make money in one app. Pick a side.
+          Two ways to generate business in one app. Pick a side.
         </p>
 
         {/* Tabs */}
@@ -417,7 +417,7 @@ function ReferralScreen({ running }: { running: boolean }) {
           </span>
           <p className="mt-4 text-[15px] font-semibold">Referral sent</p>
           <p className="mt-1.5 text-[11px] leading-relaxed text-[#9ca3af]">
-            Matched to the closest agent in that patch. You&apos;ll see it move
+            Matched to the closest agent in that location. You&apos;ll see it move
             through their pipeline right here.
           </p>
         </div>

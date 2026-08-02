@@ -46,7 +46,7 @@ export const INCLUDED_IN_EVERY_PACKAGE: { title: string; detail: string }[] = [
   {
     title: "Location exclusivity",
     detail:
-      "Your area is yours. No other agent in your patch runs the same campaign.",
+      "Your area is yours. No other agent in your location runs the same campaign.",
   },
   {
     title: "LinkedIn coming soon",
@@ -89,7 +89,7 @@ export const PACKAGES: AdPackage[] = [
     dailyAdSpend: 5,
     tagline:
       "The right entry point to test the model, get your first leads in the door and see what the dashboard can do.",
-    bestFor: "Agents testing paid ads or covering a smaller patch",
+    bestFor: "Agents testing paid ads or covering a smaller location",
     features: FEATURES,
     stripePriceId: null,
   },
@@ -116,7 +116,7 @@ export const PACKAGES: AdPackage[] = [
     adSpend: 450,
     dailyAdSpend: 15,
     tagline:
-      "Maximum reach across your area. Designed for agents who want to dominate their patch and scale quickly.",
+      "Maximum reach across your area. Designed for agents who want to dominate their location and scale quickly.",
     bestFor:
       "Established agents looking to expand market share across a wider geography",
     features: FEATURES,

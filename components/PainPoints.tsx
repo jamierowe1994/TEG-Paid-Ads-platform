@@ -16,7 +16,7 @@ const POINTS: { pain: string; answer: string; wide?: boolean }[] = [
   {
     pain: "You've paid for leads before and got nothing back.",
     answer:
-      "You choose the spend and see exactly what it bought. Three months minimum because ads need time to learn your patch — then rolling monthly, and you can adjust at any renewal.",
+      "You choose the spend and see exactly what it bought. Three months minimum because ads need time to learn your location — then rolling monthly, and you can adjust at any renewal.",
     wide: true,
   },
   {

@@ -26,7 +26,7 @@ export const SUPPORTING = [
   {
     value: IMPRESSIONS,
     label: "Times the ads were seen",
-    sub: "Across Jon's patch in Edinburgh",
+    sub: "Across Edinburgh",
   },
   {
     value: Math.round(LEADS / MONTHS),
@@ -125,14 +125,11 @@ export default function TrialProof() {
             We ran it for three months before we offered it to you.
           </h2>
           <p className="mt-6 text-lg leading-relaxed text-gray-600">
-            We ran it with Jon at The Lettings Experts, covering Edinburgh.
-            The same ads, the same dashboard and the same lead nurture
-            you&apos;d get on day one — no special treatment. Here is exactly
-            what came back.
+            These are the results we managed to get for Jon at The Lettings
+            Experts, covering Edinburgh. Here&apos;s what came back.
           </p>
           <p className="mt-8 text-lg text-gray-600">
-            That was one agent, in one city, for three months. Your patch is
-            still open.
+            That was one location, for three months. Yours is still open.
           </p>
         </div>
 
