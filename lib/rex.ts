@@ -155,6 +155,25 @@ async function rexCall(
   return res;
 }
 
+// One search criterion, in the only shape Rex accepts.
+//
+// Rex wants OBJECTS — `{ name, type, value }`. A positional `[field, op, value]`
+// triple is rejected outright with "All criterions require a name.", and because
+// our callers treat a failed search as "no match", that 400 was silently reading
+// as "this contact isn't in Rex" on every lookup. Confirmed against the live
+// account, so keep the shape here and never inline it at a call site.
+//
+// `type` is Rex's match operator and its vocabulary is narrow: "=" and "like"
+// are valid, "~" is NOT ("The match type you specified '~' is not valid").
+// Omitting `type` behaves as "=".
+function criterion(
+  name: string,
+  value: unknown,
+  type: "=" | "like" = "="
+): Record<string, unknown> {
+  return { name, type, value };
+}
+
 // Asks Rex itself what fields a model accepts (e.g. "Contacts", "Leads") —
 // ground truth instead of guessing field names against the live account.
 export async function rexDescribeModel(
@@ -180,7 +199,7 @@ export async function rexSearchContactsByName(
   const res = await rexCall(
     "Contacts/search",
     {
-      criteria: [["contact.name_full", "~", name]],
+      criteria: [criterion("contact.name_full", name, "like")],
       limit: 10,
       // Confirmed via Rex's own "invalid argument" error: extra fields must
       // be nested under extra_options, not passed as a top-level arg.
@@ -245,9 +264,9 @@ function splitName(full: string): { first: string; last: string | null } {
 // relational shape below, not flat fields.
 
 // Find a contact by a searchable field, returning its id if one exists. Rex
-// search takes a `criteria` array of [field, op, value] — the field is a
-// dotted alias like `contact.email_address`, not a bare column. Rex applies
-// system_record_state=active automatically, so a contact that's been deleted
+// search takes a `criteria` array of criterion objects (see `criterion`) — the
+// field is a dotted alias like `contact.email_address`, not a bare column. Rex
+// applies system_record_state=active automatically, so a contact that's been deleted
 // (archived/trashed) in Rex will NOT match — deleting there deliberately
 // frees the person to be pushed again as a fresh record.
 async function findContactIdBy(
@@ -257,7 +276,7 @@ async function findContactIdBy(
 ): Promise<string | null> {
   const res = await rexCall(
     "Contacts/search",
-    { criteria: [[field, "=", value]], limit: 1 },
+    { criteria: [criterion(field, value)], limit: 1 },
     accountId
   );
   if (!res.ok) return null;
@@ -281,7 +300,7 @@ async function searchContactIdStrict(
 ): Promise<string | null> {
   const res = await rexCall(
     "Contacts/search",
-    { criteria: [[field, "=", value]], limit: 1 },
+    { criteria: [criterion(field, value)], limit: 1 },
     accountId
   );
   if (!res.ok) throw new Error(res.error ?? "Rex search failed");
@@ -402,7 +421,7 @@ export async function rexContactActive(
   const accountId = rexAccountForBrand(brandId);
   const res = await rexCall(
     "Contacts/search",
-    { criteria: [["id", "=", contactId]], limit: 1 },
+    { criteria: [criterion("id", contactId)], limit: 1 },
     accountId
   );
   if (!res.ok) throw new Error(res.error ?? "Rex contact check failed");
