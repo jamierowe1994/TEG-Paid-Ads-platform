@@ -108,11 +108,30 @@ What that means:
   notes say "the TLE account", read "account 3517 = The Property Experts".
   It also explains why all 60 sampled listings were `residential_sale`.
 
-**Open question for James:** does The Lettings Experts have its own Rex
-account? If so this API user can't see it, so it needs either access granting
-or separate credentials, plus `REX_ACCOUNT_LETTINGS` in Railway. If lettings
-and sales genuinely share account 3517, then nothing needs changing and the
-lettings tracker is already pointed at the right place.
+**Answered (James, 3 Aug):** The Lettings Experts has folded into The
+Property Experts — same brand, one Rex account. Lettings work is TLE, sales
+work is TPE, but they share account 3517. So **no env change is needed**: the
+`REX_ACCOUNT_ID` fallback is correct for both, and `REX_ACCOUNT_PROPERTY` /
+`REX_ACCOUNT_LETTINGS` are unnecessary.
+
+**But that raises a correctness question that is NOT yet resolved.** With one
+shared account, a contact can hold both a sale listing and a rental listing,
+and `progressForReferral` currently reads every listing a contact is attached
+to and sets both the lettings and the sales flags from it. A vendor's sale
+listing could therefore light up "on market" on a lettings referral, and vice
+versa. The fix is to filter by `listing_category`.
+
+That filter is **not built**, because the lettings category value has never
+been observed: 360 listings sampled across the account are **all**
+`residential_sale`. There is no rental stock in Rex at all in that sample.
+Plausibly the lettings side lives in Propoly rather than Rex — which would
+match Propoly holding the tenancy pipeline — but that is a guess, not a
+finding. Filtering on a value never seen would be guessing twice.
+
+**To settle it:** confirm whether TLE tenancies appear in Rex as listings at
+all. If they do, capture the `listing_category` value and add the filter. If
+they don't, the lettings stages should come from Propoly and the Rex-sourced
+lettings flags should be dropped rather than left to mis-fire.
 
 Note: the Rex contact search was broken until 3 Aug 2026 (positional criteria
 were rejected, so every lookup failed and each push created a fresh contact).
