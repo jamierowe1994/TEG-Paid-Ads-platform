@@ -125,10 +125,42 @@ silently create a second record for someone already in Rex.
 - Once resolved, we know the Rex id is right and can track that file all the
   way through.
 
-Context: the Rex contact search was broken until 3 Aug 2026, so every push
-created a fresh contact — the live account has contacts duplicated up to 5x
-on one email. **Those existing duplicates still need merging**, and that
-should happen before more volume goes through.
+**Rex supports all of this natively** (probed read-only, 3 Aug 2026):
+
+- `Dedupe/findPossibleDuplicates(service_name, match_fields, company_or_person,
+  record_id)` → sets of `{winning_id, losing_ids, number_of_dupes, name,
+  email_address, phone_number}`. Passing `record_id` asks the question for one
+  contact, which is exactly the pre-push check.
+- `Dedupe/combineRecords(service_name, winning_id, losing_ids)` → the merge.
+- `Dedupe/queueMultipleCombine(service_name, duplicate_sets)` → bulk.
+- `match_fields` takes **`email` / `name` / `phone`** — the match *types*, not
+  field names. Anything else 400s.
+- `Contacts/findPossibleDuplicates` and `Properties/findPossibleDuplicate`
+  exist too.
+
+**The existing duplicate problem is much bigger than our bug.** Counted on the
+live TLE account, read-only:
+
+| Match on | Duplicate sets | Redundant records | Biggest set |
+|---|---|---|---|
+| email + name + phone | 2,904 | 3,234 | 9 |
+| email + name | 3,437 | 3,875 | 10 |
+| email | 5,267 | 6,576 | 22 |
+| phone | 6,592 | 9,515 | 88 |
+
+An 88-record set on one phone number is years of imports, not our push path —
+Launch Pad has nowhere near that volume. **Correcting an earlier claim of
+mine: I attributed these to the criteria bug; at this scale that is wrong.**
+The bug added to the pile but did not create it.
+
+Which means a bulk merge is a **business decision about live CRM data**, not a
+cleanup task — `combineRecords` is irreversible and would touch thousands of
+records the lettings team works from daily. Not to be run without James, and
+worth doing in Rex's own UI where a human can eyeball each set.
+
+The push guard does **not** depend on that cleanup: `findPossibleDuplicates`
+with a `record_id` answers "is this person already here?" per push, which is
+what item 6 actually needs.
 
 _Detail to be added._
 
