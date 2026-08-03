@@ -114,7 +114,9 @@ export default function LandingPage() {
         <div className="flex flex-1 flex-col items-center justify-center px-6 pb-4 pt-24 text-center">
           {/* nowrap keeps "Our ad engine." on one line while the hidden
               card expands on hover */}
-          <h1 className="hero-title mx-auto max-w-6xl text-6xl font-light leading-[0.95] tracking-[-0.05em] text-gray-900 sm:text-7xl lg:text-8xl">
+          {/* 3.4rem, not text-6xl: the biggest size at which "Our ad engine."
+              still holds one line on a 375px screen. */}
+          <h1 className="hero-title mx-auto max-w-6xl text-[3.4rem] font-light leading-[0.95] tracking-[-0.05em] text-gray-900 sm:text-7xl lg:text-8xl">
             Your personal brand.
             <br />
             <span className="lg:whitespace-nowrap">
@@ -156,7 +158,9 @@ export default function LandingPage() {
         {/* No overflow clipping: the photo and stat card throw real drop
             shadows that need to spill past the section edge onto the next
             one, or the section reads as a cut-out. */}
-        <div className="relative flex min-h-[64vh] flex-col rounded-[2.5rem]">
+        {/* The 64vh floor is a desktop measure — on a phone it just left a
+            band of dead space under the CTA. */}
+        <div className="relative flex flex-col rounded-[2.5rem] sm:min-h-[64vh]">
           {/* Wide column gap on desktop: the infographic card hangs off the
               photo's left edge, so a tight gap put it right up against the
               copy. Columns are deliberately uneven — the photo takes the

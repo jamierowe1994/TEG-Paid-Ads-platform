@@ -19,9 +19,12 @@ export default function HeroAdWord() {
       onClick={() => setOpen((o) => !o)}
       onKeyDown={(e) => e.key === "Enter" && setOpen((o) => !o)}
     >
-      {/* Expands between “Our” and “ad” */}
+      {/* Expands between “Our” and “ad”. Hidden below sm (with ! — .ad-reveal
+          sets display in unlayered CSS): even collapsed to width 0 its tall
+          box inflates the headline's line height, and the card wouldn't fit
+          a phone screen anyway. */}
       <span
-        className="ad-reveal"
+        className="ad-reveal max-sm:hidden!"
         style={{ "--ad-card-w": "324px" } as React.CSSProperties}
       >
         <span className="mx-6 inline-block w-[276px] whitespace-normal rounded-2xl border border-[#f3f4f6] bg-[#ffffff] p-4 text-left align-middle font-normal normal-case tracking-normal shadow-xl">

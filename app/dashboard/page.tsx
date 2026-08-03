@@ -84,7 +84,7 @@ function ColRule() {
   return (
     <span
       aria-hidden
-      className="absolute -left-2 top-1/2 hidden h-24 w-px -translate-y-1/2 bg-gray-900/[0.17] lg:block"
+      className="absolute -left-2 top-1/2 hidden h-[86%] w-px -translate-y-1/2 bg-gray-900/[0.13] lg:block"
     />
   );
 }
@@ -522,7 +522,7 @@ export default function DashboardOverview() {
               month: "long",
             })}
           </p>
-          <h1 className="mt-1.5 text-[38px] font-light leading-[1.04] tracking-[-0.03em] lg:mt-1 lg:text-[44px]">
+          <h1 className="mt-1.5 text-[38px] font-light leading-[1.04] tracking-[-0.03em] lg:mt-1 lg:text-[52px]">
             Morning, {user.name.split(" ")[0]}
             {/* Wave — desktop only. Wrapped so the visibility toggle isn't
                 overridden by .wave-hand's own `display`. */}
@@ -549,16 +549,17 @@ export default function DashboardOverview() {
               {i > 0 && (
                 <span
                   aria-hidden
-                  className="absolute left-0 top-1/2 h-11 w-px -translate-y-1/2 bg-gray-900/[0.17]"
+                  className="absolute left-0 top-1/2 h-[76px] w-px -translate-y-1/2 bg-gray-900/[0.13]"
                 />
               )}
-              <p className="text-[40px] font-light leading-none tracking-[-0.04em] tabular-nums">
+              <p className="text-[52px] font-light leading-none tracking-[-0.045em] tabular-nums">
                 {s.value}
               </p>
-              <p className="mt-2.5 text-[13px] text-gray-500">{s.label}</p>
+              <p className="mt-4 text-[13px] text-gray-500">{s.label}</p>
             </div>
           ))}
         </div>
+        <div className="mt-1 h-px w-[92%] bg-gray-900/[0.13]" />
       </div>
 
       {/* Connect-your-email nudge — the setup step for sending lead emails
@@ -1044,7 +1045,15 @@ export default function DashboardOverview() {
             campaign's tagged, rotating through every ad (10s each); the
             personalised mock until then. */}
         {myCreatives.length > 0 ? (
-          <div className="relative hidden overflow-hidden rounded-xl border border-white/10 text-white lg:block lg:aspect-square">
+          <div className="relative hidden flex-col lg:flex">
+            <div className="flex items-center justify-between pb-4">
+              <h2 className="text-sm font-semibold text-gray-900">Current ad</h2>
+              <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-gray-500">
+                <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                Live
+              </span>
+            </div>
+            <div className="relative overflow-hidden rounded-lg border border-white/10 text-white lg:aspect-square">
             {/* keyed on the index so each rotation fades in */}
             <div key={creativeIdx} className="fade-up absolute inset-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1079,7 +1088,7 @@ export default function DashboardOverview() {
                 £{pkg?.adSpend?.toLocaleString("en-GB")}/mo
               </p>
             </div>
-            <div className="absolute inset-x-0 top-0 flex items-start justify-between p-5">
+            <div className="absolute inset-x-0 top-0 flex items-start justify-between p-5 lg:hidden">
               <span className="rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide backdrop-blur">
                 Current ad
               </span>
@@ -1102,16 +1111,24 @@ export default function DashboardOverview() {
                 ))}
               </div>
             )}
+            </div>
           </div>
         ) : (
+          <div className="relative hidden flex-col lg:flex">
+            <div className="flex items-center justify-between pb-4">
+              <h2 className="text-sm font-semibold text-gray-900">Current ad</h2>
+              <span className="text-[11px] font-medium text-gray-500">
+                £{pkg?.adSpend?.toLocaleString("en-GB")}/mo
+              </span>
+            </div>
           <div
-            className="relative hidden overflow-hidden rounded-xl border border-white/10 p-5 text-white shadow-[inset_0_0_60px_rgba(0,0,0,0.35)] lg:block lg:aspect-square"
+            className="relative overflow-hidden rounded-lg border border-white/10 p-5 text-white shadow-[inset_0_0_60px_rgba(0,0,0,0.35)] lg:aspect-square"
             style={{
               background: `radial-gradient(120% 120% at 15% 0%, ${brand.accent}, ${brand.accent}cc 45%, rgba(0,0,0,0.55)), ${brand.accent}`,
             }}
           >
             <div className="flex h-full flex-col">
-              <div className="flex items-start justify-between">
+              <div className="flex items-start justify-between lg:hidden">
                 <span className="rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide backdrop-blur">
                   Current ad
                 </span>
@@ -1149,6 +1166,7 @@ export default function DashboardOverview() {
               </div>
             </div>
           </div>
+          </div>
         )}
 
         {/* Leads uncontacted — celebrates (in black) with a confetti pop once
@@ -1175,7 +1193,7 @@ export default function DashboardOverview() {
               </div>
               {/* Bigger, clearer rows — this stays readable for the handful of
                   leads waiting at once; beyond 4 it folds the rest into a link. */}
-              <div className="mt-3 flex-1 space-y-2 overflow-hidden">
+              <div className="mt-4 flex-1 overflow-hidden">
                 {untouched.slice(0, 4).map((l) => {
                   const dim =
                     hoverUncontacted !== null && hoverUncontacted !== l.id;
@@ -1186,9 +1204,9 @@ export default function DashboardOverview() {
                       onClick={() => setOpenLeadId(l.id)}
                       onMouseEnter={() => setHoverUncontacted(l.id)}
                       onMouseLeave={() => setHoverUncontacted(null)}
-                      className={`flex w-full items-center gap-2.5 rounded-xl bg-white/40 px-2.5 py-2 text-left transition duration-200 hover:bg-white/60 ${
+                      className={`flex w-full items-center gap-2.5 border-b border-gray-900/[0.09] px-0.5 py-3 text-left transition duration-200 last:border-b-0 hover:opacity-100 lg:rounded-none ${
                         dim ? "opacity-40 blur-[1.5px]" : "opacity-100 blur-0"
-                      } ${active ? "scale-[1.03]" : ""}`}
+                      } ${active ? "scale-[1.02]" : ""}`}
                     >
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-gray-900">
@@ -1461,8 +1479,18 @@ export default function DashboardOverview() {
         </div>
         )}
 
+        {/* Row break. A new band of the page gets a rule right across it —
+            only when the tracker's gone, since that tile spans both rows and a
+            full-width rule would cut straight through it. */}
+        {trackerGone && (
+          <div
+            aria-hidden
+            className="hidden h-px bg-gray-900/[0.13] lg:col-span-full lg:block"
+          />
+        )}
+
         {/* Ad spend running total — the glance-and-go view of budget left */}
-        <div className={`${g.className} flex flex-col p-5`} style={g.style}>
+        <div className={`${g.className} flex flex-col p-5 lg:min-h-[236px]`} style={g.style}>
           <div className="flex h-full flex-col justify-between">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold">Ad spend</h2>
@@ -1503,7 +1531,7 @@ export default function DashboardOverview() {
         {/* Leads per week — wide; click a bar to list that week's leads below.
             Given real height on mobile so the chart has room to breathe. */}
         <div
-          className={`${g.className} flex min-h-[260px] flex-col p-5 sm:col-span-2 lg:min-h-0`}
+          className={`${g.className} flex min-h-[260px] flex-col p-5 sm:col-span-2 lg:min-h-[236px]`}
           style={g.style}
         >
           <ColRule />
