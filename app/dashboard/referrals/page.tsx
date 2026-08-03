@@ -248,16 +248,24 @@ const dealDone = (r: Referral) =>
 const feePaid = (r: Referral) => r.status === "paid";
 
 const REFERRAL_PIPELINES: Partial<Record<BrandId, StageDef[]>> = {
-  /* The Lettings Experts work a tenancy like this, and the fee falls due when
-     the tenant MOVES IN — not when the deal is agreed. Every middle stage is
-     awaitingFeed until the TLE portal link is switched on; its stage keys
-     (holding_fee → referencing → rent_payment → move_day) already line up
-     one-for-one with these labels, so nothing here has to change when it is. */
+  /* A lettings referral is a LANDLORD, so the journey starts before there's a
+     tenant at all and spans two systems. Each stage below is sourced from
+     something the TLE portal can already see:
+
+       Appointment booked → Rex, a market appraisal booked against the address
+       On market          → Rex, a listing exists for that property
+       Tenant found       → Rex letAgreed, or Propoly deal_started/holding_fee
+       Tenant referencing → Propoly, referencing
+       Moved in           → Propoly, move_day  ← the fee falls due here
+
+     awaitingFeed until the TLE partner endpoint is built; the labels are
+     already the ones those signals support, so nothing here changes then. */
   lettings: [
     { label: "Referred", reached: () => true },
-    { label: "Holding fee paid", awaitingFeed: true },
-    { label: "Referencing", awaitingFeed: true },
-    { label: "Rent paid", awaitingFeed: true },
+    { label: "Appointment booked", awaitingFeed: true },
+    { label: "On market", awaitingFeed: true },
+    { label: "Tenant found", awaitingFeed: true },
+    { label: "Tenant referencing", awaitingFeed: true },
     { label: "Moved in", awaitingFeed: true },
     { label: "Fee paid", reached: feePaid },
   ],
