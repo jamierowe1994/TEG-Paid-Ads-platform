@@ -9,7 +9,13 @@ import {
   sendReferral,
   actOnReferral,
 } from "@/lib/session";
-import { BRANDS, brandById, type Brand, type BrandId } from "@/lib/brands";
+import {
+  BRANDS,
+  brandById,
+  GROSS_FEE_NOTE,
+  type Brand,
+  type BrandId,
+} from "@/lib/brands";
 import LocationPicker from "@/components/LocationPicker";
 import { distanceKm, geocodeAddress } from "@/lib/google-maps";
 import { geocodeUk } from "@/lib/geo-uk";
@@ -242,6 +248,19 @@ const dealDone = (r: Referral) =>
 const feePaid = (r: Referral) => r.status === "paid";
 
 const REFERRAL_PIPELINES: Partial<Record<BrandId, StageDef[]>> = {
+  /* The Lettings Experts work a tenancy like this, and the fee falls due when
+     the tenant MOVES IN — not when the deal is agreed. Every middle stage is
+     awaitingFeed until the TLE portal link is switched on; its stage keys
+     (holding_fee → referencing → rent_payment → move_day) already line up
+     one-for-one with these labels, so nothing here has to change when it is. */
+  lettings: [
+    { label: "Referred", reached: () => true },
+    { label: "Holding fee paid", awaitingFeed: true },
+    { label: "Referencing", awaitingFeed: true },
+    { label: "Rent paid", awaitingFeed: true },
+    { label: "Moved in", awaitingFeed: true },
+    { label: "Fee paid", reached: feePaid },
+  ],
   // The Recruitment Experts work a candidate like this.
   recruitment: [
     { label: "Referred", reached: () => true },
@@ -520,6 +539,7 @@ function BrandTile({ brand: b, onOpen }: { brand: Brand; onOpen: () => void }) {
           >
             {money(b.referralFee)}
           </p>
+          <p className="text-[10px] leading-tight text-gray-400">gross</p>
         </div>
         <span
           className="flex items-center self-stretch rounded-full px-5 text-sm font-semibold text-white transition group-hover:opacity-90"
@@ -681,7 +701,7 @@ function BrandRolodex({
 
             <div className="relative">
               <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/70">
-                You earn up to
+                Gross commission up to
               </p>
               <p className="mt-1 text-[44px] font-semibold leading-none tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.35)]">
                 {money(b.referralFee)}
@@ -774,6 +794,7 @@ function BrandPreview({
             <p className="text-sm text-white/70">Your referral fee</p>
             <p className="mt-1 text-3xl font-semibold">{money(b.referralFee)}</p>
             <p className="mt-1 text-sm text-white/80">{b.referralFeeNote}</p>
+            <p className="mt-2 text-xs text-white/70">{GROSS_FEE_NOTE}</p>
           </div>
 
           <p className="mt-4 text-xs text-gray-400">

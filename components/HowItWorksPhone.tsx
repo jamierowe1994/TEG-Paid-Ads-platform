@@ -340,9 +340,9 @@ function AdsScreen({ running }: { running: boolean }) {
 
 const BRANDS_DECK = [
   { tag: "Estate agents", name: ["The", "Property", "Experts"], fee: "£850", bg: "var(--group)" },
-  { tag: "Mortgages", name: ["The", "Mortgage", "Experts"], fee: "£300", bg: "#2B6193" },
-  { tag: "Lettings", name: ["The", "Lettings", "Experts"], fee: "£450", bg: "#A3C739" },
-  { tag: "Commercial", name: ["Commercial", "Property", "Experts"], fee: "£1,200", bg: "#41AAE1" },
+  { tag: "Mortgages", name: ["The", "Mortgage", "Experts"], fee: "£500", bg: "#2B6193" },
+  { tag: "Lettings", name: ["The", "Lettings", "Experts"], fee: "£150", bg: "#A3C739" },
+  { tag: "Commercial", name: ["Commercial", "Property", "Experts"], fee: "£1,750", bg: "#41AAE1" },
 ];
 
 /* Referrals. The loop: flick through the brand deck → the refer button
@@ -390,7 +390,7 @@ function ReferralScreen({ running }: { running: boolean }) {
             ))}
           </p>
           <p className="mt-4 text-[9px] font-bold uppercase tracking-widest text-white/70">
-            You earn up to
+            Gross commission up to
           </p>
           <p className="text-[30px] font-semibold leading-none">{brand.fee}</p>
           <span

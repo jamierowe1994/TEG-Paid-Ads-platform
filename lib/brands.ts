@@ -13,6 +13,12 @@ export type BrandId =
   | "fineandcountry"
   | "auction";
 
+/* Every referral fee on screen is GROSS commission to the business — what the
+   deal earns before the referrer's own split is applied. Shown everywhere a
+   fee appears so nobody reads the headline number as take-home pay. */
+export const GROSS_FEE_NOTE =
+  "Gross commission — subject to your normal split";
+
 export interface Brand {
   id: BrandId;
   name: string;
