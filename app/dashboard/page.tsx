@@ -62,24 +62,14 @@ const AD_PITCH: Record<string, (area: string) => string> = {
   auction: (a) => `Sell fast at auction in ${a}`,
 };
 
-// Stat-row icons (stroke SVGs) keyed by label.
-const STAT_ICON: Record<string, string> = {
-  Impressions: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z",
-  Clicks: "M3 3l7 17 2.5-7.5L20 10z",
-  Leads:
-    "M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4z",
-  Converted: "M20 6L9 17l-5-5",
-};
-
-// Translucent "glaze" tile — a light frost that lets the page's background
-// glow read straight through it (the gradient lives on the page, not the box).
-// Desktop only: the backdrop-blur glass. On mobile it's a near-solid tile —
-// stacking many backdrop-blur layers there overwhelms the compositor (content
-// behind them, e.g. the onboarding card, silently fails to paint).
+// The shared tile surface. Deliberately quiet: a small roundover, a hairline
+// edge and no fill on desktop, so the panels read as areas divided by lines
+// rather than as floating boxes on the page. Mobile keeps a soft white fill —
+// on a small screen the tiles are the only structure there is.
 function glaze() {
   return {
     className:
-      "relative overflow-hidden rounded-3xl border border-white/40 bg-white/70 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.12),inset_0_1px_1px_rgba(255,255,255,0.7),inset_0_0_30px_rgba(0,0,0,0.08)] lg:bg-[rgba(255,255,255,0.2)] lg:backdrop-blur-xl",
+      "relative overflow-hidden rounded-xl border border-gray-200/70 bg-white/70 lg:border-gray-900/[0.08] lg:bg-transparent",
     style: {} as React.CSSProperties,
   };
 }
@@ -517,7 +507,7 @@ export default function DashboardOverview() {
               month: "long",
             })}
           </p>
-          <h1 className="mt-1.5 text-[38px] font-semibold leading-[1.04] tracking-tight lg:mt-1 lg:text-3xl">
+          <h1 className="mt-1.5 text-[38px] font-light leading-[1.04] tracking-[-0.03em] lg:mt-1 lg:text-[44px]">
             Morning, {user.name.split(" ")[0]}
             {/* Wave — desktop only. Wrapped so the visibility toggle isn't
                 overridden by .wave-hand's own `display`. */}
@@ -529,30 +519,20 @@ export default function DashboardOverview() {
           </h1>
         </div>
 
-        {/* Desktop stat row. On mobile these become the four square tiles in
-            the mobile-only section below. */}
-        <div className="hidden items-end gap-4 lg:flex lg:gap-9">
+      </div>
+
+      {/* Desktop stat row — its own full-width band under the greeting, split
+          by hairlines rather than sat in boxes. Big, light numerals; the label
+          carries the meaning, so no icons competing with it. On mobile these
+          become the four square tiles in the mobile-only section below. */}
+      <div className="mt-6 hidden border-y border-gray-900/[0.08] lg:block">
+        <div className="grid grid-cols-4 divide-x divide-gray-900/[0.08]">
           {stats.map((s) => (
-            <div key={s.label} className="flex items-center gap-2.5">
-              <svg
-                className="hidden h-5 w-5 shrink-0 lg:block"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.8}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                viewBox="0 0 24 24"
-                style={{ color: brand.accent }}
-              >
-                <path d={STAT_ICON[s.label]} />
-                {s.label === "Impressions" && <circle cx="12" cy="12" r="3" />}
-              </svg>
-              <div>
-                <p className="text-lg font-semibold leading-none tracking-tight lg:text-3xl">
-                  {s.value}
-                </p>
-                <p className="mt-1 text-[11px] text-gray-500 lg:text-xs">{s.label}</p>
-              </div>
+            <div key={s.label} className="px-7 py-5 first:pl-0">
+              <p className="text-[40px] font-light leading-none tracking-[-0.04em] tabular-nums">
+                {s.value}
+              </p>
+              <p className="mt-2.5 text-[13px] text-gray-500">{s.label}</p>
             </div>
           ))}
         </div>
@@ -564,7 +544,7 @@ export default function DashboardOverview() {
           way. */}
       {!user.msEmail && !emailPromptHidden && !emailPromptGone && (
         <div className="lg:hidden">
-          <div className="mt-4 flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-3.5 py-2.5">
+          <div className="mt-4 flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5">
             <span className="text-base">✉️</span>
             <p className="min-w-0 flex-1 text-[13px] leading-snug text-gray-600">
               Connect your email to send from your own address.
@@ -613,37 +593,34 @@ export default function DashboardOverview() {
             }
           }}
         >
-          <section className="mt-6 hidden flex-wrap items-center justify-between gap-4 rounded-3xl border border-gray-200 bg-white/70 p-5 backdrop-blur-xl lg:flex">
-            <div className="flex items-center gap-4">
-              <span
-                className="flex h-11 w-11 items-center justify-center rounded-2xl text-lg"
-                style={{ backgroundColor: `${brand.accent}1a` }}
-              >
-                ✉️
-              </span>
-              <div>
-                <p className="font-semibold">Connect your email</p>
-                <p className="text-sm text-gray-500">
-                  Sign in with your work email once — lead emails then send from
-                  your own address, and we'll link up your CRM account
-                  automatically.
-                </p>
-              </div>
+          {/* One line, on a rule rather than in a card. This is the only thing
+              between the overview and fitting on a single screen, and it's
+              temporary — it goes for good once the mailbox is connected. */}
+          <section className="mt-5 hidden items-center justify-between gap-6 border-b border-gray-900/[0.08] pb-5 lg:flex">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="text-base">✉️</span>
+              <p className="truncate text-[15px] text-gray-600">
+                <span className="font-medium text-gray-900">
+                  Connect your email
+                </span>{" "}
+                — lead emails then send from your own address, and we&apos;ll
+                link up your CRM automatically.
+              </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1">
               <button
                 onClick={() => {
                   setEmailPendingConnect(true);
                   setEmailPromptOpen(false);
                 }}
-                className="rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+                className="rounded-lg px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
                 style={{ backgroundColor: brand.accent }}
               >
                 Connect with Microsoft
               </button>
               <button
                 onClick={() => setEmailPromptOpen(false)}
-                className="rounded-xl px-3 py-2.5 text-sm font-medium text-gray-400 hover:text-gray-600"
+                className="rounded-lg px-3 py-2 text-sm font-medium text-gray-400 hover:text-gray-600"
               >
                 Later
               </button>
@@ -656,7 +633,7 @@ export default function DashboardOverview() {
           sign-off needed); they can send feedback if something's off. */}
       {isReview && (
         <section
-          className="mt-6 rounded-3xl border-2 bg-white/70 p-6 backdrop-blur-xl"
+          className="mt-6 rounded-xl border-2 bg-white/70 p-6 backdrop-blur-xl"
           style={{ borderColor: `${brand.accent}55` }}
         >
           {(user.campaignAssets ?? []).length > 0 && (
@@ -737,7 +714,7 @@ export default function DashboardOverview() {
             onClick={() =>
               setLeadList({ title: "Uncontacted", leads: untouched })
             }
-            className="relative flex aspect-square flex-col items-start overflow-hidden rounded-[26px] border border-white/60 bg-white/70 p-5 text-left transition active:scale-[0.98]"
+            className="relative flex aspect-square flex-col items-start overflow-hidden rounded-xl border border-white/60 bg-white/70 p-5 text-left transition active:scale-[0.98]"
           >
             {leadsLoaded && untouched.length > 0 && (
               <span
@@ -764,7 +741,7 @@ export default function DashboardOverview() {
             onClick={() =>
               setLeadList({ title: "Follow-ups", leads: followUps })
             }
-            className="relative flex aspect-square flex-col items-start overflow-hidden rounded-[26px] border border-white/60 bg-white/70 p-5 text-left transition active:scale-[0.98]"
+            className="relative flex aspect-square flex-col items-start overflow-hidden rounded-xl border border-white/60 bg-white/70 p-5 text-left transition active:scale-[0.98]"
           >
             {leadsLoaded && followUps.length > 0 && (
               <span className="absolute right-4 top-4 rounded-full bg-black/5 px-2.5 py-1 text-[10px] font-semibold text-gray-500">
@@ -789,7 +766,7 @@ export default function DashboardOverview() {
           const dayMax = Math.max(1, ...daily.map((d) => d.count));
           const total = daily.reduce((a, d) => a + d.count, 0);
           return (
-            <div className="rounded-[26px] border border-white/60 bg-white/70 p-5">
+            <div className="rounded-xl border border-white/60 bg-white/70 p-5">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-gray-900">
                   Leads this week
@@ -959,7 +936,7 @@ export default function DashboardOverview() {
                   : 0;
             const up = thisWk >= lastWk;
             return (
-              <div className="flex aspect-square flex-col rounded-[26px] border border-white/60 bg-white/70 p-5">
+              <div className="flex aspect-square flex-col rounded-xl border border-white/60 bg-white/70 p-5">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
                   This week
                 </p>
@@ -991,7 +968,7 @@ export default function DashboardOverview() {
           })()}
 
           {/* Ad spend — a pie: spent in the brand colour, remaining hatched grey */}
-          <div className="flex aspect-square flex-col rounded-[26px] border border-white/60 bg-white/70 p-5">
+          <div className="flex aspect-square flex-col rounded-xl border border-white/60 bg-white/70 p-5">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
               Ad spend
             </p>
@@ -1018,7 +995,7 @@ export default function DashboardOverview() {
           {deepStats.map((s) => (
             <div
               key={s.label}
-              className="flex flex-col justify-center rounded-[22px] border border-white/60 bg-white/70 px-4 py-4"
+              className="flex flex-col justify-center rounded-xl border border-white/60 bg-white/70 px-4 py-4"
             >
               <p className="text-[26px] font-semibold leading-none tracking-tight text-gray-900">
                 {s.value}
@@ -1036,7 +1013,7 @@ export default function DashboardOverview() {
       {/* Bento — square glaze tiles, Onboarding Tracker spans both rows.
           Desktop only; mobile uses the tailored section above. */}
       <section
-        className={`mt-5 hidden grid-cols-1 gap-3 overflow-x-clip sm:grid-cols-2 lg:mt-8 lg:grid lg:gap-4 ${
+        className={`mt-5 hidden grid-cols-1 gap-3 overflow-x-clip sm:grid-cols-2 lg:mt-6 lg:grid lg:gap-4 ${
           trackerGone ? "lg:grid-cols-3" : "lg:grid-cols-4"
         }`}
       >
@@ -1044,7 +1021,7 @@ export default function DashboardOverview() {
             campaign's tagged, rotating through every ad (10s each); the
             personalised mock until then. */}
         {myCreatives.length > 0 ? (
-          <div className="relative hidden aspect-square overflow-hidden rounded-3xl border border-white/10 text-white shadow-[0_2px_8px_-2px_rgba(0,0,0,0.14)] lg:block">
+          <div className="relative hidden overflow-hidden rounded-xl border border-white/10 text-white lg:block lg:h-[208px]">
             {/* keyed on the index so each rotation fades in */}
             <div key={creativeIdx} className="fade-up absolute inset-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1105,7 +1082,7 @@ export default function DashboardOverview() {
           </div>
         ) : (
           <div
-            className="relative hidden aspect-square overflow-hidden rounded-3xl border border-white/10 p-5 text-white shadow-[0_2px_8px_-2px_rgba(0,0,0,0.14),inset_0_0_60px_rgba(0,0,0,0.35)] lg:block"
+            className="relative hidden overflow-hidden rounded-xl border border-white/10 p-5 text-white shadow-[inset_0_0_60px_rgba(0,0,0,0.35)] lg:block lg:h-[208px]"
             style={{
               background: `radial-gradient(120% 120% at 15% 0%, ${brand.accent}, ${brand.accent}cc 45%, rgba(0,0,0,0.55)), ${brand.accent}`,
             }}
@@ -1153,7 +1130,7 @@ export default function DashboardOverview() {
 
         {/* Leads uncontacted — celebrates (in black) with a confetti pop once
             the leads have loaded and there are none to action */}
-        <div className={`${g.className} p-5 lg:aspect-square`} style={g.style}>
+        <div className={`${g.className} p-5 lg:h-[208px]`} style={g.style}>
           {leadsLoaded && untouched.length === 0 ? (
             <div className="relative flex h-full flex-col items-center justify-center text-center">
               <Confetti fire />
@@ -1215,7 +1192,7 @@ export default function DashboardOverview() {
 
         {/* Follow-ups — leads due back today: an attempt that's come round
             again, or a reminder that's fallen due. */}
-        <div className={`${g.className} p-5 lg:aspect-square`} style={g.style}>
+        <div className={`${g.className} p-5 lg:h-[208px]`} style={g.style}>
           <div className="flex h-full flex-col">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold">Follow-ups</h2>
@@ -1460,7 +1437,7 @@ export default function DashboardOverview() {
         )}
 
         {/* Ad spend running total — the glance-and-go view of budget left */}
-        <div className={`${g.className} p-5 lg:aspect-square`} style={g.style}>
+        <div className={`${g.className} p-5 lg:h-[208px]`} style={g.style}>
           <div className="flex h-full flex-col justify-between">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold">Ad spend</h2>
@@ -1635,7 +1612,7 @@ export default function DashboardOverview() {
                       setOpenLeadId(l.id);
                       setLeadList(null);
                     }}
-                    className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition active:bg-black/5"
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition active:bg-black/5"
                   >
                     <span
                       className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"

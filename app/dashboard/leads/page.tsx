@@ -1009,7 +1009,7 @@ export default function LeadsPage() {
           </svg>
           Filters
           {(newOnly || range !== "7d" || stageFilter !== "all" || sort !== "newest") && (
-            <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-[#f6f6f7]" style={{ backgroundColor: brand.accent }} />
+            <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-[#f4f4f5]" style={{ backgroundColor: brand.accent }} />
           )}
         </button>
       </div>

@@ -58,47 +58,11 @@ const LOCK_COPY: Record<string, { title: string; blurb: string }> = {
   },
 };
 
-// Per-brand glow strength (hex alpha). Muted accents (bronze/gold) need more
-// to read; vivid ones (red) need less so they don't overpower.
-const GLOW_ALPHA: Record<string, string> = {
-  property: "18",
-  lettings: "18",
-  mortgage: "26",
-  recruitment: "40",
-  commercial: "26",
-  fineandcountry: "34",
-  auction: "24",
-};
-
-// Chrome geometry (px). The nav is flush to the screen's left/top/bottom edges;
-// the content sits inside, and the two arms join with a concave swoop.
-const SIDEBAR_W = 240;
-const TOPBAR_H = 64;
-const SWOOP = 22;
-
-// The whole chrome is drawn as ONE seamless white L-shape (left arm + top arm)
-// via a clip-path, so there's no seam/line where the sidebar meets the top bar.
-// The concave corner is part of the path. Interactive controls float on top.
-function ChromeSurface({ vw, vh }: { vw: number; vh: number }) {
-  const sw = SIDEBAR_W;
-  const th = TOPBAR_H;
-  const r = SWOOP;
-  const d =
-    `M0 0 L${vw} 0 L${vw} ${th} L${sw + r} ${th} ` +
-    `A${r} ${r} 0 0 0 ${sw} ${th + r} L${sw} ${vh} L0 ${vh} Z`;
-  return (
-    <div
-      aria-hidden
-      className="pointer-events-none fixed inset-0 z-20 bg-white"
-      style={{
-        clipPath: `path('${d}')`,
-        WebkitClipPath: `path('${d}')`,
-        filter:
-          "drop-shadow(3px 0 12px rgba(0,0,0,0.05)) drop-shadow(0 4px 12px rgba(0,0,0,0.05))",
-      }}
-    />
-  );
-}
+// The portal surface, matching the landing page's light grey (#f4f4f5) so the
+// two read as one product. Everything — sidebar, top bar, content — sits on
+// this single colour; there is no separate chrome surface and no accent wash
+// behind the page. Hairlines and spacing do the dividing instead.
+const PAGE_BG = "#f4f4f5";
 
 export default function DashboardLayout({
   children,
@@ -167,15 +131,6 @@ export default function DashboardLayout({
   // Notifications the user has cleared — kept per user in localStorage so
   // "Clear all" sticks between visits (the feed itself is derived live).
   const [cleared, setCleared] = useState<Set<string>>(new Set());
-  const [vp, setVp] = useState({ w: 0, h: 0 });
-
-  useEffect(() => {
-    const on = () => setVp({ w: window.innerWidth, h: window.innerHeight });
-    on();
-    window.addEventListener("resize", on);
-    return () => window.removeEventListener("resize", on);
-  }, []);
-
   // When a lead file is open on mobile, the bottom nav morphs into that lead's
   // quick actions (Call / Email / WhatsApp / Schedule). The open lead modal
   // broadcasts its contact details via a window event so the nav — which lives
@@ -461,38 +416,14 @@ export default function DashboardLayout({
         {
           "--accent": brand.accent,
           "--accent-soft": brand.accentSoft,
-          background: "#f6f6f7",
+          // One flat surface for the whole portal, matching the landing page's
+          // light grey. Nothing sits on its own colour any more — no white
+          // chrome behind the sidebar or top bar, and no accent wash. The
+          // structure comes from hairlines and spacing instead.
+          background: PAGE_BG,
         } as React.CSSProperties
       }
     >
-      {/* Ambient glow — soft accent light anchored in the bottom-right corner,
-          radiating up and to the left across the page. It gently breathes out
-          from the corner rather than wandering. -z-10 so the tiles'
-          backdrop-blur picks it up and refracts it. */}
-      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div
-          className="glow-blob glow-a"
-          style={{
-            inset: 0,
-            borderRadius: 0,
-            background: `radial-gradient(120% 120% at 100% 100%, ${brand.accent}${GLOW_ALPHA[brand.id] ?? "24"}, transparent 58%)`,
-          }}
-        />
-        <div
-          className="glow-blob glow-b"
-          style={{
-            inset: 0,
-            borderRadius: 0,
-            background: `radial-gradient(75% 75% at 100% 100%, ${brand.accent}14, transparent 60%)`,
-          }}
-        />
-      </div>
-
-      {/* One seamless white chrome surface (sidebar + top bar + swoop) —
-          desktop only; mobile uses the top bar + bottom nav below. */}
-      <div className="hidden lg:block">
-        {vp.w > 0 && <ChromeSurface vw={vp.w} vh={vp.h} />}
-      </div>
 
       {/* ── Sidebar controls (desktop only) ── */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col lg:flex">
@@ -613,7 +544,7 @@ export default function DashboardLayout({
           overflow on the right that unrolls into help / profile / log out.
           Search + notifications now live in the bottom bar. Scrolls away with
           the page; pt clears the status bar / notch in standalone. ══ */}
-      <div className="relative z-40 flex items-center justify-between bg-[#f6f6f7] px-4 pb-2 pt-[calc(env(safe-area-inset-top)+16px)] lg:hidden">
+      <div className="relative z-40 flex items-center justify-between bg-[#f4f4f5] px-4 pb-2 pt-[calc(env(safe-area-inset-top)+16px)] lg:hidden">
         <div className="flex flex-col items-start">
           <span className="text-xl font-semibold tracking-tight text-gray-900">
             {NAV.find((n) => n.href === pathname)?.label ?? brand.name}
@@ -1063,7 +994,7 @@ export default function DashboardLayout({
 
       {/* ── Main ── (mobile: no sidebar margin, room for the top bar + bottom
           nav; desktop margins/padding unchanged) */}
-      <main className="px-4 pb-24 pt-3 lg:ml-[240px] lg:px-8 lg:pb-10 lg:pt-[176px]">
+      <main className="px-4 pb-24 pt-3 lg:ml-[240px] lg:px-8 lg:pb-8 lg:pt-[104px]">
         {onLockedRoute ? (
           <PaidLockOverlay
             accent={brand.accent}
