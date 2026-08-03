@@ -99,6 +99,39 @@ before pushing more volume.
 
 _Detail to be added._
 
+## 6. Referral working + safe Rex push 🔴
+
+The referral shouldn't jump straight from "sent" to "Rex says something
+happened". The receiving agent works it in Launch Pad first, exactly the way
+leads are worked today, and only then does it reach the CRM.
+
+**The journey**
+1. Referral arrives → the receiving agent marks contact attempts, same
+   controls as the leads funnel.
+2. Marked as contacted → visible to the referrer.
+3. Appointment set → recorded in Launch Pad, not Rex.
+4. Pushed to Rex → from here the Rex-sourced stages take over (already built
+   for lettings and TPE — see `lib/lettings-tracker.ts`).
+
+**Duplicate handling on push — the important part.** Pushing must never
+silently create a second record for someone already in Rex.
+
+- **Full match** (name + email + address): merge into the existing record and
+  update it. Work that one from then on.
+- **Partial match**: stop and ask. Show what matched and what didn't, and let
+  the agent confirm whether it's the same person. Do NOT create.
+- **Only create a new record** when the property address genuinely differs —
+  the same person can legitimately have a second property.
+- Once resolved, we know the Rex id is right and can track that file all the
+  way through.
+
+Context: the Rex contact search was broken until 3 Aug 2026, so every push
+created a fresh contact — the live account has contacts duplicated up to 5x
+on one email. **Those existing duplicates still need merging**, and that
+should happen before more volume goes through.
+
+_Detail to be added._
+
 ---
 
 ## Already landed
@@ -108,3 +141,8 @@ _Detail to be added._
 - ✅ (3 Aug) Live lettings referral stages from Rex (appointment booked, on
   market, tenant found), joined on the landlord's email. Referencing and
   moved-in still need Propoly.
+- ✅ (3 Aug) Live TPE sales stages from Rex (appointment set, property listed,
+  sold STC, exchanged), joined on the vendor's email.
+- ✅ (3 Aug) Portal visual pass: one flat surface matching the landing page,
+  hairline dividers instead of boxes, outline-only panels across Overview,
+  Leads, Referrals, All Ads and Profile.
