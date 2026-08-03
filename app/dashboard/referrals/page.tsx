@@ -523,7 +523,7 @@ export default function ReferralsPage() {
             />
           ))}
           {received.length === 0 && (
-            <div className="rounded-xl border border-dashed border-gray-900/[0.13] py-16 text-center text-sm text-gray-400">
+            <div className="rounded-2xl border border-dashed border-gray-200 lg:rounded-xl lg:border-gray-900/[0.13] py-16 text-center text-sm text-gray-400">
               No referrals have come in yet. When another business sends you one,
               it&apos;ll appear here to accept.
             </div>
@@ -577,7 +577,7 @@ function BrandTile({ brand: b, onOpen }: { brand: Brand; onOpen: () => void }) {
   return (
     <button
       onClick={onOpen}
-      className="group flex h-full flex-col rounded-xl border border-gray-900/[0.13] bg-transparent p-4 text-left transition hover:-translate-y-0.5 hover:border-gray-900/25"
+      className="group flex h-full flex-col rounded-3xl border border-gray-200 bg-transparent p-4 text-left transition hover:-translate-y-0.5 lg:rounded-xl lg:border-gray-900/[0.13] lg:hover:border-gray-900/25"
     >
       <div className="flex items-center gap-3">
         <BrandBadge brand={b} size={40} />
@@ -605,7 +605,7 @@ function BrandTile({ brand: b, onOpen }: { brand: Brand; onOpen: () => void }) {
           <p className="text-[10px] leading-tight text-gray-400">gross</p>
         </div>
         <span
-          className="flex items-center self-stretch rounded-full px-5 text-sm font-semibold text-white transition group-hover:opacity-90"
+          className="flex items-center self-stretch rounded-full px-5 text-sm font-semibold text-white transition group-hover:opacity-90 lg:self-center lg:rounded-lg lg:px-4 lg:py-2 lg:text-[13.5px]"
           style={{ backgroundColor: b.accent }}
         >
           Refer a lead →
@@ -771,7 +771,7 @@ function BrandRolodex({
               </p>
               <button
                 onClick={() => onOpen(b)}
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-white py-3.5 text-[15px] font-semibold shadow-sm transition active:scale-[0.98]"
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-white py-3.5 text-[15px] font-semibold shadow-sm transition active:scale-[0.98] lg:rounded-lg lg:py-2.5 lg:text-sm lg:shadow-none"
                 style={{ color: b.accent }}
               >
                 Refer a lead
@@ -819,20 +819,24 @@ function BrandPreview({
       className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-gray-900/40 p-6 backdrop-blur-sm"
       onClick={onClose}
     >
-      {/* X — floats on the backdrop, just above the box. */}
-      <button
-        onClick={onClose}
-        aria-label="Close"
-        className="rounded-full p-2 text-white/90 transition active:scale-90"
+      <div
+        className="relative w-full max-w-lg"
+        onClick={(e) => e.stopPropagation()}
       >
-        <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2.2">
-          <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
-        </svg>
-      </button>
+        {/* X — on the backdrop, off the panel's top-right corner rather than
+            centred above it. */}
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute -right-1 -top-11 rounded-lg p-2 text-white/90 transition hover:text-white active:scale-90"
+        >
+          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2.2">
+            <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
 
       <div
-        className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-xl"
-        onClick={(e) => e.stopPropagation()}
+        className="w-full overflow-hidden rounded-3xl bg-white shadow-xl lg:rounded-xl lg:bg-[#f4f4f5]"
       >
         <div className="p-6 sm:p-7">
           {/* Header — bare logo (no tinted box), name nudged right up to it so
@@ -868,12 +872,13 @@ function BrandPreview({
           {/* Refer a lead — central. */}
           <button
             onClick={onRefer}
-            className="mt-6 w-full rounded-full py-3.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
+            className="mt-6 w-full rounded-full py-3.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 lg:rounded-lg lg:py-2.5 lg:shadow-none"
             style={{ backgroundColor: b.accent }}
           >
             Refer a lead
           </button>
         </div>
+      </div>
       </div>
     </div>
   );
@@ -1086,15 +1091,28 @@ function ReferWizard({
       onClick={onClose}
     >
       <div
-        className="modal-pop max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl sm:p-7"
+        className="relative w-full max-w-2xl"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Close sits OUTSIDE the panel, off its top-right corner, so it isn't
+            competing with the step's own heading. Desktop only — on mobile
+            there's no room beside the sheet, so it stays in the flow below. */}
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute -right-1 -top-12 z-10 hidden rounded-lg p-1.5 text-white/80 transition hover:text-white lg:block"
+        >
+          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
+        <div className="modal-pop max-h-[90vh] overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl sm:p-7 lg:rounded-xl lg:bg-[#f4f4f5]">
         {/* Location */}
         {step === "location" && (
           <div className="fade-up">
-            {/* Close — top-right, no header band or brand icon. They've already
-                picked who they're referring to. */}
-            <div className="flex justify-end">
+            {/* Mobile keeps its own close control in the flow; on desktop the
+                one outside the panel does the job. */}
+            <div className="flex justify-end lg:hidden">
               <button
                 onClick={onClose}
                 aria-label="Close"
@@ -1349,6 +1367,7 @@ function ReferWizard({
             </p>
           </div>
         )}
+        </div>
       </div>
     </div>
   );
@@ -1384,7 +1403,7 @@ function ReferralRow({
   return (
     <button
       onClick={onClick}
-      className="block w-full rounded-xl border border-gray-900/[0.13] bg-transparent p-4 text-left transition hover:border-gray-900/25"
+      className="block w-full rounded-3xl border border-gray-200 bg-transparent p-4 text-left transition lg:rounded-xl lg:border-gray-900/[0.13] lg:hover:border-gray-900/25"
     >
       <div className="flex items-center gap-3.5">
         {other && <BrandBadge brand={other} size={44} />}

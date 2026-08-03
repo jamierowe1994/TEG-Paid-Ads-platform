@@ -429,7 +429,7 @@ export default function DashboardLayout({
       {/* The nav has no fill of its own — it's separated from the content by a
           single rule running the full height of the screen. */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[248px] flex-col border-r border-gray-900/[0.13] lg:flex">
-        <div className="px-6 pt-9">
+        <div className="px-6 pt-11">
           <Link href="/dashboard" aria-label="Launch Pad" className="block">
             <svg
               viewBox="0 0 24 24"
@@ -849,14 +849,16 @@ export default function DashboardLayout({
       )}
 
       {/* ── Top bar controls (desktop only) ── */}
-      <header className="fixed left-[240px] right-0 top-0 z-40 hidden h-16 items-center justify-between gap-3 px-6 lg:flex">
+      {/* Sat down off the top edge and in from the right — nothing bounds this
+          bar any more, so it needs its own margin rather than sitting flush. */}
+      <header className="fixed left-[248px] right-0 top-0 z-40 hidden h-16 items-center justify-between gap-3 px-9 pt-7 lg:flex">
         {/* Search — normal size, expands when focused */}
         <div
           className={`relative transition-[width] duration-300 ease-out ${
             searchOpen ? "w-[460px]" : "w-72"
           }`}
         >
-          <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2">
+          <div className="flex items-center gap-2 rounded-lg border border-gray-900/[0.10] bg-transparent px-3.5 py-1.5">
             <svg
               className="h-4 w-4 shrink-0 text-gray-400"
               fill="none"
@@ -952,7 +954,7 @@ export default function DashboardLayout({
         <div className="relative">
           <button
             onClick={() => setBellOpen((v) => !v)}
-            className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-500 transition hover:text-gray-900"
+            className="relative flex h-10 w-10 items-center justify-center rounded-lg text-gray-500 transition hover:text-gray-900"
             aria-label="Notifications"
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">

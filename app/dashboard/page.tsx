@@ -70,7 +70,7 @@ const AD_PITCH: Record<string, (area: string) => string> = {
 function glaze() {
   return {
     className:
-      "relative overflow-hidden rounded-xl border border-gray-200/70 bg-white/70 lg:overflow-visible lg:rounded-none lg:border-0 lg:bg-transparent",
+      "relative overflow-hidden rounded-3xl border border-white/40 bg-white/70 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.12),inset_0_1px_1px_rgba(255,255,255,0.7),inset_0_0_30px_rgba(0,0,0,0.08)] lg:overflow-visible lg:rounded-none lg:border-0 lg:bg-transparent lg:shadow-none",
     style: {} as React.CSSProperties,
   };
 }
@@ -737,7 +737,7 @@ export default function DashboardOverview() {
             onClick={() =>
               setLeadList({ title: "Uncontacted", leads: untouched })
             }
-            className="relative flex aspect-square flex-col items-start overflow-hidden rounded-xl border border-white/60 bg-white/70 p-5 text-left transition active:scale-[0.98]"
+            className="relative flex aspect-square flex-col items-start overflow-hidden rounded-3xl border border-white/60 bg-white/70 p-5 text-left transition active:scale-[0.98]"
           >
             {leadsLoaded && untouched.length > 0 && (
               <span
@@ -764,7 +764,7 @@ export default function DashboardOverview() {
             onClick={() =>
               setLeadList({ title: "Follow-ups", leads: followUps })
             }
-            className="relative flex aspect-square flex-col items-start overflow-hidden rounded-xl border border-white/60 bg-white/70 p-5 text-left transition active:scale-[0.98]"
+            className="relative flex aspect-square flex-col items-start overflow-hidden rounded-3xl border border-white/60 bg-white/70 p-5 text-left transition active:scale-[0.98]"
           >
             {leadsLoaded && followUps.length > 0 && (
               <span className="absolute right-4 top-4 rounded-full bg-black/5 px-2.5 py-1 text-[10px] font-semibold text-gray-500">
@@ -959,7 +959,7 @@ export default function DashboardOverview() {
                   : 0;
             const up = thisWk >= lastWk;
             return (
-              <div className="flex aspect-square flex-col rounded-xl border border-white/60 bg-white/70 p-5">
+              <div className="flex aspect-square flex-col rounded-3xl border border-white/60 bg-white/70 p-5">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
                   This week
                 </p>
@@ -991,7 +991,7 @@ export default function DashboardOverview() {
           })()}
 
           {/* Ad spend — a pie: spent in the brand colour, remaining hatched grey */}
-          <div className="flex aspect-square flex-col rounded-xl border border-white/60 bg-white/70 p-5">
+          <div className="flex aspect-square flex-col rounded-3xl border border-white/60 bg-white/70 p-5">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
               Ad spend
             </p>

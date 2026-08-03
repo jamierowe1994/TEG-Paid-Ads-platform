@@ -1262,17 +1262,17 @@ function Stat({
   accent?: string;
 }) {
   return (
-    // Same drop + all-around inner shadow as the Overview tiles, so the
-    // stat boxes sit forward and read as one system.
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.12),inset_0_1px_1px_rgba(255,255,255,0.7),inset_0_0_30px_rgba(0,0,0,0.08)]">
-      <p className="text-sm text-gray-500">{label}</p>
+    // No box and no inner shadow — just the figure on the faintest backdrop,
+    // matching the Overview's stat band.
+    <div className="rounded-lg bg-white/45 px-5 py-4">
+      <p className="text-[13px] text-gray-500">{label}</p>
       <p
-        className="mt-2 text-3xl font-semibold tracking-tight"
+        className="mt-2 text-[34px] font-light leading-none tracking-[-0.035em] tabular-nums"
         style={accent ? { color: accent } : undefined}
       >
         {value}
       </p>
-      {note && <p className="mt-1 text-xs text-gray-400">{note}</p>}
+      {note && <p className="mt-2 text-xs text-gray-400">{note}</p>}
     </div>
   );
 }

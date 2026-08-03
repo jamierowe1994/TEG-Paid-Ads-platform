@@ -85,9 +85,11 @@ export default function LandingPage() {
             <LaunchPadMark />
           </Link>
           <div className="hero-nav flex items-center gap-2.5 sm:gap-3">
+            {/* Hidden on mobile — the phone header is just the mark and
+                Sign in; pricing is one scroll away anyway. */}
             <a
               href="#packages"
-              className="px-2 py-2.5 text-sm font-medium text-gray-600 underline decoration-gray-400 underline-offset-[6px] transition hover:text-gray-900 hover:decoration-gray-900 sm:px-3 sm:text-base"
+              className="px-2 py-2.5 text-sm font-medium text-gray-600 underline decoration-gray-400 underline-offset-[6px] transition hover:text-gray-900 hover:decoration-gray-900 max-sm:hidden sm:px-3 sm:text-base"
             >
               See pricing
             </a>
@@ -112,14 +114,14 @@ export default function LandingPage() {
         <div className="flex flex-1 flex-col items-center justify-center px-6 pb-4 pt-24 text-center">
           {/* nowrap keeps "Our ad engine." on one line while the hidden
               card expands on hover */}
-          <h1 className="hero-title mx-auto max-w-6xl text-5xl font-light leading-[0.95] tracking-[-0.05em] text-gray-900 sm:text-7xl lg:text-8xl">
+          <h1 className="hero-title mx-auto max-w-6xl text-6xl font-light leading-[0.95] tracking-[-0.05em] text-gray-900 sm:text-7xl lg:text-8xl">
             Your personal brand.
             <br />
             <span className="lg:whitespace-nowrap">
               Our <HeroAdWord /> engine.
             </span>
           </h1>
-          <p className="hero-sub mx-auto mt-8 max-w-2xl text-lg font-light text-gray-600 sm:text-xl">
+          <p className="hero-sub mx-auto mt-6 max-w-2xl text-base font-light text-gray-600 sm:mt-8 sm:text-xl">
             We build and run paid social campaigns for Experts Group agents
             — you track every lead from first click to your CRM, all in one
             clean dashboard.
@@ -142,7 +144,9 @@ export default function LandingPage() {
       {/* Second screen — charcoal rounded panel with breathing room above
           and below: bold copy left, photo + infographic right, physics icons
           landing at the bottom */}
-      <section id="built" className="px-4 py-20 sm:px-14 sm:py-28">
+      {/* Mobile: tighter above and below — the hero already ends in a band
+          of icons, and the proof section pulls up to meet this one. */}
+      <section id="built" className="px-4 pb-12 pt-10 sm:px-14 sm:py-28">
         {/* PanelReveal is a plain (untransformed) wrapper; the parallax
             transform lives on the glass panel itself. This matters: a
             transformed ANCESTOR establishes a backdrop root that blanks the
@@ -172,15 +176,19 @@ export default function LandingPage() {
                 actually uses, and drop every lead that comes back into one
                 dashboard — with the phone number already there, ready to call.
               </p>
+              {/* Second paragraph is desktop-only — on a phone one paragraph
+                  says it, and the image deserves the room. */}
               <p
-                className="p-sub mt-4 max-w-md text-lg leading-relaxed text-gray-600"
+                className="p-sub mt-4 max-w-md text-lg leading-relaxed text-gray-600 max-sm:hidden"
                 style={{ "--d": "0.14s" } as React.CSSProperties}
               >
                 You do the part you&apos;re good at: talking to people. We do
                 the part that involves arguing with Meta&apos;s ad manager at
                 two in the morning.
               </p>
-              <div className="p-cta mt-8">
+              {/* Desktop CTA — on mobile it moves below the image (see the
+                  sm:hidden copy after the image column). */}
+              <div className="p-cta mt-8 max-sm:hidden">
                 <Link
                   href="/signup"
                   className="btn-group inline-block rounded-full px-9 py-4 text-base font-semibold"
@@ -199,6 +207,15 @@ export default function LandingPage() {
               {/* Infographic overlay — expands after the image, then counts */}
               <LeadsStat className="p-stat" startDelay={1500} />
             </div>
+            {/* Mobile CTA — reads heading → copy → image → button. */}
+            <div className="p-cta text-center sm:hidden">
+              <Link
+                href="/signup"
+                className="btn-group inline-block rounded-full px-9 py-4 text-base font-semibold"
+              >
+                Start your campaign
+              </Link>
+            </div>
           </div>
 
         </div>
@@ -212,7 +229,7 @@ export default function LandingPage() {
           content moves. Mobile gets the same content as plain sections. */}
       <div className="relative">
         <div className="lg:hidden">
-          <section id="proof" className="py-24">
+          <section id="proof" className="py-24 max-sm:pt-10">
             <Reveal>
               <TrialProof />
             </Reveal>
