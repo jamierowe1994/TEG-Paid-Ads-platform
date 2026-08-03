@@ -245,6 +245,8 @@ type LettingsProgress = {
   tenantFound: boolean;
   referencing: boolean;
   movedIn: boolean;
+  soldStc: boolean;
+  exchanged: boolean;
   matched: boolean;
 };
 type StageFeed = Record<string, LettingsProgress>;
@@ -285,6 +287,26 @@ const REFERRAL_PIPELINES: Partial<Record<BrandId, StageDef[]>> = {
     { label: "Tenant referencing", awaitingFeed: true },
     { label: "Moved in", awaitingFeed: true },
     { label: "Fee paid", reached: feePaid },
+  ],
+  /* A sales referral is a VENDOR. Every stage below comes from Rex — no second
+     system involved, unlike lettings:
+
+       Appointment set → an appraisal with a real date
+       Property listed → a listing exists
+       Sold STC        → under_contract, or the state reaching "sold"
+       Exchanged       → contract_status "Completed"  ← the fee falls due here
+
+     On that last one: Rex records completion rather than exchange, and James
+     was happy to treat the two as the same milestone. It means the stage
+     lights up slightly late rather than early, which is the right way round
+     for something a fee hangs off. */
+  property: [
+    { label: "Referred", reached: () => true },
+    { label: "Appointment set", fromFeed: (p) => p.appointmentBooked, awaitingFeed: true },
+    { label: "Property listed", fromFeed: (p) => p.onMarket, awaitingFeed: true },
+    { label: "Sold STC", fromFeed: (p) => p.soldStc, awaitingFeed: true },
+    { label: "Exchanged", fromFeed: (p) => p.exchanged, awaitingFeed: true },
+    { label: "Paid", reached: feePaid },
   ],
   // The Recruitment Experts work a candidate like this.
   recruitment: [

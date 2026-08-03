@@ -1,19 +1,28 @@
-// Real stage tracking for lettings referrals.
+// Real stage tracking for referrals, from Rex.
 //
-// A lettings referral is a LANDLORD, so the journey starts before there's a
-// tenant at all and spans two systems:
+// A referral is the PROPERTY OWNER — a landlord for lettings, a vendor for
+// sales — so the journey starts before there's a tenant or buyer at all.
 //
+// Lettings (The Lettings Experts), spanning two systems:
 //   Appointment booked → Rex, a market appraisal exists with a date
 //   On market          → Rex, a listing exists for their property
 //   Tenant found       → Rex, let_agreed (or a let/leased listing state)
 //   Tenant referencing → Propoly, referencing        ← not wired yet
 //   Moved in           → Propoly, move_day           ← not wired yet
 //
-// Everything joins on the LANDLORD'S EMAIL, which is the same key Propoly's
+// Sales (The Property Experts), all from Rex:
+//   Appointment set    → an appraisal with a date
+//   Property listed    → a listing exists
+//   Sold STC           → under_contract, or the state reaching "sold"
+//   Exchanged          → contract_status (see the note by the constant)
+//
+// "Paid" is our own referral status on both, and needs nothing from Rex.
+//
+// Everything joins on the OWNER'S EMAIL, which is the same key Propoly's
 // `landlord_details.email` gives us (100% populated there).
 //
-// How the landlord is found in Rex is not obvious: there is no landlord field
-// on an appraisal or a listing. Rex models it as a *relationship record* —
+// How the owner is found in Rex is not obvious: there is no landlord or vendor
+// field on an appraisal or a listing. Rex models it as a *relationship record* —
 // `contact_reln_property` (reln_type "owner") and `contact_reln_listing`
 // (the account's types are "Landlord" and "Landlord's Representative"). So we
 // go contact-first: email → contact → their listings and properties.
@@ -28,27 +37,44 @@
 
 import { rexConfigured, rexCriterion, rexReadRecord, rexSearchRows } from "@/lib/rex";
 
-/** What we can say about a lettings referral's real-world progress. */
-export interface LettingsProgress {
+/**
+ * What we can say about a referral's real-world progress.
+ *
+ * One shape covers both businesses because they share a spine in Rex — the
+ * contact, their property, its appraisal and its listing. Only the later
+ * stages diverge, so lettings reads the tenancy fields and sales reads the
+ * contract ones. A flag a brand doesn't use simply stays false.
+ */
+export interface ReferralProgress {
+  // Shared: both journeys start with an appraisal and a listing.
   appointmentBooked: boolean;
   onMarket: boolean;
+  // Lettings (The Lettings Experts).
   tenantFound: boolean;
   /** Propoly-sourced; always false until that feed is wired. */
   referencing: boolean;
   movedIn: boolean;
-  /** False when we looked but found no matching landlord in Rex. */
+  // Sales (The Property Experts).
+  soldStc: boolean;
+  exchanged: boolean;
+  /** False when we looked but found no matching contact in Rex. */
   matched: boolean;
   checkedAt: string;
 }
 
+/** @deprecated Use ReferralProgress — kept so existing imports keep working. */
+export type LettingsProgress = ReferralProgress;
+
 /** Nothing known — the honest default, and what every failure returns to. */
-export function unknownProgress(): LettingsProgress {
+export function unknownProgress(): ReferralProgress {
   return {
     appointmentBooked: false,
     onMarket: false,
     tenantFound: false,
     referencing: false,
     movedIn: false,
+    soldStc: false,
+    exchanged: false,
     matched: false,
     checkedAt: new Date().toISOString(),
   };
@@ -60,6 +86,17 @@ export function unknownProgress(): LettingsProgress {
 // TODO(rex-states): confirmed against sale listings only so far — check the
 // exact lettings vocabulary on a live let before relying on these alone.
 const LET_STATES = new Set(["leased", "let", "let_agreed", "rented"]);
+
+// Sales. Confirmed against the live account: system_listing_state runs
+// current / sold / withdrawn, under_contract is a boolean, and contract_status
+// reads "Completed".
+//
+// James's call (3 Aug 2026): treat contract_status "Completed" as EXCHANGED.
+// Strictly, completion follows exchange in English conveyancing, so this
+// reports exchange slightly late rather than early — which is the safe
+// direction, since the referral fee shouldn't light up before the deal is
+// genuinely binding.
+const EXCHANGED_CONTRACT_STATUSES = new Set(["completed", "exchanged"]);
 
 function asArray(v: unknown): Record<string, unknown>[] {
   if (Array.isArray(v)) return v as Record<string, unknown>[];
@@ -91,10 +128,10 @@ function idOf(v: unknown): string | null {
  * must NOT be collapsed into "no progress", which would show a landlord who is
  * already let as though nothing had happened.
  */
-export async function lettingsProgressForLandlord(
+export async function progressForReferral(
   email: string,
-  brandId = "lettings"
-): Promise<LettingsProgress> {
+  brandId: string
+): Promise<ReferralProgress> {
   const out = unknownProgress();
   const clean = email.trim().toLowerCase();
   if (!clean || !rexConfigured()) return out;
@@ -138,8 +175,15 @@ export async function lettingsProgressForLandlord(
     const state = enumId(listing.system_listing_state);
     // Any listing at all means the property reached the market.
     if (state) out.onMarket = true;
+    // Lettings.
     if (listing.let_agreed) out.tenantFound = true;
     if (state && LET_STATES.has(state)) out.tenantFound = true;
+    // Sales. under_contract is the "sold subject to contract" signal; the
+    // listing state going to "sold" says the same thing a beat later.
+    if (listing.under_contract === true) out.soldStc = true;
+    if (state === "sold") out.soldStc = true;
+    const contract = String(enumId(listing.contract_status) ?? "").toLowerCase();
+    if (contract && EXCHANGED_CONTRACT_STATUSES.has(contract)) out.exchanged = true;
   }
 
   // 4. Appointment booked — an appraisal against the property with a real date.
@@ -161,6 +205,8 @@ export async function lettingsProgressForLandlord(
   // safe; implying anything forwards would not be.
   if (out.onMarket) out.appointmentBooked = true;
   if (out.tenantFound) out.onMarket = true;
+  if (out.soldStc) out.onMarket = true;
+  if (out.exchanged) out.soldStc = true;
 
   return out;
 }

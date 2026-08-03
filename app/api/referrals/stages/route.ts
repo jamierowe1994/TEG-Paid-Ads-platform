@@ -4,16 +4,16 @@
 // so this can never become a way to look up an arbitrary email against the
 // lettings CRM. A referral the caller can't see gets no answer.
 //
-// Only lettings referrals resolve today; every other brand returns nothing and
-// the page keeps showing those stages as awaiting a feed.
+// Lettings and property referrals resolve from Rex; every other brand returns
+// nothing and the page keeps showing those stages as awaiting a feed.
 
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
 import { findById } from "@/lib/users-store";
 import { listForUser } from "@/lib/referrals-store";
 import {
-  lettingsProgressForLandlord,
-  type LettingsProgress,
+  progressForReferral,
+  type ReferralProgress,
 } from "@/lib/lettings-tracker";
 import { rexConfigured } from "@/lib/rex";
 
@@ -23,14 +23,21 @@ export const dynamic = "force-dynamic";
 // several Rex calls. Cache per email so a page with ten referrals to the same
 // landlord — or a quick refresh — doesn't re-walk the CRM.
 const TTL_MS = 5 * 60 * 1000;
-const cache = new Map<string, { at: number; value: LettingsProgress }>();
+const cache = new Map<string, { at: number; value: ReferralProgress }>();
 
-async function progressFor(email: string): Promise<LettingsProgress | null> {
-  const key = email.trim().toLowerCase();
-  if (!key) return null;
+// Brands whose pipeline Rex can actually answer. Everything else is left
+// awaiting a feed rather than reported as "no progress".
+const REX_TRACKED = new Set(["lettings", "property"]);
+
+async function progressFor(
+  email: string,
+  brandId: string
+): Promise<ReferralProgress | null> {
+  const key = `${brandId}:${email.trim().toLowerCase()}`;
+  if (!email.trim()) return null;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < TTL_MS) return hit.value;
-  const value = await lettingsProgressForLandlord(key);
+  const value = await progressForReferral(email, brandId);
   cache.set(key, { at: Date.now(), value });
   return value;
 }
@@ -49,17 +56,17 @@ export async function GET(req: NextRequest) {
   }
 
   const referrals = await listForUser(user.id, user.brandId);
-  const lettings = referrals.filter(
-    (r) => r.toBrandId === "lettings" && r.leadEmail.trim()
+  const tracked = referrals.filter(
+    (r) => REX_TRACKED.has(r.toBrandId) && r.leadEmail.trim()
   );
 
-  const stages: Record<string, LettingsProgress> = {};
+  const stages: Record<string, ReferralProgress> = {};
   let failed = 0;
   // Sequential on purpose: this is several Rex calls per referral and Rex
   // resets tokens under bursts. The list is small and the result is cached.
-  for (const r of lettings) {
+  for (const r of tracked) {
     try {
-      const p = await progressFor(r.leadEmail);
+      const p = await progressFor(r.leadEmail, r.toBrandId);
       if (p) stages[r.id] = p;
     } catch {
       // One landlord failing to resolve must not blank the whole page. The
@@ -70,7 +77,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     connected: true,
-    checked: lettings.length,
+    checked: tracked.length,
     failed,
     stages,
   });
