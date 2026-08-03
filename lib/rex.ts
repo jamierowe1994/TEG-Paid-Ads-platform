@@ -1,5 +1,6 @@
 import "server-only";
 import type { Lead } from "./types";
+import { duplicatesForContact } from "./rex-dupes";
 
 // Rex is the property brands' CRM (rexsoftware.com) — used by The Property
 // Experts, The Lettings Experts, Fine & Country and The Auction Company
@@ -209,6 +210,20 @@ export async function rexReadRecord(
 
 /** Public alias of `criterion` — see its notes on Rex's criteria shape. */
 export const rexCriterion = criterion;
+
+/**
+ * Escape hatch for Rex services this module doesn't wrap (currently Dedupe).
+ * Returns the raw envelope — including failures — so the caller can tell a
+ * genuine "nothing found" from "the call didn't work", which matters a lot for
+ * duplicate checks.
+ */
+export async function rexCallRaw(
+  path: string,
+  body: unknown,
+  accountId: string | null
+): Promise<RexResponse> {
+  return rexCall(path, body, accountId);
+}
 
 // Asks Rex itself what fields a model accepts (e.g. "Contacts", "Leads") —
 // ground truth instead of guessing field names against the live account.
@@ -565,6 +580,14 @@ export interface RexPushResult {
   leadId: string;
   contactId: string;
   contactAlreadyExisted: boolean;
+  /**
+   * Other Rex contacts that look like the same person. ADVISORY ONLY — the
+   * push has already succeeded by the time this is filled in. Surface it so
+   * someone can merge in Rex; never use it to refuse a push (see lib/rex-dupes).
+   */
+  possibleDuplicateIds: string[];
+  /** True when the duplicate check itself failed — not "there are none". */
+  duplicateCheckFailed: boolean;
 }
 
 // Push one portal lead into Rex: find-or-create the contact, then create a
@@ -608,9 +631,16 @@ export async function pushLeadToRex(
       : ((res.result as { id?: string | number } | undefined)?.id ?? null);
   if (leadId == null) throw new Error("Rex didn't return a lead id.");
 
+  // Duplicate awareness, AFTER the push has landed. Deliberately last and
+  // deliberately non-fatal: the file being in Rex and trackable matters more
+  // than it being tidy, and a duplicate can be merged there afterwards.
+  const dupes = await duplicatesForContact(contact.id, brandId);
+
   return {
     leadId: String(leadId),
     contactId: contact.id,
     contactAlreadyExisted: contact.alreadyExisted,
+    possibleDuplicateIds: dupes.duplicateIds,
+    duplicateCheckFailed: dupes.checkFailed,
   };
 }

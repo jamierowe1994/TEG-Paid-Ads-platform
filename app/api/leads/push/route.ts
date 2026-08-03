@@ -71,6 +71,9 @@ export async function POST(req: NextRequest) {
         });
       }
       await markPushed();
+      // `result` carries possibleDuplicateIds / duplicateCheckFailed. Those
+      // are ADVISORY — the push has already succeeded. Show them so someone
+      // can merge in Rex; never gate the push on them.
       return NextResponse.json({ ok: true, ...result });
     } catch (e) {
       return NextResponse.json(
@@ -111,6 +114,9 @@ export async function POST(req: NextRequest) {
         });
       }
       await markPushed();
+      // `result` carries possibleDuplicateIds / duplicateCheckFailed. Those
+      // are ADVISORY — the push has already succeeded. Show them so someone
+      // can merge in Rex; never gate the push on them.
       return NextResponse.json({ ok: true, ...result });
     } catch (e) {
       return NextResponse.json(
