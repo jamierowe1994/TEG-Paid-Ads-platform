@@ -174,6 +174,42 @@ function criterion(
   return { name, type, value };
 }
 
+/**
+ * Narrow read-only surface onto Rex for callers outside this module (the
+ * lettings tracker). Deliberately search/read only — anything that WRITES to
+ * Rex stays in this file, where the create/push paths can be reviewed together.
+ *
+ * `criteria` entries must be built with `rexCriterion`. Returns rows, or throws
+ * on failure — a caller that quietly treats an outage as "no data" is what
+ * caused the duplicate-contact bug, so failures are loud here by design.
+ */
+export async function rexSearchRows(
+  model: string,
+  body: Record<string, unknown>,
+  brandId: string
+): Promise<Record<string, unknown>[]> {
+  const res = await rexCall(`${model}/search`, body, rexAccountForBrand(brandId));
+  if (!res.ok) throw new Error(res.error ?? `Rex ${model}/search failed`);
+  const r = res.result;
+  const rows = Array.isArray(r)
+    ? r
+    : ((r as { rows?: unknown[] } | undefined)?.rows ?? []);
+  return rows as Record<string, unknown>[];
+}
+
+export async function rexReadRecord(
+  model: string,
+  id: string,
+  brandId: string
+): Promise<Record<string, unknown> | null> {
+  const res = await rexCall(`${model}/read`, { id }, rexAccountForBrand(brandId));
+  if (!res.ok) throw new Error(res.error ?? `Rex ${model}/read failed`);
+  return (res.result as Record<string, unknown> | undefined) ?? null;
+}
+
+/** Public alias of `criterion` — see its notes on Rex's criteria shape. */
+export const rexCriterion = criterion;
+
 // Asks Rex itself what fields a model accepts (e.g. "Contacts", "Leads") —
 // ground truth instead of guessing field names against the live account.
 export async function rexDescribeModel(

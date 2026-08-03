@@ -232,7 +232,22 @@ type StageDef = {
   label: string;
   reached?: (r: Referral) => boolean;
   awaitingFeed?: boolean;
+  // Reads the recipient CRM's own answer for this referral, when we have one.
+  // Takes priority over `reached`; falls back to `awaitingFeed` when the feed
+  // hasn't reported (Rex not connected, landlord not matched, lookup failed).
+  fromFeed?: (p: LettingsProgress) => boolean;
 };
+
+// What /api/referrals/stages returns per referral, mirrored from the tracker.
+type LettingsProgress = {
+  appointmentBooked: boolean;
+  onMarket: boolean;
+  tenantFound: boolean;
+  referencing: boolean;
+  movedIn: boolean;
+  matched: boolean;
+};
+type StageFeed = Record<string, LettingsProgress>;
 
 // Signals we can read right now.
 const wasAccepted = (r: Referral) => r.status !== "pending";
@@ -258,13 +273,15 @@ const REFERRAL_PIPELINES: Partial<Record<BrandId, StageDef[]>> = {
        Tenant referencing → Propoly, referencing
        Moved in           → Propoly, move_day  ← the fee falls due here
 
-     awaitingFeed until the TLE partner endpoint is built; the labels are
-     already the ones those signals support, so nothing here changes then. */
+     The first three now come live from Rex, joined on the landlord's email
+     (see lib/lettings-tracker.ts). The last two still say awaitingFeed until
+     Propoly is wired — they keep the same labels, so nothing here changes
+     then beyond swapping awaitingFeed for fromFeed. */
   lettings: [
     { label: "Referred", reached: () => true },
-    { label: "Appointment booked", awaitingFeed: true },
-    { label: "On market", awaitingFeed: true },
-    { label: "Tenant found", awaitingFeed: true },
+    { label: "Appointment booked", fromFeed: (p) => p.appointmentBooked, awaitingFeed: true },
+    { label: "On market", fromFeed: (p) => p.onMarket, awaitingFeed: true },
+    { label: "Tenant found", fromFeed: (p) => p.tenantFound, awaitingFeed: true },
     { label: "Tenant referencing", awaitingFeed: true },
     { label: "Moved in", awaitingFeed: true },
     { label: "Fee paid", reached: feePaid },
@@ -290,7 +307,7 @@ function defaultPipeline(toBrand?: Brand): StageDef[] {
   ];
 }
 
-function journey(r: Referral, toBrand?: Brand): Step[] {
+function journey(r: Referral, toBrand?: Brand, progress?: LettingsProgress): Step[] {
   if (r.status === "declined") {
     return [
       { label: "Referred", done: true, current: false },
@@ -307,11 +324,26 @@ function journey(r: Referral, toBrand?: Brand): Step[] {
   }
   const defs =
     (toBrand && REFERRAL_PIPELINES[toBrand.id]) ?? defaultPipeline(toBrand);
-  const raw = defs.map((d) => ({
-    label: d.label,
-    done: d.reached ? d.reached(r) : false,
-    awaitingFeed: d.awaitingFeed,
-  }));
+  // Trust the CRM feed only when it actually found this landlord. "We looked
+  // and found nobody" is not the same as "nothing has happened", and showing
+  // the latter would tell an agent their referral had stalled when it hadn't.
+  const feed = progress?.matched ? progress : undefined;
+  const raw = defs.map((d) => {
+    if (d.fromFeed && feed) {
+      return { label: d.label, done: d.fromFeed(feed), awaitingFeed: false };
+    }
+    return {
+      label: d.label,
+      done: d.reached ? d.reached(r) : false,
+      awaitingFeed: d.awaitingFeed,
+    };
+  });
+  // The pipeline is linear, so a later milestone implies the earlier ones. This
+  // matters now that stages come from two places: a fee marked paid by hand
+  // shouldn't sit above an "on market" the CRM never recorded.
+  for (let i = raw.length - 2; i >= 0; i--) {
+    if (raw[i + 1].done) raw[i] = { ...raw[i], done: true, awaitingFeed: false };
+  }
   const firstOpen = raw.findIndex((s) => !s.done);
   return raw.map((s, i) => ({
     ...s,
@@ -328,6 +360,10 @@ export default function ReferralsPage() {
   const [wizardBrand, setWizardBrand] = useState<Brand | null>(null);
   const [open, setOpen] = useState<Referral | null>(null);
   const [toast, setToast] = useState("");
+  // Live stages from the recipient's CRM, keyed by referral id. Loaded after
+  // the referrals themselves so the list paints immediately — this walks Rex
+  // and takes a moment, and the pipeline reads fine without it.
+  const [stageFeed, setStageFeed] = useState<StageFeed>({});
 
   async function reload() {
     setReferrals(await fetchReferrals());
@@ -339,6 +375,22 @@ export default function ReferralsPage() {
     setBrand(brandById(u.brandId) ?? null);
     reload();
   }, []);
+
+  // Never blocks or surfaces an error: if the CRM can't be reached the stages
+  // simply stay as they were, marked awaiting feed.
+  useEffect(() => {
+    if (!referrals.length) return;
+    let live = true;
+    fetch("/api/referrals/stages")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (live && d?.stages) setStageFeed(d.stages as StageFeed);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [referrals]);
 
   const otherBrands = useMemo(
     () => BRANDS.filter((b) => b.id !== brand?.id),
@@ -433,6 +485,7 @@ export default function ReferralsPage() {
                     key={r.id}
                     referral={r}
                     viewerBrand={brand}
+                    progress={stageFeed[r.id]}
                     onClick={() => setOpen(r)}
                   />
                 ))}
@@ -465,6 +518,7 @@ export default function ReferralsPage() {
               key={r.id}
               referral={r}
               viewerBrand={brand}
+              progress={stageFeed[r.id]}
               onClick={() => setOpen(r)}
             />
           ))}
@@ -503,6 +557,7 @@ export default function ReferralsPage() {
         <ReferralDetail
           referral={open}
           viewerBrand={brand}
+          progress={stageFeed[open.id]}
           onClose={() => setOpen(null)}
           onAct={act}
         />
@@ -1303,17 +1358,19 @@ function ReferWizard({
 function ReferralRow({
   referral: r,
   viewerBrand,
+  progress,
   onClick,
 }: {
   referral: Referral;
   viewerBrand: Brand;
+  progress?: LettingsProgress;
   onClick: () => void;
 }) {
   const other =
     r.direction === "received"
       ? brandById(r.fromBrandId)
       : brandById(r.toBrandId);
-  const steps = journey(r, brandById(r.toBrandId));
+  const steps = journey(r, brandById(r.toBrandId), progress);
   const accent = other?.accent ?? viewerBrand.accent;
   // The small caption under the fee: the furthest milestone reached — but for
   // a dead referral, name the dead end so it doesn't read as still-progressing.
@@ -1372,12 +1429,14 @@ function ReferralProgress({
   referral: r,
   toBrand,
   accent,
+  progress,
 }: {
   referral: Referral;
   toBrand?: Brand;
   accent: string;
+  progress?: LettingsProgress;
 }) {
-  const steps = journey(r, toBrand);
+  const steps = journey(r, toBrand, progress);
   return (
     <ol className="mt-2 space-y-0">
       {steps.map((s, i) => {
@@ -1449,11 +1508,13 @@ function ReferralProgress({
 function ReferralDetail({
   referral: r,
   viewerBrand,
+  progress,
   onClose,
   onAct,
 }: {
   referral: Referral;
   viewerBrand: Brand;
+  progress?: LettingsProgress;
   onClose: () => void;
   onAct: (
     r: Referral,
@@ -1551,7 +1612,12 @@ function ReferralDetail({
           <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
             Progress
           </p>
-          <ReferralProgress referral={r} toBrand={to} accent={accent} />
+          <ReferralProgress
+            referral={r}
+            toBrand={to}
+            accent={accent}
+            progress={progress}
+          />
           <p className="-mt-1 text-xs text-gray-400">
             Updates flow both ways as {to?.shortName ?? "the team"} works the
             lead through their system.
