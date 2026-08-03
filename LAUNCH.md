@@ -91,11 +91,32 @@ assumed:
 - What's the **best** place to put them?
 - How much **information** can we carry through with it?
 
+**Rex accounts — checked 3 Aug 2026, and not what was assumed.**
+
+`Accounts/search` with the current API user returns exactly ONE account:
+`{ id: 3517, name: "The Property Experts" }`. Railway has only
+`REX_ACCOUNT_ID` set — no `REX_ACCOUNT_PROPERTY`, no `REX_ACCOUNT_LETTINGS`.
+
+What that means:
+- **TPE is fine.** Every brand falls back to `REX_ACCOUNT_ID`, and for TPE
+  that fallback happens to be the correct account.
+- **Lettings is NOT fine.** A lettings referral currently looks its landlord
+  up in the Property Experts' account. It will mostly return
+  `matched: false`, and could in principle match the wrong person.
+- All the Rex probing done on 3 Aug — field vocabulary, duplicate counts,
+  the end-to-end stage verification — was against TPE's data. Anywhere those
+  notes say "the TLE account", read "account 3517 = The Property Experts".
+  It also explains why all 60 sampled listings were `residential_sale`.
+
+**Open question for James:** does The Lettings Experts have its own Rex
+account? If so this API user can't see it, so it needs either access granting
+or separate credentials, plus `REX_ACCOUNT_LETTINGS` in Railway. If lettings
+and sales genuinely share account 3517, then nothing needs changing and the
+lettings tracker is already pointed at the right place.
+
 Note: the Rex contact search was broken until 3 Aug 2026 (positional criteria
-were rejected, so every lookup failed and each push created a fresh contact —
-the live account has contacts duplicated up to 5×). Fixed in `lib/rex.ts`, but
-**the existing duplicates still need merging**, and that should be settled
-before pushing more volume.
+were rejected, so every lookup failed and each push created a fresh contact).
+Fixed in `lib/rex.ts`.
 
 _Detail to be added._
 
@@ -159,8 +180,9 @@ That's the remaining gap for a TPE referral to be trackable end to end.
 - `Contacts/findPossibleDuplicates` and `Properties/findPossibleDuplicate`
   exist too.
 
-**The existing duplicate problem is much bigger than our bug.** Counted on the
-live TLE account, read-only:
+**The existing duplicate problem is much bigger than our bug.** Counted
+read-only on Rex account 3517 — which is **The Property Experts**, not
+Lettings (see the account note in item 5):
 
 | Match on | Duplicate sets | Redundant records | Biggest set |
 |---|---|---|---|
