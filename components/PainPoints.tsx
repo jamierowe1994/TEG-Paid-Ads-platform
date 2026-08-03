@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import MobileSheet from "./MobileSheet";
 
 /* The empathy beat, sitting after "how it works" and before the price.
    The order of the page is deliberate: what it is → why you can trust it →
@@ -84,6 +85,8 @@ export default function PainPoints() {
   // hidden, so it must never get stuck invisible.
   const gridRef = useRef<HTMLDivElement>(null);
   const [on, setOn] = useState(false);
+  // Mobile: the points wait in a bottom sheet behind one button.
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   useEffect(() => {
     const el = gridRef.current;
@@ -133,11 +136,24 @@ export default function PainPoints() {
             Here&apos;s what we hear from agents — and what we actually do
             about it.
           </p>
+
+          {/* Mobile: the points open in a bottom sheet instead of running
+              down the page. */}
+          <button
+            onClick={() => setSheetOpen(true)}
+            className="btn-group mt-8 inline-block rounded-full px-8 py-3.5 text-sm font-semibold sm:hidden"
+          >
+            The common issues
+          </button>
         </div>
 
         {/* Uneven on purpose: two of the six run full width, so the column
-            doesn't march down the page in matching pairs. */}
-        <div ref={gridRef} className="grid gap-x-10 gap-y-10 sm:grid-cols-2">
+            doesn't march down the page in matching pairs. Hidden on mobile —
+            the sheet above carries them there. */}
+        <div
+          ref={gridRef}
+          className="grid gap-x-10 gap-y-10 max-sm:hidden sm:grid-cols-2"
+        >
           {POINTS.map((p, i) => (
             <div
               key={p.pain}
@@ -148,6 +164,25 @@ export default function PainPoints() {
           ))}
         </div>
       </div>
+
+      <MobileSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        title="The common issues"
+      >
+        <div className="space-y-7 pb-2">
+          {POINTS.map((p) => (
+            <div key={p.pain} className="border-t border-gray-900/10 pt-6">
+              <p className="text-lg font-medium leading-snug text-gray-900">
+                {p.pain}
+              </p>
+              <p className="mt-2.5 text-[15px] leading-relaxed text-gray-600">
+                {p.answer}
+              </p>
+            </div>
+          ))}
+        </div>
+      </MobileSheet>
     </div>
   );
 }

@@ -21,7 +21,7 @@ import type { UserProfile } from "@/lib/types";
 // all-around inner shadow (same as the overview/leads tiles) so the boxes
 // clearly sit forward.
 const CARD =
-  "rounded-2xl border border-gray-300 bg-white p-6 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.12),inset_0_1px_1px_rgba(255,255,255,0.7),inset_0_0_30px_rgba(0,0,0,0.08)]";
+  "rounded-2xl border border-gray-300 bg-white p-6 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.12)] lg:rounded-xl lg:border-gray-900/[0.13] lg:bg-transparent lg:shadow-none";
 
 // Monthly anniversary of the signup date, on or after today — the next time
 // they'd be billed on a rolling monthly plan.
@@ -249,7 +249,7 @@ export default function ProfilePage() {
     "w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-gray-900";
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="w-full">
       {/* Header — title left, billing summary top-right */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -260,7 +260,7 @@ export default function ProfilePage() {
             Your details and everything to do with your plan.
           </p>
         </div>
-        <div className="rounded-2xl border border-gray-300 bg-white px-5 py-3 text-right shadow-[0_2px_8px_-2px_rgba(0,0,0,0.12),inset_0_0_20px_rgba(0,0,0,0.06)]">
+        <div className="rounded-2xl border border-gray-300 bg-white px-5 py-3 text-right shadow-[0_2px_8px_-2px_rgba(0,0,0,0.12)] lg:rounded-xl lg:border-gray-900/[0.13] lg:bg-transparent lg:shadow-none">
           {isReferral ? (
             <>
               <p className="text-lg font-semibold tracking-tight">Referrals</p>

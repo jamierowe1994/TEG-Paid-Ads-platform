@@ -67,7 +67,10 @@ export default function LeadsStat({
   return (
     <div
       ref={ref}
-      className={`absolute -left-4 bottom-10 w-48 rounded-2xl bg-[#ffffff]/92 p-4 shadow-2xl backdrop-blur-md sm:-left-8 ${className}`}
+      // Mobile: tucked over the photo's bottom-left corner (the photo runs
+      // nearly full-bleed there, so hanging off the left edge put the card
+      // half off the page). sm+ keeps the original hang.
+      className={`absolute -left-4 bottom-10 w-48 rounded-2xl bg-[#ffffff]/92 p-4 shadow-2xl backdrop-blur-md max-sm:-bottom-6 max-sm:left-4 ${className} sm:-left-8`}
       style={{ transformOrigin: "center" }}
     >
       <p className="text-xs font-medium uppercase tracking-wide text-[#9ca3af]">

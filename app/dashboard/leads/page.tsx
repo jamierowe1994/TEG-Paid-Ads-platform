@@ -153,7 +153,7 @@ function LeadTile({
       onKeyDown={(e) => {
         if (e.key === "Enter") onClick((e.currentTarget as HTMLElement).getBoundingClientRect());
       }}
-      className={`relative flex w-full cursor-pointer flex-col rounded-2xl bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${pad} ${
+      className={`relative flex w-full cursor-pointer flex-col rounded-2xl bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md lg:rounded-xl lg:bg-transparent lg:shadow-none lg:hover:scale-[1.015] lg:hover:bg-white/40 lg:hover:shadow-md ${pad} ${
         selected
           ? "border border-gray-900 ring-2 ring-gray-900"
           : "border border-black/10 hover:border-black/20"
@@ -800,7 +800,7 @@ export default function LeadsPage() {
 
       {/* Headline stats — desktop only. On mobile we skip straight to the
           active list so the leads themselves are the first thing you see. */}
-      <div className="mt-8 hidden gap-4 lg:grid lg:grid-cols-5">
+      <div className="mt-8 hidden lg:block"><div className="grid grid-cols-5 divide-x divide-gray-900/[0.09]">
         <Stat label="Total leads" value={String(total)} />
         <Stat
           label="Cost this month"
@@ -818,6 +818,9 @@ export default function LeadsPage() {
           value={speed === null ? "—" : fmtDuration(speed)}
           note="Avg time to first contact"
         />
+        </div>
+        {/* Closes the band, same as Overview. */}
+        <div className="mt-6 h-px w-[92%] bg-gray-900/[0.13]" />
       </div>
 
       {/* Active / Lost / Archived tabs */}
@@ -1264,7 +1267,7 @@ function Stat({
   return (
     // No box and no inner shadow — just the figure on the faintest backdrop,
     // matching the Overview's stat band.
-    <div className="rounded-lg bg-white/45 px-5 py-4">
+    <div className="px-7 py-3 first:pl-0">
       <p className="text-[13px] text-gray-500">{label}</p>
       <p
         className="mt-2 text-[34px] font-light leading-none tracking-[-0.035em] tabular-nums"

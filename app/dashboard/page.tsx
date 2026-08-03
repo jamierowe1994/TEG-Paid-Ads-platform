@@ -76,6 +76,59 @@ function glaze() {
 }
 
 /**
+ * The ad-spend curve. A gentle line that rises to wherever the month has got
+ * to, with the head of the line marked — enough shape to be worth looking at,
+ * without pretending to be real per-day data (we don't hold that yet).
+ *
+ * TODO(spend-history): once daily spend is stored, plot the real series here
+ * instead of this eased curve.
+ */
+function SpendCurve({ pct, accent }: { pct: number; accent: string }) {
+  const W = 260;
+  const H = 56;
+  const p = Math.max(0, Math.min(100, pct)) / 100;
+  const N = 48;
+  // The curve always spans the full month; how far along it we are is what
+  // changes. Drawing only the spent fraction left a stub in the corner at low
+  // spend, which read as broken rather than as "early in the month".
+  const pts = Array.from({ length: N + 1 }, (_, i) => {
+    const t = i / N;
+    const eased = 1 - Math.pow(1 - t, 2.2);
+    // A touch of waver so it reads as a real trace, not a mathematical arc.
+    const wobble = Math.sin(t * 7) * 2.2;
+    return [t * W, H - (eased * (H - 10) * 0.9 + 5) + wobble] as const;
+  });
+  const upto = Math.max(1, Math.round(p * N));
+  const line = (from: number, to: number) =>
+    pts.slice(from, to + 1)
+      .map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`)
+      .join(" ");
+  const d = line(0, upto);
+  const rest = line(upto, N);
+  const area = `${d} L${pts[upto][0].toFixed(1)} ${H} L0 ${H} Z`;
+  const [hx, hy] = pts[upto];
+  const gid = `spend-fade-${accent.replace("#", "")}`;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="h-14 w-full" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={accent} stopOpacity="0.22" />
+          <stop offset="100%" stopColor={accent} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {/* The rest of the budget, as a baseline the line hasn't reached yet. */}
+      <line x1="0" y1={H - 0.5} x2={W} y2={H - 0.5} stroke="rgba(0,0,0,0.10)" strokeWidth="1" />
+      <path d={area} fill={`url(#${gid})`} />
+      {/* The month still to come, ghosted in. */}
+      <path d={rest} fill="none" stroke="rgba(0,0,0,0.13)" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="3 4" />
+      <path d={d} fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" />
+      <circle cx={hx} cy={hy} r="3.5" fill={accent} />
+      <circle cx={hx} cy={hy} r="6.5" fill={accent} opacity="0.18" />
+    </svg>
+  );
+}
+
+/**
  * A short vertical break between two panels — deliberately not full height, so
  * it divides without enclosing. Sits inside the panel it precedes; the parent
  * must be `relative` (every glaze panel is).
@@ -559,7 +612,7 @@ export default function DashboardOverview() {
             </div>
           ))}
         </div>
-        <div className="mt-1 h-px w-[92%] bg-gray-900/[0.13]" />
+        <div className="mt-6 h-px w-[92%] bg-gray-900/[0.13]" />
       </div>
 
       {/* Connect-your-email nudge — the setup step for sending lead emails
@@ -1193,7 +1246,7 @@ export default function DashboardOverview() {
               </div>
               {/* Bigger, clearer rows — this stays readable for the handful of
                   leads waiting at once; beyond 4 it folds the rest into a link. */}
-              <div className="mt-4 flex-1 overflow-hidden">
+              <div className="mt-4 flex-1 overflow-hidden lg:overflow-visible">
                 {untouched.slice(0, 4).map((l) => {
                   const dim =
                     hoverUncontacted !== null && hoverUncontacted !== l.id;
@@ -1204,15 +1257,15 @@ export default function DashboardOverview() {
                       onClick={() => setOpenLeadId(l.id)}
                       onMouseEnter={() => setHoverUncontacted(l.id)}
                       onMouseLeave={() => setHoverUncontacted(null)}
-                      className={`flex w-full items-center gap-2.5 border-b border-gray-900/[0.09] px-0.5 py-3 text-left transition duration-200 last:border-b-0 hover:opacity-100 lg:rounded-none ${
+                      className={`flex w-full origin-left items-center gap-2.5 border-b border-gray-900/[0.09] px-0.5 py-3 text-left transition duration-200 last:border-b-0 lg:rounded-none ${
                         dim ? "opacity-40 blur-[1.5px]" : "opacity-100 blur-0"
-                      } ${active ? "scale-[1.02]" : ""}`}
+                      } ${active ? "scale-[1.045]" : ""}`}
                     >
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-gray-900">
+                        <p className="truncate text-[15px] font-semibold text-gray-900">
                           {l.name}
                         </p>
-                        <p className="truncate text-[11px] capitalize text-gray-500">
+                        <p className="truncate text-xs capitalize text-gray-500">
                           via {l.source}
                         </p>
                       </div>
@@ -1247,7 +1300,7 @@ export default function DashboardOverview() {
                 All →
               </Link>
             </div>
-            <div className="mt-3 flex-1 space-y-1">
+            <div className="mt-4 flex-1 overflow-hidden lg:overflow-visible">
               {followUps.slice(0, 4).map((lead) => {
                 const dim = hoverLead !== null && hoverLead !== lead.id;
                 const active = hoverLead === lead.id;
@@ -1265,13 +1318,13 @@ export default function DashboardOverview() {
                     onClick={() => setOpenLeadId(lead.id)}
                     onMouseEnter={() => setHoverLead(lead.id)}
                     onMouseLeave={() => setHoverLead(null)}
-                    className={`-mx-2 flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left transition duration-200 ${
+                    className={`flex w-full origin-left items-center gap-2 border-b border-gray-900/[0.09] px-0.5 py-3 text-left transition duration-200 last:border-b-0 ${
                       dim ? "opacity-40 blur-[1.5px]" : "opacity-100 blur-0"
-                    } ${active ? "scale-[1.04] bg-white/50" : ""}`}
+                    } ${active ? "scale-[1.045]" : ""}`}
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{lead.name}</p>
-                      <p className="truncate text-[11px] text-gray-400">
+                      <p className="truncate text-[15px] font-semibold text-gray-900">{lead.name}</p>
+                      <p className="truncate text-xs text-gray-500">
                         {attempt === 3
                           ? "3 tries — ready for the funnel"
                           : attempt
@@ -1490,7 +1543,7 @@ export default function DashboardOverview() {
         )}
 
         {/* Ad spend running total — the glance-and-go view of budget left */}
-        <div className={`${g.className} flex flex-col p-5 lg:min-h-[236px]`} style={g.style}>
+        <div className={`${g.className} flex flex-col p-5 lg:min-h-[280px]`} style={g.style}>
           <div className="flex h-full flex-col justify-between">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold">Ad spend</h2>
@@ -1514,13 +1567,19 @@ export default function DashboardOverview() {
                   ? `of £${cap} · last 30 days`
                   : `of £${cap} this month`}
               </p>
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/5">
+              {/* A spend curve rather than a bar: the same total, but it shows
+                  the shape of the month as well as the number. Desktop only —
+                  the bar stays on mobile, where there isn't the room. */}
+              <div className="mt-4 hidden lg:block">
+                <SpendCurve pct={spendPct} accent={brand.accent} />
+              </div>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/5 lg:hidden">
                 <div
                   className="h-full rounded-full transition-all duration-700"
                   style={{ width: `${spendPct}%`, backgroundColor: brand.accent }}
                 />
               </div>
-              <p className="mt-2.5 text-xs font-medium text-gray-700">
+              <p className="mt-3 text-xs font-medium text-gray-700">
                 £{spendLeft} left · {leads.length} lead
                 {leads.length === 1 ? "" : "s"} so far
               </p>
@@ -1531,7 +1590,7 @@ export default function DashboardOverview() {
         {/* Leads per week — wide; click a bar to list that week's leads below.
             Given real height on mobile so the chart has room to breathe. */}
         <div
-          className={`${g.className} flex min-h-[260px] flex-col p-5 sm:col-span-2 lg:min-h-[236px]`}
+          className={`${g.className} flex min-h-[260px] flex-col p-5 sm:col-span-2 lg:min-h-[280px]`}
           style={g.style}
         >
           <ColRule />

@@ -433,7 +433,7 @@ export default function DashboardLayout({
           <Link href="/dashboard" aria-label="Launch Pad" className="block">
             <svg
               viewBox="0 0 24 24"
-              className="h-6 w-6 -rotate-45 text-gray-900"
+              className="h-7 w-7 -rotate-45 text-gray-900"
               fill="none"
               stroke="currentColor"
               strokeWidth={1.6}
@@ -858,7 +858,7 @@ export default function DashboardLayout({
             searchOpen ? "w-[460px]" : "w-72"
           }`}
         >
-          <div className="flex items-center gap-2 rounded-lg border border-gray-900/[0.10] bg-transparent px-3.5 py-1.5">
+          <div className="flex h-10 items-center gap-2 rounded-lg border border-gray-900/[0.10] bg-transparent px-3.5">
             <svg
               className="h-4 w-4 shrink-0 text-gray-400"
               fill="none"

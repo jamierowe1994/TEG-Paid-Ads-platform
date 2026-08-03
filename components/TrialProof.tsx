@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import MobileSheet from "./MobileSheet";
 
 /* The trust section — sits between "What is Launch Pad?" and "How it works",
    so the order reads: what it is → why you can believe it → how it runs.
@@ -90,6 +91,9 @@ export function Stat({
 export default function TrialProof() {
   const ref = useRef<HTMLDivElement>(null);
   const [on, setOn] = useState(false);
+  // Mobile: the supporting figures live behind a tap (the page runs long
+  // enough on a phone as it is).
+  const [statsOpen, setStatsOpen] = useState(false);
   const leads = useCountUp(LEADS, on, 2600);
 
   useEffect(() => {
@@ -155,12 +159,49 @@ export default function TrialProof() {
       </div>
 
       {/* Supporting figures run the full width under a hairline — no cards,
-          so the 555 stays the only thing with real weight. */}
-      <div className="mt-24 grid gap-12 border-t border-gray-900/10 pt-12 sm:grid-cols-3 sm:gap-8">
+          so the 555 stays the only thing with real weight. Desktop/tablet
+          only; on mobile they collapse behind the button below. */}
+      <div className="mt-24 grid gap-12 border-t border-gray-900/10 pt-12 max-sm:hidden sm:grid-cols-3 sm:gap-8">
         {SUPPORTING.map((s) => (
           <Stat key={s.label} {...s} on={on} />
         ))}
       </div>
+
+      {/* Mobile: one quiet row where the stats block was — tap for the rest
+          of the trial's numbers in a bottom sheet. */}
+      <button
+        onClick={() => setStatsOpen(true)}
+        className="mt-10 flex w-full items-center gap-4 border-t border-gray-900/10 pt-6 text-left sm:hidden"
+      >
+        <span
+          aria-hidden
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-300 text-xl font-light leading-none text-gray-700"
+        >
+          +
+        </span>
+        <span className="flex-1">
+          <span className="block text-sm font-semibold text-gray-900">
+            The trial, in numbers
+          </span>
+          <span className="mt-0.5 block text-sm text-gray-500">
+            Impressions, monthly average and more
+          </span>
+        </span>
+        <span aria-hidden className="text-gray-400">
+          ›
+        </span>
+      </button>
+      <MobileSheet
+        open={statsOpen}
+        onClose={() => setStatsOpen(false)}
+        title="The trial, in numbers"
+      >
+        <div className="space-y-9 pb-2 pt-3">
+          {SUPPORTING.map((s) => (
+            <Stat key={s.label} {...s} on={statsOpen} />
+          ))}
+        </div>
+      </MobileSheet>
     </div>
   );
 }

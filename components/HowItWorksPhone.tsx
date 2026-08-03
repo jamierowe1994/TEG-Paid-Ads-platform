@@ -107,7 +107,10 @@ export default function HowItWorksPhone() {
   return (
     // items-end so the phone hangs off the bottom of the slab rather than
     // sitting in the middle of it; the slab clips it.
-    <div className="grid items-start gap-16 lg:grid-cols-2 lg:items-center">
+    // grid-cols-1 matters on mobile: an implicit auto track sizes to the
+    // step carousel's full max-content width and drags the whole column off
+    // the screen; minmax(0,1fr) pins it to the container.
+    <div className="grid grid-cols-1 items-start gap-16 lg:grid-cols-2 lg:items-center">
       {/* hiw-copy / hiw-phone are hooks for the desktop scroll scene
           (ProofHowScene drives their opacity/position); outside the scene
           they do nothing. */}
@@ -139,9 +142,19 @@ export default function HowItWorksPhone() {
           ))}
         </div>
 
-        <ol className="mt-10 min-h-[470px] space-y-7">
+        {/* Mobile-first: a horizontal snap carousel of step cards you swipe
+            through (bleeding to the screen edge so the next card peeks in).
+            From sm up every carousel style is reset and it's the same plain
+            vertical list as always — ProofHowScene reuses this on desktop. */}
+        <ol
+          key={tab}
+          className="-mx-6 mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:mt-10 sm:block sm:min-h-[470px] sm:space-y-7 sm:overflow-visible sm:px-0 sm:pb-0"
+        >
           {STEPS[tab].map((s) => (
-            <li key={s.n} className="flex gap-5">
+            <li
+              key={s.n}
+              className="flex w-[80%] shrink-0 snap-center flex-col gap-4 rounded-3xl border border-black/5 bg-[#ffffff] p-6 shadow-[0_16px_36px_-22px_rgba(0,0,0,0.28)] sm:w-auto sm:shrink sm:snap-align-none sm:flex-row sm:gap-5 sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none"
+            >
               <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-300 text-sm font-semibold text-gray-500">
                 {s.n}
               </span>
@@ -160,7 +173,9 @@ export default function HowItWorksPhone() {
           Sits centred against the steps rather than hanging off the panel
           edge: cropping it fought the copy, since the cut had to climb high
           enough to matter and that ate the last step. */}
-      <div className="hiw-phone relative z-10 flex justify-center lg:justify-end">
+      {/* Hidden on mobile — a 600px handset is most of the screen there;
+          the step cards carry the section on their own. */}
+      <div className="hiw-phone relative z-10 flex justify-center max-sm:hidden lg:justify-end">
         {/* A soft bloom so the phone's edges separate from the slab. */}
         <span
           aria-hidden

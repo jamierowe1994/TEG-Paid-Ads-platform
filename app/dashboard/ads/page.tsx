@@ -78,7 +78,7 @@ export default function AllAdsPage() {
           </p>
         </div>
         {/* Date range */}
-        <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-1">
+        <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-white p-1 lg:border-gray-900/[0.13] lg:bg-transparent">
           {PRESETS.map((p) => (
             <button
               key={p.id}
@@ -116,7 +116,7 @@ export default function AllAdsPage() {
             <button
               key={ad.id}
               onClick={() => setOpen(ad)}
-              className="group rounded-2xl border border-gray-200 bg-white p-2 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              className="group rounded-2xl border border-gray-200 bg-white p-2 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md lg:rounded-xl lg:border-gray-900/[0.13] lg:bg-transparent lg:shadow-none lg:hover:scale-[1.015] lg:hover:bg-white/40 lg:hover:shadow-md"
             >
               {/* Image sits above, framed by the card's white margin */}
               <div
@@ -170,7 +170,7 @@ export default function AllAdsPage() {
           onClick={() => setOpen(null)}
         >
           <div
-            className="modal-pop max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-3 shadow-2xl"
+            className="modal-pop max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-3 shadow-2xl lg:rounded-xl lg:bg-[#f4f4f5]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* The whole creative, squared, with a white margin all the way

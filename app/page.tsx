@@ -111,12 +111,13 @@ export default function LandingPage() {
             into place; the subtext and button pop in after it; the icons
             flash on one by one while the nav fades in (see HeroIconStrip and
             the .hero-* rules). */}
-        <div className="flex flex-1 flex-col items-center justify-center px-6 pb-4 pt-24 text-center">
+        <div className="flex flex-1 flex-col items-center justify-center px-4 pb-4 pt-24 text-center sm:px-6">
           {/* nowrap keeps "Our ad engine." on one line while the hidden
               card expands on hover */}
-          {/* 3.4rem, not text-6xl: the biggest size at which "Our ad engine."
-              still holds one line on a 375px screen. */}
-          <h1 className="hero-title mx-auto max-w-6xl text-[3.4rem] font-light leading-[0.95] tracking-[-0.05em] text-gray-900 sm:text-7xl lg:text-8xl">
+          {/* 3.15rem is the ceiling for the wanted mobile shape — "Your
+              personal / brand." over two lines, "Our ad engine." on one —
+              measured against a 375px screen with this hero's px-4. */}
+          <h1 className="hero-title mx-auto max-w-6xl text-[3.15rem] font-light leading-[0.95] tracking-[-0.05em] text-gray-900 sm:text-7xl lg:text-8xl">
             Your personal brand.
             <br />
             <span className="lg:whitespace-nowrap">
@@ -201,7 +202,10 @@ export default function LandingPage() {
                 </Link>
               </div>
             </div>
-            <div className="relative mx-auto w-full max-w-md lg:mr-0 lg:max-w-xl">
+            {/* Mobile: the photo runs nearly edge to edge — the negative
+                margin claws back the section + grid padding, leaving a thin
+                16px gutter each side. */}
+            <div className="relative mx-auto w-full max-w-md max-sm:-mx-8 max-sm:w-auto lg:mr-0 lg:max-w-xl">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/images/paid-ads.jpg"
@@ -251,7 +255,9 @@ export default function LandingPage() {
         {/* "Everything plugs into one place" — a plain section now; the page
             just scrolls into it. (The expanding-circle entrance moved down
             to the pricing section.) */}
-        <section className="relative z-20 px-6 pb-32 pt-28 sm:pt-36">
+        {/* Hidden on mobile — with the how-it-works cards right above it,
+            this read as a third explainer in a row on a phone. */}
+        <section className="relative z-20 px-6 pb-32 pt-28 max-sm:hidden sm:pt-36">
           <Reveal>
             <PlugIntoStack />
           </Reveal>
@@ -267,7 +273,7 @@ export default function LandingPage() {
           opaque slab, so anything sitting behind the page (a bloom, the
           texture layer) shows through this one and not that one — which drew
           a hard line across the join. Same colour, both opaque, no seam. */}
-      <section id="pain" className="relative z-30 bg-[#f4f4f5] py-28">
+      <section id="pain" className="relative z-30 bg-[#f4f4f5] py-28 max-sm:py-16">
         <PainPoints />
       </section>
 

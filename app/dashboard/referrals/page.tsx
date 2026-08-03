@@ -790,15 +790,15 @@ function BrandRolodex({
 function BrandBadge({ brand: b, size = 44, bare = false }: { brand: Brand; size?: number; bare?: boolean }) {
   return (
     <div
-      className="flex shrink-0 items-center justify-center overflow-hidden rounded-xl"
-      style={{ width: size, height: size, backgroundColor: bare ? "transparent" : b.accentSoft }}
+      className="flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-transparent"
+      style={{ width: size, height: size }}
     >
       <Image
         src={b.logo}
         alt={b.name}
         width={size - 12}
         height={size - 12}
-        className="h-[70%] w-[70%] object-contain"
+        className="h-full w-full object-contain"
       />
     </div>
   );
