@@ -147,6 +147,20 @@ export default function TrialProof() {
           <p className="mt-5 max-w-[15rem] text-lg text-gray-600 lg:ml-auto">
             leads delivered to Jon, in three months
           </p>
+          {/* Mobile: the rest of the trial's numbers, one tap away — sits
+              right under the headline figure, before the CTA. */}
+          <button
+            onClick={() => setStatsOpen(true)}
+            className="mt-7 flex items-center gap-3 text-sm font-semibold text-gray-900 sm:hidden"
+          >
+            <span
+              aria-hidden
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-300 text-lg font-light leading-none text-gray-700"
+            >
+              +
+            </span>
+            The trial, in numbers
+          </button>
           <div className="mt-8 flex lg:justify-end">
             <Link
               href="/signup"
@@ -167,30 +181,6 @@ export default function TrialProof() {
         ))}
       </div>
 
-      {/* Mobile: one quiet row where the stats block was — tap for the rest
-          of the trial's numbers in a bottom sheet. */}
-      <button
-        onClick={() => setStatsOpen(true)}
-        className="mt-10 flex w-full items-center gap-4 border-t border-gray-900/10 pt-6 text-left sm:hidden"
-      >
-        <span
-          aria-hidden
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-300 text-xl font-light leading-none text-gray-700"
-        >
-          +
-        </span>
-        <span className="flex-1">
-          <span className="block text-sm font-semibold text-gray-900">
-            The trial, in numbers
-          </span>
-          <span className="mt-0.5 block text-sm text-gray-500">
-            Impressions, monthly average and more
-          </span>
-        </span>
-        <span aria-hidden className="text-gray-400">
-          ›
-        </span>
-      </button>
       <MobileSheet
         open={statsOpen}
         onClose={() => setStatsOpen(false)}
