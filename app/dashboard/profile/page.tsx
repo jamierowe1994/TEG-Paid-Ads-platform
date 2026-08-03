@@ -17,9 +17,9 @@ import { brandById, type Brand } from "@/lib/brands";
 import { packageById, PACKAGES } from "@/lib/packages";
 import type { UserProfile } from "@/lib/types";
 
-// Card styling shared across the page — darker outline + drop shadow + the
-// all-around inner shadow (same as the overview/leads tiles) so the boxes
-// clearly sit forward.
+// Card styling shared across the page. Desktop is outline-only on the page's
+// own surface, matching Overview and Leads; mobile keeps a white card with a
+// soft drop shadow, where the cards are the only structure there is.
 const CARD =
   "rounded-2xl border border-gray-300 bg-white p-6 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.12)] lg:rounded-xl lg:border-gray-900/[0.13] lg:bg-transparent lg:shadow-none";
 
