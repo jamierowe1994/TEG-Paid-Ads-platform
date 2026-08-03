@@ -447,7 +447,7 @@ export default function ReferralsPage() {
 
       {/* Two simple tabs — dark glass on mobile (matching the nav), plain pill
           on desktop. */}
-      <div className="mt-6 inline-flex rounded-full border border-white/10 bg-[rgba(28,28,32,0.5)] p-1 shadow-[0_10px_28px_-10px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-2xl backdrop-saturate-150 lg:border-gray-200 lg:bg-white lg:shadow-none lg:backdrop-blur-none">
+      <div className="mt-6 inline-flex rounded-full border border-white/10 bg-[rgba(28,28,32,0.5)] p-1 shadow-[0_10px_28px_-10px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-2xl backdrop-saturate-150 lg:border-gray-900/[0.13] lg:bg-transparent lg:shadow-none lg:backdrop-blur-none">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -523,7 +523,7 @@ export default function ReferralsPage() {
             />
           ))}
           {received.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-gray-200 py-16 text-center text-sm text-gray-400">
+            <div className="rounded-xl border border-dashed border-gray-900/[0.13] py-16 text-center text-sm text-gray-400">
               No referrals have come in yet. When another business sends you one,
               it&apos;ll appear here to accept.
             </div>
@@ -577,7 +577,7 @@ function BrandTile({ brand: b, onOpen }: { brand: Brand; onOpen: () => void }) {
   return (
     <button
       onClick={onOpen}
-      className="group flex h-full flex-col rounded-3xl border border-gray-200 bg-transparent p-4 text-left transition hover:-translate-y-0.5 hover:border-gray-300 lg:bg-white lg:shadow-sm lg:hover:shadow-md"
+      className="group flex h-full flex-col rounded-xl border border-gray-900/[0.13] bg-transparent p-4 text-left transition hover:-translate-y-0.5 hover:border-gray-900/25"
     >
       <div className="flex items-center gap-3">
         <BrandBadge brand={b} size={40} />
@@ -1384,7 +1384,7 @@ function ReferralRow({
   return (
     <button
       onClick={onClick}
-      className="block w-full rounded-3xl border border-gray-200 bg-transparent p-4 text-left transition hover:border-gray-300 lg:bg-white lg:hover:shadow-sm"
+      className="block w-full rounded-xl border border-gray-900/[0.13] bg-transparent p-4 text-left transition hover:border-gray-900/25"
     >
       <div className="flex items-center gap-3.5">
         {other && <BrandBadge brand={other} size={44} />}

@@ -426,21 +426,36 @@ export default function DashboardLayout({
     >
 
       {/* ── Sidebar controls (desktop only) ── */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col lg:flex">
-        <div className="px-5 pt-[108px]">
-          <h1 className="text-xl font-semibold leading-[1.15] tracking-tight">
-            {brand.name.split(" ").map((w, i) => (
-              <span key={i} className="block">
-                {w}
-              </span>
-            ))}
+      {/* The nav has no fill of its own — it's separated from the content by a
+          single rule running the full height of the screen. */}
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[248px] flex-col border-r border-gray-900/[0.13] lg:flex">
+        <div className="px-6 pt-9">
+          <Link href="/dashboard" aria-label="Launch Pad" className="block">
+            <svg
+              viewBox="0 0 24 24"
+              className="h-6 w-6 -rotate-45 text-gray-900"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.6}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z" />
+              <path d="M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z" />
+              <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
+            </svg>
+          </Link>
+          {/* Initials, not the full name: "The Commercial Property Experts"
+              wrapped to three lines and dominated the whole sidebar. */}
+          <h1 className="mt-7 text-[26px] font-semibold leading-none tracking-tight">
+            {brand.initials}
           </h1>
-          <p className="mt-1.5 text-[11px] uppercase tracking-wide text-gray-400">
+          <p className="mt-2 text-[10.5px] uppercase tracking-[0.14em] text-gray-400">
             Paid Ads Portal
           </p>
         </div>
 
-        <nav className="mt-8 flex-1 space-y-0.5 px-3">
+        <nav className="mt-10 flex-1 space-y-1.5 px-3">
           {navItems.map((item) => {
             const active = pathname === item.href;
             const locked = isReferralOnly && item.paidOnly;
@@ -466,7 +481,7 @@ export default function DashboardLayout({
                   key={item.href}
                   href={item.href}
                   title="Activate Paid Ads to unlock"
-                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                  className={`flex w-full items-center gap-3 rounded-lg px-3.5 py-2.5 text-[14.5px] font-medium transition ${
                     active
                       ? "bg-gray-50 text-gray-500"
                       : "text-gray-300 hover:text-gray-500"
@@ -485,7 +500,7 @@ export default function DashboardLayout({
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                className={`flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-[14.5px] font-medium transition ${
                   active
                     ? "text-gray-900"
                     : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
@@ -506,9 +521,11 @@ export default function DashboardLayout({
           })}
         </nav>
 
-        <div className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-gray-200 text-sm font-semibold text-gray-600">
+        {/* Name and photo only — the email was noise, and they know their own
+            address. Sign out drops its box for an icon and a label. */}
+        <div className="px-5 pb-7">
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-200 text-base font-semibold text-gray-600">
               {user.photo ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -520,18 +537,28 @@ export default function DashboardLayout({
                 user.name.charAt(0).toUpperCase()
               )}
             </div>
-            <div className="min-w-0 flex-1 leading-tight">
-              <p className="truncate text-sm font-medium">{user.name}</p>
-              <p className="truncate text-xs text-gray-400">{user.email}</p>
-            </div>
+            <p className="min-w-0 flex-1 truncate text-[15px] font-medium">
+              {user.name}
+            </p>
           </div>
           <button
             onClick={() => {
               signOut();
               router.push("/");
             }}
-            className="mt-3 w-full rounded-lg border border-gray-200 py-1.5 text-xs font-medium text-gray-500 transition hover:bg-gray-50 hover:text-gray-900"
+            className="mt-5 flex items-center gap-3 px-0.5 text-[13.5px] font-medium text-gray-400 transition hover:text-gray-900"
           >
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.8}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 24 24"
+            >
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
+            </svg>
             Sign out
           </button>
         </div>
@@ -994,7 +1021,7 @@ export default function DashboardLayout({
 
       {/* ── Main ── (mobile: no sidebar margin, room for the top bar + bottom
           nav; desktop margins/padding unchanged) */}
-      <main className="px-4 pb-24 pt-3 lg:ml-[240px] lg:px-8 lg:pb-8 lg:pt-[104px]">
+      <main className="px-4 pb-24 pt-3 lg:ml-[248px] lg:px-8 lg:pb-8 lg:pt-[104px]">
         {onLockedRoute ? (
           <PaidLockOverlay
             accent={brand.accent}

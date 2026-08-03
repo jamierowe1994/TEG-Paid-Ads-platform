@@ -23,6 +23,12 @@ export interface Brand {
   id: BrandId;
   name: string;
   shortName: string;
+  /**
+   * Two-or-three letter mark for tight spaces — the portal sidebar, where the
+   * full name would otherwise wrap over three lines. Not an acronym for its
+   * own sake: these are what people in the group actually call each business.
+   */
+  initials: string;
   domains: string[];
   accent: string; // hex accent colour used to theme the dashboard
   accentSoft: string; // light tint for backgrounds/badges
@@ -55,6 +61,7 @@ export const BRANDS: Brand[] = [
     id: "property",
     name: "The Property Experts",
     shortName: "Property",
+    initials: "TPE",
     // Prestige Property Experts is a higher-end sub-brand of The Property
     // Experts, not a separate business — its people sit under this brand.
     domains: [
@@ -79,6 +86,7 @@ export const BRANDS: Brand[] = [
     id: "lettings",
     name: "The Lettings Experts",
     shortName: "Lettings",
+    initials: "TLE",
     domains: ["thelettingexperts.co.uk", "lettingexperts.co.uk"],
     accent: "#E31F36", // red
     accentSoft: "#FEF2F2",
@@ -97,6 +105,7 @@ export const BRANDS: Brand[] = [
     id: "mortgage",
     name: "The Mortgage Experts",
     shortName: "Mortgage",
+    initials: "TME",
     // mab.org.uk is Mortgage Advice Bureau, this brand's parent — a large
     // share of Mortgage Experts partners are on that domain.
     domains: [
@@ -121,6 +130,7 @@ export const BRANDS: Brand[] = [
     id: "recruitment",
     name: "The Recruitment Experts",
     shortName: "Recruitment",
+    initials: "TRE",
     domains: ["therecruitmentexperts.co.uk", "recruitmentexperts.co.uk"],
     accent: "#998170", // bronze
     accentSoft: "#F6F3F1",
@@ -139,6 +149,7 @@ export const BRANDS: Brand[] = [
     id: "commercial",
     name: "The Commercial Property Experts",
     shortName: "Commercial",
+    initials: "TCPE",
     domains: ["thecommercialpropertyexperts.co.uk", "commercialpropertyexperts.co.uk"],
     accent: "#41AAE1", // blue
     accentSoft: "#ECF7FC",
@@ -157,6 +168,7 @@ export const BRANDS: Brand[] = [
     id: "fineandcountry",
     name: "Fine & Country",
     shortName: "Fine & Country",
+    initials: "F&C",
     // TODO(brand): confirm the exact email domain(s) Fine & Country agents use
     domains: ["fineandcountry.com", "fineandcountry.co.uk"],
     accent: "#A78F51", // gold
@@ -176,6 +188,7 @@ export const BRANDS: Brand[] = [
     id: "auction",
     name: "The Auction Company",
     shortName: "Auction",
+    initials: "TAC",
     // TODO(brand): confirm the exact email domain(s) for The Auction Company
     domains: ["theauctioncompany.co.uk", "auctioncompany.co.uk"],
     accent: "#A3C739", // green

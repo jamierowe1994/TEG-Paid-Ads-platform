@@ -62,16 +62,31 @@ const AD_PITCH: Record<string, (area: string) => string> = {
   auction: (a) => `Sell fast at auction in ${a}`,
 };
 
-// The shared tile surface. Deliberately quiet: a small roundover, a hairline
-// edge and no fill on desktop, so the panels read as areas divided by lines
-// rather than as floating boxes on the page. Mobile keeps a soft white fill —
-// on a small screen the tiles are the only structure there is.
+// The shared tile surface. On desktop there is no tile at all — no fill, no
+// edge, no radius. Panels are separated by the short column rules below, so
+// the page reads as one surface divided up rather than a tray of boxes.
+// Mobile keeps a soft white card: on a small screen the tiles are the only
+// structure there is.
 function glaze() {
   return {
     className:
-      "relative overflow-hidden rounded-xl border border-gray-200/70 bg-white/70 lg:border-gray-900/[0.08] lg:bg-transparent",
+      "relative overflow-hidden rounded-xl border border-gray-200/70 bg-white/70 lg:overflow-visible lg:rounded-none lg:border-0 lg:bg-transparent",
     style: {} as React.CSSProperties,
   };
+}
+
+/**
+ * A short vertical break between two panels — deliberately not full height, so
+ * it divides without enclosing. Sits inside the panel it precedes; the parent
+ * must be `relative` (every glaze panel is).
+ */
+function ColRule() {
+  return (
+    <span
+      aria-hidden
+      className="absolute -left-2 top-1/2 hidden h-24 w-px -translate-y-1/2 bg-gray-900/[0.17] lg:block"
+    />
+  );
 }
 
 export default function DashboardOverview() {
@@ -525,10 +540,18 @@ export default function DashboardOverview() {
           by hairlines rather than sat in boxes. Big, light numerals; the label
           carries the meaning, so no icons competing with it. On mobile these
           become the four square tiles in the mobile-only section below. */}
-      <div className="mt-6 hidden border-y border-gray-900/[0.08] lg:block">
-        <div className="grid grid-cols-4 divide-x divide-gray-900/[0.08]">
-          {stats.map((s) => (
-            <div key={s.label} className="px-7 py-5 first:pl-0">
+      <div className="mt-7 hidden lg:block">
+        <div className="grid grid-cols-4">
+          {stats.map((s, i) => (
+            <div key={s.label} className="relative px-8 first:pl-0">
+              {/* A short break between columns rather than a full rule — it
+                  separates the figures without drawing a box round them. */}
+              {i > 0 && (
+                <span
+                  aria-hidden
+                  className="absolute left-0 top-1/2 h-11 w-px -translate-y-1/2 bg-gray-900/[0.17]"
+                />
+              )}
               <p className="text-[40px] font-light leading-none tracking-[-0.04em] tabular-nums">
                 {s.value}
               </p>
@@ -1021,7 +1044,7 @@ export default function DashboardOverview() {
             campaign's tagged, rotating through every ad (10s each); the
             personalised mock until then. */}
         {myCreatives.length > 0 ? (
-          <div className="relative hidden overflow-hidden rounded-xl border border-white/10 text-white lg:block lg:h-[208px]">
+          <div className="relative hidden overflow-hidden rounded-xl border border-white/10 text-white lg:block lg:aspect-square">
             {/* keyed on the index so each rotation fades in */}
             <div key={creativeIdx} className="fade-up absolute inset-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1082,7 +1105,7 @@ export default function DashboardOverview() {
           </div>
         ) : (
           <div
-            className="relative hidden overflow-hidden rounded-xl border border-white/10 p-5 text-white shadow-[inset_0_0_60px_rgba(0,0,0,0.35)] lg:block lg:h-[208px]"
+            className="relative hidden overflow-hidden rounded-xl border border-white/10 p-5 text-white shadow-[inset_0_0_60px_rgba(0,0,0,0.35)] lg:block lg:aspect-square"
             style={{
               background: `radial-gradient(120% 120% at 15% 0%, ${brand.accent}, ${brand.accent}cc 45%, rgba(0,0,0,0.55)), ${brand.accent}`,
             }}
@@ -1130,7 +1153,8 @@ export default function DashboardOverview() {
 
         {/* Leads uncontacted — celebrates (in black) with a confetti pop once
             the leads have loaded and there are none to action */}
-        <div className={`${g.className} p-5 lg:h-[208px]`} style={g.style}>
+        <div className={`${g.className} flex flex-col p-5`} style={g.style}>
+          <ColRule />
           {leadsLoaded && untouched.length === 0 ? (
             <div className="relative flex h-full flex-col items-center justify-center text-center">
               <Confetti fire />
@@ -1192,7 +1216,8 @@ export default function DashboardOverview() {
 
         {/* Follow-ups — leads due back today: an attempt that's come round
             again, or a reminder that's fallen due. */}
-        <div className={`${g.className} p-5 lg:h-[208px]`} style={g.style}>
+        <div className={`${g.className} flex flex-col p-5`} style={g.style}>
+          <ColRule />
           <div className="flex h-full flex-col">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold">Follow-ups</h2>
@@ -1437,7 +1462,7 @@ export default function DashboardOverview() {
         )}
 
         {/* Ad spend running total — the glance-and-go view of budget left */}
-        <div className={`${g.className} p-5 lg:h-[208px]`} style={g.style}>
+        <div className={`${g.className} flex flex-col p-5`} style={g.style}>
           <div className="flex h-full flex-col justify-between">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold">Ad spend</h2>
@@ -1481,6 +1506,7 @@ export default function DashboardOverview() {
           className={`${g.className} flex min-h-[260px] flex-col p-5 sm:col-span-2 lg:min-h-0`}
           style={g.style}
         >
+          <ColRule />
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold lg:text-base">Leads per week</h2>
