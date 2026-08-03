@@ -99,7 +99,7 @@ before pushing more volume.
 
 _Detail to be added._
 
-## 6. Referral working + safe Rex push 🔴
+## 6. Referral working + safe Rex push 🔶
 
 The referral shouldn't jump straight from "sent" to "Rex says something
 happened". The receiving agent works it in Launch Pad first, exactly the way
@@ -113,17 +113,38 @@ leads are worked today, and only then does it reach the CRM.
 4. Pushed to Rex → from here the Rex-sourced stages take over (already built
    for lettings and TPE — see `lib/lettings-tracker.ts`).
 
-**Duplicate handling on push — the important part.** Pushing must never
-silently create a second record for someone already in Rex.
+**Duplicate handling on push — SETTLED.** ✅ Built 3 Aug 2026.
 
-- **Full match** (name + email + address): merge into the existing record and
-  update it. Work that one from then on.
-- **Partial match**: stop and ask. Show what matched and what didn't, and let
-  the agent confirm whether it's the same person. Do NOT create.
-- **Only create a new record** when the property address genuinely differs —
-  the same person can legitimately have a second property.
-- Once resolved, we know the Rex id is right and can track that file all the
-  way through.
+James's overriding rule: **a push is never refused.** Getting the file into
+Rex and tracked beats keeping it tidy — a duplicate can be merged in Rex, a
+referral that never arrived is lost.
+
+So the check is advisory. `pushLeadToRex` runs
+`Dedupe/findPossibleDuplicates` AFTER the push lands and returns
+`possibleDuplicateIds` + `duplicateCheckFailed`; the push route spreads both
+through to the client. See `lib/rex-dupes.ts`.
+
+Rex does the matching, so we inherit its own de-duplication rather than
+reinventing address comparison ("12 High St" / "12 High Street" /
+"Flat 2, 12 High St") — the part that fails quietly. A failed check reports
+`duplicateCheckFailed` rather than "none found", so an outage can't read as a
+clean bill of health.
+
+This REVERSES an earlier plan to refuse partial matches. Making it blocking
+again is a product decision, not a tidy-up.
+
+**Still to build — the working stages before Rex.** Steps 1–3 of the journey
+above don't exist yet. A referral has no working state of its own: today
+`Referral.stage` mirrors a linked lead rather than being worked directly, so
+there's nowhere to record "attempted twice" or "appointment set" on the
+referral itself. That needs:
+
+- Contact-attempt controls on a received referral, mirroring the leads funnel
+- "Contacted" surfacing back to the referrer
+- "Appointment set" recorded in Launch Pad (not Rex)
+- A push action on the referral, after which the Rex stages take over
+
+That's the remaining gap for a TPE referral to be trackable end to end.
 
 **Rex supports all of this natively** (probed read-only, 3 Aug 2026):
 
@@ -178,3 +199,4 @@ _Detail to be added._
 - ✅ (3 Aug) Portal visual pass: one flat surface matching the landing page,
   hairline dividers instead of boxes, outline-only panels across Overview,
   Leads, Referrals, All Ads and Profile.
+- ✅ (3 Aug) Advisory duplicate check on Rex push — reports, never blocks.
