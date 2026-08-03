@@ -17,9 +17,9 @@ import DomainDenied from "@/components/DomainDenied";
 import { signUp, checkEmail, refreshUser } from "@/lib/session";
 
 // One-question-at-a-time signup. Order:
-// name → email (brand auto-detect) → password → platforms → goal → package →
-// payment (Stripe placeholder) → create account → authenticate (connect email,
-// which also pulls their mobile/region/headshot from Microsoft).
+// name → email (brand auto-detect) → password → package → payment →
+// create account → authenticate (connect email, which also pulls their
+// mobile/region/headshot from Microsoft).
 
 type StepId =
   | "name"
@@ -27,21 +27,12 @@ type StepId =
   | "brand"
   | "interest"
   | "password"
-  | "platforms"
-  | "goal"
   | "package"
   | "payment"
   | "paid"
   | "authenticate";
 
 type AccountType = "paid" | "referral";
-
-const GOALS = [
-  "More valuations / appraisals",
-  "Build my personal brand locally",
-  "Generate a steady flow of leads",
-  "Dominate my patch",
-];
 
 function SignupWizard() {
   const params = useSearchParams();
@@ -59,8 +50,6 @@ function SignupWizard() {
   const [password, setPassword] = useState("");
   // Mobile, region and headshot are pulled from the agent's Microsoft account
   // at the connect step, so the wizard no longer asks for them.
-  const [platforms, setPlatforms] = useState<("instagram" | "facebook")[]>([]);
-  const [goal, setGoal] = useState("");
   const [packageId, setPackageId] = useState<string>(
     packageById(params.get("package"))?.id ?? ""
   );
@@ -84,9 +73,11 @@ function SignupWizard() {
       "interest",
       "password",
     ];
-    // Referrals-only accounts skip the paid-ads setup (platforms → payment).
+    // Referrals-only accounts skip the paid-ads setup (package → payment).
     if (accountType === "referral") return [...base, "authenticate"];
-    return [...base, "platforms", "goal", "package", "payment", "authenticate"];
+    // Ads platforms and goal were dropped from onboarding — the team sets
+    // targeting per location anyway, so asking was friction with no payoff.
+    return [...base, "package", "payment", "authenticate"];
   }, [brand, accountType]);
   const stepIndex = steps.indexOf(step === "paid" ? "authenticate" : step);
   const progress = ((stepIndex + 1) / steps.length) * 100;
@@ -169,8 +160,11 @@ function SignupWizard() {
       mobile: "",
       photo: null,
       brandId: brand.id,
-      platforms,
-      goal,
+      // Kept in the payload so the API contract is unchanged, but no longer
+      // asked at signup — the team sets targeting per location, and "what do
+      // you want to achieve" never changed what we built.
+      platforms: [],
+      goal: "",
       packageId,
       accountType: accountType === "referral" ? "referral" : "paid",
     });
@@ -518,7 +512,7 @@ function SignupWizard() {
                 onEnter={() => {
                   if (password.length < 8) return;
                   if (accountType === "referral") completeSignup();
-                  else go("platforms");
+                  else go("package");
                 }}
               />
             </div>
@@ -534,7 +528,7 @@ function SignupWizard() {
                 className={primaryBtn}
                 disabled={password.length < 8 || submitting}
                 onClick={() =>
-                  accountType === "referral" ? completeSignup() : go("platforms")
+                  accountType === "referral" ? completeSignup() : go("package")
                 }
               >
                 {accountType === "referral"
@@ -542,101 +536,6 @@ function SignupWizard() {
                     ? "Creating account…"
                     : "Create my free account"
                   : "Continue"}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ---- Platforms ---- */}
-        {step === "platforms" && (
-          <div className="fade-up" key="platforms">
-            <h1 className="text-3xl font-semibold tracking-tight">
-              Where should your ads run?
-            </h1>
-            <p className="mt-3 text-gray-500">Pick one or both.</p>
-            <div className="mt-8 grid gap-3 sm:grid-cols-2">
-              {(["instagram", "facebook"] as const).map((p) => {
-                const selected = platforms.includes(p);
-                return (
-                  <button
-                    key={p}
-                    onClick={() =>
-                      setPlatforms((prev) =>
-                        selected ? prev.filter((x) => x !== p) : [...prev, p]
-                      )
-                    }
-                    className={`rounded-xl border px-5 py-6 text-left transition ${
-                      selected
-                        ? "border-gray-900 bg-gray-900 text-white"
-                        : "border-gray-200 hover:border-gray-400"
-                    }`}
-                  >
-                    <span className="text-lg font-medium capitalize">{p}</span>
-                    <p
-                      className={`mt-1 text-sm ${
-                        selected ? "text-gray-300" : "text-gray-500"
-                      }`}
-                    >
-                      {p === "instagram"
-                        ? "Reels, stories and feed ads"
-                        : "Feed, marketplace and local reach"}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="mt-8 flex gap-3">
-              <button
-                className="rounded-xl border border-gray-200 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50"
-                onClick={back}
-              >
-                Back
-              </button>
-              <button
-                className={primaryBtn}
-                disabled={platforms.length === 0}
-                onClick={() => go("goal")}
-              >
-                Continue
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ---- Goal ---- */}
-        {step === "goal" && (
-          <div className="fade-up" key="goal">
-            <h1 className="text-3xl font-semibold tracking-tight">
-              What are you looking to achieve?
-            </h1>
-            <div className="mt-8 grid gap-3">
-              {GOALS.map((g) => (
-                <button
-                  key={g}
-                  onClick={() => setGoal(g)}
-                  className={`rounded-xl border px-5 py-4 text-left font-medium transition ${
-                    goal === g
-                      ? "border-gray-900 bg-gray-900 text-white"
-                      : "border-gray-200 hover:border-gray-400"
-                  }`}
-                >
-                  {g}
-                </button>
-              ))}
-            </div>
-            <div className="mt-8 flex gap-3">
-              <button
-                className="rounded-xl border border-gray-200 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50"
-                onClick={back}
-              >
-                Back
-              </button>
-              <button
-                className={primaryBtn}
-                disabled={!goal}
-                onClick={() => go("package")}
-              >
-                Continue
               </button>
             </div>
           </div>
