@@ -4,8 +4,8 @@
 // so this can never become a way to look up an arbitrary email against the
 // lettings CRM. A referral the caller can't see gets no answer.
 //
-// Lettings and property referrals resolve from Rex; every other brand returns
-// nothing and the page keeps showing those stages as awaiting a feed.
+// Lettings resolves from Propoly and property from Rex; every other brand
+// returns nothing and the page keeps showing those stages as awaiting a feed.
 
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
@@ -16,6 +16,7 @@ import {
   type ReferralProgress,
 } from "@/lib/lettings-tracker";
 import { rexConfigured } from "@/lib/rex";
+import { propolyConfigured } from "@/lib/propoly";
 
 export const dynamic = "force-dynamic";
 
@@ -25,9 +26,14 @@ export const dynamic = "force-dynamic";
 const TTL_MS = 5 * 60 * 1000;
 const cache = new Map<string, { at: number; value: ReferralProgress }>();
 
-// Brands whose pipeline Rex can actually answer. Everything else is left
-// awaiting a feed rather than reported as "no progress".
-const REX_TRACKED = new Set(["lettings", "property"]);
+// Which system answers for which brand. A brand is only worth asking about if
+// its system is actually connected — otherwise the referral is left awaiting a
+// feed rather than reported as "no progress".
+function trackable(brandId: string): boolean {
+  if (brandId === "lettings") return propolyConfigured();
+  if (brandId === "property") return rexConfigured();
+  return false;
+}
 
 async function progressFor(
   email: string,
@@ -49,15 +55,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
 
-  // Rex not connected (local dev, or before the env is set) is not an error —
-  // the page simply keeps its "awaiting feed" state.
-  if (!rexConfigured()) {
+  // Neither system connected (local dev, or before the env is set) is not an
+  // error — the page simply keeps its "awaiting feed" state.
+  if (!rexConfigured() && !propolyConfigured()) {
     return NextResponse.json({ connected: false, stages: {} });
   }
 
   const referrals = await listForUser(user.id, user.brandId);
   const tracked = referrals.filter(
-    (r) => REX_TRACKED.has(r.toBrandId) && r.leadEmail.trim()
+    (r) => trackable(r.toBrandId) && r.leadEmail.trim()
   );
 
   const stages: Record<string, ReferralProgress> = {};

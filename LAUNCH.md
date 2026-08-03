@@ -114,24 +114,26 @@ work is TPE, but they share account 3517. So **no env change is needed**: the
 `REX_ACCOUNT_ID` fallback is correct for both, and `REX_ACCOUNT_PROPERTY` /
 `REX_ACCOUNT_LETTINGS` are unnecessary.
 
-**But that raises a correctness question that is NOT yet resolved.** With one
-shared account, a contact can hold both a sale listing and a rental listing,
-and `progressForReferral` currently reads every listing a contact is attached
-to and sets both the lettings and the sales flags from it. A vendor's sale
-listing could therefore light up "on market" on a lettings referral, and vice
-versa. The fix is to filter by `listing_category`.
+**The cross-contamination question is now SETTLED.** ✅ 3 Aug 2026.
 
-That filter is **not built**, because the lettings category value has never
-been observed: 360 listings sampled across the account are **all**
-`residential_sale`. There is no rental stock in Rex at all in that sample.
-Plausibly the lettings side lives in Propoly rather than Rex — which would
-match Propoly holding the tenancy pipeline — but that is a guess, not a
-finding. Filtering on a value never seen would be guessing twice.
+With one shared account, a contact could hold both a sale and a rental
+listing, and the tracker read every listing and set both brands' flags from
+it — so a vendor's sale listing could light up "on market", or even "tenant
+found", on a *lettings* referral.
 
-**To settle it:** confirm whether TLE tenancies appear in Rex as listings at
-all. If they do, capture the `listing_category` value and add the filter. If
-they don't, the lettings stages should come from Propoly and the Rex-sourced
-lettings flags should be dropped rather than left to mis-fire.
+The proposed fix was a `listing_category` filter. It turned out not to be
+needed, because the premise was wrong: **lettings does not live in Rex at
+all.** 360 sampled listings are all `residential_sale` — there is no rental
+stock in the account. So rather than filter, **lettings now reads Propoly and
+does not touch Rex**, which removes the false-positive path entirely.
+
+The honest cost of that, recorded so nobody "fixes" it later by accident:
+Propoly knows nothing before a tenant is found. Its `properties` endpoint is
+an address book — no status, no marketing dates. So for lettings,
+"appointment booked" and "on market" have no source in **either** system and
+are only inferred backwards once a deal exists. **A landlord who has been
+appraised but has no tenant yet shows no progress.** That is under-reporting
+by design; the alternative was reporting things that weren't true.
 
 Note: the Rex contact search was broken until 3 Aug 2026 (positional criteria
 were rejected, so every lookup failed and each push created a fresh contact).
@@ -232,9 +234,10 @@ _Detail to be added._
 
 - ✅ (3 Aug) Rex search criteria fix — every `Contacts/search` in the app was
   failing, so `findOrCreateContact` created a duplicate on every push.
-- ✅ (3 Aug) Live lettings referral stages from Rex (appointment booked, on
-  market, tenant found), joined on the landlord's email. Referencing and
-  moved-in still need Propoly.
+- ✅ (3 Aug) Live lettings referral stages from **Propoly** — tenant found,
+  referencing, moved in, plus "didn't proceed" — joined on the landlord's
+  email. Replaces the earlier Rex-sourced lettings flags, which were reading
+  sale stock. See `lib/propoly.ts`.
 - ✅ (3 Aug) Live TPE sales stages from Rex (appointment set, property listed,
   sold STC, exchanged), joined on the vendor's email.
 - ✅ (3 Aug) Portal visual pass: one flat surface matching the landing page,

@@ -245,6 +245,7 @@ type LettingsProgress = {
   tenantFound: boolean;
   referencing: boolean;
   movedIn: boolean;
+  didNotProceed: boolean;
   soldStc: boolean;
   exchanged: boolean;
   matched: boolean;
@@ -266,26 +267,26 @@ const feePaid = (r: Referral) => r.status === "paid";
 
 const REFERRAL_PIPELINES: Partial<Record<BrandId, StageDef[]>> = {
   /* A lettings referral is a LANDLORD, so the journey starts before there's a
-     tenant at all and spans two systems. Each stage below is sourced from
-     something the TLE portal can already see:
+     tenant at all. Every stage below now comes live from PROPOLY, joined on
+     the landlord's email (see lib/propoly.ts):
 
-       Appointment booked → Rex, a market appraisal booked against the address
-       On market          → Rex, a listing exists for that property
-       Tenant found       → Rex letAgreed, or Propoly deal_started/holding_fee
-       Tenant referencing → Propoly, referencing
-       Moved in           → Propoly, move_day  ← the fee falls due here
+       Appointment booked → inferred: a deal implies the property was appraised
+       On market          → inferred: a deal implies it was marketed
+       Tenant found       → a deal exists and isn't cancelled
+       Tenant referencing → the deal reached `references` or beyond
+       Moved in           → the deal reached `complete`  ← the fee falls due here
 
-     The first three now come live from Rex, joined on the landlord's email
-     (see lib/lettings-tracker.ts). The last two still say awaitingFeed until
-     Propoly is wired — they keep the same labels, so nothing here changes
-     then beyond swapping awaitingFeed for fromFeed. */
+     The first two are inferences because Propoly holds nothing before a tenant
+     is found, and Rex holds no rental stock at all. So a landlord who's been
+     appraised but has no tenant yet sits at "Referred" — under-reporting rather
+     than claiming progress we can't see. */
   lettings: [
     { label: "Referred", reached: () => true },
     { label: "Appointment booked", fromFeed: (p) => p.appointmentBooked, awaitingFeed: true },
     { label: "On market", fromFeed: (p) => p.onMarket, awaitingFeed: true },
     { label: "Tenant found", fromFeed: (p) => p.tenantFound, awaitingFeed: true },
-    { label: "Tenant referencing", awaitingFeed: true },
-    { label: "Moved in", awaitingFeed: true },
+    { label: "Tenant referencing", fromFeed: (p) => p.referencing, awaitingFeed: true },
+    { label: "Moved in", fromFeed: (p) => p.movedIn, awaitingFeed: true },
     { label: "Fee paid", reached: feePaid },
   ],
   /* A sales referral is a VENDOR. Every stage below comes from Rex — no second
@@ -342,6 +343,17 @@ function journey(r: Referral, toBrand?: Brand, progress?: LettingsProgress): Ste
       { label: "Referred", done: true, current: false },
       { label: "Accepted", done: true, current: false },
       { label: "Didn't convert", done: false, current: true },
+    ];
+  }
+  // Every tenancy for this landlord was cancelled. That's a real outcome and
+  // roughly a fifth of Propoly's deal book, so it gets said out loud rather
+  // than left looking like a pipeline that stalled halfway.
+  if (progress?.matched && progress.didNotProceed) {
+    return [
+      { label: "Referred", done: true, current: false },
+      { label: "Appointment booked", done: true, current: false },
+      { label: "On market", done: true, current: false },
+      { label: "Didn't proceed", done: false, current: true },
     ];
   }
   const defs =
