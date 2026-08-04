@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getUser, fetchLeads, changePackage } from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
-import { PACKAGES, packageById } from "@/lib/packages";
+import { PACKAGES, packageById, adSpendCapFor } from "@/lib/packages";
 
 // Grow: show the agent their monthly ad-spend cap, let them model a higher
 // spend with a slider, and project how many leads/conversions that would
@@ -22,6 +22,11 @@ function fmtDate(d: string): string {
 
 export default function GrowPage() {
   const [brand, setBrand] = useState<Brand | null>(null);
+  /* Ad spend bundled into a licence rather than bought as a package (TLE Pro).
+     These accounts sit on the default "starter" package they never chose, so
+     every package-derived figure and every upgrade path is wrong for them —
+     they can't move tier, because there is no tier. */
+  const [licenceIncluded, setLicenceIncluded] = useState(false);
   const [currentSpend, setCurrentSpend] = useState(0);
   const [packageId, setPackageId] = useState("");
   const [leadCount, setLeadCount] = useState(0);
@@ -39,9 +44,10 @@ export default function GrowPage() {
     const u = getUser();
     if (!u) return;
     setBrand(brandById(u.brandId) ?? null);
-    const pkg = packageById(u.packageId);
-    setCurrentSpend(pkg?.adSpend ?? 0);
-    setDesired(pkg?.adSpend ?? 0);
+    const cap = adSpendCapFor(u.brandId, u.packageId);
+    setLicenceIncluded(u.accountType !== "referral" && u.brandId === "lettings");
+    setCurrentSpend(cap);
+    setDesired(cap);
     setPackageId(u.packageId);
     setNextRenewal(u.renewsAt ?? null);
     fetchLeads().then((leads) => {
@@ -111,7 +117,9 @@ export default function GrowPage() {
               </span>
             </p>
             <p className="mt-1 text-sm text-gray-400">
-              {packageById(packageId)?.name} package
+              {licenceIncluded
+                ? "Included with your Pro licence"
+                : `${packageById(packageId)?.name} package`}
             </p>
           </div>
           <div className="text-right text-sm">
@@ -128,7 +136,20 @@ export default function GrowPage() {
         </div>
       </section>
 
-      {/* Model higher spend */}
+      {/* Model higher spend.
+          Hidden for licence-included accounts: their spend is fixed by the Pro
+          licence, so a slider that models raising it is offering a control
+          they don't have. Shown as coming soon instead of quietly absent. */}
+      {licenceIncluded ? (
+        <section className="mt-6 rounded-2xl border border-gray-200 p-6 shadow-sm">
+          <h2 className="font-semibold">Want to spend more?</h2>
+          <p className="mt-1 text-sm text-gray-500">
+            Your £{currentSpend} a month comes with your Pro licence. Being able
+            to raise it from here is coming soon — for now, have a word with
+            head office.
+          </p>
+        </section>
+      ) : (
       <section className="mt-6 rounded-2xl border border-gray-200 shadow-sm p-6">
         <h2 className="font-semibold">What could more spend bring in?</h2>
         <p className="mt-1 text-sm text-gray-500">
@@ -198,16 +219,27 @@ export default function GrowPage() {
                 suggestedPackage.id !== packageId &&
                 ` · ${suggestedPackage.name} package`}
             </p>
-            <button
-              onClick={() => setShowUpgrade(true)}
-              className="rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
-              style={{ backgroundColor: brand.accent }}
-            >
-              Increase my ad spend →
-            </button>
+            {/* Licence-included accounts have no package to move, and the
+                upgrade path runs through Stripe — which they've never been
+                near. Point them at the people who can actually change it. */}
+            {licenceIncluded ? (
+              <p className="text-sm text-gray-500">
+                Your ad spend is set by your Pro licence — talk to head office
+                if you want to increase it.
+              </p>
+            ) : (
+              <button
+                onClick={() => setShowUpgrade(true)}
+                className="rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+                style={{ backgroundColor: brand.accent }}
+              >
+                Increase my ad spend →
+              </button>
+            )}
           </div>
         )}
       </section>
+      )}
 
       {/* Upgrade modal → Stripe placeholder */}
       {showUpgrade && (

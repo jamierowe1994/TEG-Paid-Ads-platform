@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { saveUser } from "@/lib/session";
+import PasswordInput from "@/components/PasswordInput";
 import type { UserProfile } from "@/lib/types";
 
 // Full-screen blocker for pre-provisioned (bulk-imported) accounts: they've
@@ -20,6 +21,13 @@ export default function SetPasswordGate({
   const [pw2, setPw2] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  const inputClass =
+    "w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-gray-900";
+  // Only judge the confirmation once there's something to judge, so the
+  // "don't match yet" hint doesn't shout at someone mid-keystroke.
+  const match = pw.length > 0 && pw2.length > 0 && pw === pw2;
+  const mismatch = pw.length > 0 && pw2.length > 0 && pw !== pw2;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -69,31 +77,41 @@ export default function SetPasswordGate({
           Choose your own to secure it — you&apos;ll use it from now on.
         </p>
         <form onSubmit={submit} className="mt-6 space-y-3">
-          <input
-            type="password"
+          {/* PasswordInput carries the reveal toggle. Being able to SEE what
+              you typed matters more here than anywhere else in the app: this
+              password is set once, on a shared starter password, and a typo
+              locks someone out of an account they've never used. */}
+          <PasswordInput
             autoFocus
             value={pw}
-            onChange={(e) => {
-              setPw(e.target.value);
+            onChange={(v) => {
+              setPw(v);
               setError("");
             }}
             placeholder="New password (8+ characters)"
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-gray-900"
+            className={inputClass}
           />
-          <input
-            type="password"
+          <PasswordInput
             value={pw2}
-            onChange={(e) => {
-              setPw2(e.target.value);
+            onChange={(v) => {
+              setPw2(v);
               setError("");
             }}
             placeholder="Type it again"
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-gray-900"
+            className={inputClass}
           />
+          {/* Confirm the match as they type rather than only on submit — the
+              point is to catch the typo before it's saved, not after. */}
+          {!error && match && (
+            <p className="text-sm font-medium text-green-600">Passwords match</p>
+          )}
+          {!error && mismatch && (
+            <p className="text-sm text-gray-400">Passwords don&apos;t match yet</p>
+          )}
           {error && <p className="text-sm text-red-500">{error}</p>}
           <button
             type="submit"
-            disabled={saving || !pw || !pw2}
+            disabled={saving || !match || pw.length < 8}
             className="w-full rounded-xl py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
             style={{ backgroundColor: accent }}
           >

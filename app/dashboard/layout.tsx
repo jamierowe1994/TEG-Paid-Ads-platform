@@ -16,6 +16,7 @@ import { getPreviewBrandId, getPreviewAccent } from "@/lib/preview";
 import type { UserProfile, Lead, Referral } from "@/lib/types";
 import HelpCentre from "@/components/HelpCentre";
 import SetPasswordGate from "@/components/SetPasswordGate";
+import ConnectEmailGate from "@/components/ConnectEmailGate";
 import PaidLockOverlay from "@/components/PaidLockOverlay";
 import { REFERRALS_LOCKED_COPY } from "@/lib/launch-phase";
 import MobileLoading from "@/components/MobileLoading";
@@ -230,6 +231,13 @@ export default function DashboardLayout({
   }, [router]);
 
   const isReferralOnly = user?.accountType === "referral";
+  // Pre-provisioned launch accounts must link their work email before the
+  // portal opens up — see ConnectEmailGate for why this is an identity check.
+  const needsEmailProof =
+    !!user &&
+    user.accountType === "paid" &&
+    user.brandId === "lettings" &&
+    !user.msEmail;
 
   // Referrals stay locked until V2, when the rest of the group is on the
   // platform. Defaults to LOCKED and only opens once the server confirms — so
@@ -1296,12 +1304,27 @@ export default function DashboardLayout({
 
       {/* Pre-provisioned accounts: nothing happens until they swap the shared
           launch password for one of their own. */}
-      {user.mustResetPassword && (
+      {user.mustResetPassword ? (
         <SetPasswordGate
           user={user}
           accent={brand.accent}
           onDone={(u) => setUser(u)}
         />
+      ) : (
+        /* Then prove who they are. Password first, email second — chained, so
+           the second gate only appears once the first is done.
+
+           Scoped to TLE paid accounts because that is exactly the set that was
+           pre-provisioned: created for them, all sharing one starter password,
+           so a password alone proves nothing about identity. Everyone else
+           chose their own password at signup and keeps the skippable prompt.
+
+           Derived rather than stored on the user: it needs no migration, and
+           it can't drift out of date — the moment they connect an address the
+           gate is gone. */
+        needsEmailProof && (
+          <ConnectEmailGate user={user} accent={brand.accent} />
+        )
       )}
     </div>
   );

@@ -230,8 +230,23 @@ export default function DashboardOverview() {
   // it stays away on future visits).
   const [trackerLeaving, setTrackerLeaving] = useState(false);
   const [trackerGone, setTrackerGone] = useState(false);
+  /* Ad spend bundled into a licence rather than bought as a package (TLE Pro).
+     They never picked a package, never paid, and can't change their spend —
+     so package-shaped UI is wrong for them throughout. */
+  const licenceIncluded =
+    !!user && user.accountType === "paid" && user.brandId === "lettings";
   useEffect(() => {
-    if (!user || user.onboardingStage !== "live") return;
+    if (!user) return;
+    /* Pre-provisioned launch accounts skip the onboarding tracker entirely.
+       It walks through choosing a package, paying and getting a campaign
+       built — all of which was done FOR them before they ever signed in, so
+       it would show a to-do list of things already finished. Straight to
+       gone, no exit animation: there's nothing to wave off. */
+    if (licenceIncluded) {
+      setTrackerGone(true);
+      return;
+    }
+    if (user.onboardingStage !== "live") return;
     const key = `tracker-away-${user.id}`;
     try {
       if (localStorage.getItem(key)) {
@@ -1515,7 +1530,7 @@ export default function DashboardOverview() {
             </ol>
 
             <div className="mt-auto pt-4">
-              {!isLive && (
+              {!isLive && !licenceIncluded && (
                 <Link
                   href="/dashboard/grow"
                   className="block text-xs font-medium text-white/60 hover:text-white"
