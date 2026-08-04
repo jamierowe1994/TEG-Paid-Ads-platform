@@ -18,7 +18,7 @@ import {
   updateLeadFields as updateLeadFieldsApi,
 } from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
-import { packageById } from "@/lib/packages";
+import { packageById, adSpendCapFor } from "@/lib/packages";
 import SourceIcon from "@/components/SourceIcon";
 import { LeadModal, stageLabel, shortDate } from "./lead-modal";
 import type { Lead, LeadStage } from "@/lib/types";
@@ -496,7 +496,8 @@ export default function LeadsPage() {
     setBrand(brandById(u.brandId) ?? null);
     setEmailConnected(!!u.msEmail);
     const pkg = packageById(u.packageId);
-    setAdSpendCap(pkg?.adSpend ?? 0);
+    // TLE's Pro licence caps ad spend at £100, not the package tier.
+    setAdSpendCap(adSpendCapFor(u.brandId, u.packageId));
     fetch("/api/my/meta", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {

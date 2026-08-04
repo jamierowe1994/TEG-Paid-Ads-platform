@@ -17,7 +17,7 @@ import {
 } from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
 import { getPreviewBrandId, getPreviewAccent } from "@/lib/preview";
-import { packageById } from "@/lib/packages";
+import { packageById, adSpendCapFor } from "@/lib/packages";
 import { ONBOARDING_STAGES, stageIndex } from "@/lib/onboarding";
 import Confetti from "@/components/Confetti";
 import Collapse from "@/components/Collapse";
@@ -465,7 +465,10 @@ export default function DashboardOverview() {
   // by day-of-month — an estimate, labelled as such.
   const now = new Date();
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const cap = pkg?.adSpend ?? 0;
+  // TLE's Pro licence allows £100/month, not the package tier — see
+  // adSpendCapFor. Reading pkg.adSpend here showed them a budget twice the
+  // size of the real one, so the bar never looked close to spent.
+  const cap = adSpendCapFor(user.brandId, user.packageId);
   const spendIsLive = myMeta !== null;
   const spent = spendIsLive
     ? Math.round(myMeta.spend)
@@ -1138,7 +1141,7 @@ export default function DashboardOverview() {
                 {myCreatives[creativeIdx % myCreatives.length].adName}
               </p>
               <p className="text-xs text-white/70">
-                £{pkg?.adSpend?.toLocaleString("en-GB")}/mo
+                £{cap.toLocaleString("en-GB")}/mo
               </p>
             </div>
             <div className="absolute inset-x-0 top-0 flex items-start justify-between p-5 lg:hidden">
@@ -1171,7 +1174,7 @@ export default function DashboardOverview() {
             <div className="flex items-center justify-between pb-4">
               <h2 className="text-sm font-semibold text-gray-900">Current ad</h2>
               <span className="text-[11px] font-medium text-gray-500">
-                £{pkg?.adSpend?.toLocaleString("en-GB")}/mo
+                £{cap.toLocaleString("en-GB")}/mo
               </span>
             </div>
           <div
@@ -1186,7 +1189,7 @@ export default function DashboardOverview() {
                   Current ad
                 </span>
                 <span className="text-xs font-medium text-white/80">
-                  £{pkg?.adSpend?.toLocaleString("en-GB")}/mo
+                  £{cap.toLocaleString("en-GB")}/mo
                 </span>
               </div>
 
@@ -1523,7 +1526,7 @@ export default function DashboardOverview() {
               <div className="mt-3 border-t border-white/10 pt-3">
                 <p className="text-[11px] text-white/50">Current ad spend</p>
                 <p className="text-lg font-semibold">
-                  £{pkg?.adSpend?.toLocaleString("en-GB")}
+                  £{cap.toLocaleString("en-GB")}
                   <span className="text-xs font-normal text-white/50">/mo</span>
                 </p>
               </div>

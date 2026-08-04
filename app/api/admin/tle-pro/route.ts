@@ -32,6 +32,7 @@ import { hashPassword } from "@/lib/auth";
 import { partnersForBrandWithPackage, teamHubConfigured } from "@/lib/team-hub";
 import { packageForEmail } from "@/lib/team-hub";
 import { connectMetaRef, parseCampaignIds, metaTokenSet } from "@/lib/meta";
+import { licenceIncludesAds, adsException } from "@/lib/ads-entitlement";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +58,8 @@ export interface ProRow {
   /** From Team Hub. May be blank — the UI lets it be typed in. */
   email: string;
   partnerPackage: string | null;
+  /** Set when they're on the list by exception rather than by licence. */
+  exceptionReason?: string | null;
   /** Launch Pad state, so the tab shows what's already done. */
   hasAccount: boolean;
   connected: boolean;
@@ -80,8 +83,10 @@ export async function GET(req: NextRequest) {
   const rows: ProRow[] = [];
 
   for (const p of partners) {
-    if ((p.partnerPackage ?? "").trim().toLowerCase() !== "pro") continue;
     const { email, partnerPackage } = p;
+    // The SAME test signup uses, so the roster and the signup flow can never
+    // disagree about who is entitled — including named exceptions.
+    if (!licenceIncludesAds(email, partnerPackage)) continue;
     // A Pro partner with no address in the Hub is still LISTED — their email
     // is typed in on the tab. Dropping them would hide someone who's entitled.
     const existing = email ? await findByEmail(email) : undefined;
@@ -90,6 +95,7 @@ export async function GET(req: NextRequest) {
       name: p.name,
       email,
       partnerPackage,
+      exceptionReason: adsException(email),
       hasAccount: !!existing,
       connected: campaignIds.length > 0,
       campaignIds,
@@ -124,7 +130,7 @@ export async function POST(req: NextRequest) {
 
   // Entitlement is re-read from Team Hub, never taken from the request.
   const { partnerPackage } = await packageForEmail(email);
-  if ((partnerPackage ?? "").trim().toLowerCase() !== "pro") {
+  if (!licenceIncludesAds(email, partnerPackage)) {
     return NextResponse.json(
       {
         error: partnerPackage

@@ -26,6 +26,7 @@ interface ProRow {
   connected: boolean;
   campaignIds: string[];
   awaitingFirstSignIn: boolean;
+  exceptionReason?: string | null;
 }
 
 interface Campaign {
@@ -210,10 +211,19 @@ export default function TleProInvite({ pass }: { pass: string }) {
                     {row.name || "(no name in Team Hub)"}
                   </p>
                   <p className="text-xs text-gray-400">
-                    {row.partnerPackage} licence
+                    {row.exceptionReason
+                      ? "By exception"
+                      : `${row.partnerPackage} licence`}
                     {row.hasAccount ? " · account exists" : ""}
                     {row.awaitingFirstSignIn ? " · not signed in yet" : ""}
                   </p>
+                  {/* Say WHY someone is on the list without a Pro licence, so
+                      it never looks like a mistake to whoever reads it next. */}
+                  {row.exceptionReason && (
+                    <p className="mt-1 text-xs text-amber-700">
+                      {row.exceptionReason}
+                    </p>
+                  )}
                 </div>
                 <input
                   value={s.email}

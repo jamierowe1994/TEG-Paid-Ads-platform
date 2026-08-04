@@ -14,7 +14,7 @@ import {
   changePassword,
 } from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
-import { packageById, PACKAGES } from "@/lib/packages";
+import { packageById, PACKAGES, adSpendCapFor } from "@/lib/packages";
 import type { UserProfile } from "@/lib/types";
 
 // Card styling shared across the page. Desktop is outline-only on the page's
@@ -217,6 +217,12 @@ export default function ProfilePage() {
     ? new Date(user.renewsAt)
     : nextBillingDate(user.createdAt);
   const isReferral = user.accountType === "referral";
+  /* Paid Ads bundled into a licence rather than bought as a package — TLE's
+     Pro tier. These accounts sit on the default "starter" package because
+     they never picked one, so every package figure (price, management fee,
+     ad spend) is meaningless for them and reads as a bill they don't owe. */
+  const licenceIncluded = !isReferral && user.brandId === "lettings";
+  const adCap = adSpendCapFor(user.brandId, user.packageId);
 
   async function doUpgrade() {
     if (upgrading || !user) return;
@@ -266,6 +272,13 @@ export default function ProfilePage() {
               <p className="text-lg font-semibold tracking-tight">Referrals</p>
               <p className="mt-0.5 text-xs font-semibold text-green-600">
                 Free plan
+              </p>
+            </>
+          ) : licenceIncluded ? (
+            <>
+              <p className="text-lg font-semibold tracking-tight">Paid Ads</p>
+              <p className="mt-0.5 text-xs font-semibold text-green-600">
+                Included with your Pro licence
               </p>
             </>
           ) : (
@@ -628,11 +641,13 @@ export default function ProfilePage() {
             <div className="mt-3 grid grid-cols-2 gap-3">
               <div className="rounded-xl border border-gray-200 p-3">
                 <p className="text-xs text-gray-400">Management fee</p>
-                <p className="mt-0.5 font-semibold">£{pkg?.managementFee}/mo</p>
+                <p className="mt-0.5 font-semibold">
+                  {licenceIncluded ? "Included" : `£${pkg?.managementFee}/mo`}
+                </p>
               </div>
               <div className="rounded-xl border border-gray-200 p-3">
                 <p className="text-xs text-gray-400">Ad spend to Meta</p>
-                <p className="mt-0.5 font-semibold">£{pkg?.adSpend}/mo</p>
+                <p className="mt-0.5 font-semibold">£{adCap}/mo</p>
               </div>
             </div>
 

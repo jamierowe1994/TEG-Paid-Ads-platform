@@ -26,6 +26,41 @@ import { packageForEmail, teamHubConfigured } from "./team-hub";
 /** Licence tiers that include Paid Ads. Pro only — confirmed by James. */
 const INCLUDES_ADS = new Set(["pro"]);
 
+/**
+ * Named people who get Paid Ads WITHOUT a Pro licence.
+ *
+ * Deliberately held here rather than by editing `partner_package` in Team Hub.
+ * Writing "Pro" onto their Hub record would state that they hold a licence
+ * they don't pay for, and that field is read by other systems for billing and
+ * reporting — so the fix would be a lie that spreads. Recording the exception
+ * where the decision applies keeps Team Hub true and keeps the reason attached
+ * to it.
+ *
+ * Every entry needs a why. If nobody can say why someone is on this list, they
+ * should come off it.
+ */
+const ADS_EXCEPTIONS: Record<string, string> = {
+  "kirstie.mulholland@thelettingexperts.co.uk":
+    "Runs TLE back-office and admin. Gets the same £100 ad spend without paying for Pro (James, 4 Aug 2026).",
+};
+
+/** Why this person is an exception, or null if they aren't one. */
+export function adsException(email: string): string | null {
+  return ADS_EXCEPTIONS[email.trim().toLowerCase()] ?? null;
+}
+
+/**
+ * Does this person get Paid Ads included? The single test, so signup and the
+ * launch roster can never disagree about who is entitled.
+ */
+export function licenceIncludesAds(
+  email: string,
+  partnerPackage: string | null
+): boolean {
+  if (adsException(email)) return true;
+  return INCLUDES_ADS.has((partnerPackage ?? "").trim().toLowerCase());
+}
+
 /** Brands whose licence bundles Paid Ads. */
 const BUNDLED_BRANDS = new Set<BrandId>(["lettings"]);
 
@@ -65,11 +100,12 @@ export async function adsEntitlementFor(
   // That routes them to a human rather than charging them or letting them in
   // free, which is the right place for an unanswerable billing question.
   const { partnerPackage, found } = await packageForEmail(email);
-  const tier = (partnerPackage ?? "").trim().toLowerCase();
 
   return {
-    outcome: INCLUDES_ADS.has(tier) ? "included" : "needs-upgrade",
-    partnerPackage: partnerPackage,
+    outcome: licenceIncludesAds(email, partnerPackage)
+      ? "included"
+      : "needs-upgrade",
+    partnerPackage,
     foundInHub: found && teamHubConfigured(),
   };
 }

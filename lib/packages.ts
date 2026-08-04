@@ -134,3 +134,41 @@ export function packageById(id: string | null | undefined): AdPackage | undefine
   const resolved = LEGACY_IDS[id] ?? id;
   return PACKAGES.find((p) => p.id === resolved);
 }
+
+// ── The Lettings Experts' Pro licence ───────────────────────────────────────
+//
+// TLE launched Paid Ads first, and it's bundled into their Pro licence rather
+// than sold as one of the packages above. That bundle allows **£100 of ad
+// spend a month** — NOT the £150/£300/£450 the packages carry.
+//
+// This matters because every TLE Pro account is created on the default
+// "starter" package (there's nothing else to put there — they never picked a
+// package and never paid for one). Reading `adSpend` off that package would
+// tell a TLE partner they had £150/mo to spend, and progress bars would sit
+// at two thirds of a budget that doesn't exist. Their real spend hovers
+// around £100 because £100 is the actual cap.
+//
+// Every other brand is unaffected and uses its package's ad spend as before.
+
+/** Monthly ad spend included in the TLE Pro licence. */
+export const TLE_PRO_AD_SPEND_CAP = 100;
+
+/** Brands whose ad spend comes from a licence rather than a package. */
+const LICENCE_CAPPED_BRANDS = new Set(["lettings"]);
+
+/**
+ * The monthly ad spend budget for an account — the single source of truth.
+ *
+ * Use this ANYWHERE a cap is shown or measured against. Reading
+ * `packageById(user.packageId).adSpend` directly is what this exists to
+ * replace: it is right for most of the group and quietly wrong for TLE.
+ */
+export function adSpendCapFor(
+  brandId: string | null | undefined,
+  packageId: string | null | undefined
+): number {
+  if (brandId && LICENCE_CAPPED_BRANDS.has(brandId)) {
+    return TLE_PRO_AD_SPEND_CAP;
+  }
+  return packageById(packageId)?.adSpend ?? 0;
+}
