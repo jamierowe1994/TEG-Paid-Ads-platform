@@ -1167,3 +1167,67 @@ export async function connectMetaRef(raw: string): Promise<MetaConnection> {
     }
   }
 }
+
+// ── Reconciling live ads against the staff directory ────────────────────────
+
+export interface AdAccountSummary {
+  id: string;
+  name: string;
+}
+
+/**
+ * Every ad account this System User can see.
+ *
+ * Used to answer "who has live ads?" without anyone having to list the
+ * accounts by hand. If the token is scoped to specific accounts rather than a
+ * whole business this returns only those — which is correct, since an account
+ * we can't see is one we can't report on either way.
+ */
+export async function listAccessibleAdAccounts(): Promise<AdAccountSummary[]> {
+  if (!metaTokenSet()) return [];
+  const out: AdAccountSummary[] = [];
+  let path = "me/adaccounts";
+  let params: Record<string, string> = { fields: "id,name", limit: "200" };
+  // Paginate: a business with many accounts won't fit one page, and silently
+  // reporting on the first 200 would look like a complete answer.
+  for (let page = 0; page < 20; page++) {
+    const res = (await graph(path, params)) as {
+      data?: Array<{ id?: string; name?: string }>;
+      paging?: { next?: string; cursors?: { after?: string } };
+    };
+    for (const a of res.data ?? []) {
+      if (a.id) out.push({ id: String(a.id), name: a.name ?? "(unnamed)" });
+    }
+    const after = res.paging?.cursors?.after;
+    if (!res.paging?.next || !after) break;
+    path = "me/adaccounts";
+    params = { fields: "id,name", limit: "200", after };
+  }
+  return out;
+}
+
+/** Campaigns in one ad account, with the status that says whether it's live. */
+export async function campaignsInAccount(
+  accountId: string
+): Promise<ConnectedCampaign[]> {
+  const act = normaliseAct(accountId) ?? accountId;
+  const res = (await graph(`${act}/campaigns`, {
+    fields: "id,name,status,effective_status",
+    limit: "200",
+  })) as {
+    data?: Array<{
+      id: string;
+      name?: string;
+      status?: string;
+      effective_status?: string;
+    }>;
+  };
+  return (res.data ?? []).map((c) => ({
+    id: String(c.id),
+    name: c.name ?? "(unnamed)",
+    // effective_status accounts for the account or campaign being paused
+    // upstream — `status` alone can say ACTIVE on a campaign that isn't
+    // actually delivering, which is exactly the distinction being checked.
+    status: c.effective_status ?? c.status ?? "UNKNOWN",
+  }));
+}

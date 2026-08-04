@@ -10,6 +10,7 @@ import BrandMark from "@/components/BrandMark";
 import AgentProfile from "@/components/AgentProfile";
 import AccountImport from "@/components/AccountImport";
 import TleProInvite from "@/components/TleProInvite";
+import AdReconciliation from "@/components/AdReconciliation";
 import PasswordInput from "@/components/PasswordInput";
 import type { UserProfile, Referral } from "@/lib/types";
 import ICONS, { SocialIcon } from "@/components/SocialIcons";
@@ -1696,7 +1697,12 @@ export default function AdminPage() {
 
         {/* ═══ PERFORMANCE ═══ */}
         {/* TEMPORARY — the TLE V1 launch tab. Remove once everyone's on. */}
-        {tab === "invite" && <TleProInvite pass={password} />}
+        {tab === "invite" && (
+          <div className="space-y-6">
+            <AdReconciliation pass={password} />
+            <TleProInvite pass={password} />
+          </div>
+        )}
 
         {tab === "performance" && (
           <>

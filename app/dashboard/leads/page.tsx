@@ -466,8 +466,13 @@ export default function LeadsPage() {
   const [brand, setBrand] = useState<Brand | null>(null);
   const [emailConnected, setEmailConnected] = useState(false);
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [adSpend, setAdSpend] = useState(0);
-  const [monthlyCost, setMonthlyCost] = useState(0);
+  // The monthly AD SPEND BUDGET from their package — a cap to measure against,
+  // never a figure to present as money spent.
+  const [adSpendCap, setAdSpendCap] = useState(0);
+  // Real Meta spend for this agent's own campaigns. Null until the admin has
+  // tagged a campaign and Meta is connected — and it STAYS null rather than
+  // falling back to a plausible-looking number.
+  const [liveSpend, setLiveSpend] = useState<number | null>(null);
   const [newOnly, setNewOnly] = useState(false);
   // Default to this week — the freshest leads are the ones that matter most.
   const [range, setRange] = useState<TimeRange>("7d");
@@ -491,8 +496,13 @@ export default function LeadsPage() {
     setBrand(brandById(u.brandId) ?? null);
     setEmailConnected(!!u.msEmail);
     const pkg = packageById(u.packageId);
-    setAdSpend(pkg?.adSpend ?? 0);
-    setMonthlyCost(pkg?.price ?? 0);
+    setAdSpendCap(pkg?.adSpend ?? 0);
+    fetch("/api/my/meta", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.configured && d?.snapshot) setLiveSpend(d.snapshot.spend ?? 0);
+      })
+      .catch(() => {});
     fetchLeads().then((ls) => {
       setLeads(ls);
       // Deep link from the global search bar: /dashboard/leads?lead=<id>
@@ -802,10 +812,22 @@ export default function LeadsPage() {
           active list so the leads themselves are the first thing you see. */}
       <div className="mt-8 hidden lg:block"><div className="grid grid-cols-5 divide-x divide-gray-900/[0.09]">
         <Stat label="Total leads" value={String(total)} />
+        {/* Real Meta spend, not the package price.
+            This used to read `£{package.price}` under the label "Cost this
+            month", which was the plan's LIST PRICE and would show the same
+            figure to someone who had spent nothing. It reads as a bill, so it
+            got queried — correctly. It now shows what Meta says has actually
+            been spent, and shows nothing at all when we don't know. */}
         <Stat
-          label="Cost this month"
-          value={`£${monthlyCost}`}
-          note={`£${adSpend} of that is ad spend`}
+          label="Ad spend this month"
+          value={liveSpend === null ? "—" : `£${Math.round(liveSpend)}`}
+          note={
+            liveSpend === null
+              ? "Waiting on Meta"
+              : adSpendCap > 0
+                ? `of £${adSpendCap} monthly budget`
+                : undefined
+          }
         />
         <Stat
           label="Appointments booked"
