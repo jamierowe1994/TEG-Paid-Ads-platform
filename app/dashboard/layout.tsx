@@ -9,6 +9,7 @@ import {
   fetchNotifications,
   fetchLeads,
   fetchReferrals,
+  fetchLaunchPhase,
 } from "@/lib/session";
 import { brandById, type Brand } from "@/lib/brands";
 import { getPreviewBrandId, getPreviewAccent } from "@/lib/preview";
@@ -16,6 +17,7 @@ import type { UserProfile, Lead, Referral } from "@/lib/types";
 import HelpCentre from "@/components/HelpCentre";
 import SetPasswordGate from "@/components/SetPasswordGate";
 import PaidLockOverlay from "@/components/PaidLockOverlay";
+import { REFERRALS_LOCKED_COPY } from "@/lib/launch-phase";
 import MobileLoading from "@/components/MobileLoading";
 import PullToRefresh from "@/components/PullToRefresh";
 
@@ -229,6 +231,22 @@ export default function DashboardLayout({
 
   const isReferralOnly = user?.accountType === "referral";
 
+  // Referrals stay locked until V2, when the rest of the group is on the
+  // platform. Defaults to LOCKED and only opens once the server confirms — so
+  // a slow or failed fetch can't briefly advertise a feature that isn't there.
+  const [referralsOn, setReferralsOn] = useState(false);
+  useEffect(() => {
+    fetchLaunchPhase().then((p) => setReferralsOn(p.referralsEnabled));
+  }, []);
+
+  /** Is this nav item locked, and why? One place, so the sidebar and the
+   *  bottom bar can't drift apart. */
+  const lockOf = (item: { href: string; paidOnly?: boolean }) => {
+    if (!referralsOn && item.href === "/dashboard/referrals") return "referrals";
+    if (isReferralOnly && item.paidOnly) return "paid";
+    return null;
+  };
+
   // Which of the four bottom-nav tabs is active — drives the sliding
   // highlight surround. -1 (e.g. on Profile) hides it.
   const mainActiveIndex = NAV.slice(0, 4).findIndex((n) => n.href === pathname);
@@ -242,14 +260,20 @@ export default function DashboardLayout({
   const onLockedRoute =
     isReferralOnly && NAV.some((n) => n.href === pathname && n.paidOnly);
 
+  // Same treatment for the Referrals page itself while it's locked.
+  const onReferralsLockedRoute =
+    !referralsOn && pathname === "/dashboard/referrals";
+
   // For a referrals-only account, Referrals is their home — bump it to the top
-  // of the nav so the sidebar leads with what they actually use.
+  // of the nav so the sidebar leads with what they actually use. Except while
+  // referrals are locked, when leading with the one thing they can't use would
+  // be perverse.
   const navItems = useMemo(() => {
-    if (!isReferralOnly) return NAV;
+    if (!isReferralOnly || !referralsOn) return NAV;
     const referrals = NAV.filter((n) => n.href === "/dashboard/referrals");
     const rest = NAV.filter((n) => n.href !== "/dashboard/referrals");
     return [...referrals, ...rest];
-  }, [isReferralOnly]);
+  }, [isReferralOnly, referralsOn]);
 
   // Notification dots + campaign-stage toast — refresh on navigation and on a
   // light interval.
@@ -283,7 +307,9 @@ export default function DashboardLayout({
 
   const dotFor = (href: string) =>
     (href === "/dashboard/leads" && notifs.newLeads > 0) ||
-    (href === "/dashboard/referrals" && notifs.pendingReferrals > 0);
+    // Suppressed while referrals are locked: a badge nagging someone towards a
+    // tab they can't open is just an itch they can't scratch.
+    (href === "/dashboard/referrals" && referralsOn && notifs.pendingReferrals > 0);
 
   // ── Search ────────────────────────────────────────────────────────────────
   const q = query.trim().toLowerCase();
@@ -458,7 +484,8 @@ export default function DashboardLayout({
         <nav className="mt-10 flex-1 space-y-1.5 px-3">
           {navItems.map((item) => {
             const active = pathname === item.href;
-            const locked = isReferralOnly && item.paidOnly;
+            const lockKind = lockOf(item);
+            const locked = lockKind !== null;
             const icon = (
               <svg
                 className="h-4 w-4"
@@ -480,7 +507,7 @@ export default function DashboardLayout({
                 <Link
                   key={item.href}
                   href={item.href}
-                  title="Activate Paid Ads to unlock"
+                  title={lockKind === "referrals" ? "Referrals open up in the next release" : "Activate Paid Ads to unlock"}
                   className={`flex w-full items-center gap-3 rounded-lg px-3.5 py-2.5 text-[14.5px] font-medium transition ${
                     active
                       ? "bg-gray-50 text-gray-500"
@@ -1024,7 +1051,19 @@ export default function DashboardLayout({
       {/* ── Main ── (mobile: no sidebar margin, room for the top bar + bottom
           nav; desktop margins/padding unchanged) */}
       <main className="px-4 pb-24 pt-3 lg:ml-[248px] lg:px-8 lg:pb-8 lg:pt-[104px]">
-        {onLockedRoute ? (
+        {onReferralsLockedRoute ? (
+          /* No CTA: there is nothing they can do to unlock this yet, and a
+             button that can't help is worse than no button. */
+          <PaidLockOverlay
+            accent={brand.accent}
+            title={REFERRALS_LOCKED_COPY.title}
+            blurb={REFERRALS_LOCKED_COPY.blurb}
+            cta={null}
+            footnote={null}
+          >
+            {children}
+          </PaidLockOverlay>
+        ) : onLockedRoute ? (
           <PaidLockOverlay
             accent={brand.accent}
             title={LOCK_COPY[pathname]?.title ?? "This is a Paid Ads page"}
@@ -1149,7 +1188,8 @@ export default function DashboardLayout({
               />
               {NAV.slice(0, 4).map((item) => {
                 const active = pathname === item.href;
-                const locked = isReferralOnly && item.paidOnly;
+                const lockKind = lockOf(item);
+                const locked = lockKind !== null;
                 return (
                   <Link
                     key={item.href}

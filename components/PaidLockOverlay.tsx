@@ -2,23 +2,35 @@
 
 import type { ReactNode } from "react";
 
-// Shown to referrals-only accounts when they open a Paid-Ads page (Overview,
-// Leads, All Ads). Rather than bounce them away, we render the real page —
-// blurred and non-interactive — behind a clear "Activate Paid Ads" card, so
-// it's obvious the page exists and what unlocks it. The CTA drops them on the
-// billing/upgrade section of their profile.
+// A locked page: the real thing rendered blurred and non-interactive behind a
+// card explaining what unlocks it. Used in two places, which is why the CTA and
+// footnote are props rather than fixed copy:
+//
+//   · A referrals-only account opening a Paid-Ads page → "Activate Paid Ads".
+//   · Anyone opening Referrals before V2 → no CTA at all, because there is
+//     nothing they can do to unlock it yet. A button that can't help is worse
+//     than no button.
+//
+// Showing the page rather than bouncing them away is the point: they can see
+// what's there and why it's shut.
 export default function PaidLockOverlay({
   children,
   accent,
   title,
   blurb,
   onActivate,
+  cta = "Activate Paid Ads",
+  footnote = "Keep using Referrals free — activate Paid Ads whenever you're ready.",
 }: {
   children: ReactNode;
   accent: string;
   title: string;
   blurb: string;
-  onActivate: () => void;
+  /** Omitted together with `cta` for a lock the user can't act on. */
+  onActivate?: () => void;
+  /** Null hides the button entirely. */
+  cta?: string | null;
+  footnote?: string | null;
 }) {
   return (
     <div className="relative min-h-[70vh]">
@@ -57,19 +69,21 @@ export default function PaidLockOverlay({
           <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-gray-500">
             {blurb}
           </p>
-          <button
-            onClick={onActivate}
-            className="mt-6 inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
-            style={{ backgroundColor: accent }}
-          >
-            Activate Paid Ads
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M13 6l6 6-6 6" />
-            </svg>
-          </button>
-          <p className="mt-3 text-xs text-gray-400">
-            Keep using Referrals free — activate Paid Ads whenever you&apos;re ready.
-          </p>
+          {cta && onActivate && (
+            <button
+              onClick={onActivate}
+              className="mt-6 inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
+              style={{ backgroundColor: accent }}
+            >
+              {cta}
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
+            </button>
+          )}
+          {footnote && (
+            <p className="mt-3 text-xs text-gray-400">{footnote}</p>
+          )}
         </div>
       </div>
     </div>

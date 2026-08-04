@@ -11,6 +11,7 @@ import {
   addReferralNote,
 } from "@/lib/referrals-store";
 import { brandById, type BrandId } from "@/lib/brands";
+import { referralsEnabled } from "@/lib/launch-phase";
 
 async function currentUser(req: NextRequest) {
   const id = verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
@@ -32,6 +33,18 @@ export async function POST(req: NextRequest) {
   const user = await currentUser(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  }
+  // The real gate. Greying out the nav is cosmetic — this is what stops a
+  // referral being created in V1, when the receiving brand has nobody on the
+  // platform to receive it. A referral accepted here would simply vanish.
+  if (!referralsEnabled()) {
+    return NextResponse.json(
+      {
+        error:
+          "Referrals aren't open yet — they go live once the rest of the group is on Launch Pad.",
+      },
+      { status: 403 }
+    );
   }
   const body = await req.json().catch(() => null);
   const toBrandId = String(body?.toBrandId ?? "");

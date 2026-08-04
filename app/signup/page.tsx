@@ -29,6 +29,7 @@ type StepId =
   | "password"
   | "package"
   | "payment"
+  | "upgrade"
   | "paid"
   | "authenticate";
 
@@ -65,6 +66,55 @@ function SignupWizard() {
   // Set when the entered email isn't an Experts Group domain — staff only.
   const [domainBlocked, setDomainBlocked] = useState(false);
 
+  /* Does this person pay for Paid Ads at all?
+     The Lettings Experts' Pro licence already includes it, so a Pro partner
+     must never reach Stripe — they'd be paying twice for the same product. A
+     TLE partner who isn't on Pro doesn't get a card form either: buying ads
+     separately is worse value than the Pro tier that bundles them, so they're
+     sent to upgrade instead. Every other brand pays as before.
+     Null = not looked up yet; the wizard keeps the paid path until it knows. */
+  const [entitlement, setEntitlement] = useState<{
+    outcome: "included" | "needs-upgrade" | "pay";
+    partnerPackage: string | null;
+    foundInHub: boolean;
+  } | null>(null);
+
+  /* Referrals are locked until V2. Defaults to LOCKED so a slow fetch can't
+     briefly offer an account type that would arrive empty. */
+  const [referralsOn, setReferralsOn] = useState(false);
+  useEffect(() => {
+    fetch("/api/launch-phase")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setReferralsOn(d?.referralsEnabled === true))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const clean = email.trim().toLowerCase();
+    if (!clean || !brand) {
+      setEntitlement(null);
+      return;
+    }
+    let cancelled = false;
+    fetch("/api/ads-entitlement", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: clean, brandId: brand.id }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (cancelled || !d?.outcome) return;
+        setEntitlement(d);
+      })
+      // A failed lookup leaves entitlement null → the normal paid path. That's
+      // the safe default for every brand except TLE, and TLE's own fallback is
+      // handled server-side.
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [email, brand]);
+
   const steps: StepId[] = useMemo(() => {
     const base: StepId[] = [
       "name",
@@ -75,10 +125,15 @@ function SignupWizard() {
     ];
     // Referrals-only accounts skip the paid-ads setup (package → payment).
     if (accountType === "referral") return [...base, "authenticate"];
+    // Their licence already includes ads — no package to pick, nothing to pay.
+    if (entitlement?.outcome === "included") return [...base, "authenticate"];
+    // Their brand bundles ads but their tier doesn't: one step explaining the
+    // upgrade, and no card form anywhere in the flow.
+    if (entitlement?.outcome === "needs-upgrade") return [...base, "upgrade"];
     // Ads platforms and goal were dropped from onboarding — the team sets
     // targeting per location anyway, so asking was friction with no payoff.
     return [...base, "package", "payment", "authenticate"];
-  }, [brand, accountType]);
+  }, [brand, accountType, entitlement]);
   const stepIndex = steps.indexOf(step === "paid" ? "authenticate" : step);
   const progress = ((stepIndex + 1) / steps.length) * 100;
 
@@ -148,7 +203,24 @@ function SignupWizard() {
     go(detected ? "interest" : "brand");
   }
 
-  async function completeSignup(advance = true): Promise<boolean> {
+  /* Where the password step leads. Three destinations, and only one of them
+     involves paying us. */
+  function afterPassword() {
+    if (accountType === "referral") return completeSignup();
+    // Licence already includes ads — create the account and go straight on.
+    if (entitlement?.outcome === "included") return completeSignup();
+    if (entitlement?.outcome === "needs-upgrade") return go("upgrade");
+    return go("package");
+  }
+
+  /* `asType` overrides the wizard's account type. Needed by the upgrade step,
+     which must create a FREE account regardless of the paid path the user was
+     on — they aren't entitled to Paid Ads and we aren't charging them, so
+     handing them a paid-tier account would give away the product. */
+  async function completeSignup(
+    advance = true,
+    asType?: AccountType
+  ): Promise<boolean> {
     if (!brand || submitting) return false;
     setSubmitting(true);
     setError("");
@@ -166,7 +238,7 @@ function SignupWizard() {
       platforms: [],
       goal: "",
       packageId,
-      accountType: accountType === "referral" ? "referral" : "paid",
+      accountType: (asType ?? accountType) === "referral" ? "referral" : "paid",
     });
     if (error) {
       setSubmitting(false);
@@ -428,10 +500,13 @@ function SignupWizard() {
               What are you after, {name.split(" ")[0]}?
             </h1>
             <p className="mt-3 text-gray-500">
-              The Experts Group portal does two things. Pick where you want to
-              start — you can always add the other later.
+              {referralsOn
+                ? "The Experts Group portal does two things. Pick where you want to start — you can always add the other later."
+                : "Let's get your paid ads set up."}
             </p>
-            <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            <div
+              className={`mt-8 grid gap-4 ${referralsOn ? "sm:grid-cols-2" : ""}`}
+            >
               <button
                 onClick={() => {
                   setAccountType("paid");
@@ -443,12 +518,15 @@ function SignupWizard() {
                 <h2 className="mt-3 text-lg font-semibold">Paid Ads</h2>
                 <p className="mt-1.5 text-sm text-gray-500">
                   We build and run your paid social campaigns and track every
-                  lead. Includes referrals too.
+                  lead.{referralsOn ? " Includes referrals too." : ""}
                 </p>
                 <span className="mt-4 inline-block text-sm font-medium text-gray-900 group-hover:underline">
                   Set up paid ads →
                 </span>
               </button>
+              {/* Referrals-only accounts are hidden until V2: choosing one now
+                  would create an account whose single feature is switched off. */}
+              {referralsOn && (
               <button
                 onClick={() => {
                   setAccountType("referral");
@@ -471,6 +549,7 @@ function SignupWizard() {
                   Just referrals →
                 </span>
               </button>
+              )}
             </div>
             <button
               className="mt-8 rounded-xl border border-gray-200 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50"
@@ -511,8 +590,7 @@ function SignupWizard() {
                 onChange={setPassword}
                 onEnter={() => {
                   if (password.length < 8) return;
-                  if (accountType === "referral") completeSignup();
-                  else go("package");
+                  afterPassword();
                 }}
               />
             </div>
@@ -527,17 +605,75 @@ function SignupWizard() {
               <button
                 className={primaryBtn}
                 disabled={password.length < 8 || submitting}
-                onClick={() =>
-                  accountType === "referral" ? completeSignup() : go("package")
-                }
+                onClick={afterPassword}
               >
-                {accountType === "referral"
+                {accountType === "referral" ||
+                entitlement?.outcome === "included"
                   ? submitting
                     ? "Creating account…"
-                    : "Create my free account"
+                    : "Create my account"
                   : "Continue"}
               </button>
             </div>
+          </div>
+        )}
+
+        {/* ---- Upgrade (TLE, not on Pro) ----
+             Deliberately NOT a payment step. Paid Ads is included in the Pro
+             licence, so selling it separately here would be charging them more
+             for less. The only action is to talk to head office about the
+             licence. */}
+        {step === "upgrade" && (
+          <div className="fade-up" key="upgrade">
+            <h1 className="text-3xl font-semibold tracking-tight">
+              Paid Ads comes with the Pro licence
+            </h1>
+            <p className="mt-4 text-[15px] leading-relaxed text-gray-600">
+              Paid Ads is included as part of the Pro licence — so rather than
+              paying for it separately, upgrading your licence gets you this and
+              everything else on Pro.
+            </p>
+            {entitlement?.foundInHub && entitlement.partnerPackage && (
+              <p className="mt-4 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-600">
+                You&apos;re currently on the{" "}
+                <span className="font-semibold text-gray-900">
+                  {entitlement.partnerPackage}
+                </span>{" "}
+                licence.
+              </p>
+            )}
+            {/* We couldn't confirm their tier at all. Say so plainly rather
+                than implying we know they're not entitled — if their record is
+                simply missing, being told "you're not on Pro" is both wrong
+                and annoying. */}
+            {!entitlement?.foundInHub && (
+              <p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                We couldn&apos;t confirm your licence automatically. If
+                you&apos;re already on Pro, let head office know and
+                they&apos;ll get you set up.
+              </p>
+            )}
+            <div className="mt-8 flex flex-wrap gap-3">
+              <button
+                className={primaryBtn}
+                disabled={submitting}
+                onClick={() => completeSignup(true, "referral")}
+              >
+                {submitting ? "Creating account…" : "Create my free account"}
+              </button>
+              <a
+                className="rounded-xl border border-gray-200 px-6 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                href="mailto:info@theexpertsgroup.co.uk?subject=Upgrading%20to%20the%20Pro%20licence"
+              >
+                Ask about Pro
+              </a>
+            </div>
+            <p className="mt-4 text-xs text-gray-400">
+              {referralsOn
+                ? "Your account still gives you everything on your current licence."
+                : "We'll set your account up now so it's ready the moment you upgrade."}
+            </p>
+            {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
           </div>
         )}
 

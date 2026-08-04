@@ -230,6 +230,70 @@ _Detail to be added._
 
 ---
 
+## 7. V1 launch — The Lettings Experts only (Thu 6 Aug 2026) 🔶
+
+V1 goes to TLE alone; V2 opens the platform to the rest of the group.
+
+**Referrals are OFF in V1.** Not a technical limit — a referral network needs
+somebody to refer TO. With only TLE on the platform a referral to The Mortgage
+Experts would go nowhere, so the tab is locked and the API refuses.
+
+Controlled by one env var, `LAUNCH_PHASE`. It **defaults to `v1`**, so Thursday
+needs no action at all — the app is already correct when it ships. The only
+manual step is turning V2 on (`LAUNCH_PHASE=v2` in Railway), which has no
+deadline. The risky, time-pressured step is the one nobody has to remember.
+
+What's locked in V1:
+- Referrals nav item shows a padlock; the page renders behind a "coming soon"
+  card with no CTA (there's nothing they could do to unlock it).
+- `POST /api/referrals` returns 403. This is the real gate — the greying out
+  is cosmetic.
+- The referrals notification badge is suppressed.
+- The signup wizard hides the "Referrals Free" account type: choosing it would
+  create an account whose only feature is switched off.
+
+### Paid Ads is included in the TLE Pro licence ✅ Built 4 Aug 2026
+
+Read live from Team Hub's `partner_package` on TeamMember. Two outcomes for
+TLE, and **neither is "pay us here"**:
+
+| `partner_package` | Outcome |
+|---|---|
+| Pro | Free access — skips package + payment entirely |
+| anything else, or unset | "Upgrade to Pro" screen, no card form |
+
+TLE active partners as of 4 Aug 2026: **Pro 12, Basic 9, Academy 1,
+Standard 1, unset 1.** So roughly half walk in free and half hit the upgrade
+screen — worth knowing before the phones start.
+
+**Fallback (James):** unset, or not found in the Hub, is treated as NOT Pro.
+A genuine Pro partner with bad Hub data gets wrongly sent to upgrade and will
+ring in — recoverable. The reverse silently gives the product away. One active
+TLE partner has no package set, so expect that call.
+
+**A bug worth remembering: Team Hub's `search` is CASE-SENSITIVE**, and 45% of
+stored emails are mixed-case (246 of 544). Lowercasing the email before
+searching — correct practice everywhere else — silently missed nearly half of
+everyone, returning zero rows, which is indistinguishable from "not a partner".
+Caught because a **Pro** partner testing with their work address was told to
+upgrade. `packageForEmail` now pulls the directory once and matches in memory.
+Don't turn it back into a per-email search.
+
+### Not addressed, and worth a decision before V2
+
+- **Nothing enforces payment.** Access is gated on `accountType`, not on
+  `paid` — so a "paid" account works before Stripe confirms anything. This is
+  pre-existing, not new, but V1 is the first time real money is involved.
+- **A non-Pro TLE partner ends up with an empty account** in V1: not entitled
+  to ads, and referrals are off. They're registered and ready for an upgrade,
+  but there's nothing for them to use on day one.
+- **This mechanism won't survive V2 as-is.** 73% of the wider group (268 of
+  368 partners) has no `partner_package` recorded, so the same code would send
+  almost everyone to the upgrade screen. That's a Team Hub data job, not a
+  code change.
+
+---
+
 ## Already landed
 
 - ✅ (3 Aug) Rex search criteria fix — every `Contacts/search` in the app was

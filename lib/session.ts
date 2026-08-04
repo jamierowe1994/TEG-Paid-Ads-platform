@@ -632,3 +632,20 @@ export async function sendCampaignFeedback(
     return null;
   }
 }
+
+/**
+ * Which launch phase the server is in.
+ *
+ * Fails CLOSED: any error leaves referrals locked, matching the server-side
+ * default. A network blip must not flash an unavailable feature into the nav.
+ */
+export async function fetchLaunchPhase(): Promise<{ referralsEnabled: boolean }> {
+  try {
+    const res = await fetch("/api/launch-phase", { cache: "no-store" });
+    if (!res.ok) return { referralsEnabled: false };
+    const d = await res.json();
+    return { referralsEnabled: d?.referralsEnabled === true };
+  } catch {
+    return { referralsEnabled: false };
+  }
+}

@@ -246,3 +246,105 @@ export async function locationDetails(
     return new Map();
   }
 }
+
+// ── Partner package (the licence tier) ──────────────────────────────────────
+//
+// Drives who gets Paid Ads included rather than paying for it. Read live from
+// the Hub rather than copied onto our own user record, so an upgrade there
+// takes effect here without a re-sync — and so we never hold a stale answer to
+// a billing question.
+//
+// WHY THIS PAGES THE WHOLE DIRECTORY INSTEAD OF SEARCHING BY EMAIL:
+// the Hub's `search` is CASE-SENSITIVE, and 45% of stored addresses are
+// mixed-case (measured 4 Aug 2026: 246 of 544). Lowercasing the input — which
+// is the correct thing to do with an email everywhere else — therefore MISSES
+// nearly half of everyone, and misses them silently: the search returns zero
+// rows, indistinguishable from "this person isn't a partner". That routed Pro
+// partners signing up with their work address to the upgrade page instead of
+// letting them in free.
+//
+// Matching in memory is one request for ~550 records and cannot be fooled by
+// case. Do not "optimise" this back into a per-email search.
+
+export interface TeamHubPackage {
+  /** The raw `partner_package` value, e.g. "Pro" / "Basic". Null if not set. */
+  partnerPackage: string | null;
+  /** False when the Hub holds no matching person at all. */
+  found: boolean;
+}
+
+interface DirectoryEntry {
+  partnerPackage: string | null;
+  status: string;
+}
+
+// The directory changes when someone joins, leaves or upgrades — days, not
+// seconds. Cached so a signup doesn't re-pull 550 records per keystroke.
+const DIRECTORY_TTL_MS = 10 * 60 * 1000;
+let directory: { byEmail: Map<string, DirectoryEntry>; at: number } | null = null;
+let directoryInFlight: Promise<Map<string, DirectoryEntry>> | null = null;
+
+async function fetchDirectory(): Promise<Map<string, DirectoryEntry>> {
+  const rows: Record<string, unknown>[] = await call("list", "TeamMember", {
+    limit: 2000,
+    fields: ["email", "personal_email", "partner_package", "status"],
+  });
+  const map = new Map<string, DirectoryEntry>();
+  for (const r of rows || []) {
+    const status = String(r.status ?? "");
+    if (DEAD_STATUS.has(status)) continue;
+    const pkg = String(r.partner_package ?? "").trim() || null;
+    for (const field of ["email", "personal_email"]) {
+      const addr = String(r[field] ?? "").trim().toLowerCase();
+      if (!addr) continue;
+      // First writer wins, EXCEPT that a record carrying a package beats one
+      // without: if the same address appears twice, the useful answer is the
+      // one that can actually decide entitlement.
+      const existing = map.get(addr);
+      if (!existing || (!existing.partnerPackage && pkg)) {
+        map.set(addr, { partnerPackage: pkg, status });
+      }
+    }
+  }
+  return map;
+}
+
+async function getDirectory(): Promise<Map<string, DirectoryEntry> | null> {
+  if (directory && Date.now() - directory.at < DIRECTORY_TTL_MS) {
+    return directory.byEmail;
+  }
+  if (directoryInFlight) return directoryInFlight;
+  directoryInFlight = fetchDirectory()
+    .then((byEmail) => {
+      directory = { byEmail, at: Date.now() };
+      return byEmail;
+    })
+    .finally(() => {
+      directoryInFlight = null;
+    });
+  try {
+    return await directoryInFlight;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Look up someone's licence tier by email.
+ *
+ * Checks BOTH the work and personal address, case-insensitively: partners sign
+ * up with whichever they think of, and the Hub's own casing is inconsistent.
+ *
+ * Never throws — an unreachable Hub returns `found: false`, which the caller
+ * must treat as "not proven entitled" rather than "not entitled".
+ */
+export async function packageForEmail(email: string): Promise<TeamHubPackage> {
+  const clean = email.trim().toLowerCase();
+  if (!clean || !teamHubConfigured()) return { partnerPackage: null, found: false };
+  const dir = await getDirectory();
+  if (!dir) return { partnerPackage: null, found: false };
+  const hit = dir.get(clean);
+  return hit
+    ? { partnerPackage: hit.partnerPackage, found: true }
+    : { partnerPackage: null, found: false };
+}
