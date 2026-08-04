@@ -701,6 +701,15 @@ export default function ProfilePage() {
                   <p className="mt-3 text-sm text-red-600">{billingError}</p>
                 )}
               </>
+            ) : licenceIncluded ? (
+              /* Their ads come with the Pro licence, so there is no card and
+                 never will be. Telling them "once you're on a paid package"
+                 implies they're missing a step they don't have. */
+              <p className="mt-3 text-sm text-gray-500">
+                Nothing to pay here — your Paid Ads are included with your Pro
+                licence. Anything to do with the licence itself is handled by
+                head office.
+              </p>
             ) : (
               <p className="mt-3 text-sm text-gray-500">
                 No billing set up on this account yet. Once you&apos;re on a
