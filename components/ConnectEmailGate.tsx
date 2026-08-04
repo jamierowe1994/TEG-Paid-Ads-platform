@@ -14,6 +14,17 @@
 // Deliberately has no "Later". The skippable prompt on the Overview page is
 // the right shape for someone who already proved who they are at signup; it is
 // the wrong shape for an account that was handed to them.
+//
+// TEMPORARY (James, 4 Aug 2026): DESKTOP ONLY. The Microsoft round trip hasn't
+// been worked through on mobile yet, and on a phone this gate is a dead end —
+// there's no way past it. So below `lg` it doesn't render and the portal opens
+// as normal.
+//
+// Be clear about what that costs: on mobile, "signed in" goes back to meaning
+// "knew the shared launch password", which several people were given. The
+// identity check is genuinely absent there, not merely deferred. Put it back
+// as soon as the mobile Microsoft flow is sorted — this is a stopgap for
+// testing, not a decision that mobile doesn't need proving who you are.
 
 import { useState } from "react";
 import type { UserProfile } from "@/lib/types";
@@ -28,7 +39,7 @@ export default function ConnectEmailGate({
   const [going, setGoing] = useState(false);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-950/60 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] hidden items-center justify-center bg-gray-950/60 p-4 backdrop-blur-sm lg:flex">
       <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl">
         <span
           className="flex h-12 w-12 items-center justify-center rounded-2xl text-2xl"
