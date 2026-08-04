@@ -320,6 +320,11 @@ button each, and Send All at the bottom.
 separate component rather than more lines in the 4,200-line admin page, so
 removing it after V1 is a delete.
 
+**Who can see it:** super admins (Admin → Invite) AND the Lettings MD, Susan,
+at the top of her own **Invites** tab. It is NOT open to MDs generally — a
+Property or Commercial MD gets a 401, since they have no business provisioning
+TLE accounts. Verified: Susan 200, another brand's MD 401, no token 401.
+
 **Connect prints the campaign NAMES it found.** That's the whole point of the
 step: a wrong Meta id doesn't error, it silently attaches one partner to
 another partner's spend and leads. The names next to the person are what catch

@@ -13,9 +13,15 @@
 // Pro status is re-read from Team Hub on every connect. The roster shown in the
 // UI decides who we OFFER to connect; it never decides who is entitled. A stale
 // page or an edited request must not be able to hand out free Paid Ads.
+//
+// ACCESS: super admins, plus the LETTINGS managing director — this is her tab,
+// and having her ask someone else to run it defeats the point. It is not open
+// to MDs generally: another brand's MD has no business provisioning TLE
+// accounts. The blast radius is bounded anyway, since BRAND_ID is fixed to
+// lettings and only a Pro-licensed TLE partner can ever be connected.
 
 import { NextRequest, NextResponse } from "next/server";
-import { isSuperAdmin } from "@/lib/admin-auth";
+import { adminScope } from "@/lib/admin-auth";
 import {
   findByEmail,
   createUser,
@@ -38,6 +44,14 @@ function uid() {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
 
+/** Super admins, plus the Lettings MD whose tab this is. */
+function mayUseInviteTab(req: NextRequest): boolean {
+  const scope = adminScope(req);
+  if (!scope) return false;
+  if (scope.role === "super") return true;
+  return scope.role === "md" && scope.brandId === BRAND_ID;
+}
+
 export interface ProRow {
   name: string;
   /** From Team Hub. May be blank — the UI lets it be typed in. */
@@ -52,7 +66,7 @@ export interface ProRow {
 }
 
 export async function GET(req: NextRequest) {
-  if (!isSuperAdmin(req)) {
+  if (!mayUseInviteTab(req)) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
   if (!teamHubConfigured()) {
@@ -93,7 +107,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isSuperAdmin(req)) {
+  if (!mayUseInviteTab(req)) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
 

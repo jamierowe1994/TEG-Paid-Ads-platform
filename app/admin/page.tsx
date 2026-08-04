@@ -3651,7 +3651,13 @@ function MdDashboard({
           ) : tab === "connections" ? (
             <MdConnections card={card} brandName={brand.name} />
           ) : (
-            <MdInvites card={card} accent={accent} users={users} token={token} />
+            <div className="space-y-6">
+              {/* TEMPORARY — the TLE V1 launch panel, above the usual invites
+                  so it's the first thing on the tab during launch week. Only
+                  Lettings: it provisions TLE Pro partners and nobody else. */}
+              {brandId === "lettings" && <TleProInvite pass={token} />}
+              <MdInvites card={card} accent={accent} users={users} token={token} />
+            </div>
           )}
         </div>
       </main>
