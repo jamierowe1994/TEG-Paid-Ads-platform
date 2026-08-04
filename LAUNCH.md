@@ -279,6 +279,37 @@ Caught because a **Pro** partner testing with their work address was told to
 upgrade. `packageForEmail` now pulls the directory once and matches in memory.
 Don't turn it back into a per-email search.
 
+### Pre-provisioning Pro partners with their live campaigns ✅ Built 4 Aug 2026
+
+The launch-day experience: a Pro partner signs in and their real campaign,
+spend and leads are already on screen. Their ads are already running — we
+connect to them rather than creating anything.
+
+`GET /api/admin/provision-tle?entries=[{email,campaignIds}]` → dry run.
+`POST /api/admin/provision-tle?confirm=yes` → does it. **Sends no email**;
+inviting stays a separate step (`/api/admin/send-invites`), so provisioning
+can be done and checked days ahead without anyone being told.
+
+**Separate ad accounts per partner need no configuration.** Campaign ids
+resolve to their own ad account via Meta's `account_id` (`resolveTaggedId` in
+`lib/meta.ts`), and `groupCampaignsByAccount` queries each separately. What
+DOES matter is that the System User token can see those ad accounts; if it
+can't, the dry run shows an error against that campaign.
+
+Two things are verified rather than trusted:
+- **Pro status is re-checked against Team Hub.** The uploaded list decides who
+  we attempt, never who is entitled — otherwise a spreadsheet typo grants free
+  Paid Ads. Confirmed working: a Basic partner in the list is skipped.
+- **Campaign ids are read back from Meta with their real names.** A wrong id
+  fails silently and shows one partner another partner's leads and spend, so
+  the dry run prints the campaign name against each person to be checked by
+  eye. NOTE: this only works where Meta is configured — run the dry run
+  against production, not locally.
+
+An existing account is updated, never password-reset: it may already be in
+use, and forcing a shared launch password would be both a lockout and a
+security problem.
+
 ### Not addressed, and worth a decision before V2
 
 - **Nothing enforces payment.** Access is gated on `accountType`, not on
