@@ -310,6 +310,30 @@ An existing account is updated, never password-reset: it may already be in
 use, and forcing a shared launch password would be both a lockout and a
 security problem.
 
+### The Invite tab (admin) ✅ Built 4 Aug 2026 — TEMPORARY
+
+Admin → **Invite**. Lists the 12 TLE Pro partners straight from Team Hub, with
+their email pre-filled, a box for their Meta ad account or campaign, a Connect
+button each, and Send All at the bottom.
+
+`components/TleProInvite.tsx` + `GET/POST /api/admin/tle-pro`. Deliberately a
+separate component rather than more lines in the 4,200-line admin page, so
+removing it after V1 is a delete.
+
+**Connect prints the campaign NAMES it found.** That's the whole point of the
+step: a wrong Meta id doesn't error, it silently attaches one partner to
+another partner's spend and leads. The names next to the person are what catch
+it. Accepts an ad account, campaign, ad set or ad id — all four resolve.
+
+**Send All is deliberately disabled** until the invite mailbox is connected and
+the email is written. It's shown rather than hidden so the flow reads properly,
+but it cannot fire — it's the one action here that can't be undone.
+
+Guards verified against live data: a Basic partner is refused (403), an unknown
+address is refused, a bad Meta reference fails BEFORE anything is provisioned.
+Pro status is re-read from Team Hub on every connect, so the roster on screen
+decides who we offer to connect, never who is entitled.
+
 ### Not addressed, and worth a decision before V2
 
 - **Nothing enforces payment.** Access is gated on `accountType`, not on

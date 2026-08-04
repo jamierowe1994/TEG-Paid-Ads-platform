@@ -1062,3 +1062,108 @@ export function mapLeadFields(fields: Record<string, string>): {
     .join(" · ");
   return { name, phone, email, extra };
 }
+
+// ── Connecting a partner to their existing Meta ads ─────────────────────────
+
+export interface ConnectedCampaign {
+  id: string;
+  name: string;
+  status: string;
+}
+
+export interface MetaConnection {
+  /** What the pasted reference turned out to be. */
+  kind: "account" | "campaign" | "unknown";
+  /** The ad account these campaigns live in, `act_`-prefixed. */
+  accountId: string | null;
+  campaigns: ConnectedCampaign[];
+  /** Human-readable reason the reference couldn't be used. */
+  error: string | null;
+}
+
+/**
+ * Resolve whatever someone pasted into the campaigns it refers to.
+ *
+ * Admins paste whatever Ads Manager happened to be showing — an ad account, a
+ * campaign, an ad set, or an ad. All four are accepted, because telling people
+ * "wrong kind of id" is a support call we can just avoid.
+ *
+ * The point of returning campaign NAMES is verification: a wrong id doesn't
+ * error, it silently attaches one partner to another partner's spend and
+ * leads. Seeing the name next to the person is what catches that.
+ */
+export async function connectMetaRef(raw: string): Promise<MetaConnection> {
+  const ref = raw.trim();
+  const empty: MetaConnection = {
+    kind: "unknown",
+    accountId: null,
+    campaigns: [],
+    error: null,
+  };
+  if (!ref) return { ...empty, error: "Nothing entered." };
+  if (!metaTokenSet()) {
+    return { ...empty, error: "Meta isn't connected on this server." };
+  }
+
+  const asAccount = async (act: string): Promise<MetaConnection> => {
+    const res = (await graph(`${act}/campaigns`, {
+      fields: "id,name,status",
+      limit: "200",
+    })) as { data?: Array<{ id: string; name?: string; status?: string }> };
+    const campaigns = (res.data ?? []).map((c) => ({
+      id: String(c.id),
+      name: c.name ?? "(unnamed)",
+      status: c.status ?? "UNKNOWN",
+    }));
+    return {
+      kind: "account",
+      accountId: act,
+      campaigns,
+      error: campaigns.length ? null : "That ad account has no campaigns.",
+    };
+  };
+
+  // An explicit act_ prefix is unambiguous.
+  if (ref.toLowerCase().startsWith("act_")) {
+    try {
+      return await asAccount(ref);
+    } catch (e) {
+      return { ...empty, error: (e as Error).message };
+    }
+  }
+
+  // Otherwise try it as a campaign / ad set / ad first — resolveTaggedId
+  // already handles all three and tells us the home account.
+  try {
+    const { campaignId, account } = await resolveTaggedId(ref);
+    const info = (await graph(campaignId, { fields: "id,name,status" })) as {
+      id?: string;
+      name?: string;
+      status?: string;
+    };
+    return {
+      kind: "campaign",
+      accountId: account,
+      campaigns: [
+        {
+          id: String(info.id ?? campaignId),
+          name: info.name ?? "(unnamed)",
+          status: info.status ?? "UNKNOWN",
+        },
+      ],
+      error: null,
+    };
+  } catch {
+    // Not an object we can read — a bare ad account number is the likely case.
+    try {
+      return await asAccount(`act_${ref}`);
+    } catch (e) {
+      return {
+        ...empty,
+        error:
+          (e as Error).message ||
+          "Couldn't find that in Meta. Check the id, and that the System User can see this ad account.",
+      };
+    }
+  }
+}

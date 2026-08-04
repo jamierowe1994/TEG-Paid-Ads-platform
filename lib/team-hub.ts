@@ -348,3 +348,56 @@ export async function packageForEmail(email: string): Promise<TeamHubPackage> {
     ? { partnerPackage: hit.partnerPackage, found: true }
     : { partnerPackage: null, found: false };
 }
+
+export interface BrandPartner {
+  hubId: string;
+  name: string;
+  /** Work address, falling back to personal. Blank when the Hub has neither —
+   *  the admin UI lets it be typed in rather than dropping the person. */
+  email: string;
+  partnerPackage: string | null;
+}
+
+/**
+ * Live partners at a brand, with their licence tier.
+ *
+ * Resolved via the Hub's OWN brand id rather than the email domain: a partner
+ * whose Hub record carries a personal address would otherwise be filed under
+ * the wrong brand, or dropped entirely. (The bulk import does match on domain,
+ * which is fine for its purpose but not for deciding entitlement.)
+ */
+export async function partnersForBrandWithPackage(
+  brandId: BrandId
+): Promise<BrandPartner[]> {
+  const short = BRAND_SHORT[brandId];
+  if (!short || !teamHubConfigured()) return [];
+  const hubId = await hubBrandId(short);
+  if (!hubId) return [];
+
+  const rows: Record<string, unknown>[] = await call("search", "TeamMember", {
+    query: { primary_brand_id: hubId, active: true },
+    limit: 500,
+    fields: [
+      "id",
+      "first_name",
+      "last_name",
+      "email",
+      "personal_email",
+      "partner_package",
+      "person_type",
+      "status",
+    ],
+  });
+
+  return (rows || [])
+    .filter(
+      (r) =>
+        r.person_type === "Partner" && !DEAD_STATUS.has(String(r.status ?? ""))
+    )
+    .map((r) => ({
+      hubId: String(r.id),
+      name: [r.first_name, r.last_name].filter(Boolean).join(" ").trim(),
+      email: String(r.email ?? r.personal_email ?? "").trim().toLowerCase(),
+      partnerPackage: String(r.partner_package ?? "").trim() || null,
+    }));
+}

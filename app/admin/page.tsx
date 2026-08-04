@@ -9,6 +9,7 @@ import { stageLabel } from "@/lib/onboarding";
 import BrandMark from "@/components/BrandMark";
 import AgentProfile from "@/components/AgentProfile";
 import AccountImport from "@/components/AccountImport";
+import TleProInvite from "@/components/TleProInvite";
 import PasswordInput from "@/components/PasswordInput";
 import type { UserProfile, Referral } from "@/lib/types";
 import ICONS, { SocialIcon } from "@/components/SocialIcons";
@@ -134,7 +135,8 @@ type Tab =
   | "referrals"
   | "crm"
   | "performance"
-  | "connections";
+  | "connections"
+  | "invite";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "overview", label: "Overview", icon: "M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10" },
@@ -150,6 +152,12 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
     icon: "M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4z",
   },
   { id: "performance", label: "Performance", icon: "M3 17l6-6 4 4 8-8M21 7v6M21 7h-6" },
+  // TEMPORARY — the TLE V1 launch tab. Remove once everyone's on the platform.
+  {
+    id: "invite",
+    label: "Invite",
+    icon: "M3 8l9 6 9-6M3 8v8a1 1 0 001 1h16a1 1 0 001-1V8M3 8l9-5 9 5",
+  },
   {
     id: "connections",
     label: "Connections",
@@ -1687,6 +1695,9 @@ export default function AdminPage() {
         )}
 
         {/* ═══ PERFORMANCE ═══ */}
+        {/* TEMPORARY — the TLE V1 launch tab. Remove once everyone's on. */}
+        {tab === "invite" && <TleProInvite pass={password} />}
+
         {tab === "performance" && (
           <>
             {/* Date-range control — re-pulls Meta for the whole tab */}
