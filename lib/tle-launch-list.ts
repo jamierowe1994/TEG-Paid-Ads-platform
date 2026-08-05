@@ -9,7 +9,10 @@ import "server-only";
  * Five were still on Basic or Academy despite Susan's sheet showing a Pro
  * licence start of Nov-25 or May-26; three are dual-brand partners filed under
  * TPE or PPE, so a lettings query could never return them whatever their
- * package said; and one isn't in the Hub at all.
+ * package said; and one isn't in the Hub at all. (That last one, Kirstie Wallington, turned
+ * out to be Kirstie Mulholland under a changed name — confirmed 5 Aug. Her Hub
+ * record still says Mulholland; Launch Pad uses the Wallington address because
+ * that's the mailbox she actually has.)
  *
  * Meanwhile the Hub marks EIGHT other TLE people as Pro who aren't on Susan's
  * list — under the old rule they'd have walked into free Paid Ads on launch day.
@@ -37,6 +40,10 @@ export interface LaunchListEntry {
   name: string;
   /** Null when we don't know it — the Invite tab lets it be typed in. */
   email: string | null;
+  /** Other addresses the same person is known by. One entry, one human:
+   *  a name change leaves the old address in Team Hub while the new one is
+   *  what they actually sign in with, and either should be accepted. */
+  altEmails?: string[];
   area: string;
   note?: string;
 }
@@ -47,9 +54,10 @@ export const TLE_LAUNCH_LIST: LaunchListEntry[] = [
   { name: "Chris Wilson-Slight", email: "chris@prestigepropertyexperts.co.uk", area: "Nottinghamshire" },
   {
     name: "Kirstie Wallington",
-    email: null,
+    email: "kirstie.wallington@thelettingexperts.co.uk",
+    altEmails: ["kirstie.mulholland@thelettingexperts.co.uk"],
     area: "Leicestershire",
-    note: "No Team Hub record. Possibly the same person as Kirstie Mulholland (name change) — confirm with Susan before connecting, or you'll create a duplicate.",
+    note: "Same person as Kirstie Mulholland in Team Hub — confirmed 5 Aug 2026. Her email is the Wallington one, so that's the account. Also runs TLE back-office and gets the £100 ad spend without paying for Pro. CHECK THE ADDRESS ON SCREEN before connecting: it follows the pattern every other TLE address uses, but nobody has read it back from her.",
   },
   { name: "James Crumpton", email: "james.crumpton@thepropertyexperts.co.uk", area: "Bristol" },
   { name: "Sean McMahon", email: "sean.mcmahon@thelettingexperts.co.uk", area: "Edinburgh" },
@@ -60,17 +68,14 @@ export const TLE_LAUNCH_LIST: LaunchListEntry[] = [
   { name: "Zilvinas Navickis", email: "zill@thepropertyexperts.co.uk", area: "Dorset" },
   { name: "Elizabeth Ogunfowokan", email: "elizabeth.ogunfowokan@thelettingexperts.co.uk", area: "Chelmsford" },
   { name: "Edward Westwood", email: "edward.westwood@thelettingexperts.co.uk", area: "Stourbridge" },
-  {
-    name: "Kirstie Mulholland",
-    email: "kirstie.mulholland@thelettingexperts.co.uk",
-    area: "—",
-    note: "Not on Susan's list, but kept on James's earlier instruction: runs TLE back-office and gets the same £100 ad spend without paying for Pro. See the Kirstie Wallington note — these may be one person.",
-  },
 ];
 
-const byEmail = new Map(
-  TLE_LAUNCH_LIST.filter((e) => e.email).map((e) => [e.email!.toLowerCase(), e])
-);
+const byEmail = new Map<string, LaunchListEntry>();
+for (const e of TLE_LAUNCH_LIST) {
+  for (const addr of [e.email, ...(e.altEmails ?? [])]) {
+    if (addr) byEmail.set(addr.toLowerCase(), e);
+  }
+}
 const byName = new Map(
   TLE_LAUNCH_LIST.map((e) => [e.name.toLowerCase().replace(/[^a-z]/g, ""), e])
 );

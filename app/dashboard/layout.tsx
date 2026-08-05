@@ -262,11 +262,23 @@ export default function DashboardLayout({
 
   // Pre-provisioned launch accounts must link their work email before the
   // portal opens up — see ConnectEmailGate for why this is an identity check.
+  /* Connecting ANY mailbox used to satisfy this, which made it a check on
+     employment rather than on identity: someone signed in as another agent
+     could connect their own Experts Group address and be waved through. The
+     mailbox must be THE ACCOUNT'S OWN address to count as proof.
+
+     A different address still connects — that's deliberate, a shared or
+     colleague's mailbox is a legitimate thing to send from — it just doesn't
+     prove who they are, so the gate stays up. */
+  const emailProven =
+    !!user?.msEmail &&
+    user.msEmail.trim().toLowerCase() === user.email.trim().toLowerCase();
+
   const needsEmailProof =
     !!user &&
     user.accountType === "paid" &&
     user.brandId === "lettings" &&
-    !user.msEmail &&
+    !emailProven &&
     !emailGateSkipped;
   useEffect(() => {
     fetchLaunchPhase().then((p) => setReferralsOn(p.referralsEnabled));

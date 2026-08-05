@@ -51,6 +51,12 @@ export default function ConnectEmailGate({
   accent: string;
   onDismiss: () => void;
 }) {
+  /* They connected a mailbox, but not this account's. Say so plainly —
+     otherwise the gate reappears after a successful-looking Microsoft
+     sign-in and looks broken rather than deliberate. */
+  const wrongMailbox =
+    !!user.msEmail &&
+    user.msEmail.trim().toLowerCase() !== user.email.trim().toLowerCase();
   const [going, setGoing] = useState(false);
   const [leaving, setLeaving] = useState(false);
 
@@ -81,10 +87,20 @@ export default function ConnectEmailGate({
           it&apos;s really you, and lets you email leads straight from Launch
           Pad using your own address.
         </p>
-        <p className="mt-3 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-600">
-          Signing in as{" "}
-          <span className="font-medium text-gray-900">{user.email}</span>
-        </p>
+        {wrongMailbox ? (
+          <p className="mt-3 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            You signed in with{" "}
+            <span className="font-medium">{user.msEmail}</span>, but this
+            account is{" "}
+            <span className="font-medium">{user.email}</span>. Use that address
+            to confirm it&apos;s you.
+          </p>
+        ) : (
+          <p className="mt-3 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-600">
+            Signing in as{" "}
+            <span className="font-medium text-gray-900">{user.email}</span>
+          </p>
+        )}
         <button
           onClick={() => {
             setGoing(true);

@@ -41,8 +41,15 @@ const INCLUDES_ADS = new Set(["pro"]);
  * should come off it.
  */
 const ADS_EXCEPTIONS: Record<string, string> = {
-  "kirstie.mulholland@thelettingexperts.co.uk":
+  // Both addresses: she appears in Team Hub as Mulholland and signs in as
+  // Wallington after a name change. Kept HERE as well as on the launch list
+  // because she is not Pro and never will be — so when the launch list is
+  // retired and entitlement goes back to reading `partner_package`, this is
+  // what stops her losing access.
+  "kirstie.wallington@thelettingexperts.co.uk":
     "Runs TLE back-office and admin. Gets the same £100 ad spend without paying for Pro (James, 4 Aug 2026).",
+  "kirstie.mulholland@thelettingexperts.co.uk":
+    "Former address for Kirstie Wallington — same person, kept so a Team Hub record under the old surname still resolves.",
 };
 
 /** Why this person is an exception, or null if they aren't one. */
