@@ -11,6 +11,7 @@ import AgentProfile from "@/components/AgentProfile";
 import AccountImport from "@/components/AccountImport";
 import TleProInvite from "@/components/TleProInvite";
 import AdReconciliation from "@/components/AdReconciliation";
+import EmailTest from "@/components/EmailTest";
 import PasswordInput from "@/components/PasswordInput";
 import type { UserProfile, Referral } from "@/lib/types";
 import ICONS, { SocialIcon } from "@/components/SocialIcons";
@@ -2673,6 +2674,8 @@ export default function AdminPage() {
                 </div>
               </div>
             </section>
+
+            <EmailTest pass={password} />
 
             {/* WhatsApp — new-lead alerts + cold-lead nudges to agents */}
             <section className="mt-10">
