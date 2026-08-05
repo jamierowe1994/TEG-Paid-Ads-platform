@@ -16,3 +16,4 @@ next-env.d.ts
 # Full-res source for the landing-page cut-out (19M). The web copy is
 # public/images/excited.webp, which is what the page actually loads.
 public/images/excited.png
+public/images/excited 2.jpg

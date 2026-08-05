@@ -265,9 +265,9 @@ export default function LandingPage() {
               {/* One frame, two images, and only ONE of them is ever
                   downloaded.
 
-                  MOBILE gets the cut-out, sitting on the brand panel; DESKTOP
-                  keeps the photograph, because the two-column composition was
-                  built around it and a cut-out would float in that space.
+                  MOBILE and DESKTOP get different photographs — the mobile one
+                  is squared off to sit in the brand panel, the desktop one is
+                  the 4:5 the two-column composition was built around.
 
                   WHY <source media> AND NOT max-sm:hidden ON A SECOND <img>:
                   display:none does not stop a browser fetching an image, so
@@ -277,9 +277,14 @@ export default function LandingPage() {
                   only form the browser resolves BEFORE fetching, so the
                   candidate that loses is never requested at all.
 
-                  The frame carries no background of its own: on mobile the
-                  panel behind it shows through the cut-out's transparency, and
-                  on desktop object-cover fills the frame completely. */}
+                  The frame carries no background of its own — the image is an
+                  opaque photograph that fills it at both sizes. The brand
+                  panel reads behind the copy above, not around the subject.
+
+                  The mobile file is pre-cropped SQUARE at source rather than
+                  cropped in CSS: it's only ever shown in a square frame, so
+                  shipping the original 2:3 portrait would have meant a phone
+                  downloading a third of an image it throws away. */}
               <div className="relative overflow-hidden max-sm:rounded-none sm:rounded-3xl sm:shadow-2xl">
                 <picture>
                   <source media="(min-width: 640px)" srcSet="/images/paid-ads.jpg" />
@@ -287,9 +292,9 @@ export default function LandingPage() {
                       frame, rather than floating with a gap underneath. */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src="/images/excited.webp"
-                    alt="An agent reacting to a new lead landing"
-                    className="p-image block w-full object-cover max-sm:aspect-square max-sm:object-top sm:aspect-[4/5] sm:object-center"
+                    src="/images/excited-2.webp"
+                    alt="Someone reacting to good news"
+                    className="p-image block w-full object-cover object-center max-sm:aspect-square sm:aspect-[4/5]"
                   />
                 </picture>
               </div>
