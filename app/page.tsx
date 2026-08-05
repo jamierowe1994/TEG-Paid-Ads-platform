@@ -281,12 +281,9 @@ export default function LandingPage() {
                   is a transparent cut-out, so the brand panel shows around
                   him, and on desktop object-cover fills the frame completely.
 
-                  The mobile file is trimmed and pre-cropped SQUARE at source
-                  rather than cropped in CSS: it's only ever shown in a square
-                  frame, so shipping the original 2:3 would have meant a phone
-                  downloading a third of an image it throws away. Trimming
-                  first matters for a cut-out — the raw export had ~700px of
-                  empty alpha above his head. */}
+                  The mobile file is a 1000x1166 portrait, cropped to the
+                  square frame in CSS with object-top — a centred crop would
+                  take the top of her head and her hands. */}
               <div className="relative overflow-hidden max-sm:rounded-none sm:rounded-3xl sm:shadow-2xl">
                 <picture>
                   <source media="(min-width: 640px)" srcSet="/images/paid-ads.jpg" />
@@ -294,9 +291,9 @@ export default function LandingPage() {
                       frame, rather than floating with a gap underneath. */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src="/images/excited-cutout.webp"
-                    alt="Someone reacting to good news"
-                    className="p-image block w-full object-cover object-center max-sm:aspect-square sm:aspect-[4/5]"
+                    src="/images/excited.webp"
+                    alt="An agent reacting to a new lead landing"
+                    className="p-image block w-full object-cover max-sm:aspect-square max-sm:object-top sm:aspect-[4/5] sm:object-center"
                   />
                 </picture>
               </div>
