@@ -51,7 +51,15 @@ export interface LaunchListEntry {
 export const TLE_LAUNCH_LIST: LaunchListEntry[] = [
   { name: "Bernadine Williams", email: "bernadine@thepropertyexperts.co.uk", area: "St Albans" },
   { name: "Dan Richards", email: "dan.richards@thelettingexperts.co.uk", area: "Wolverhampton" },
-  { name: "Chris Wilson-Slight", email: "chris@prestigepropertyexperts.co.uk", area: "Nottinghamshire" },
+  {
+    name: "Chris Wilson-Slight",
+    email: "chris@prestigepropertyexperts.co.uk",
+    // His Rex login is the TPE address, not the Prestige one. Matters for the
+    // Rex embed, which matches on the Rex account's email — without this he'd
+    // be the only one of the 13 it couldn't identify.
+    altEmails: ["chris.wilson-slight@thepropertyexperts.co.uk"],
+    area: "Nottinghamshire",
+  },
   {
     name: "Kirstie Wallington",
     email: "kirstie.wallington@thelettingexperts.co.uk",
