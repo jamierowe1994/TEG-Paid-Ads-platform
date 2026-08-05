@@ -11,13 +11,21 @@
 // It also happens to switch on sending mail from their own address, which is
 // why the copy leads with what they get rather than with the security reason.
 //
-// Deliberately has no "Later" — but it MUST have a way out. Without one this
-// is a trap: a blocking overlay with a single button, no navigation, and no
-// sign-out, so anyone who can't complete the Microsoft step is locked out of
-// their own account with nothing to click. That happened to a tester on
-// 4 Aug 2026. Signing out is the honest escape: it can't reach the dashboard
-// (the gate still stands on the next sign-in) but it returns them to the login
-// page instead of stranding them.
+// IT MUST HAVE A WAY OUT. Without one this is a trap: a blocking overlay with
+// a single button, no navigation and no sign-out, so anyone who can't complete
+// the Microsoft step is locked out of their own account with nothing to click.
+// That happened to a tester AND to James on 4 Aug 2026.
+//
+// So there are two exits:
+//   ✕ dismiss  — closes it and lets them use the account normally
+//   sign out   — clears the session and returns to the landing page
+//
+// DISMISS IS TEMPORARY (James, 5 Aug 2026), for the agent demo. Be honest about
+// what it costs: with a dismissible gate the identity check is effectively OFF.
+// "Signed in" goes back to meaning "knew the shared launch password", which
+// several people were given — the same hole that already exists on mobile, now
+// on desktop too. This needs a decision before the wider release: either the
+// Microsoft flow gets fixed, or per-person passwords replace the shared one.
 //
 // TEMPORARY (James, 4 Aug 2026): DESKTOP ONLY. The Microsoft round trip hasn't
 // been worked through on mobile yet, and on a phone this gate is a dead end —
@@ -37,16 +45,28 @@ import type { UserProfile } from "@/lib/types";
 export default function ConnectEmailGate({
   user,
   accent,
+  onDismiss,
 }: {
   user: UserProfile;
   accent: string;
+  onDismiss: () => void;
 }) {
   const [going, setGoing] = useState(false);
   const [leaving, setLeaving] = useState(false);
 
   return (
     <div className="fixed inset-0 z-[100] hidden items-center justify-center bg-gray-950/60 p-4 backdrop-blur-sm lg:flex">
-      <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl">
+      <div className="relative w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl">
+        {/* The escape hatch. Temporary — see the note at the top of this file. */}
+        <button
+          onClick={onDismiss}
+          aria-label="Close"
+          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+        >
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
         <span
           className="flex h-12 w-12 items-center justify-center rounded-2xl text-2xl"
           style={{ backgroundColor: `${accent}1a` }}

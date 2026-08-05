@@ -231,18 +231,43 @@ export default function DashboardLayout({
   }, [router]);
 
   const isReferralOnly = user?.accountType === "referral";
+  // Referrals stay locked until V2, when the rest of the group is on the
+  // platform. Defaults to LOCKED and only opens once the server confirms — so
+  // a slow or failed fetch can't briefly advertise a feature that isn't there.
+  const [referralsOn, setReferralsOn] = useState(false);
+  /* Whether they've closed the "link your email" gate. Starts TRUE so a
+     returning user who already dismissed it never sees it flash on load; the
+     effect below corrects it once we've read storage. Per user, so one
+     person dismissing it on a shared machine doesn't hide it from another. */
+  const [emailGateSkipped, setEmailGateSkipped] = useState(true);
+  useEffect(() => {
+    if (!user) return;
+    try {
+      setEmailGateSkipped(!!localStorage.getItem(`email-gate-skip-${user.id}`));
+    } catch {
+      // Storage blocked — show the gate. Better to ask again than to hide it.
+      setEmailGateSkipped(false);
+    }
+  }, [user]);
+
+  function dismissEmailGate() {
+    setEmailGateSkipped(true);
+    if (!user) return;
+    try {
+      localStorage.setItem(`email-gate-skip-${user.id}`, "1");
+    } catch {
+      /* dismissing for this session only is still better than trapping them */
+    }
+  }
+
   // Pre-provisioned launch accounts must link their work email before the
   // portal opens up — see ConnectEmailGate for why this is an identity check.
   const needsEmailProof =
     !!user &&
     user.accountType === "paid" &&
     user.brandId === "lettings" &&
-    !user.msEmail;
-
-  // Referrals stay locked until V2, when the rest of the group is on the
-  // platform. Defaults to LOCKED and only opens once the server confirms — so
-  // a slow or failed fetch can't briefly advertise a feature that isn't there.
-  const [referralsOn, setReferralsOn] = useState(false);
+    !user.msEmail &&
+    !emailGateSkipped;
   useEffect(() => {
     fetchLaunchPhase().then((p) => setReferralsOn(p.referralsEnabled));
   }, []);
@@ -1323,7 +1348,11 @@ export default function DashboardLayout({
            it can't drift out of date — the moment they connect an address the
            gate is gone. */
         needsEmailProof && (
-          <ConnectEmailGate user={user} accent={brand.accent} />
+          <ConnectEmailGate
+            user={user}
+            accent={brand.accent}
+            onDismiss={dismissEmailGate}
+          />
         )
       )}
     </div>
