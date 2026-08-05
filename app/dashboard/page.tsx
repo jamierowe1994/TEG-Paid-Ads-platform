@@ -165,13 +165,113 @@ export default function DashboardOverview() {
   // Overview "second page" — a pull-up sheet holding the deeper stats. Opening
   // it flips the bottom nav to light glass so the sheet reads through it.
   const [moreOpen, setMoreOpen] = useState(false);
-  const dragStartY = useRef<number | null>(null);
   useEffect(() => {
     window.dispatchEvent(new CustomEvent("teg:nav-light", { detail: moreOpen }));
     return () => {
       window.dispatchEvent(new CustomEvent("teg:nav-light", { detail: false }));
     };
   }, [moreOpen]);
+
+  /* The sheet follows your finger.
+   *
+   * It used to read touchstart and touchend only — so it measured where you
+   * started and where you let go, then snapped. Nothing moved while you were
+   * dragging, which is why it never felt like you were pulling anything.
+   *
+   * `drag` is the live pixel offset from wherever the sheet is resting, so the
+   * same value works whether you're pulling it up from closed or down from
+   * open. Transitions are switched off while a finger is down, otherwise the
+   * animation fights the drag and lags behind it. */
+  /* Held in state, not a ref.
+     The page renders null until the user loads, so on the first pass these
+     nodes don't exist. A useEffect keyed on anything else would attach to
+     nothing and never run again — which is exactly what happened: the drag
+     silently did nothing because its listeners were bound before the sheet
+     was on the page. Putting the nodes in state re-runs the effect the moment
+     they appear. */
+  const [sheetEl, setSheetEl] = useState<HTMLDivElement | null>(null);
+  const [tabEl, setTabEl] = useState<HTMLButtonElement | null>(null);
+  const [drag, setDrag] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const startY = useRef(0);
+  const lastY = useRef(0);
+  const lastT = useRef(0);
+  const velocity = useRef(0);
+
+  /* While the sheet is open the page behind it must not move. Setting
+     body.overflow is also what tells PullToRefresh to stand down — without
+     it, dragging down inside the sheet triggers a page refresh instead of
+     closing it, which is exactly what it was doing. */
+  useEffect(() => {
+    if (!moreOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [moreOpen]);
+
+  /* Native listeners rather than React's, because touchmove has to be
+     non-passive to stop the page scrolling underneath the drag. */
+  useEffect(() => {
+    const sheet = sheetEl;
+    const tab = tabEl;
+    if (!sheet && !tab) return;
+    const height = () =>
+      sheet?.getBoundingClientRect().height || window.innerHeight * 0.9;
+
+    function onStart(e: TouchEvent) {
+      const t = e.touches[0];
+      startY.current = t.clientY;
+      lastY.current = t.clientY;
+      lastT.current = e.timeStamp;
+      velocity.current = 0;
+      setDragging(true);
+    }
+    function onMove(e: TouchEvent) {
+      const t = e.touches[0];
+      const dy = startY.current - t.clientY; // up is positive
+      const dt = e.timeStamp - lastT.current;
+      if (dt > 0) velocity.current = (lastY.current - t.clientY) / dt;
+      lastY.current = t.clientY;
+      lastT.current = e.timeStamp;
+
+      const H = height();
+      const resting = moreOpen ? 0 : H;
+      const y = Math.max(0, Math.min(H, resting - dy));
+      // Only claim the gesture once it's clearly a drag, so a tap still taps.
+      if (Math.abs(dy) > 4 && e.cancelable) e.preventDefault();
+      setDrag(y - resting);
+    }
+    function onEnd() {
+      const H = height();
+      const resting = moreOpen ? 0 : H;
+      const y = resting + drag;
+      // A decisive flick wins over distance — that's what a finger expects.
+      const flick = velocity.current;
+      const shouldOpen =
+        flick > 0.35 ? true : flick < -0.35 ? false : y < H / 2;
+      setDragging(false);
+      setDrag(0);
+      setMoreOpen(shouldOpen);
+    }
+
+    const targets = [sheet, tab].filter(Boolean) as HTMLElement[];
+    targets.forEach((el) => {
+      el.addEventListener("touchstart", onStart, { passive: true });
+      el.addEventListener("touchmove", onMove, { passive: false });
+      el.addEventListener("touchend", onEnd, { passive: true });
+      el.addEventListener("touchcancel", onEnd, { passive: true });
+    });
+    return () => {
+      targets.forEach((el) => {
+        el.removeEventListener("touchstart", onStart);
+        el.removeEventListener("touchmove", onMove);
+        el.removeEventListener("touchend", onEnd);
+        el.removeEventListener("touchcancel", onEnd);
+      });
+    };
+  }, [moreOpen, drag, sheetEl, tabEl]);
   // The agent's OWN live Meta figures (their tagged campaigns, last 30 days).
   // Null until the admin tags a campaign id and the brand's Meta is connected.
   const [myMeta, setMyMeta] = useState<{
@@ -917,24 +1017,22 @@ export default function DashboardOverview() {
             tap; swipe it up or tap it for the second page. */}
         <div className="-mx-4 -mb-24">
           <button
+            ref={setTabEl}
             type="button"
             onClick={() => setMoreOpen(true)}
-            onTouchStart={(e) => { dragStartY.current = e.touches[0].clientY; }}
-            onTouchEnd={(e) => {
-              const dy = dragStartY.current == null ? 0 : dragStartY.current - e.changedTouches[0].clientY;
-              dragStartY.current = null;
-              if (dy > 20) setMoreOpen(true);
-            }}
-            className="relative block w-full pt-7 text-left"
+            className="relative block w-full touch-none pt-7 text-left"
           >
-            {/* The pull-tab — sits half out of the panel and bobs. */}
-            <span className="tab-bob absolute left-1/2 top-0 z-10 flex h-[50px] w-[50px] -translate-x-1/2 items-center justify-center rounded-full bg-white text-gray-950 shadow-[0_10px_22px_-8px_rgba(0,0,0,0.55)]">
+            {/* The pull-tab — sits half out of the panel and bobs. The dark
+                ring continues the panel's own outline around the circle, so
+                the two read as one shape with a notch rather than a button
+                stuck on top of a slab. */}
+            <span className="tab-bob absolute left-1/2 top-0 z-10 flex h-[50px] w-[50px] -translate-x-1/2 items-center justify-center rounded-full bg-white text-gray-950 ring-[3px] ring-gray-950 shadow-[0_10px_22px_-8px_rgba(0,0,0,0.55)]">
               <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 15l-6-6-6 6" />
               </svg>
             </span>
 
-            <span className="relative block overflow-hidden rounded-t-[44px] bg-gray-950 px-6 pb-40 pt-7 text-white">
+            <span className="relative block overflow-hidden rounded-t-[44px] border-[3px] border-b-0 border-gray-950 bg-gray-950 px-6 pb-40 pt-7 text-white">
               {/* Brand-coloured glow, bled off the corner. */}
               <span
                 className="pointer-events-none absolute -right-12 -top-20 h-56 w-56 rounded-full opacity-40 blur-3xl"
@@ -994,23 +1092,24 @@ export default function DashboardOverview() {
         />
       )}
       <div
-        className="fixed inset-x-2 bottom-0 z-[45] flex h-[90vh] flex-col overflow-hidden rounded-t-[30px] border border-white/60 bg-[#f4f4f5] shadow-[0_-24px_60px_-24px_rgba(0,0,0,0.45)] lg:hidden"
+        ref={setSheetEl}
+        className="fixed inset-x-2 bottom-0 z-[45] flex h-[90vh] flex-col overflow-hidden rounded-t-[30px] border-[3px] border-b-0 border-gray-950 bg-[#f4f4f5] shadow-[0_-24px_60px_-24px_rgba(0,0,0,0.45)] lg:hidden"
         style={{
-          transform: moreOpen ? "translateY(0)" : "translateY(100%)",
-          transition: "transform 0.6s cubic-bezier(0.22,1.5,0.36,1)",
+          transform: `translateY(calc(${moreOpen ? "0px" : "100%"} + ${drag}px))`,
+          // No transition while a finger is down, or the sheet lags behind it
+          // instead of tracking. The spring only plays on release.
+          transition: dragging
+            ? "none"
+            : "transform 0.52s cubic-bezier(0.22,1.2,0.36,1)",
         }}
       >
         {/* Grab handle — swipe down (or tap) to drop back to page one. */}
         <button
           type="button"
           onClick={() => setMoreOpen(false)}
-          onTouchStart={(e) => { dragStartY.current = e.touches[0].clientY; }}
-          onTouchEnd={(e) => {
-            const dy = dragStartY.current == null ? 0 : e.changedTouches[0].clientY - dragStartY.current;
-            dragStartY.current = null;
-            if (dy > 20) setMoreOpen(false);
-          }}
-          className="flex w-full shrink-0 flex-col items-center gap-2 pb-2 pt-3.5"
+          // touch-none stops the browser claiming the gesture for scrolling
+          // before the sheet's own handler sees it.
+          className="flex w-full shrink-0 touch-none flex-col items-center gap-2 pb-2 pt-3.5"
         >
           <span className="h-1.5 w-10 rounded-full bg-gray-300" />
           <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Your numbers</span>
