@@ -122,17 +122,25 @@ export function inviteEmail(opts: {
     subject: "Your Launch Pad account is ready",
     html: shell({
       heading: "Your account is ready",
-      preheader: "Set your password and finish your profile",
+      preheader: "Choose a password and you're in — your ads are already connected",
+      /* Leads with what's already been done FOR them, because that's the
+         surprising part — the account exists, the ads are connected, and the
+         only job is a password. Referrals used to be named here; they're
+         switched off for the first release, so promising them in the very
+         first email would be a broken promise on day one. */
       body:
         para(`Hi ${opts.name.split(" ")[0]},`) +
         para(
-          `We've created a Launch Pad account for you as part of ${opts.brandName}. It's where referrals you send and receive are tracked, and where paid-ads leads land if you take that on.`
+          // brandName carries its own "The", so it can't sit after "your".
+          `Your Launch Pad account is ready. Every lead from your ads now lands here — so you can call them, log what happened and book the appraisal, all in one place.`
         ) +
-        para("Set your password to get started — it takes about a minute.") +
-        button(opts.link, "Set up my account") +
+        para(
+          "Your ads are already connected, so there's nothing to set up. Choose a password and you're in — about a minute."
+        ) +
+        button(opts.link, "Set my password") +
         fallbackLink(opts.link) +
         para(
-          `<span style="color:${MUTED};font-size:13px;">This link is just for you and expires in ${opts.days} days. If it does, ask for a new one and we'll send it straight over.</span>`
+          `<span style="color:${MUTED};font-size:13px;">This link is just for you and expires in ${opts.days} days. If it runs out, ask and we'll send another.</span>`
         ),
     }),
   };
