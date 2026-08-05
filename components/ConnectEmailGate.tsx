@@ -11,9 +11,13 @@
 // It also happens to switch on sending mail from their own address, which is
 // why the copy leads with what they get rather than with the security reason.
 //
-// Deliberately has no "Later". The skippable prompt on the Overview page is
-// the right shape for someone who already proved who they are at signup; it is
-// the wrong shape for an account that was handed to them.
+// Deliberately has no "Later" — but it MUST have a way out. Without one this
+// is a trap: a blocking overlay with a single button, no navigation, and no
+// sign-out, so anyone who can't complete the Microsoft step is locked out of
+// their own account with nothing to click. That happened to a tester on
+// 4 Aug 2026. Signing out is the honest escape: it can't reach the dashboard
+// (the gate still stands on the next sign-in) but it returns them to the login
+// page instead of stranding them.
 //
 // TEMPORARY (James, 4 Aug 2026): DESKTOP ONLY. The Microsoft round trip hasn't
 // been worked through on mobile yet, and on a phone this gate is a dead end —
@@ -27,6 +31,7 @@
 // testing, not a decision that mobile doesn't need proving who you are.
 
 import { useState } from "react";
+import { signOut } from "@/lib/session";
 import type { UserProfile } from "@/lib/types";
 
 export default function ConnectEmailGate({
@@ -37,6 +42,7 @@ export default function ConnectEmailGate({
   accent: string;
 }) {
   const [going, setGoing] = useState(false);
+  const [leaving, setLeaving] = useState(false);
 
   return (
     <div className="fixed inset-0 z-[100] hidden items-center justify-center bg-gray-950/60 p-4 backdrop-blur-sm lg:flex">
@@ -73,6 +79,26 @@ export default function ConnectEmailGate({
         <p className="mt-3 text-center text-xs text-gray-400">
           We never see your password — Microsoft handles the sign-in.
         </p>
+
+        {/* The way out. Not an alternative to connecting — the gate is still
+            there next time — but nobody should be stuck on a screen with one
+            button that didn't work for them. */}
+        <div className="mt-6 border-t border-gray-100 pt-4 text-center">
+          <button
+            onClick={async () => {
+              setLeaving(true);
+              await signOut();
+              window.location.href = "/";
+            }}
+            disabled={leaving || going}
+            className="text-sm font-medium text-gray-500 underline-offset-4 hover:text-gray-900 hover:underline disabled:opacity-50"
+          >
+            {leaving ? "Signing out…" : "Not now — sign out"}
+          </button>
+          <p className="mt-1.5 text-xs text-gray-400">
+            You&apos;ll be asked again next time you sign in.
+          </p>
+        </div>
       </div>
     </div>
   );
