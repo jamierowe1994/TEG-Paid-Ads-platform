@@ -12,6 +12,7 @@ import AccountImport from "@/components/AccountImport";
 import TleProInvite from "@/components/TleProInvite";
 import AdReconciliation from "@/components/AdReconciliation";
 import EmailTest from "@/components/EmailTest";
+import WhatsAppTemplate from "@/components/WhatsAppTemplate";
 import PasswordInput from "@/components/PasswordInput";
 import type { UserProfile, Referral } from "@/lib/types";
 import ICONS, { SocialIcon } from "@/components/SocialIcons";
@@ -2735,6 +2736,8 @@ export default function AdminPage() {
                   <p className="mt-3 text-sm text-red-600">{waError}</p>
                 )}
               </div>
+            
+              <WhatsAppTemplate pass={password} />
             </section>
 
             {/* Other systems */}
