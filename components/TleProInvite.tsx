@@ -159,6 +159,20 @@ export default function TleProInvite({ pass }: { pass: string }) {
     (r) => r.connected || state[key(r)]?.justConnected
   ).length;
 
+  /* Opening in a new tab keeps the admin session in this one, so you can look
+     at an agent's account and come straight back to the roster. */
+  async function viewAs(userId: string) {
+    const res = await fetch("/api/admin/view-as", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${pass}`,
+      },
+      body: JSON.stringify({ userId }),
+    });
+    if (res.ok) window.open("/dashboard", "_blank", "noopener");
+  }
+
   async function sendAll() {
     if (!sendable.length || sendingAll) return;
     setSendingAll(true);
@@ -298,6 +312,15 @@ export default function TleProInvite({ pass }: { pass: string }) {
                 >
                   {s.busy ? "Checking…" : done ? "Reconnect" : "Connect"}
                 </button>
+                {row.userId && (
+                  <button
+                    onClick={() => viewAs(row.userId!)}
+                    title="Open their dashboard as they'll see it"
+                    className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                  >
+                    View as
+                  </button>
+                )}
               </div>
 
               {s.error && (

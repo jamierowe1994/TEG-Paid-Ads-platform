@@ -62,10 +62,13 @@ export const TLE_LAUNCH_LIST: LaunchListEntry[] = [
   },
   {
     name: "Kirstie Wallington",
-    email: "kirstie.wallington@thelettingexperts.co.uk",
-    altEmails: ["kirstie.mulholland@thelettingexperts.co.uk"],
+    // Checked with her 5 Aug: the mailbox she actually has is still the
+    // Mulholland one, despite the name change. That's the address the account
+    // is made against; Wallington is kept as an alt in case it's switched.
+    email: "kirstie.mulholland@thelettingexperts.co.uk",
+    altEmails: ["kirstie.wallington@thelettingexperts.co.uk"],
     area: "Leicestershire",
-    note: "Same person as Kirstie Mulholland in Team Hub — confirmed 5 Aug 2026. Her email is the Wallington one, so that's the account. Also runs TLE back-office and gets the £100 ad spend without paying for Pro. CHECK THE ADDRESS ON SCREEN before connecting: it follows the pattern every other TLE address uses, but nobody has read it back from her.",
+    note: "Goes by Wallington, but her mailbox is still the Mulholland address — checked 5 Aug 2026. Also runs TLE back-office and gets the £100 ad spend without paying for Pro.",
   },
   { name: "James Crumpton", email: "james.crumpton@thepropertyexperts.co.uk", area: "Bristol" },
   { name: "Sean McMahon", email: "sean.mcmahon@thelettingexperts.co.uk", area: "Edinburgh" },

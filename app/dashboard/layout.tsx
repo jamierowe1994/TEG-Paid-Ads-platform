@@ -240,6 +240,15 @@ export default function DashboardLayout({
      effect below corrects it once we've read storage. Per user, so one
      person dismissing it on a shared machine doesn't hide it from another. */
   const [emailGateSkipped, setEmailGateSkipped] = useState(true);
+  /* Set when an admin is looking at this account through view-as. Read from a
+     deliberately non-httpOnly cookie so the banner can appear without another
+     request. Anything done while this is showing is done AS the agent, which
+     is exactly why it stays on screen the whole time. */
+  const [viewingAs, setViewingAs] = useState<string | null>(null);
+  useEffect(() => {
+    const m = document.cookie.match(/(?:^|;\s*)teg_viewing_as=([^;]*)/);
+    setViewingAs(m ? decodeURIComponent(m[1]) : null);
+  }, []);
   useEffect(() => {
     if (!user) return;
     try {
@@ -1341,6 +1350,24 @@ export default function DashboardLayout({
 
       {/* Pre-provisioned accounts: nothing happens until they swap the shared
           launch password for one of their own. */}
+      {viewingAs && (
+        <div className="fixed inset-x-0 top-0 z-[200] flex flex-wrap items-center justify-center gap-3 bg-amber-400 px-4 py-2 text-center text-sm font-medium text-amber-950">
+          <span>
+            Viewing as <strong>{viewingAs}</strong> — anything you do here is
+            done as them.
+          </span>
+          <button
+            onClick={async () => {
+              await fetch("/api/admin/view-as", { method: "DELETE" });
+              window.location.href = "/admin";
+            }}
+            className="rounded-md bg-amber-950/10 px-3 py-1 text-xs font-semibold hover:bg-amber-950/20"
+          >
+            Stop viewing
+          </button>
+        </div>
+      )}
+
       {user.mustResetPassword ? (
         <SetPasswordGate
           user={user}
