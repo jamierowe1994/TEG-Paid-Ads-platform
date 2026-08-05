@@ -1063,8 +1063,8 @@ export default function DashboardOverview() {
                 shadowless: the ring is the same weight as the panel's outline
                 so the two read as ONE continuous line notching around the
                 circle, rather than a badge stuck on top of a slab. */}
-            <span className="tab-bob absolute left-1/2 top-0 z-10 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full bg-white text-gray-500 ring-[2.5px] ring-gray-950">
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round">
+            <span className="tab-bob absolute left-1/2 top-0 z-10 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full bg-white text-gray-400 ring-[1.5px] ring-gray-600">
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 15l-6-6-6 6" />
               </svg>
             </span>
@@ -1073,7 +1073,7 @@ export default function DashboardOverview() {
                 thing on the page and the notch was invisible — dark ring on a
                 dark slab has nothing to read against. On white the outline
                 carries the shape and the numbers stay the loudest thing. */}
-            <span className="relative block overflow-hidden rounded-t-[44px] border-[2.5px] border-b-0 border-gray-950 bg-white px-6 pb-40 pt-7 text-gray-950">
+            <span className="relative block overflow-hidden rounded-t-[44px] border-[1.5px] border-b-0 border-gray-600 bg-white px-6 pb-40 pt-7 text-gray-950">
               <span className="relative flex items-end justify-between gap-5">
                 <span className="block">
                   <span className="block text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">
