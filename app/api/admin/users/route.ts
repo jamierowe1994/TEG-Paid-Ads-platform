@@ -24,7 +24,8 @@ export async function GET(req: NextRequest) {
 }
 
 // Update admin-managed fields on an agent, or add an internal note.
-// Body: { userId, metaCampaignId?, location?, onboardingStage?, note? }
+// Body: { userId, metaCampaignId?, location?, onboardingStage?, note?,
+//         deactivated? }
 export async function PATCH(req: NextRequest) {
   const scope = adminScope(req);
   if (!scope) {
@@ -62,6 +63,18 @@ export async function PATCH(req: NextRequest) {
   }
   if (typeof body?.onboardingStage === "string") {
     patch.onboardingStage = body.onboardingStage;
+  }
+  /* Lock a leaver out. The login route has always refused a deactivated
+     account, but nothing could set the flag — so someone who left kept working
+     access to their leads until their account was deleted outright, which also
+     loses the history. This is the reversible version: they can't sign in,
+     the record stays.
+
+     Reversible on purpose. Deleting is still available separately, and a
+     leaver who turns out to be on gardening leave shouldn't cost you the
+     lead history. */
+  if ("deactivated" in body) {
+    patch.deactivatedAt = body.deactivated ? new Date().toISOString() : null;
   }
   if (Array.isArray(body?.campaignAssets)) {
     patch.campaignAssets = body.campaignAssets;

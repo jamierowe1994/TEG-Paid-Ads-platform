@@ -74,7 +74,6 @@ export const TLE_LAUNCH_LIST: LaunchListEntry[] = [
   { name: "Lauren Engley", email: "lauren.engley@thelettingexperts.co.uk", area: "Bristol" },
   { name: "Richard Callow", email: "richard.callow@thelettingexperts.co.uk", area: "Oxford" },
   { name: "Zilvinas Navickis", email: "zill@thepropertyexperts.co.uk", area: "Dorset" },
-  { name: "Elizabeth Ogunfowokan", email: "elizabeth.ogunfowokan@thelettingexperts.co.uk", area: "Chelmsford" },
   { name: "Edward Westwood", email: "edward.westwood@thelettingexperts.co.uk", area: "Stourbridge" },
 ];
 
