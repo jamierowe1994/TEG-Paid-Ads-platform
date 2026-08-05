@@ -54,6 +54,9 @@ function mayUseInviteTab(req: NextRequest): boolean {
 }
 
 export interface ProRow {
+  /** Launch Pad user id, so Send All can name exactly who it's inviting
+   *  rather than sweeping up everyone pending at the brand. */
+  userId: string | null;
   name: string;
   /** From Team Hub. May be blank — the UI lets it be typed in. */
   email: string;
@@ -93,6 +96,7 @@ export async function GET(req: NextRequest) {
       }
     }
     rows.push({
+      userId: existing?.id ?? null,
       name: p.name,
       email,
       partnerPackage: hubPackage,

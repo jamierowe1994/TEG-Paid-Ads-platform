@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 interface ProRow {
+  userId: string | null;
   name: string;
   email: string;
   partnerPackage: string | null;
@@ -51,6 +52,9 @@ export default function TleProInvite({ pass }: { pass: string }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [metaConnected, setMetaConnected] = useState(true);
+  const [sendingAll, setSendingAll] = useState(false);
+  const [confirm, setConfirm] = useState(false);
+  const [sendResult, setSendResult] = useState<{ ok: boolean; text: string } | null>(null);
 
   const key = (r: ProRow) => r.email || r.name;
 
@@ -142,9 +146,59 @@ export default function TleProInvite({ pass }: { pass: string }) {
     }
   }
 
+  /* Who Send All would actually email: on the list, connected to their ads,
+     has an account, and hasn't signed in yet. Sending to someone already set
+     up would hand them a fresh invite link for an account they're using. */
+  const sendable = rows.filter(
+    (r) =>
+      (r.connected || state[key(r)]?.justConnected) &&
+      r.userId &&
+      r.awaitingFirstSignIn
+  );
   const connectedCount = rows.filter(
     (r) => r.connected || state[key(r)]?.justConnected
   ).length;
+
+  async function sendAll() {
+    if (!sendable.length || sendingAll) return;
+    setSendingAll(true);
+    setSendResult(null);
+    try {
+      const res = await fetch("/api/admin/send-invites", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${pass}`,
+        },
+        // Named explicitly. Without this the route invites everyone pending
+        // at the brand, which could reach people who aren't on the list.
+        body: JSON.stringify({ userIds: sendable.map((r) => r.userId) }),
+      });
+      const d = await res.json();
+      if (!res.ok) {
+        setSendResult({ ok: false, text: d.error ?? "Couldn't send." });
+        return;
+      }
+      const failed = (d.results ?? []).filter(
+        (r: { sent: boolean }) => !r.sent
+      );
+      setSendResult({
+        ok: failed.length === 0,
+        text:
+          failed.length === 0
+            ? `Sent ${d.sent} invite${d.sent === 1 ? "" : "s"}. They're on their way.`
+            : `Sent ${d.sent}, but ${failed.length} failed: ${failed
+                .map((f: { email: string; reason?: string }) => `${f.email} (${f.reason ?? "unknown"})`)
+                .join(", ")}`,
+      });
+      setConfirm(false);
+      load();
+    } catch {
+      setSendResult({ ok: false, text: "Couldn't reach the server." });
+    } finally {
+      setSendingAll(false);
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -287,34 +341,77 @@ export default function TleProInvite({ pass }: { pass: string }) {
         })}
       </div>
 
-      {/* Send All — deliberately inert until the mailbox is connected. It's
-          shown rather than hidden so the flow is obvious, but it cannot fire:
-          a half-wired invite button is the one thing here that can't be
-          undone once it's been pressed. */}
+      {/* Send All. Two steps on purpose: it emails real people and there is
+          no recall. The confirm names exactly who gets one. */}
       <div className="rounded-2xl border border-gray-200 bg-white p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="font-medium text-gray-900">
-              Send all {connectedCount} invites
+              Send {sendable.length} invite{sendable.length === 1 ? "" : "s"}
             </p>
             <p className="mt-1 text-sm text-gray-500">
-              Emails every connected partner asking them to sign in to Launch
-              Pad. Nothing is sent before this is pressed.
+              Emails everyone who&apos;s connected and hasn&apos;t signed in
+              yet. Each gets their own link — no shared password.
             </p>
           </div>
-          <button
-            disabled
-            title="The invite mailbox isn't connected yet"
-            className="cursor-not-allowed rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white opacity-40"
-          >
-            Send All
-          </button>
+          {!confirm && (
+            <button
+              onClick={() => setConfirm(true)}
+              disabled={sendable.length === 0 || sendingAll}
+              className="rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+            >
+              Send All
+            </button>
+          )}
         </div>
-        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          Waiting on the invite mailbox. The email itself hasn&apos;t been
-          written yet — this button stays disabled until it has, so it
-          can&apos;t go out half-finished.
-        </p>
+
+        {sendable.length === 0 && !sendResult && (
+          <p className="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-500">
+            Nobody to invite yet — connect someone&apos;s ads first. Anyone
+            who&apos;s already signed in won&apos;t be sent another.
+          </p>
+        )}
+
+        {confirm && (
+          <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4">
+            <p className="text-sm text-gray-700">
+              This emails {sendable.length}{" "}
+              {sendable.length === 1 ? "person" : "people"} now. It can&apos;t
+              be taken back.
+            </p>
+            <ul className="mt-2 space-y-0.5 text-sm text-gray-600">
+              {sendable.map((r) => (
+                <li key={r.userId}>· {r.name} — {r.email}</li>
+              ))}
+            </ul>
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={sendAll}
+                disabled={sendingAll}
+                className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                {sendingAll ? "Sending…" : `Yes, send ${sendable.length}`}
+              </button>
+              <button
+                onClick={() => setConfirm(false)}
+                disabled={sendingAll}
+                className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {sendResult && (
+          <p
+            className={`mt-3 rounded-lg px-3 py-2 text-sm ${
+              sendResult.ok ? "bg-green-50 text-green-800" : "bg-red-50 text-red-700"
+            }`}
+          >
+            {sendResult.text}
+          </p>
+        )}
       </div>
     </div>
   );

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminScope } from "@/lib/admin-auth";
 import { listUsers, findById } from "@/lib/users-store";
 import { createAuthToken } from "@/lib/auth-tokens";
-import { sendSystemEmail, systemMailboxConnected } from "@/lib/mailer";
+import { sendSystemEmail, canSendSystemEmail } from "@/lib/mailer";
 import { inviteEmail } from "@/lib/emails";
 import { appOrigin } from "@/lib/microsoft";
 import { brandById } from "@/lib/brands";
@@ -30,9 +30,12 @@ export async function POST(req: NextRequest) {
   if (!scope) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
-  if (!(await systemMailboxConnected())) {
+  // Any transport will do — Resend or the Microsoft mailbox. This used to
+  // insist on Microsoft specifically, which would have refused to send once
+  // Resend became the transport.
+  if (!(await canSendSystemEmail())) {
     return NextResponse.json(
-      { error: "Connect the system mailbox first (Connections tab)." },
+      { error: "No email transport configured — check Connections." },
       { status: 503 }
     );
   }
