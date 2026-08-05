@@ -43,8 +43,17 @@ export async function GET(req: NextRequest) {
      depending on how the token was issued, and not at all on some. Try the
      cheap routes in order rather than making someone go and find it. */
   const tried: string[] = [];
-  let waba: string | null = process.env.WHATSAPP_WABA_ID?.trim() || null;
-  if (waba) tried.push("WHATSAPP_WABA_ID (configured)");
+  /* An explicit ?waba= wins, so a value can be tried before it's committed to
+     config — no point setting a Railway variable and restarting only to find
+     out it was the wrong number. Still super-admin only, still read-only: this
+     just chooses which account to ask about. */
+  const supplied = req.nextUrl.searchParams.get("waba")?.trim();
+  let waba: string | null =
+    (supplied && /^\d{5,}$/.test(supplied) ? supplied : null) ||
+    process.env.WHATSAPP_WABA_ID?.trim() ||
+    null;
+  if (supplied && !waba) tried.push("supplied waba wasn't a plain number — ignored");
+  else if (waba) tried.push(supplied ? "supplied by hand" : "WHATSAPP_WABA_ID (configured)");
 
   // 1. On the phone number node itself.
   if (!waba) {

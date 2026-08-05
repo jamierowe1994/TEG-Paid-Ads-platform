@@ -29,12 +29,14 @@ export default function WhatsAppTemplate({ pass }: { pass: string }) {
   const [error, setError] = useState<string | null>(null);
   const [tpls, setTpls] = useState<Tpl[] | null>(null);
   const [tried, setTried] = useState<string[]>([]);
+  const [waba, setWaba] = useState("");
 
   async function check() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/whatsapp/template", {
+      const qs = waba.trim() ? `?waba=${encodeURIComponent(waba.trim())}` : "";
+      const res = await fetch(`/api/admin/whatsapp/template${qs}`, {
         headers: { Authorization: `Bearer ${pass}` },
         cache: "no-store",
       });
@@ -62,13 +64,21 @@ export default function WhatsAppTemplate({ pass }: { pass: string }) {
             What the approved template says, and where its button points.
           </p>
         </div>
-        <button
-          onClick={check}
-          disabled={loading}
-          className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40"
-        >
-          {loading ? "Checking…" : "Check template"}
-        </button>
+        <div className="flex items-center gap-2">
+          <input
+            value={waba}
+            onChange={(e) => setWaba(e.target.value)}
+            placeholder="WhatsApp Business Account ID (optional)"
+            className="w-64 rounded-lg border border-gray-200 px-3 py-2 text-sm"
+          />
+          <button
+            onClick={check}
+            disabled={loading}
+            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+          >
+            {loading ? "Checking…" : "Check template"}
+          </button>
+        </div>
       </div>
 
       {error && (
