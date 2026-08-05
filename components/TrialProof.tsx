@@ -124,15 +124,15 @@ export default function TrialProof() {
       {/* items-start so the 555 tops out level with "We ran…" instead of
           hanging vertically centred beside it. */}
       <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-20">
-        <div className="max-w-xl">
-          <h2 className="text-4xl font-light leading-[1.05] tracking-[-0.035em] text-gray-900 sm:text-5xl">
+        <div className="max-w-xl max-sm:hidden">
+          <h2 className="text-4xl font-light leading-[1.05] tracking-[-0.035em] text-gray-900 max-sm:hidden sm:text-5xl">
             We ran it for three months before we offered it to you.
           </h2>
           <p className="mt-6 text-lg leading-relaxed text-gray-600">
             These are the results we managed to get for Jon at The Lettings
             Experts, covering Edinburgh. Here&apos;s what came back.
           </p>
-          <p className="mt-8 text-lg text-gray-600">
+          <p className="mt-8 text-lg text-gray-600 max-sm:hidden">
             That was one location, for three months. Yours is still open.
           </p>
         </div>
@@ -144,8 +144,15 @@ export default function TrialProof() {
           <p className="text-[7rem] font-light leading-[0.78] tabular-nums tracking-[-0.06em] text-gray-900 sm:text-[11rem] lg:text-[14rem]">
             {leads.toLocaleString("en-GB")}
           </p>
-          <p className="mt-5 max-w-[15rem] text-lg text-gray-600 lg:ml-auto">
+          <p className="mt-5 max-w-[15rem] text-lg text-gray-600 max-sm:hidden lg:ml-auto">
             leads delivered to Jon, in three months
+          </p>
+          {/* Mobile only. The desktop column above says this across a heading,
+              this caption and a closing line; on a phone that's the same fact
+              three times before you reach a number. One line instead. */}
+          <p className="mt-5 text-lg leading-relaxed text-gray-600 sm:hidden">
+            These are the results we got from Jon for The Lettings Experts,
+            covering Edinburgh. Here&apos;s what came back.
           </p>
           {/* Mobile: the rest of the trial's numbers, one tap away — sits
               right under the headline figure, before the CTA. */}

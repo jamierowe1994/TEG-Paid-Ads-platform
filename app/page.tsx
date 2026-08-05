@@ -352,7 +352,7 @@ export default function LandingPage() {
           opaque slab, so anything sitting behind the page (a bloom, the
           texture layer) shows through this one and not that one — which drew
           a hard line across the join. Same colour, both opaque, no seam. */}
-      <section id="pain" className="relative z-30 bg-[#f4f4f5] py-28 max-sm:py-16">
+      <section id="pain" className="relative z-30 bg-[#f4f4f5] py-28 max-sm:hidden">
         <PainPoints />
       </section>
 

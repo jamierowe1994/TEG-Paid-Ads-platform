@@ -33,7 +33,12 @@ export default function ExpandingSlab({
       const vh = window.innerHeight;
       // 1 as the top edge enters at the bottom of the screen → 0 once docked.
       const t = Math.max(0, Math.min(1, rect.top / vh));
-      const r = t * vh * 0.55;
+      // 0.55 of the viewport height is a deep dome. On a phone the slab is
+      // only ~390px wide, so that same radius came to a point and read as a
+      // bullet rather than a curve. A much shallower arc on mobile; the
+      // timing and the parallax are untouched.
+      const depth = window.innerWidth < 640 ? 0.1 : 0.55;
+      const r = t * vh * depth;
       el.style.borderRadius = `50% 50% 0 0 / ${r.toFixed(1)}px ${r.toFixed(1)}px 0 0`;
 
       // Parallax: the deeper into the section, the more each layer has

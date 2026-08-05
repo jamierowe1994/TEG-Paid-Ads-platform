@@ -83,6 +83,19 @@ function useInView<T extends HTMLElement>() {
   return [ref, inView] as const;
 }
 
+/* Bento tile shapes — mobile only, indexed by step. Two columns:
+   row 1  [ 1 . . . . 1 ]
+   row 2  [ 2 ][ 3 ]
+   row 3  [ 2 ][ 4 ]
+   Step 2 carries the brand colour so the grid has a single focal tile
+   rather than four equal white boxes. */
+const BENTO_MOBILE = [
+  { span: "max-sm:col-span-2", accent: false },
+  { span: "max-sm:row-span-2", accent: true },
+  { span: "", accent: false },
+  { span: "", accent: false },
+] as const;
+
 const STILL = -1; // reduced motion: skip the choreography, show the end state
 
 function useTicker(running: boolean, steps: number, ms = 700) {
@@ -142,30 +155,39 @@ export default function HowItWorksPhone() {
           ))}
         </div>
 
-        {/* Mobile-first: a horizontal snap carousel of step cards you swipe
-            through (bleeding to the screen edge so the next card peeks in).
-            From sm up every carousel style is reset and it's the same plain
-            vertical list as always — ProofHowScene reuses this on desktop. */}
+        {/* Mobile: a bento grid. It was a horizontal snap carousel, but a
+            sideways scroll on a landing page is a bet that people will swipe,
+            and mostly they don't — steps 3 and 4 were off-screen and stayed
+            there. A grid shows all four at once, and the uneven tiles stop it
+            reading as another uniform card stack.
+
+            Tile shapes come from BENTO_MOBILE, indexed by step. Every one of
+            those classes is max-sm:, and every sm: reset below is untouched,
+            so tablet and desktop keep the plain vertical list ProofHowScene
+            animates. */}
         <ol
           key={tab}
-          className="-mx-6 mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:mt-10 sm:block sm:min-h-[470px] sm:space-y-7 sm:overflow-visible sm:px-0 sm:pb-0"
+          className="mt-8 grid grid-cols-2 gap-3 sm:mt-10 sm:block sm:min-h-[470px] sm:space-y-7"
         >
-          {STEPS[tab].map((s) => (
+          {STEPS[tab].map((s, i) => {
+            const tile = BENTO_MOBILE[i] ?? BENTO_MOBILE[0];
+            return (
             <li
               key={s.n}
-              className="flex w-[80%] shrink-0 snap-center flex-col gap-4 rounded-3xl border border-black/5 bg-[#ffffff] p-6 shadow-[0_16px_36px_-22px_rgba(0,0,0,0.28)] sm:w-auto sm:shrink sm:snap-align-none sm:flex-row sm:gap-5 sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none"
+              className={`flex flex-col gap-3 rounded-3xl border border-black/5 p-5 max-sm:gap-2 max-sm:p-4 shadow-[0_16px_36px_-22px_rgba(0,0,0,0.28)] ${tile.span} ${tile.accent ? "max-sm:border-transparent max-sm:bg-[var(--group)]" : "bg-[#ffffff]"} sm:w-auto sm:shrink sm:flex-row sm:gap-5 sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none`}
             >
-              <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-300 text-sm font-semibold text-gray-500">
+              <span className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-semibold max-sm:h-7 max-sm:w-7 max-sm:text-xs ${tile.accent ? "max-sm:border-white/40 max-sm:text-white" : ""} border-gray-300 text-gray-500`}>
                 {s.n}
               </span>
               <div>
-                <p className="text-lg font-semibold text-gray-900">{s.title}</p>
-                <p className="mt-1.5 max-w-md leading-relaxed text-gray-500">
+                <p className={`text-lg font-semibold max-sm:text-[0.95rem] max-sm:leading-tight ${tile.accent ? "max-sm:text-white" : ""} text-gray-900`}>{s.title}</p>
+                <p className={`mt-1.5 max-w-md leading-relaxed max-sm:mt-1 max-sm:text-[0.8rem] max-sm:leading-snug ${tile.accent ? "max-sm:text-white/80" : ""} text-gray-500`}>
                   {s.body}
                 </p>
               </div>
             </li>
-          ))}
+            );
+          })}
         </ol>
       </div>
 
