@@ -114,7 +114,7 @@ export async function sendNewLeadAlert(opts: {
   };
 
   try {
-    await fetch(`${GRAPH}/${process.env.WHATSAPP_PHONE_ID}/messages`, {
+    const res = await fetch(`${GRAPH}/${process.env.WHATSAPP_PHONE_ID}/messages`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
@@ -122,8 +122,26 @@ export async function sendNewLeadAlert(opts: {
       },
       body: JSON.stringify(body),
     });
-  } catch {
-    /* alerting is best-effort — swallow errors */
+    // The response USED TO BE IGNORED ENTIRELY, which made this unfalsifiable:
+    // an expired token (401) or a paused template (400) looked exactly like a
+    // successful send, so "I've had no pings" gave no clue whether anything
+    // was broken. Sending stays best-effort — a failed alert must never affect
+    // lead creation — but it is no longer silent.
+    if (!res.ok) {
+      const data = (await res.json().catch(() => null)) as {
+        error?: { message?: string; code?: number };
+      } | null;
+      console.error(
+        `[whatsapp] new-lead alert REJECTED (${res.status}):`,
+        data?.error?.message ?? "no detail",
+        data?.error?.code ? `code=${data.error.code}` : ""
+      );
+    }
+  } catch (e) {
+    console.error(
+      "[whatsapp] new-lead alert failed to send:",
+      e instanceof Error ? e.message : String(e)
+    );
   }
 }
 
