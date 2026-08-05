@@ -626,14 +626,32 @@ export default function ProfilePage() {
               </span>
             </div>
 
+            {/* Licence-included accounts sit on the default "starter" package
+                they never chose, so its name, tagline and price are all
+                meaningless to them — and a £250/mo next to "Included with your
+                Pro licence" reads as a bill they didn't know about. */}
             <div className="mt-4 flex items-end justify-between rounded-xl bg-gray-50 p-4">
               <div>
-                <p className="text-lg font-semibold">{pkg?.name} package</p>
-                <p className="text-xs text-gray-500">{pkg?.tagline}</p>
+                <p className="text-lg font-semibold">
+                  {licenceIncluded ? "Paid Ads" : `${pkg?.name} package`}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {licenceIncluded
+                    ? "Part of your Pro licence"
+                    : pkg?.tagline}
+                </p>
               </div>
               <p className="text-2xl font-semibold tracking-tight">
-                £{pkg?.price}
-                <span className="text-sm font-normal text-gray-400">/mo</span>
+                {licenceIncluded ? (
+                  <span className="text-base font-semibold text-green-600">
+                    Included
+                  </span>
+                ) : (
+                  <>
+                    £{pkg?.price}
+                    <span className="text-sm font-normal text-gray-400">/mo</span>
+                  </>
+                )}
               </p>
             </div>
 
@@ -651,12 +669,15 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div className="mt-4 flex items-center justify-between text-sm">
-              <span className="text-gray-500">
-                {cancelled ? "Access ends" : "Next payment"}
-              </span>
-              <span className="font-medium">{fmtDate(nextBill)}</span>
-            </div>
+            {/* No payment is due, so there is no next one to name. */}
+            {!licenceIncluded && (
+              <div className="mt-4 flex items-center justify-between text-sm">
+                <span className="text-gray-500">
+                  {cancelled ? "Access ends" : "Next payment"}
+                </span>
+                <span className="font-medium">{fmtDate(nextBill)}</span>
+              </div>
+            )}
 
             {pkg?.features?.length ? (
               <ul className="mt-4 space-y-1.5 border-t border-gray-100 pt-4 text-sm text-gray-600">
