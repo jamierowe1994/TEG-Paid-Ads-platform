@@ -60,6 +60,11 @@ export default function InstallGate() {
   const [mounted, setMounted] = useState(false);
   const [skipped, setSkipped] = useState(false);
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
+  /* True while the dashboard still owes a setup step (set a password, link an
+     email). Pushing someone to install before their account works would mean
+     installing an app they can't yet use — and this prompt sits above those
+     screens, so it would hide them entirely. */
+  const [setupOwed, setSetupOwed] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -73,7 +78,18 @@ export default function InstallGate() {
       setDeferred(e as BeforeInstallPromptEvent);
     };
     window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
+
+    // The flag is set by the dashboard as it renders, so watch rather than
+    // read once — it can flip after this mounts.
+    const read = () => setSetupOwed(document.body.dataset.setupGate === "1");
+    read();
+    const mo = new MutationObserver(read);
+    mo.observe(document.body, { attributes: true, attributeFilter: ["data-setup-gate"] });
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+      mo.disconnect();
+    };
   }, []);
 
   // Render nothing until mounted (avoids SSR/hydration mismatch). `?install=
@@ -84,7 +100,8 @@ export default function InstallGate() {
   // Never on the public marketing site (only sign-in + the portal), the
   // installed app, or after the user opts to continue in-browser.
   if (!mounted) return null;
-  if (!forced && (!isAppRoute(pathname) || skipped || isStandalone())) return null;
+  if (!forced && (!isAppRoute(pathname) || skipped || isStandalone() || setupOwed))
+    return null;
   const platform = detectPlatform() === "desktop" && forced ? "ios" : detectPlatform();
   if (platform === "desktop") return null;
 

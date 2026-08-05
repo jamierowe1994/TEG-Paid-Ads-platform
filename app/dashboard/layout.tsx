@@ -289,6 +289,20 @@ export default function DashboardLayout({
     user.brandId === "lettings" &&
     !emailProven &&
     !emailGateSkipped;
+
+  /* Tell InstallGate to hold off.
+     The install prompt lives in the root layout and sits above everything, so
+     without this it covers the set-password and link-email steps — pushing
+     someone to install before they've finished setting up the account they'd
+     be installing. Setup first, then the app. */
+  useEffect(() => {
+    const owed = !!user && (user.mustResetPassword || needsEmailProof);
+    if (owed) document.body.dataset.setupGate = "1";
+    else delete document.body.dataset.setupGate;
+    return () => {
+      delete document.body.dataset.setupGate;
+    };
+  });
   useEffect(() => {
     fetchLaunchPhase().then((p) => setReferralsOn(p.referralsEnabled));
   }, []);
