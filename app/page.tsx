@@ -167,11 +167,32 @@ export default function LandingPage() {
               photo's left edge, so a tight gap put it right up against the
               copy. Columns are deliberately uneven — the photo takes the
               larger share so this doesn't read as a symmetrical two-up. */}
-          <div className="mx-auto grid w-full max-w-7xl flex-1 items-center gap-10 px-8 py-12 sm:px-12 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-24">
+          {/* MOBILE IS ONE CARD. Heading, promise, button and photo all live
+              inside a single brand-coloured panel with the photo bleeding to
+              its bottom and side edges — the panel encapsulates the section
+              rather than sitting next to it.
+
+              The grid IS the panel rather than being wrapped in one: it
+              already contains exactly the copy and the photo, so an extra
+              wrapper would be a box around a box. Padding and gap go to zero
+              so the photo can reach the panel's edges, and the copy gets its
+              own padding back.
+
+              Colour is var(--group) at FULL strength — the brand colour
+              match-for-match, per James — so it's whatever the brand-colour
+              picker is set to. That's why every piece of type in here is
+              white: on a deep brand colour, the gray-900 the rest of the page
+              uses would be unreadable. Worth knowing if a much lighter brand
+              colour is ever picked.
+
+              DESKTOP IS UNTOUCHED — every class here is max-sm:. */}
+          <div
+              className="mx-auto grid w-full max-w-7xl flex-1 items-center gap-10 px-8 py-12 max-sm:gap-0 max-sm:overflow-hidden max-sm:rounded-[2rem] max-sm:bg-[var(--group)] max-sm:px-0 max-sm:py-0 sm:px-12 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-24"
+            >
             {/* Same rhythm as the hero: the heading grows in and bounces,
                 the subtext drops in line by line, the button fades last. */}
-            <MobileParallax>
-              <h2 className="mp-lead p-title max-w-lg text-4xl font-semibold leading-[1.05] tracking-tight text-gray-900 max-sm:text-[2.6rem] sm:text-5xl">
+            <MobileParallax className="max-sm:px-6 max-sm:pt-11 max-sm:text-center">
+              <h2 className="mp-lead p-title max-w-lg text-4xl font-semibold leading-[1.05] tracking-tight text-gray-900 max-sm:mx-auto max-sm:max-w-none max-sm:text-balance max-sm:text-[2rem] max-sm:text-white sm:text-5xl">
                 What is Launch Pad?
               </h2>
               {/* Mobile reads as a statement, not body copy: bigger, darker,
@@ -181,11 +202,11 @@ export default function LandingPage() {
               {/* Short on mobile: the photo now carries the bottom of the
                   block, so the copy has to earn its space in one breath. */}
               <p
-                className="mp-follow p-sub mt-7 text-[1.32rem] leading-[1.42] text-gray-800 sm:hidden"
+                className="mp-follow p-sub mx-auto mt-4 max-w-xs text-[1.05rem] leading-[1.45] text-white/85 sm:hidden"
                 style={{ "--d": "0s" } as React.CSSProperties}
               >
                 We build and run your ads. Every lead lands in{" "}
-                <span className="font-semibold text-gray-950">one dashboard</span>
+                <span className="font-semibold text-white">one dashboard</span>
                 , phone number ready to call.
               </p>
               <p
@@ -201,9 +222,19 @@ export default function LandingPage() {
               <div className="p-cta mt-7 sm:hidden">
                 <Link
                   href="/signup"
-                  className="btn-group inline-block rounded-full px-9 py-4 text-base font-semibold"
+                  className="flex w-full items-center justify-between gap-3 rounded-full bg-white py-2 pl-7 pr-2 text-base font-semibold text-gray-900 shadow-sm transition active:scale-[0.98]"
                 >
-                  Start your campaign
+                  <span className="flex-1 text-center">Start your campaign</span>
+                  {/* The arrow badge carries the brand colour, so the button
+                      still reads as ours rather than a generic white pill. */}
+                  <span
+                    aria-hidden
+                    className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[var(--group)] text-white"
+                  >
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M7 17 17 7M9 7h8v8" />
+                    </svg>
+                  </span>
                 </Link>
               </div>
               {/* Second paragraph is desktop-only — on a phone one paragraph
@@ -227,16 +258,16 @@ export default function LandingPage() {
                 </Link>
               </div>
             </MobileParallax>
-            {/* Mobile: the photo runs nearly edge to edge — the negative
-                margin claws back the section + grid padding, leaving a thin
-                16px gutter each side. */}
-            <div className="relative mx-auto w-full max-w-md max-sm:-mx-8 max-sm:mt-9 max-sm:w-auto lg:mr-0 lg:max-w-xl">
+            {/* Mobile: the photo fills the bottom of the panel, edge to edge
+                and flush with its bottom — the panel's overflow-hidden does
+                the corner rounding, so the frame needs none of its own. */}
+            <div className="relative mx-auto w-full max-w-md max-sm:mt-7 max-sm:max-w-none lg:mr-0 lg:max-w-xl">
               {/* One frame, two images, and only ONE of them is ever
                   downloaded.
 
-                  MOBILE gets a cut-out on a brand-tinted panel; DESKTOP keeps
-                  the photograph, because the two-column composition was built
-                  around it and a cut-out would float in that space.
+                  MOBILE gets the cut-out, sitting on the brand panel; DESKTOP
+                  keeps the photograph, because the two-column composition was
+                  built around it and a cut-out would float in that space.
 
                   WHY <source media> AND NOT max-sm:hidden ON A SECOND <img>:
                   display:none does not stop a browser fetching an image, so
@@ -246,20 +277,10 @@ export default function LandingPage() {
                   only form the browser resolves BEFORE fetching, so the
                   candidate that loses is never requested at all.
 
-                  The tint sits on the frame rather than either image: mobile's
-                  object-contain leaves it showing around the cut-out, and
-                  desktop's object-cover hides it completely, so one background
-                  serves both. It's derived from --group — what the brand-colour
-                  picker drives — so the panel moves with the brand. (NOT
-                  --accent: that's near-black here, and the panel came out
-                  grey.) */}
-              <div
-                className="relative overflow-hidden rounded-[1.75rem] sm:rounded-3xl sm:shadow-2xl"
-                style={{
-                  backgroundColor:
-                    "color-mix(in srgb, var(--group) 13%, #ffffff)",
-                }}
-              >
+                  The frame carries no background of its own: on mobile the
+                  panel behind it shows through the cut-out's transparency, and
+                  on desktop object-cover fills the frame completely. */}
+              <div className="relative overflow-hidden max-sm:rounded-none sm:rounded-3xl sm:shadow-2xl">
                 <picture>
                   <source media="(min-width: 640px)" srcSet="/images/paid-ads.jpg" />
                   {/* object-bottom so she stands ON the panel and crops at the
@@ -268,7 +289,7 @@ export default function LandingPage() {
                   <img
                     src="/images/excited.webp"
                     alt="An agent reacting to a new lead landing"
-                    className="p-image block w-full scale-[1.06] object-contain object-bottom max-sm:aspect-[5/4] sm:aspect-[4/5] sm:scale-100 sm:object-cover sm:object-center"
+                    className="p-image block w-full object-cover max-sm:aspect-square max-sm:object-top sm:aspect-[4/5] sm:object-center"
                   />
                 </picture>
               </div>
