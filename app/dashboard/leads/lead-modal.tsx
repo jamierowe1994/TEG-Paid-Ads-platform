@@ -437,12 +437,83 @@ export function LeadModal({
     };
   }, [origin]);
 
+  /* Swipe the sheet down to dismiss it.
+   *
+   * On a phone the reflex is to grab a full-screen thing and throw it away —
+   * so it tracks the finger the whole way rather than waiting for release to
+   * decide. A short pull springs back; a long one (or a decisive flick) closes.
+   *
+   * Only starts from the top of the sheet's scroll: dragging in the middle of
+   * a scrolled list has to scroll the list, not close the file. That single
+   * check is the difference between "natural" and "keeps closing by accident".
+   */
+  const [dragY, setDragY] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const dragFrom = useRef<number | null>(null);
+  const lastMove = useRef({ y: 0, t: 0, v: 0 });
+  const scroller = useRef<HTMLElement | null>(null);
+
+  function onSheetTouchStart(e: React.TouchEvent) {
+    // Find the scrollable region the finger is inside, if any.
+    let node = e.target as HTMLElement | null;
+    scroller.current = null;
+    while (node && node !== sheetRef.current) {
+      if (node.scrollHeight > node.clientHeight + 1) {
+        const oy = getComputedStyle(node).overflowY;
+        if (oy === "auto" || oy === "scroll") { scroller.current = node; break; }
+      }
+      node = node.parentElement;
+    }
+    // Mid-list, the gesture belongs to the list.
+    if (scroller.current && scroller.current.scrollTop > 0) {
+      dragFrom.current = null;
+      return;
+    }
+    const t = e.touches[0];
+    dragFrom.current = t.clientY;
+    lastMove.current = { y: t.clientY, t: e.timeStamp, v: 0 };
+    setDragging(true);
+  }
+
+  function onSheetTouchMove(e: React.TouchEvent) {
+    if (dragFrom.current == null) return;
+    const t = e.touches[0];
+    const dy = t.clientY - dragFrom.current;
+    const dt = e.timeStamp - lastMove.current.t;
+    if (dt > 0) lastMove.current.v = (t.clientY - lastMove.current.y) / dt;
+    lastMove.current = { y: t.clientY, t: e.timeStamp, v: lastMove.current.v };
+    // Downward only. Pulling up does nothing rather than lifting the sheet
+    // off the bottom of the screen.
+    setDragY(dy > 0 ? dy : 0);
+  }
+
+  function onSheetTouchEnd() {
+    if (dragFrom.current == null) return;
+    const h = sheetRef.current?.getBoundingClientRect().height ?? 600;
+    const far = dragY > h * 0.28;
+    const flicked = lastMove.current.v > 0.6;
+    dragFrom.current = null;
+    setDragging(false);
+    if (far || flicked) {
+      // Carry it the rest of the way, then unmount — closing from halfway up
+      // looks like it snapped rather than was thrown.
+      setDragY(h);
+      setTimeout(() => onClose(), 190);
+    } else {
+      setDragY(0);
+    }
+  }
+
   return (
     <div
       // z-[80] keeps the sheet + its dimmed backdrop BELOW the dashboard's
       // bottom nav (z-90) on mobile, so the nav persists over the sheet and
       // morphs into this lead's actions. Tapping the dimmed area closes.
       className="fixed inset-0 z-[80] flex items-end justify-center bg-gray-950/60 p-0 backdrop-blur-md sm:items-center sm:bg-gray-900/50 sm:p-6 sm:backdrop-blur-none"
+      style={{
+        opacity: dragY > 0 ? Math.max(0.25, 1 - dragY / 520) : 1,
+        transition: dragging ? "none" : "opacity 0.22s ease-out",
+      }}
       onClick={onClose}
     >
       {/* X (dismiss) — mobile only, floating on the blurred backdrop above the
@@ -470,6 +541,18 @@ export function LeadModal({
         // expands out of that card (FLIP effect above); otherwise modal-pop.
         className={`relative flex h-[calc(100dvh-env(safe-area-inset-top)-78px)] w-full max-w-5xl flex-col overflow-hidden rounded-t-[28px] bg-white sm:h-auto sm:max-h-[94vh] sm:rounded-3xl ${entered || origin ? "" : "modal-pop"}`}
         onClick={(e) => e.stopPropagation()}
+        onTouchStart={onSheetTouchStart}
+        onTouchMove={onSheetTouchMove}
+        onTouchEnd={onSheetTouchEnd}
+        onTouchCancel={onSheetTouchEnd}
+        style={
+          dragY > 0 || dragging
+            ? {
+                transform: `translateY(${dragY}px)`,
+                transition: dragging ? "none" : "transform 0.19s ease-out",
+              }
+            : undefined
+        }
       >
         {/* Header — mobile: X on top; below it the source icon (no box, sized
             to the three text lines) with name / received-via / date grouped
