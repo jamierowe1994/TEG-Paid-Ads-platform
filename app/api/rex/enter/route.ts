@@ -35,14 +35,29 @@ export const dynamic = "force-dynamic";
 // so they travel more freely than the rest — a working day, not a month.
 const EMBED_SESSION_SECONDS = 12 * 60 * 60;
 
-/* Redirects stay on the ORIGIN THE REQUEST CAME IN ON, rather than a
-   configured app origin. The iframe is loaded from whatever host Rex was
-   pointed at, and the session cookie has to be set on that same host — bounce
-   them to a different domain and the cookie lands somewhere they aren't.
-   Same-origin by construction, so there's no host-header redirect risk: the
-   destination is always a fixed path on this app. */
+/* The PUBLIC origin this request arrived on.
+ *
+ * NOT req.nextUrl.origin — behind Railway's proxy that is the container's own
+ * address, so redirects came out as https://localhost:8080/... and the browser
+ * had nowhere to go. The forwarded headers carry the real host.
+ *
+ * It has to be the request's host rather than a configured one: the session
+ * cookie must land on whatever domain Rex actually loaded in the iframe, and
+ * bouncing them to a different domain would set it somewhere they aren't.
+ *
+ * Only ever used to build a FIXED PATH on this app, never a caller-supplied
+ * destination, so a spoofed Host can't turn this into an open redirect. */
+function originOf(req: NextRequest): string {
+  const proto = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const host =
+    req.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ||
+    req.headers.get("host")?.trim();
+  if (host) return `${proto || "https"}://${host}`;
+  return req.nextUrl.origin;
+}
+
 function status(req: NextRequest, code: string) {
-  return NextResponse.redirect(new URL(`/rex?status=${code}`, req.nextUrl.origin));
+  return NextResponse.redirect(new URL(`/rex?status=${code}`, originOf(req)));
 }
 
 export async function GET(req: NextRequest) {
@@ -69,7 +84,7 @@ export async function GET(req: NextRequest) {
   if (!user) return status(req, "no-account");
   if (user.deactivatedAt) return status(req, "deactivated");
 
-  const res = NextResponse.redirect(new URL("/dashboard", req.nextUrl.origin));
+  const res = NextResponse.redirect(new URL("/dashboard", originOf(req)));
   res.cookies.set(
     SESSION_COOKIE,
     createSessionToken(user.id),
