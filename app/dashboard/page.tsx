@@ -1011,6 +1011,40 @@ export default function DashboardOverview() {
           );
         })()}
 
+        {/* Impressions · Clicks.
+            These aren't only here for the numbers — they push the geek-out
+            panel down the page. It used to sit right against the bottom nav,
+            so reaching for the nav caught the panel instead. Now you scroll to
+            it deliberately. */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="rounded-3xl border border-white/60 bg-white/70 p-5">
+            {/* Not AnimatedNumber — it rounds without grouping, so a six-figure
+                impression count renders as an unreadable run of digits. */}
+            <span className="block text-[34px] font-semibold leading-none tracking-tight text-gray-900">
+              {myMeta ? myMeta.impressions.toLocaleString("en-GB") : "—"}
+            </span>
+            <span className="mt-2 block text-sm font-medium text-gray-700">
+              Impressions
+            </span>
+            <span className="mt-0.5 block text-[11px] text-gray-400">
+              times your ads were seen
+            </span>
+          </div>
+          <div className="rounded-3xl border border-white/60 bg-white/70 p-5">
+            <span className="block text-[34px] font-semibold leading-none tracking-tight text-gray-900">
+              {myMeta ? myMeta.clicks.toLocaleString("en-GB") : "—"}
+            </span>
+            <span className="mt-2 block text-sm font-medium text-gray-700">
+              Clicks
+            </span>
+            <span className="mt-0.5 block text-[11px] text-gray-400">
+              {myMeta && myMeta.impressions > 0
+                ? `${((myMeta.clicks / myMeta.impressions) * 100).toFixed(1)}% click rate`
+                : "taps through to your form"}
+            </span>
+          </div>
+        </div>
+
         {/* Footer note — full-bleed with big soft corners, running on down
             BEHIND the floating nav so the page never looks like it stops short.
             A white pull-tab pokes up out of the top edge and bobs to invite the
@@ -1020,28 +1054,29 @@ export default function DashboardOverview() {
             ref={setTabEl}
             type="button"
             onClick={() => setMoreOpen(true)}
-            className="relative block w-full touch-none pt-7 text-left"
+            // pt matches the tab's radius, so the circle's centre lands exactly
+            // on the panel's top edge and the outline reads as dipping around it.
+            className="relative block w-full touch-none pt-[18px] text-left"
           >
-            {/* The pull-tab — sits half out of the panel and bobs. The dark
-                ring continues the panel's own outline around the circle, so
-                the two read as one shape with a notch rather than a button
-                stuck on top of a slab. */}
-            <span className="tab-bob absolute left-1/2 top-0 z-10 flex h-[50px] w-[50px] -translate-x-1/2 items-center justify-center rounded-full bg-white text-gray-950 ring-[3px] ring-gray-950 shadow-[0_10px_22px_-8px_rgba(0,0,0,0.55)]">
-              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round">
+            {/* The pull-tab — half in, half out of the panel. It's an indicator,
+                not a button you're meant to notice first, so it's small and
+                shadowless: the ring is the same weight as the panel's outline
+                so the two read as ONE continuous line notching around the
+                circle, rather than a badge stuck on top of a slab. */}
+            <span className="tab-bob absolute left-1/2 top-0 z-10 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full bg-white text-gray-500 ring-[2.5px] ring-gray-950">
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 15l-6-6-6 6" />
               </svg>
             </span>
 
-            <span className="relative block overflow-hidden rounded-t-[44px] border-[3px] border-b-0 border-gray-950 bg-gray-950 px-6 pb-40 pt-7 text-white">
-              {/* Brand-coloured glow, bled off the corner. */}
-              <span
-                className="pointer-events-none absolute -right-12 -top-20 h-56 w-56 rounded-full opacity-40 blur-3xl"
-                style={{ backgroundColor: brand.accent }}
-              />
-
+            {/* Outlined, not filled. Filled dark, the panel was the loudest
+                thing on the page and the notch was invisible — dark ring on a
+                dark slab has nothing to read against. On white the outline
+                carries the shape and the numbers stay the loudest thing. */}
+            <span className="relative block overflow-hidden rounded-t-[44px] border-[2.5px] border-b-0 border-gray-950 bg-white px-6 pb-40 pt-7 text-gray-950">
               <span className="relative flex items-end justify-between gap-5">
                 <span className="block">
-                  <span className="block text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
+                  <span className="block text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">
                     Want to geek out?
                   </span>
                   <span className="mt-1.5 block text-[27px] font-semibold leading-[1.03] tracking-tight">
@@ -1056,8 +1091,13 @@ export default function DashboardOverview() {
                   {[62, 100, 44, 86, 54, 96].map((h, i) => (
                     <span
                       key={i}
-                      className="eq-bar block w-[6px] rounded-full bg-white/30"
-                      style={{ height: `${h}%`, animationDelay: `${i * 0.13}s` }}
+                      className="eq-bar block w-[6px] rounded-full"
+                      style={{
+                        height: `${h}%`,
+                        animationDelay: `${i * 0.13}s`,
+                        backgroundColor: brand.accent,
+                        opacity: 0.5,
+                      }}
                     />
                   ))}
                 </span>
@@ -1072,7 +1112,7 @@ export default function DashboardOverview() {
                 ].map((t) => (
                   <span
                     key={t}
-                    className="rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-white/80"
+                    className="rounded-full bg-gray-950/[0.055] px-3 py-1.5 text-[11px] font-semibold text-gray-600"
                   >
                     {t}
                   </span>
@@ -1093,7 +1133,10 @@ export default function DashboardOverview() {
       )}
       <div
         ref={setSheetEl}
-        className="fixed inset-x-2 bottom-0 z-[45] flex h-[90vh] flex-col overflow-hidden rounded-t-[30px] border-[3px] border-b-0 border-gray-950 bg-[#f4f4f5] shadow-[0_-24px_60px_-24px_rgba(0,0,0,0.45)] lg:hidden"
+        // No outline on the sheet: a hard black edge sliding up over the page
+        // draws the eye to the frame instead of the numbers inside it. The
+        // shadow alone is enough to lift it off what's behind.
+        className="fixed inset-x-2 bottom-0 z-[45] flex h-[90vh] flex-col overflow-hidden rounded-t-[30px] bg-[#f4f4f5] shadow-[0_-24px_60px_-24px_rgba(0,0,0,0.45)] lg:hidden"
         style={{
           transform: `translateY(calc(${moreOpen ? "0px" : "100%"} + ${drag}px))`,
           // No transition while a finger is down, or the sheet lags behind it
