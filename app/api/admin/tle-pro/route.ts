@@ -29,8 +29,8 @@ import {
   type StoredUser,
 } from "@/lib/users-store";
 import { hashPassword } from "@/lib/auth";
-import { partnersForBrandWithPackage, teamHubConfigured } from "@/lib/team-hub";
-import { packageForEmail } from "@/lib/team-hub";
+import { packageForEmail, teamHubConfigured } from "@/lib/team-hub";
+import { TLE_LAUNCH_LIST } from "@/lib/tle-launch-list";
 import { connectMetaRef, parseCampaignIds, metaTokenSet } from "@/lib/meta";
 import { licenceIncludesAds, adsException } from "@/lib/ads-entitlement";
 
@@ -72,30 +72,31 @@ export async function GET(req: NextRequest) {
   if (!mayUseInviteTab(req)) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
-  if (!teamHubConfigured()) {
-    return NextResponse.json(
-      { error: "Team Hub isn't configured on this server." },
-      { status: 503 }
-    );
-  }
-
-  const partners = await partnersForBrandWithPackage(BRAND_ID);
+  // Driven by the launch list, NOT by a Team Hub brand query. Three of these
+  // partners are dual-brand and filed under TPE/PPE, so a lettings query would
+  // never return them however their licence was set. See lib/tle-launch-list.ts.
   const rows: ProRow[] = [];
 
-  for (const p of partners) {
-    const { email, partnerPackage } = p;
-    // The SAME test signup uses, so the roster and the signup flow can never
-    // disagree about who is entitled — including named exceptions.
-    if (!licenceIncludesAds(email, partnerPackage)) continue;
-    // A Pro partner with no address in the Hub is still LISTED — their email
-    // is typed in on the tab. Dropping them would hide someone who's entitled.
+  for (const p of TLE_LAUNCH_LIST) {
+    const email = p.email ?? "";
     const existing = email ? await findByEmail(email) : undefined;
     const campaignIds = parseCampaignIds(existing?.metaCampaignId);
+    // The Hub's package is shown for information only — it's what Susan and
+    // Howard are correcting, and seeing "Hub: Basic" next to someone makes the
+    // outstanding data job visible rather than invisible.
+    let hubPackage: string | null = null;
+    if (email && teamHubConfigured()) {
+      try {
+        hubPackage = (await packageForEmail(email)).partnerPackage;
+      } catch {
+        /* the roster must render even if the Hub is unreachable */
+      }
+    }
     rows.push({
       name: p.name,
       email,
-      partnerPackage,
-      exceptionReason: adsException(email),
+      partnerPackage: hubPackage,
+      exceptionReason: p.note ?? adsException(email),
       hasAccount: !!existing,
       connected: campaignIds.length > 0,
       campaignIds,
@@ -130,12 +131,11 @@ export async function POST(req: NextRequest) {
 
   // Entitlement is re-read from Team Hub, never taken from the request.
   const { partnerPackage } = await packageForEmail(email);
-  if (!licenceIncludesAds(email, partnerPackage)) {
+  if (!licenceIncludesAds(email, partnerPackage, name)) {
     return NextResponse.json(
       {
-        error: partnerPackage
-          ? `That address is on the ${partnerPackage} licence, not Pro.`
-          : "No Pro licence found in Team Hub for that address.",
+        error:
+          "That person isn't on the TLE launch list, so they don't get Paid Ads included. Check the list in lib/tle-launch-list.ts.",
       },
       { status: 403 }
     );

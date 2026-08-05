@@ -310,6 +310,39 @@ An existing account is updated, never password-reset: it may already be in
 use, and forcing a shared launch password would be both a lockout and a
 security problem.
 
+### The TLE launch list ✅ 4 Aug 2026 — TEMPORARY, and the source of truth
+
+`lib/tle-launch-list.ts` decides who gets Paid Ads for V1, **not** Team Hub.
+
+Team Hub's `partner_package` is stale for TLE. Against the list Susan sent
+(4 Aug), only **4 of her 13** were marked Pro in the Hub:
+
+| Problem | Who | Detail |
+|---|---|---|
+| Stale package | Bernadine Williams, Dan Richards, Sean McMahon, Elizabeth Ogunfowokan | still Basic |
+| Stale package | Zilvinas Navickis | still Academy |
+| Filed under another brand | Chris Wilson-Slight (PPE), James Crumpton (TPE), Graham Cross (TPE) | dual-brand; a lettings query can never return them |
+| No record at all | Kirstie Wallington | not in the Hub |
+
+And the Hub marks **8 other TLE people as Pro who aren't on Susan's list** —
+Simon Fan, Amrit Bhogal, Lorna Fieldson, Angela Davey, Hulusi Eren, Alishba
+Tahir, Lianna Denholm, Stuart Roper. Under the old rule they'd have had free
+Paid Ads on launch day. The launch list keeps them out.
+
+**Deliberately NOT fixed by writing to Team Hub.** It's a live staff directory
+feeding billing and reporting; Susan and Howard are correcting it. Upgrading
+records on our reading of a spreadsheet would put a guess in ahead of them —
+and downgrading the 8 would assert something no evidence supports.
+
+**Kirstie Wallington may be Kirstie Mulholland under a changed name** — two
+Kirsties at TLE, each appearing in exactly one list, never both. Confirm with
+Susan before connecting, or it creates a duplicate. Both are on the roster
+until that's settled.
+
+**To retire:** once the Hub is updated, re-run the comparison, set
+`LAUNCH_LIST_ACTIVE = false`, delete the file. `licenceIncludesAds` falls back
+to reading `partner_package`.
+
 ### The Invite tab (admin) ✅ Built 4 Aug 2026 — TEMPORARY
 
 Admin → **Invite**. Lists the 12 TLE Pro partners straight from Team Hub, with

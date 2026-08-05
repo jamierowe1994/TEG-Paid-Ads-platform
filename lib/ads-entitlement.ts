@@ -22,6 +22,7 @@
 
 import type { BrandId } from "./brands";
 import { packageForEmail, teamHubConfigured } from "./team-hub";
+import { LAUNCH_LIST_ACTIVE, onLaunchList } from "./tle-launch-list";
 
 /** Licence tiers that include Paid Ads. Pro only — confirmed by James. */
 const INCLUDES_ADS = new Set(["pro"]);
@@ -52,12 +53,23 @@ export function adsException(email: string): string | null {
 /**
  * Does this person get Paid Ads included? The single test, so signup and the
  * launch roster can never disagree about who is entitled.
+ *
+ * While the V1 launch list is active it is DEFINITIVE for lettings and the
+ * Hub's `partner_package` is ignored entirely. That's deliberate and cuts both
+ * ways: it lets on someone the Hub still has as Basic, and it keeps out the
+ * eight people the Hub marks Pro who aren't on Susan's list. Falling back to
+ * the package would quietly re-admit those eight.
+ *
+ * See lib/tle-launch-list.ts for why the Hub can't be trusted for this yet,
+ * and how to retire the list.
  */
 export function licenceIncludesAds(
   email: string,
-  partnerPackage: string | null
+  partnerPackage: string | null,
+  name?: string
 ): boolean {
   if (adsException(email)) return true;
+  if (LAUNCH_LIST_ACTIVE) return onLaunchList(email, name);
   return INCLUDES_ADS.has((partnerPackage ?? "").trim().toLowerCase());
 }
 
