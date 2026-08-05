@@ -743,8 +743,20 @@ export default function ProfilePage() {
           <section className="rounded-2xl border border-red-200 bg-red-50/40 p-6">
             <h2 className="font-semibold text-red-800">Manage subscription</h2>
 
-            {/* Cancel / resume */}
-            {inMinimumTerm && !cancelled ? (
+            {/* Cancel / resume.
+                Hidden entirely for licence-included accounts: there is no
+                subscription to cancel. Their Paid Ads comes with the Pro
+                licence, and a licence isn't something you end from a settings
+                page — pressing this would either do nothing or start a
+                cancellation for a subscription that doesn't exist. Deleting
+                the account is still available below. */}
+            {licenceIncluded ? (
+              <p className="mt-4 rounded-xl border border-red-200 bg-white p-4 text-sm text-gray-700">
+                Your Paid Ads is part of your Pro licence, so there&apos;s no
+                separate subscription to cancel here. Anything to do with the
+                licence itself goes through head office.
+              </p>
+            ) : inMinimumTerm && !cancelled ? (
               <div className="mt-4 rounded-xl border border-red-200 bg-white p-4">
                 <p className="text-sm text-gray-700">
                   You&apos;re inside the three-month minimum term, which runs

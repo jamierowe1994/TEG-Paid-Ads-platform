@@ -343,6 +343,24 @@ export async function getCampaignSnapshot(
   return { impressions, clicks, spend, leads, datePreset };
 }
 
+/* Statuses that mean the ad never ran, or stopped for a reason the agent
+   can't influence. DISAPPROVED and ADSET/CAMPAIGN-level rejections are the
+   common ones; PENDING_REVIEW is included because a tile that says "pending
+   review" invites a question nobody in the field can answer. */
+const HIDDEN_AD_STATUSES = new Set([
+  "DISAPPROVED",
+  "WITH_ISSUES",
+  "PENDING_REVIEW",
+  "PENDING_BILLING_INFO",
+  "DELETED",
+  "ARCHIVED",
+]);
+
+/* Deliberately NOT hidden: ADSET_PAUSED and CAMPAIGN_PAUSED. Those ads were
+   approved and did run — they're just not delivering at the moment. Hiding
+   them would make an agent think their ads had disappeared, which is a worse
+   confusion than the one this filter exists to prevent. */
+
 export interface AgentAd {
   id: string;
   name: string;
@@ -355,6 +373,12 @@ export interface AgentAd {
 // Queries each campaign's OWN ad account. Best-effort: returns [] rather than
 // throwing; a missing thumbnail just leaves that ad's imageUrl null. Active
 // ads first, capped at 12.
+//
+// ADS META REJECTED ARE HIDDEN. An agent can do nothing about a disapproved
+// ad — it's ours to rewrite and resubmit — so showing it is noise at best and
+// alarming at worst. Rejections come in batches when a creative trips a policy
+// across several ads at once, so a handful of "disapproved" tiles can end up
+// outnumbering the live ones and make a working account look broken.
 export async function getAdsWithCreatives(
   brandId: string,
   campaignIds: string[]
@@ -391,6 +415,8 @@ export async function getAdsWithCreatives(
     const list = perAccount
       .flat()
       .filter((a) => a.id)
+      // Nothing an agent can action, so nothing an agent should see.
+      .filter((a) => !HIDDEN_AD_STATUSES.has(String(a.effective_status ?? "")))
       .sort((a, b) =>
         a.effective_status === "ACTIVE" && b.effective_status !== "ACTIVE"
           ? -1
