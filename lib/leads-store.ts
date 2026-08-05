@@ -107,6 +107,7 @@ async function notifyNewLead(userId: string, lead: Lead): Promise<void> {
         toMobile: user.mobile,
         agentName: user.name,
         leadName: lead.name,
+        leadId: lead.id,
       });
     }
   } catch {

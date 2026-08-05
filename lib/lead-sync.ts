@@ -150,6 +150,7 @@ async function resurfaceSnoozedLeads(): Promise<void> {
             toMobile: user.mobile,
             agentName: user.name,
             leadName: `${lead.name} (back on — they said they'd be ready now)`,
+            leadId: lead.id,
           });
         }
       } catch {

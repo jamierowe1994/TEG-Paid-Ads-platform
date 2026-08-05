@@ -83,34 +83,59 @@ export async function whatsappStatus(): Promise<{
 
 // Fire a "new lead" alert. Best-effort: never throws, so it can't break lead
 // creation. First body param is the agent's name, second is the lead's name.
+/* Once a template with a DYNAMIC url button is approved, set
+   WHATSAPP_TEMPLATE_DYNAMIC to its name and every alert deep-links to the lead
+   it's about. Until then this stays unset and nothing changes.
+
+   It has to be a separate variable rather than just swapping WHATSAPP_TEMPLATE:
+   a button parameter sent to a template WITHOUT a dynamic button is rejected
+   by Meta outright, so the two must move together or alerts stop arriving. */
+function dynamicTemplate(): string | null {
+  return process.env.WHATSAPP_TEMPLATE_DYNAMIC?.trim() || null;
+}
+
 export async function sendNewLeadAlert(opts: {
   toMobile: string;
   agentName: string;
   leadName: string;
+  /** Lead id, so the button can open this exact lead. */
+  leadId?: string;
 }): Promise<void> {
   if (!whatsappConfigured()) return;
   const to = toE164(opts.toMobile);
   if (!to) return;
 
-  const name = process.env.WHATSAPP_TEMPLATE ?? "new_lead";
+  const dyn = dynamicTemplate();
+  // Only use the deep-linking template when there's a lead to link to.
+  const useDynamic = !!dyn && !!opts.leadId;
+  const name = useDynamic ? dyn! : (process.env.WHATSAPP_TEMPLATE ?? "new_lead");
   const lang = process.env.WHATSAPP_TEMPLATE_LANG ?? "en_GB";
+
+  const components: Record<string, unknown>[] = [
+    {
+      type: "body",
+      parameters: [
+        { type: "text", text: opts.agentName || "there" },
+        { type: "text", text: opts.leadName || "a new lead" },
+      ],
+    },
+  ];
+  if (useDynamic) {
+    // Meta requires the variable to be a URL SUFFIX, so the template holds
+    // ".../l/{{1}}" and this supplies just the id.
+    components.push({
+      type: "button",
+      sub_type: "url",
+      index: "0",
+      parameters: [{ type: "text", text: opts.leadId }],
+    });
+  }
+
   const body = {
     messaging_product: "whatsapp",
     to,
     type: "template",
-    template: {
-      name,
-      language: { code: lang },
-      components: [
-        {
-          type: "body",
-          parameters: [
-            { type: "text", text: opts.agentName || "there" },
-            { type: "text", text: opts.leadName || "a new lead" },
-          ],
-        },
-      ],
-    },
+    template: { name, language: { code: lang }, components },
   };
 
   try {

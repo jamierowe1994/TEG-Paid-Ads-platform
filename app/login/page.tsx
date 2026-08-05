@@ -96,6 +96,19 @@ function LoginForm() {
       setError(error);
       return;
     }
+    /* `next` carries where they were trying to get to before being asked to
+       sign in — a WhatsApp lead link, most often. Only same-site PATHS are
+       honoured: anything starting "//" or carrying a scheme is discarded, so
+       this can't be used to bounce someone off to another site. */
+    const next = params.get("next") ?? "";
+    const safeNext =
+      next.startsWith("/") && !next.startsWith("//") && !next.includes(":")
+        ? next
+        : "";
+    if (safeNext) {
+      router.push(safeNext);
+      return;
+    }
     // Referrals-only accounts land on the Referrals hub (their home); paid
     // accounts land on the Overview.
     router.push(
