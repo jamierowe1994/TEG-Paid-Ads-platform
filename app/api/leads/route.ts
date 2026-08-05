@@ -7,7 +7,7 @@ import {
 } from "@/lib/leads-store";
 import { syncReferralFromLead } from "@/lib/referrals-store";
 import { findById } from "@/lib/users-store";
-import { pushLeadToGhl, ghlConfigured } from "@/lib/ghl";
+import { pushLeadToGhl, ghlConfigured, noteLeadStageToGhl } from "@/lib/ghl";
 import type { LeadStage } from "@/lib/types";
 
 // The signed-in agent's leads. Server-side now (Postgres on Railway) — the
@@ -67,23 +67,44 @@ export async function PATCH(req: NextRequest) {
     await syncReferralFromLead(lead.id, stage);
   }
 
-  // Entering the marketing/nurture funnel is the ONE moment a lead flows into
-  // GoHighLevel — tagged so a nurture workflow there can pick it up. Best-
-  // effort: a GHL hiccup (or no config) must never fail the stage change.
-  if (stage === "nurture") {
-    try {
-      const user = await findById(userId);
-      const brandId = user?.brandId;
-      if (ghlConfigured(brandId)) {
+  /* Keep the GoHighLevel file in step.
+   *
+   * The marketing funnel runs for months while the agent is chasing, and until
+   * now whoever opened that file had no idea what had been tried. Every
+   * meaningful stage change now writes a note there — "tried 3 times without
+   * getting through", "marked lost — Currently tenanted" — so the two systems
+   * tell the same story and the lost reason is visible to whoever decides
+   * which funnel someone belongs on.
+   *
+   * Entering nurture additionally pushes with tags, because that's what a GHL
+   * workflow can trigger on. Notes are for people; tags are for automation.
+   *
+   * ALL BEST-EFFORT. A lead's stage must never fail to change because GHL is
+   * having a moment — it's logged and moved past.
+   */
+  try {
+    const user = await findById(userId);
+    const brandId = user?.brandId;
+    if (ghlConfigured(brandId)) {
+      if (stage === "nurture") {
         await pushLeadToGhl(
           lead,
           ["nurture", `brand:${brandId ?? "unknown"}`],
           brandId
         );
       }
-    } catch {
-      /* the lead is already in the nurture stage; GHL sync is best-effort */
+      const noted = await noteLeadStageToGhl({
+        lead,
+        agentName: user?.name ?? "",
+        stage,
+        brandId,
+      });
+      if (!noted.ok && noted.reason && noted.reason !== "nothing_worth_saying") {
+        console.error("[ghl] couldn't note the stage change:", noted.reason);
+      }
     }
+  } catch (e) {
+    console.error("[ghl] stage sync failed:", e instanceof Error ? e.message : e);
   }
 
   return NextResponse.json(lead);

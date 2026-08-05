@@ -1,5 +1,5 @@
 import "server-only";
-import type { Lead } from "./types";
+import type { Lead, LeadStage } from "./types";
 
 // GoHighLevel (LeadConnector) CRM client — the v2 API. Pushes a portal lead in
 // as a contact (upsert, so re-pushing the same person dedupes rather than
@@ -224,4 +224,115 @@ export async function pushLeadToGhl(
   }
 
   return { contactId, alreadyExisted, noteAttached };
+}
+
+// ── Keeping the GoHighLevel file current ────────────────────────────────────
+
+/**
+ * Write a note onto the lead's GoHighLevel contact describing what just
+ * happened — "Attempt 3 by Alex Morgan", "Marked lost — Currently tenanted".
+ *
+ * WHY: the marketing funnel runs for months alongside the agent chasing the
+ * lead, and whoever opens that file in GHL currently has no idea what's been
+ * tried. A note per stage change means the two systems tell the same story.
+ *
+ * MATCH FIRST, CREATE ONLY IF MISSING. Most of these contacts are already in
+ * GHL, so we look them up and annotate. If they genuinely aren't there, the
+ * upsert creates them — otherwise the note has nowhere to land and the whole
+ * point is lost. Upsert dedupes on email/phone, so this can't double up.
+ *
+ * NEVER THROWS. A lead's stage change must not fail because GHL is having a
+ * moment. Returns what happened so a caller can log it.
+ */
+export async function noteLeadStageToGhl(opts: {
+  lead: Lead;
+  agentName: string;
+  stage: LeadStage;
+  brandId?: string;
+  /** Attempt number, when the stage is one of the attempts. */
+  attempt?: number;
+}): Promise<{ ok: boolean; contactId?: string; created?: boolean; reason?: string }> {
+  const { lead, agentName, stage, brandId } = opts;
+  if (!ghlConfigured(brandId)) return { ok: false, reason: "not_configured" };
+  if (!lead.email?.trim() && !lead.phone?.trim()) {
+    return { ok: false, reason: "no_email_or_phone" };
+  }
+
+  const body = stageNote(lead, agentName, stage, opts.attempt);
+  if (!body) return { ok: false, reason: "nothing_worth_saying" };
+
+  try {
+    let contactId: string | null = null;
+    let created = false;
+
+    const found = await ghlFindContact(
+      lead.email ?? "",
+      lead.phone ?? "",
+      brandId
+    );
+    if (found && typeof found === "object") contactId = found.id;
+
+    if (!contactId) {
+      // Not there (or the lookup was inconclusive) — upsert gets us an id
+      // either way, and dedupes if it turns out they did exist.
+      const pushed = await pushLeadToGhl(lead, [`stage:${stage}`], brandId);
+      contactId = pushed.contactId;
+      created = !pushed.alreadyExisted;
+    }
+
+    const res = await ghl(`/contacts/${contactId}/notes`, "POST", { body }, brandId);
+    if (!res.ok) return { ok: false, contactId, created, reason: ghlError(res) };
+    return { ok: true, contactId, created };
+  } catch (e) {
+    return { ok: false, reason: e instanceof Error ? e.message : "failed" };
+  }
+}
+
+/**
+ * The sentence that goes on the file.
+ *
+ * Written for a person reading it in GHL months later, not for a machine — so
+ * it names the agent and says what actually happened. Lost and nurture carry
+ * the agent's chosen reason, which is the bit that decides which funnel they
+ * should be on.
+ */
+export function stageNote(
+  lead: Lead,
+  agentName: string,
+  stage: LeadStage,
+  attempt?: number
+): string | null {
+  const who = agentName?.trim() || "the agent";
+  // The reason lives in the note the agent just added, e.g.
+  // "Marked lost — Currently tenanted". Take the newest one that carries it.
+  const latest = [...(lead.notes ?? [])].reverse();
+  const reasonNote = latest.find(
+    (n) => n.text?.includes("Marked lost —") || n.text?.includes("marketing funnel —")
+  )?.text;
+  const reason = reasonNote?.split("—")[1]?.trim();
+
+  switch (stage) {
+    case "attempt1":
+    case "attempt2":
+    case "attempt3": {
+      const n = attempt ?? (Number(stage.replace("attempt", "")) || 1);
+      return n >= 3
+        ? `Launch Pad: ${who} has now tried ${n} times without getting through.`
+        : `Launch Pad: contact attempt ${n} by ${who}.`;
+    }
+    case "converted":
+      return `Launch Pad: ${who} has booked the appraisal.`;
+    case "lost":
+      return reason
+        ? `Launch Pad: marked lost by ${who} — ${reason}.`
+        : `Launch Pad: marked lost by ${who}.`;
+    case "nurture":
+      return reason
+        ? `Launch Pad: moved to the marketing funnel by ${who} — ${reason}.`
+        : `Launch Pad: moved to the marketing funnel by ${who}.`;
+    // "new" is the lead arriving, and "pushed" is a CRM action — neither says
+    // anything a marketer reading this file would act on.
+    default:
+      return null;
+  }
 }
