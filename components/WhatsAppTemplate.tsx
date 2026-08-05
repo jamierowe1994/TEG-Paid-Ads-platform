@@ -28,6 +28,7 @@ export default function WhatsAppTemplate({ pass }: { pass: string }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tpls, setTpls] = useState<Tpl[] | null>(null);
+  const [tried, setTried] = useState<string[]>([]);
 
   async function check() {
     setLoading(true);
@@ -38,6 +39,7 @@ export default function WhatsAppTemplate({ pass }: { pass: string }) {
         cache: "no-store",
       });
       const d = await res.json();
+      setTried(d.tried ?? d.howFound ?? []);
       if (!res.ok || d.error) {
         setError(d.error ?? `Couldn't read the template (${res.status}).`);
         setTpls(null);
@@ -73,6 +75,16 @@ export default function WhatsAppTemplate({ pass }: { pass: string }) {
         <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
         </p>
+      )}
+
+      {/* When discovery fails, showing what was attempted turns "it didn't
+          work" into something actionable. */}
+      {error && tried.length > 0 && (
+        <ul className="mt-2 space-y-0.5 text-xs text-gray-400">
+          {tried.map((t, i) => (
+            <li key={i}>· {t}</li>
+          ))}
+        </ul>
       )}
 
       {tpls?.length === 0 && (

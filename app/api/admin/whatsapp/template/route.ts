@@ -39,21 +39,58 @@ export async function GET(req: NextRequest) {
     ].map((s) => s.toLowerCase())
   );
 
-  /* The WABA id isn't configured anywhere, so find it from the phone number.
-     Meta exposes it on the phone number node under a couple of different
-     names depending on the API version — try each rather than guessing. */
-  const probe = await graph(String(process.env.WHATSAPP_PHONE_ID), {
-    fields: "id,display_phone_number,verified_name,whatsapp_business_account",
-  });
-  const waba =
-    (probe.data as { whatsapp_business_account?: { id?: string } } | null)
-      ?.whatsapp_business_account?.id ?? process.env.WHATSAPP_WABA_ID ?? null;
+  /* Finding the WABA id is fiddly: Meta exposes it in different places
+     depending on how the token was issued, and not at all on some. Try the
+     cheap routes in order rather than making someone go and find it. */
+  const tried: string[] = [];
+  let waba: string | null = process.env.WHATSAPP_WABA_ID?.trim() || null;
+  if (waba) tried.push("WHATSAPP_WABA_ID (configured)");
+
+  // 1. On the phone number node itself.
+  if (!waba) {
+    const r = await graph(String(process.env.WHATSAPP_PHONE_ID), {
+      fields: "id,display_phone_number,verified_name,whatsapp_business_account",
+    });
+    waba =
+      (r.data as { whatsapp_business_account?: { id?: string } } | null)
+        ?.whatsapp_business_account?.id ?? null;
+    tried.push(`phone.whatsapp_business_account → ${waba ?? "nothing"}`);
+  }
+
+  // 2. Walk up: the phone number belongs to a WABA, which owns message
+  //    templates. Asking the phone node for its owner works on some versions.
+  if (!waba) {
+    const r = await graph(`${process.env.WHATSAPP_PHONE_ID}`, { fields: "account_id" });
+    waba = (r.data as { account_id?: string } | null)?.account_id ?? null;
+    tried.push(`phone.account_id → ${waba ?? "nothing"}`);
+  }
+
+  // 3. A System User token can list the businesses it belongs to, and each
+  //    business owns its WhatsApp accounts.
+  if (!waba) {
+    const biz = await graph("me/businesses", { fields: "id,name", limit: "20" });
+    const businesses = ((biz.data as { data?: Array<{ id?: string }> } | null)?.data ?? []);
+    tried.push(`me/businesses → ${businesses.length} business(es)`);
+    for (const b of businesses) {
+      if (!b.id) continue;
+      const owned = await graph(`${b.id}/owned_whatsapp_business_accounts`, {
+        fields: "id,name",
+        limit: "20",
+      });
+      const accounts = ((owned.data as { data?: Array<{ id?: string }> } | null)?.data ?? []);
+      if (accounts[0]?.id) {
+        waba = accounts[0].id;
+        tried.push(`business ${b.id} owns WABA ${waba}`);
+        break;
+      }
+    }
+  }
 
   if (!waba) {
     return NextResponse.json({
       error:
-        "Couldn't work out the WhatsApp Business Account id from the phone number. Set WHATSAPP_WABA_ID and try again.",
-      phoneProbe: probe.data,
+        "Couldn't find the WhatsApp Business Account id automatically. In Meta: WhatsApp Manager → the number → API Setup — it's the 'WhatsApp Business Account ID'. Add it as WHATSAPP_WABA_ID.",
+      tried,
     });
   }
 
@@ -80,6 +117,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     wabaId: waba,
+    howFound: tried,
     found: ours.length,
     templates: ours.map((t) => {
       const buttons = (t.components ?? []).flatMap((c) => c.buttons ?? []);
