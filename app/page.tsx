@@ -9,6 +9,7 @@ import Reveal from "@/components/Reveal";
 import HeroAdWord from "@/components/HeroAdWord";
 import HeroIconStrip from "@/components/HeroIconStrip";
 import LeadsStat from "@/components/LeadsStat";
+import MobileParallax from "@/components/MobileParallax";
 import PanelReveal from "@/components/PanelReveal";
 import ProofHowScene from "@/components/ProofHowScene";
 import ExpandingSlab from "@/components/ExpandingSlab";
@@ -169,18 +170,42 @@ export default function LandingPage() {
           <div className="mx-auto grid w-full max-w-7xl flex-1 items-center gap-10 px-8 py-12 sm:px-12 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-24">
             {/* Same rhythm as the hero: the heading grows in and bounces,
                 the subtext drops in line by line, the button fades last. */}
-            <div>
-              <h2 className="p-title max-w-lg text-4xl font-semibold leading-[1.05] tracking-tight text-gray-900 sm:text-5xl">
+            <MobileParallax>
+              <h2 className="mp-lead p-title max-w-lg text-4xl font-semibold leading-[1.05] tracking-tight text-gray-900 max-sm:text-[2.6rem] sm:text-5xl">
                 What is Launch Pad?
               </h2>
+              {/* Mobile reads as a statement, not body copy: bigger, darker,
+                  with the two phrases that carry the whole proposition picked
+                  out. The sections below are card stacks, so this one earns
+                  its difference through type rather than another card. */}
+              {/* Short on mobile: the photo now carries the bottom of the
+                  block, so the copy has to earn its space in one breath. */}
               <p
-                className="p-sub mt-5 max-w-md text-lg leading-relaxed text-gray-600"
+                className="mp-follow p-sub mt-7 text-[1.32rem] leading-[1.42] text-gray-800 sm:hidden"
+                style={{ "--d": "0s" } as React.CSSProperties}
+              >
+                We build and run your ads. Every lead lands in{" "}
+                <span className="font-semibold text-gray-950">one dashboard</span>
+                , phone number ready to call.
+              </p>
+              <p
+                className="p-sub mt-5 max-w-md text-lg leading-relaxed text-gray-600 max-sm:hidden"
                 style={{ "--d": "0s" } as React.CSSProperties}
               >
                 We build your ads, run them on the platforms your local audience
                 actually uses, and drop every lead that comes back into one
                 dashboard — with the phone number already there, ready to call.
               </p>
+              {/* Mobile CTA sits ABOVE the photo, so the block reads
+                  heading → promise → action, and the image closes it. */}
+              <div className="p-cta mt-7 sm:hidden">
+                <Link
+                  href="/signup"
+                  className="btn-group inline-block rounded-full px-9 py-4 text-base font-semibold"
+                >
+                  Start your campaign
+                </Link>
+              </div>
               {/* Second paragraph is desktop-only — on a phone one paragraph
                   says it, and the image deserves the room. */}
               <p
@@ -201,28 +226,54 @@ export default function LandingPage() {
                   Start your campaign
                 </Link>
               </div>
-            </div>
+            </MobileParallax>
             {/* Mobile: the photo runs nearly edge to edge — the negative
                 margin claws back the section + grid padding, leaving a thin
                 16px gutter each side. */}
-            <div className="relative mx-auto w-full max-w-md max-sm:-mx-8 max-sm:w-auto lg:mr-0 lg:max-w-xl">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/images/paid-ads.jpg"
-                alt="An agent's next client, mid-scroll"
-                className="p-image aspect-[4/5] w-full rounded-3xl object-cover shadow-2xl"
-              />
-              {/* Infographic overlay — expands after the image, then counts */}
-              <LeadsStat className="p-stat" startDelay={1500} />
-            </div>
-            {/* Mobile CTA — reads heading → copy → image → button. */}
-            <div className="p-cta text-center sm:hidden">
-              <Link
-                href="/signup"
-                className="btn-group inline-block rounded-full px-9 py-4 text-base font-semibold"
+            <div className="relative mx-auto w-full max-w-md max-sm:-mx-8 max-sm:mt-9 max-sm:w-auto lg:mr-0 lg:max-w-xl">
+              {/* One frame, two images, and only ONE of them is ever
+                  downloaded.
+
+                  MOBILE gets a cut-out on a brand-tinted panel; DESKTOP keeps
+                  the photograph, because the two-column composition was built
+                  around it and a cut-out would float in that space.
+
+                  WHY <source media> AND NOT max-sm:hidden ON A SECOND <img>:
+                  display:none does not stop a browser fetching an image, so
+                  the hidden one still cost a phone 147K it would never see.
+                  loading="lazy" doesn't save it either — measured, Chrome
+                  loads a display:none lazy image anyway. <source media> is the
+                  only form the browser resolves BEFORE fetching, so the
+                  candidate that loses is never requested at all.
+
+                  The tint sits on the frame rather than either image: mobile's
+                  object-contain leaves it showing around the cut-out, and
+                  desktop's object-cover hides it completely, so one background
+                  serves both. It's derived from --group — what the brand-colour
+                  picker drives — so the panel moves with the brand. (NOT
+                  --accent: that's near-black here, and the panel came out
+                  grey.) */}
+              <div
+                className="relative overflow-hidden rounded-[1.75rem] sm:rounded-3xl sm:shadow-2xl"
+                style={{
+                  backgroundColor:
+                    "color-mix(in srgb, var(--group) 13%, #ffffff)",
+                }}
               >
-                Start your campaign
-              </Link>
+                <picture>
+                  <source media="(min-width: 640px)" srcSet="/images/paid-ads.jpg" />
+                  {/* object-bottom so she stands ON the panel and crops at the
+                      frame, rather than floating with a gap underneath. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/images/excited.webp"
+                    alt="An agent reacting to a new lead landing"
+                    className="p-image block w-full scale-[1.06] object-contain object-bottom max-sm:aspect-[5/4] sm:aspect-[4/5] sm:scale-100 sm:object-cover sm:object-center"
+                  />
+                </picture>
+              </div>
+              {/* Infographic overlay — expands after the image, then counts */}
+              <LeadsStat className="p-stat max-sm:hidden" startDelay={1500} />
             </div>
           </div>
 
