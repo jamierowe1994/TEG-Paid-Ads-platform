@@ -202,7 +202,10 @@ export default function TleProInvite({ pass }: { pass: string }) {
           failed.length === 0
             ? `Sent ${d.sent} invite${d.sent === 1 ? "" : "s"}. They're on their way.`
             : `Sent ${d.sent}, but ${failed.length} failed: ${failed
-                .map((f: { email: string; reason?: string }) => `${f.email} (${f.reason ?? "unknown"})`)
+                .map(
+                  (f: { email: string; reason?: string; detail?: string }) =>
+                    `${f.email} (${f.detail ?? f.reason ?? "unknown"})`
+                )
                 .join(", ")}`,
       });
       setConfirm(false);

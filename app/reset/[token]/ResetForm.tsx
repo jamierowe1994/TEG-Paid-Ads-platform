@@ -9,11 +9,14 @@ export default function ResetForm({
   purpose,
   name,
   email,
+  referralsOpen,
 }: {
   token: string;
   purpose: "reset" | "invite";
   name: string;
   email: string;
+  /** Resolved on the server — the launch phase lives in an env var. */
+  referralsOpen: boolean;
 }) {
   const router = useRouter();
   const [password, setPassword] = useState("");
@@ -42,7 +45,12 @@ export default function ResetForm({
       return;
     }
     // Redeeming signs them in, so go straight where they need to be.
-    router.push(invite ? "/dashboard/referrals" : "/dashboard");
+    //
+    // Referrals was the invite landing page because it was the headline
+    // feature — but in V1 it's LOCKED, so that made the first screen of a
+    // brand-new account a blurred "coming soon" panel instead of their leads.
+    // Only send them there when it's actually open.
+    router.push(invite && referralsOpen ? "/dashboard/referrals" : "/dashboard");
   }
 
   return (

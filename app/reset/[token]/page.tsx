@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { peekAuthToken } from "@/lib/auth-tokens";
 import { findById } from "@/lib/users-store";
+import { referralsEnabled } from "@/lib/launch-phase";
 import ResetForm from "./ResetForm";
 
 /* Landing page for both link types. The token is checked on the SERVER before
@@ -48,6 +49,7 @@ export default async function ResetPage({
       purpose={purpose}
       name={user.name}
       email={user.email}
+      referralsOpen={referralsEnabled()}
     />
   );
 }

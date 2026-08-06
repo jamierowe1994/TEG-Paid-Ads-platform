@@ -31,18 +31,37 @@ export function msRedirectUri(): string {
   return process.env.AZURE_REDIRECT_URI ?? DEFAULT_REDIRECT;
 }
 
+// The branded public site. Used when APP_ORIGIN isn't set, so a missing
+// variable produces the real domain rather than a raw Railway hostname.
+const DEFAULT_APP_ORIGIN = "https://launchpad.theexpertsgroup.co.uk";
+
 // Our PUBLIC-facing origin, for building user-facing redirects. Behind
 // Railway's proxy the app runs on an internal localhost port, so a route's
 // own request origin (req.nextUrl.origin) resolves to http://localhost:8080 —
 // which is what was bouncing agents to a dead localhost page after connecting
-// their email. The OAuth redirect URI is by definition our public callback
-// URL, so its origin is the right base to redirect back to.
+// their email.
+//
+// APP_ORIGIN IS SEPARATE FROM THE AZURE REDIRECT URI ON PURPOSE. This used to
+// derive from msRedirectUri(), which meant the host registered in Azure also
+// became the host in every invite and password-reset link — and in production
+// that was teg-paid-ads-platform-production.up.railway.app. Partners would
+// have been sent a raw Railway URL, and worse, they'd have set their password
+// on a DIFFERENT ORIGIN from the one the PWA installs against, so the session
+// wouldn't have followed them into the app.
+//
+// They can't be fixed by pointing AZURE_REDIRECT_URI at the branded domain
+// either: that value has to match what's registered in the Azure app, so
+// changing it unilaterally breaks "Connect your email". Hence two variables.
 export function appOrigin(): string {
-  try {
-    return new URL(msRedirectUri()).origin;
-  } catch {
-    return DEFAULT_REDIRECT.replace(/\/api\/.*/, "");
+  const explicit = process.env.APP_ORIGIN;
+  if (explicit) {
+    try {
+      return new URL(explicit).origin;
+    } catch {
+      /* malformed — fall through to the default rather than emit a bad link */
+    }
   }
+  return DEFAULT_APP_ORIGIN;
 }
 
 function tokenEndpoint(): string {

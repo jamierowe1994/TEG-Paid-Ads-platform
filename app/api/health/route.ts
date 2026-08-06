@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { hasDb, q } from "@/lib/db";
+import { appOrigin } from "@/lib/microsoft";
+import { canSendSystemEmail } from "@/lib/mailer";
+import { resendConfigured } from "@/lib/resend";
 import { pingAll, getAllSocials } from "@/lib/meta";
 import { linkedinStatus } from "@/lib/linkedin";
 import { whatsappStatus } from "@/lib/whatsapp";
@@ -47,6 +50,20 @@ export async function GET(req: NextRequest) {
   const wantsProbe = PROBES.some((p) => req.nextUrl.searchParams.has(p));
   if (wantsProbe && !isAdmin) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  }
+
+  // The host that goes into invite and password-reset links. Worth checking
+  // after any domain change: if this isn't the branded domain, partners get
+  // sent to the wrong origin and their session won't follow them into the PWA.
+  // Set APP_ORIGIN to fix. (Admin-only to match the rest of this file; the
+  // signed-out redirect from /api/auth/microsoft/start reveals it publicly.)
+  if (isAdmin) {
+    body.appOrigin = appOrigin();
+    body.emailTransport = resendConfigured()
+      ? "resend"
+      : (await canSendSystemEmail())
+        ? "microsoft"
+        : "NONE — Send All will refuse";
   }
 
   if (isAdmin && usingDb && connected) {

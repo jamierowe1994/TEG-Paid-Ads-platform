@@ -43,17 +43,29 @@ export async function sendSystemEmail(opts: {
   body: string;
   html?: boolean;
 }): Promise<SendResult> {
+  let resendDetail: string | undefined;
   if (resendConfigured()) {
     const r = await sendViaResend(opts);
     if (r.sent) return { sent: true };
     // Don't swallow this. A Resend failure is nearly always a fixable config
     // problem (domain not verified, wrong key), and it would otherwise look
     // like Microsoft's fault — or like nothing happened at all.
+    resendDetail = r.detail;
     console.error("[mailer] Resend failed, falling back to Microsoft:", r.detail);
   }
 
   const mailbox = await getSystemMailbox();
-  if (!mailbox) return { sent: false, reason: "not_connected" };
+  if (!mailbox) {
+    // REPORT WHAT ACTUALLY WENT WRONG. When Resend is configured but failing
+    // and Microsoft was never connected, this used to return "not_connected" —
+    // which reads as "no email transport set up" and sends whoever is pressing
+    // Send All chasing the wrong problem entirely. The real cause ("API key is
+    // invalid", "domain not verified") was console-only, where an MD can't see
+    // it. Both are fixable in minutes, but only if they're named.
+    return resendDetail
+      ? { sent: false, reason: "failed", detail: `Resend: ${resendDetail}` }
+      : { sent: false, reason: "not_connected" };
+  }
 
   try {
     const accessToken = await msRefreshSystemToken(mailbox.refreshToken);
@@ -72,6 +84,10 @@ export async function sendSystemEmail(opts: {
     }
 
     console.error("[mailer] send failed:", message);
-    return { sent: false, reason: "failed", detail: message };
+    return {
+      sent: false,
+      reason: "failed",
+      detail: resendDetail ? `Resend: ${resendDetail}; Microsoft: ${message}` : message,
+    };
   }
 }

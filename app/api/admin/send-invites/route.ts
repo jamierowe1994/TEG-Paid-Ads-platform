@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, sent: 0, results: [] });
   }
 
-  const results: { email: string; sent: boolean; reason?: string }[] = [];
+  const results: { email: string; sent: boolean; reason?: string; detail?: string }[] = [];
   for (const target of targets) {
     const user = await findById(target.id);
     if (!user) continue;
@@ -81,7 +81,9 @@ export async function POST(req: NextRequest) {
     results.push(
       res.sent
         ? { email: user.email, sent: true }
-        : { email: user.email, sent: false, reason: res.reason }
+        // detail carries the fixable part ("domain not verified"); reason
+        // alone is too coarse to act on.
+        : { email: user.email, sent: false, reason: res.reason, detail: res.detail }
     );
   }
 
