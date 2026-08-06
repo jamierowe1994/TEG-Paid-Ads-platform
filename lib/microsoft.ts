@@ -61,6 +61,9 @@ export function appOrigin(): string {
       /* malformed — fall through to the default rather than emit a bad link */
     }
   }
+  // Local dev builds local links — otherwise every reset/invite minted on a
+  // dev machine would point at production.
+  if (process.env.NODE_ENV === "development") return "http://localhost:3000";
   return DEFAULT_APP_ORIGIN;
 }
 
