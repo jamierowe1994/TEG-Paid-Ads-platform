@@ -67,10 +67,10 @@ export default function LeadsStat({
   return (
     <div
       ref={ref}
-      // Mobile: tucked over the photo's bottom-left corner (the photo runs
-      // nearly full-bleed there, so hanging off the left edge put the card
-      // half off the page). sm+ keeps the original hang.
-      className={`absolute -left-4 bottom-10 w-48 rounded-2xl bg-[#ffffff]/92 p-4 shadow-2xl backdrop-blur-md max-sm:-bottom-6 max-sm:left-4 ${className} sm:-left-8`}
+      // Mobile: breaks the photo's bottom-left corner onto the brand panel —
+      // the photo is inset from the panel edges, so the overhang lands on
+      // panel, not off the page. sm+ keeps the original hang.
+      className={`absolute -left-4 bottom-10 w-48 rounded-2xl bg-[#ffffff]/92 p-4 shadow-2xl backdrop-blur-md max-sm:-bottom-10 max-sm:-left-2 max-sm:w-40 max-sm:p-3.5 ${className} sm:-left-8`}
       style={{ transformOrigin: "center" }}
     >
       <p className="text-xs font-medium uppercase tracking-wide text-[#9ca3af]">
@@ -79,7 +79,7 @@ export default function LeadsStat({
       <p className="mt-1 text-3xl font-semibold text-[var(--group)]">↑ {count}%</p>
       <div className="mt-3 flex items-end gap-2">
         <div
-          className={`bar-grow h-8 flex-1 rounded-md bg-red-100 ${on ? "grown" : ""}`}
+          className={`bar-grow h-8 flex-1 rounded-md bg-[color-mix(in_srgb,var(--group)_12%,white)] ${on ? "grown" : ""}`}
         />
         <div
           className={`bar-grow h-12 flex-1 rounded-md bg-[var(--group)] ${on ? "grown" : ""}`}

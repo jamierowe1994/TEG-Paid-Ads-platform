@@ -191,8 +191,8 @@ export default function LandingPage() {
             >
             {/* Same rhythm as the hero: the heading grows in and bounces,
                 the subtext drops in line by line, the button fades last. */}
-            <MobileParallax className="max-sm:px-6 max-sm:pt-11 max-sm:text-center">
-              <h2 className="mp-lead p-title max-w-lg text-4xl font-semibold leading-[1.05] tracking-tight text-gray-900 max-sm:mx-auto max-sm:max-w-none max-sm:text-balance max-sm:text-[2rem] max-sm:text-white sm:text-5xl">
+            <MobileParallax className="max-sm:px-6 max-sm:pt-10">
+              <h2 className="mp-lead p-title max-w-lg text-4xl font-semibold leading-[1.05] tracking-tight text-gray-900 max-sm:max-w-none max-sm:text-[2rem] max-sm:text-white sm:text-5xl">
                 What is Launch Pad?
               </h2>
               {/* Mobile reads as a statement, not body copy: bigger, darker,
@@ -202,7 +202,7 @@ export default function LandingPage() {
               {/* Short on mobile: the photo now carries the bottom of the
                   block, so the copy has to earn its space in one breath. */}
               <p
-                className="mp-follow p-sub mx-auto mt-4 max-w-xs text-[1.05rem] leading-[1.45] text-white/85 sm:hidden"
+                className="mp-follow p-sub mt-4 max-w-xs text-[1.05rem] leading-[1.45] text-white/85 sm:hidden"
                 style={{ "--d": "0s" } as React.CSSProperties}
               >
                 We build and run your ads. Every lead lands in{" "}
@@ -219,19 +219,19 @@ export default function LandingPage() {
               </p>
               {/* Mobile CTA sits ABOVE the photo, so the block reads
                   heading → promise → action, and the image closes it. */}
-              <div className="p-cta mt-7 sm:hidden">
+              <div className="p-cta mt-6 sm:hidden">
                 <Link
                   href="/signup"
-                  className="flex w-full items-center justify-between gap-3 rounded-full bg-white py-2 pl-7 pr-2 text-base font-semibold text-gray-900 shadow-sm transition active:scale-[0.98]"
+                  className="inline-flex items-center gap-3 rounded-full bg-white py-1.5 pl-6 pr-1.5 text-sm font-semibold text-gray-900 shadow-sm transition active:scale-[0.98]"
                 >
-                  <span className="flex-1 text-center">Start your campaign</span>
+                  Start your campaign
                   {/* The arrow badge carries the brand colour, so the button
                       still reads as ours rather than a generic white pill. */}
                   <span
                     aria-hidden
-                    className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[var(--group)] text-white"
+                    className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--group)] text-white"
                   >
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M7 17 17 7M9 7h8v8" />
                     </svg>
                   </span>
@@ -261,44 +261,32 @@ export default function LandingPage() {
             {/* Mobile: the photo fills the bottom of the panel, edge to edge
                 and flush with its bottom — the panel's overflow-hidden does
                 the corner rounding, so the frame needs none of its own. */}
-            <div className="relative mx-auto w-full max-w-md max-sm:mt-7 max-sm:max-w-none lg:mr-0 lg:max-w-xl">
-              {/* One frame, two images, and only ONE of them is ever
-                  downloaded.
+            <div className="relative mx-auto w-full max-w-md max-sm:mx-5 max-sm:mb-20 max-sm:mt-7 max-sm:w-auto max-sm:max-w-none lg:mr-0 lg:max-w-xl">
+              {/* Same photograph at every size now — the hand holding the
+                  phone — so the <source media> forking that existed for the
+                  mobile-only cut-out is gone. (Kept in history: display:none
+                  never stops a browser downloading an image, so two <img>s
+                  was never an option.)
 
-                  MOBILE and DESKTOP get different photographs — the mobile one
-                  is squared off to sit in the brand panel, the desktop one is
-                  the 4:5 the two-column composition was built around.
-
-                  WHY <source media> AND NOT max-sm:hidden ON A SECOND <img>:
-                  display:none does not stop a browser fetching an image, so
-                  the hidden one still cost a phone 147K it would never see.
-                  loading="lazy" doesn't save it either — measured, Chrome
-                  loads a display:none lazy image anyway. <source media> is the
-                  only form the browser resolves BEFORE fetching, so the
-                  candidate that loses is never requested at all.
-
-                  The frame carries no background of its own: the mobile image
-                  is a transparent cut-out, so the brand panel shows around
-                  him, and on desktop object-cover fills the frame completely.
-
-                  The mobile file is a 1000x1166 portrait, cropped to the
-                  square frame in CSS with object-top — a centred crop would
-                  take the top of her head and her hands. */}
-              <div className="relative overflow-hidden max-sm:rounded-none sm:rounded-3xl sm:shadow-2xl">
-                <picture>
-                  <source media="(min-width: 640px)" srcSet="/images/paid-ads.jpg" />
-                  {/* object-bottom so she stands ON the panel and crops at the
-                      frame, rather than floating with a gap underneath. */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="/images/excited.webp"
-                    alt="An agent reacting to a new lead landing"
-                    className="p-image block w-full object-cover max-sm:aspect-square max-sm:object-top sm:aspect-[4/5] sm:object-center"
-                  />
-                </picture>
+                  Mobile matches the reference layout: the photo floats inset
+                  inside the brand panel, a small terminal-style caption sits
+                  on it, and the leads graph card breaks its bottom-left
+                  corner. The caption shares p-stat so both annotations pop
+                  together after the photo lands. */}
+              <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl sm:shadow-2xl">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/paid-ads.jpg"
+                  alt="An agent's next client, mid-scroll"
+                  className="p-image block aspect-[4/5] w-full object-cover"
+                />
+                <p className="p-stat absolute left-4 top-4 max-w-[230px] rounded-lg bg-gray-950/55 px-3 py-2 font-mono text-[9px] font-medium uppercase leading-relaxed tracking-[0.14em] text-white backdrop-blur-sm sm:hidden">
+                  Every lead from your ads — name, number, straight to your
+                  phone
+                </p>
               </div>
               {/* Infographic overlay — expands after the image, then counts */}
-              <LeadsStat className="p-stat max-sm:hidden" startDelay={1500} />
+              <LeadsStat className="p-stat" startDelay={1500} />
             </div>
           </div>
 
