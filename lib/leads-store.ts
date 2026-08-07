@@ -602,6 +602,35 @@ export async function deleteLeads(
   return removed;
 }
 
+/** Every distinct ad name a brand's leads carry, with counts — the
+ *  worklist for "does every ad have a guide?". */
+export async function adNamesForBrand(
+  brandId: string
+): Promise<{ adName: string; count: number }[]> {
+  if (hasDb()) {
+    const rows = await q<{ ad_name: string; n: string }>(
+      `SELECT l.ad_name, COUNT(*)::text AS n
+         FROM leads l JOIN users u ON u.id = l.user_id
+        WHERE u.brand_id = $1 AND l.ad_name IS NOT NULL AND l.ad_name <> ''
+        GROUP BY l.ad_name ORDER BY COUNT(*) DESC`,
+      [brandId]
+    );
+    return rows.map((r) => ({ adName: r.ad_name, count: Number(r.n) }));
+  }
+  const { listUsers } = await import("./users-store");
+  const ids = new Set(
+    (await listUsers()).filter((u) => u.brandId === brandId).map((u) => u.id)
+  );
+  const counts = new Map<string, number>();
+  for (const l of await readAllFile()) {
+    if (!ids.has(l.userId) || !l.adName) continue;
+    counts.set(l.adName, (counts.get(l.adName) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([adName, count]) => ({ adName, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
 // "Save for a later date": archive the lead with a comeback date. The
 // timeline records why and when so the story is there when it resurfaces.
 export async function snoozeLead(

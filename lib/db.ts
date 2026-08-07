@@ -175,6 +175,12 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS campaign_approved BOOLEAN NOT NULL DE
 ALTER TABLE users ADD COLUMN IF NOT EXISTS campaign_feedback JSONB NOT NULL DEFAULT '[]';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
 
+CREATE TABLE IF NOT EXISTS magnet_map (
+  brand_id TEXT NOT NULL,
+  ad_key TEXT NOT NULL,
+  magnet_id TEXT NOT NULL,
+  PRIMARY KEY (brand_id, ad_key)
+);
 CREATE TABLE IF NOT EXISTS lead_magnets (
   id TEXT PRIMARY KEY,
   brand_id TEXT NOT NULL,

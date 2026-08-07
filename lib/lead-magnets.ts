@@ -201,6 +201,107 @@ export async function deleteMagnet(id: string): Promise<boolean> {
   return true;
 }
 
+/* ---------- pinned mappings ---------- */
+
+/* Fuzzy matching has an honest limit: an ad named "X Renters FB FAQ" shares
+ * not one word with "The 37-Step Guide to Staying Compliant" (Zill's leads,
+ * 7 Aug). Pins bridge it: an admin says THIS ad offers THIS guide, once, and
+ * the pin beats the fuzzy match forever after. Keyed on the normalised ad
+ * name so casing/spacing wobbles don't fork the mapping. */
+
+const MAP_FILE = path.join(DATA_DIR, "magnet-map.json");
+
+export function adKey(adName: string): string {
+  return adName.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+type MapFile = Record<string, string>; // `${brandId}\u0000${adKey}` -> magnetId
+
+async function readMap(): Promise<MapFile> {
+  try {
+    return JSON.parse(await fs.readFile(MAP_FILE, "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+export async function pinMagnet(
+  brandId: string,
+  adName: string,
+  magnetId: string | null
+): Promise<void> {
+  const key = adKey(adName);
+  if (hasDb()) {
+    if (magnetId === null) {
+      await q("DELETE FROM magnet_map WHERE brand_id = $1 AND ad_key = $2", [brandId, key]);
+    } else {
+      await q(
+        `INSERT INTO magnet_map (brand_id, ad_key, magnet_id) VALUES ($1,$2,$3)
+           ON CONFLICT (brand_id, ad_key) DO UPDATE SET magnet_id = $3`,
+        [brandId, key, magnetId]
+      );
+    }
+    return;
+  }
+  const map = await readMap();
+  const k = `${brandId}\u0000${key}`;
+  if (magnetId === null) delete map[k];
+  else map[k] = magnetId;
+  await fs.mkdir(DATA_DIR, { recursive: true });
+  await fs.writeFile(MAP_FILE, JSON.stringify(map, null, 2), "utf8");
+}
+
+export async function pinnedMagnetId(
+  brandId: string,
+  adName: string
+): Promise<string | null> {
+  const key = adKey(adName);
+  if (hasDb()) {
+    const rows = await q<{ magnet_id: string }>(
+      "SELECT magnet_id FROM magnet_map WHERE brand_id = $1 AND ad_key = $2",
+      [brandId, key]
+    );
+    return rows[0]?.magnet_id ?? null;
+  }
+  return (await readMap())[`${brandId}\u0000${key}`] ?? null;
+}
+
+export async function allPins(brandId: string): Promise<Record<string, string>> {
+  if (hasDb()) {
+    const rows = await q<{ ad_key: string; magnet_id: string }>(
+      "SELECT ad_key, magnet_id FROM magnet_map WHERE brand_id = $1",
+      [brandId]
+    );
+    return Object.fromEntries(rows.map((r) => [r.ad_key, r.magnet_id]));
+  }
+  const map = await readMap();
+  const out: Record<string, string> = {};
+  const prefix = `${brandId}\u0000`;
+  for (const [k, v] of Object.entries(map)) {
+    if (k.startsWith(prefix)) out[k.slice(prefix.length)] = v;
+  }
+  return out;
+}
+
+/** The one resolution every consumer should use: pin first, fuzzy second. */
+export async function resolveMagnet(
+  brandId: string,
+  adName: string | null | undefined,
+  fallbackText: string,
+  magnets: MagnetMeta[]
+): Promise<{ magnet: MagnetMeta | null; pinned: boolean }> {
+  if (adName) {
+    const id = await pinnedMagnetId(brandId, adName);
+    if (id) {
+      const m = magnets.find((x) => x.id === id);
+      if (m) return { magnet: m, pinned: true };
+      // Pin points at a deleted magnet — fall through to fuzzy rather than
+      // showing nothing.
+    }
+  }
+  return { magnet: matchMagnet(fallbackText || adName || "", magnets), pinned: false };
+}
+
 /* ---------- matching ---------- */
 
 /* Stop words are ONLY glue words. "Guide" and years stay in: with a library

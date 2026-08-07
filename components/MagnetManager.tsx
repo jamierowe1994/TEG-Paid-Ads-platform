@@ -14,6 +14,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BRANDS } from "@/lib/brands";
 
+interface MapRow {
+  adName: string;
+  count: number;
+  magnetId: string | null;
+  magnetTitle: string | null;
+  pinned: boolean;
+}
+
 interface Magnet {
   id: string;
   brandId: string;
@@ -44,6 +52,8 @@ export default function MagnetManager({
   const [dragOver, setDragOver] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState("");
+  const [map, setMap] = useState<MapRow[]>([]);
+  const [mapUnmatched, setMapUnmatched] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -60,9 +70,43 @@ export default function MagnetManager({
     }
   }, [token, brand, superPick]);
 
+  const loadMap = useCallback(async () => {
+    try {
+      const q = superPick ? `?brand=${encodeURIComponent(brand)}` : "";
+      const res = await fetch(`/api/admin/magnet-map${q}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      const d = await res.json();
+      if (res.ok) {
+        setMap(d.rows ?? []);
+        setMapUnmatched(d.unmatched ?? 0);
+      }
+    } catch {
+      /* refresh retries */
+    }
+  }, [token, brand, superPick]);
+
   useEffect(() => {
     load();
-  }, [load]);
+    loadMap();
+  }, [load, loadMap]);
+
+  async function pin(row: MapRow, magnetId: string | null) {
+    await fetch("/api/admin/magnet-map", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        adName: row.adName,
+        magnetId,
+        ...(superPick ? { brandId: brand } : {}),
+      }),
+    }).catch(() => {});
+    loadMap();
+  }
 
   /* Bulk-first: drop 30 PDFs on the zone and they go up ONE AT A TIME —
      one dropped connection costs that file, not the batch — with live
@@ -287,6 +331,76 @@ export default function MagnetManager({
             </button>
           </div>
         ))}
+      </div>
+
+      {/* ── Which guide each ad offers ─────────────────────────────────────
+          The connect-them-all worklist. Every ad name the brand's leads
+          carry, with what it resolves to. Red rows are the problem James
+          named: "at no time should a lead be missing its guide" — this list
+          is how that's CHECKED, not hoped. Ad names that share no words with
+          their guide (Zill's "X Renters FB FAQ" -> the compliance guide) get
+          pinned here once and stay connected forever. */}
+      <div className="mt-6 border-t border-gray-100 pt-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-semibold text-gray-900">
+            Which guide does each ad offer?
+          </h3>
+          {map.length > 0 && (
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                mapUnmatched === 0
+                  ? "bg-green-100 text-green-700"
+                  : "bg-red-100 text-red-700"
+              }`}
+            >
+              {mapUnmatched === 0
+                ? "All ads have a guide ✓"
+                : `${mapUnmatched} ad${mapUnmatched === 1 ? "" : "s"} with NO guide`}
+            </span>
+          )}
+        </div>
+        <p className="mt-1 text-sm text-gray-500">
+          Auto = matched by name. Pick from the dropdown to pin the right guide
+          where the names don&apos;t line up — pins always win.
+        </p>
+        <div className="mt-3 divide-y divide-gray-100">
+          {map.length === 0 && (
+            <p className="py-3 text-sm text-gray-400">
+              No ad names on any leads yet.
+            </p>
+          )}
+          {map.map((r) => (
+            <div key={r.adName} className={`flex flex-wrap items-center gap-3 py-2.5 ${r.magnetId ? "" : "rounded-lg bg-red-50 px-2"}`}>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-gray-900">{r.adName}</p>
+                <p className="text-xs text-gray-400">
+                  {r.count} lead{r.count === 1 ? "" : "s"}
+                  {r.magnetId ? (r.pinned ? " · pinned" : " · auto-matched") : " · NO GUIDE"}
+                </p>
+              </div>
+              <select
+                value={r.pinned ? r.magnetId ?? "" : ""}
+                onChange={(e) => pin(r, e.target.value || null)}
+                className={`max-w-[260px] rounded-lg border px-2.5 py-1.5 text-sm ${
+                  r.magnetId ? "border-gray-200 text-gray-700" : "border-red-300 text-red-700"
+                }`}
+              >
+                <option value="">
+                  {r.magnetId && !r.pinned
+                    ? `Auto: ${r.magnetTitle}`
+                    : r.magnetId
+                      ? "Unpin (back to auto)"
+                      : "— pick the guide —"}
+                </option>
+                {magnets.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

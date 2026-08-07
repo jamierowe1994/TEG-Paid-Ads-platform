@@ -1343,7 +1343,9 @@ function MagnetRow({ lead, accent }: { lead: Lead; accent: string }) {
       .filter(Boolean)
       .join(" ");
     if (!text.trim()) return;
-    fetch(`/api/magnets?match=${encodeURIComponent(text)}`)
+    fetch(
+      `/api/magnets?match=${encodeURIComponent(text)}&ad=${encodeURIComponent(lead.adName ?? "")}`
+    )
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d?.match) setMagnet({ id: d.match.id, title: d.match.title });

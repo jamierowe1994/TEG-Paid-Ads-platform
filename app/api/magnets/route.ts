@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
 import { findById } from "@/lib/users-store";
-import { listMagnets, matchMagnet } from "@/lib/lead-magnets";
+import { listMagnets, resolveMagnet } from "@/lib/lead-magnets";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +17,13 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
 
   const magnets = await listMagnets(user.brandId);
-  const matchText = req.nextUrl.searchParams.get("match");
-  const match = matchText ? matchMagnet(matchText, magnets) : null;
+  const matchText = req.nextUrl.searchParams.get("match") ?? "";
+  // The ad name rides separately from the fallback text: pins key on the ad
+  // name EXACTLY, while the fuzzy fallback can use everything.
+  const ad = req.nextUrl.searchParams.get("ad");
+  const match =
+    matchText || ad
+      ? (await resolveMagnet(user.brandId, ad, matchText, magnets)).magnet
+      : null;
   return NextResponse.json({ magnets, match });
 }
