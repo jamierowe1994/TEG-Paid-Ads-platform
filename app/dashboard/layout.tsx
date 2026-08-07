@@ -639,9 +639,16 @@ export default function DashboardLayout({
             </p>
           </div>
           <button
-            onClick={() => {
-              signOut();
-              router.push("/");
+            onClick={async () => {
+              // AWAIT the logout before navigating. Fired-and-forgotten, the
+              // session cookie was still alive when "/" loaded, so the
+              // homepage middleware saw a signed-in visitor and bounced
+              // straight back to /dashboard — signed out, still standing in
+              // the portal (James, launch morning). The hard navigation (not
+              // router.push) also drops every trace of the signed-in app
+              // from memory.
+              await signOut();
+              window.location.assign("/");
             }}
             className="mt-5 flex items-center gap-3 px-0.5 text-[13.5px] font-medium text-gray-400 transition hover:text-gray-900"
           >
@@ -749,7 +756,7 @@ export default function DashboardLayout({
 
             {/* Log out */}
             <button
-              onClick={() => { signOut(); router.push("/"); }}
+              onClick={async () => { await signOut(); window.location.assign("/"); }}
               aria-label="Log out"
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-gray-200 active:bg-white/10"
             >
