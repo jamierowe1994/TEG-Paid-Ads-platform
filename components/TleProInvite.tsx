@@ -44,6 +44,8 @@ interface RowState {
   campaigns: Campaign[];
   accountId: string | null;
   justConnected: boolean;
+  /** Lead-flow check: null = not run, "…" = running, else the verdict. */
+  flow: string | null;
 }
 
 export default function TleProInvite({ pass }: { pass: string }) {
@@ -86,6 +88,7 @@ export default function TleProInvite({ pass }: { pass: string }) {
             campaigns: [],
             accountId: null,
             justConnected: false,
+            flow: null,
           };
         }
         return next;
@@ -158,6 +161,36 @@ export default function TleProInvite({ pass }: { pass: string }) {
   const connectedCount = rows.filter(
     (r) => r.connected || state[key(r)]?.justConnected
   ).length;
+
+  /* Is her number real? Compares Meta's own last-7-days lead count for her
+     tagged campaigns against what the portal holds, and flags leads sitting
+     on the Page that nobody has tagged. Read-only. */
+  async function checkFlow(row: ProRow) {
+    const k = key(row);
+    const s = state[k];
+    if (!s || s.flow === "…") return;
+    patch(k, { flow: "…" });
+    try {
+      const res = await fetch(
+        `/api/admin/lead-flow?email=${encodeURIComponent(s.email.trim())}`,
+        { headers: { Authorization: `Bearer ${pass}` }, cache: "no-store" }
+      );
+      const d = await res.json();
+      if (!res.ok) {
+        patch(k, { flow: d?.error ?? "Check failed." });
+        return;
+      }
+      patch(k, {
+        flow:
+          (d.verdict ?? d.error ?? "No verdict.") +
+          (d.lastSync?.brand?.error
+            ? ` Last sync error: ${d.lastSync.brand.error}`
+            : ""),
+      });
+    } catch {
+      patch(k, { flow: "Couldn't reach the server." });
+    }
+  }
 
   /* Opening in a new tab keeps the admin session in this one, so you can look
      at an agent's account and come straight back to the roster. */
@@ -324,11 +357,34 @@ export default function TleProInvite({ pass }: { pass: string }) {
                     View as
                   </button>
                 )}
+                {done && (
+                  <button
+                    onClick={() => checkFlow(row)}
+                    title="Compare Meta's lead count for her campaigns against the portal's"
+                    className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                  >
+                    {s.flow === "…" ? "Checking…" : "Check leads"}
+                  </button>
+                )}
               </div>
 
               {s.error && (
                 <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
                   {s.error}
+                </p>
+              )}
+
+              {s.flow && s.flow !== "…" && (
+                <p
+                  className={`mt-3 rounded-lg px-3 py-2 text-sm ${
+                    /^Healthy/.test(s.flow)
+                      ? "bg-green-50 text-green-800"
+                      : /^GAP/.test(s.flow)
+                        ? "bg-red-50 text-red-700"
+                        : "bg-amber-50 text-amber-900"
+                  }`}
+                >
+                  {s.flow}
                 </p>
               )}
 
