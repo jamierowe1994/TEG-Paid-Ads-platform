@@ -37,10 +37,13 @@ export default function MagnetManager({
 }) {
   const [magnets, setMagnets] = useState<Magnet[]>([]);
   const [brand, setBrand] = useState(brandId ?? "lettings");
-  const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [progress, setProgress] = useState("");
+  const [failures, setFailures] = useState<string[]>([]);
   const [note, setNote] = useState("");
+  const [dragOver, setDragOver] = useState(false);
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [renameVal, setRenameVal] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -61,35 +64,63 @@ export default function MagnetManager({
     load();
   }, [load]);
 
-  async function upload() {
-    const file = fileRef.current?.files?.[0];
-    if (!file || !title.trim() || busy) return;
+  /* Bulk-first: drop 30 PDFs on the zone and they go up ONE AT A TIME —
+     one dropped connection costs that file, not the batch — with live
+     "3 of 30" progress and a per-file failure list at the end. Titles come
+     from the filenames (server cleans them: dashes to spaces, FINAL/v3
+     stripped); the pencil on each row fixes any that don't match how the
+     ads name the guide. */
+  async function uploadFiles(list: FileList | File[]) {
+    const files = Array.from(list);
+    if (!files.length || busy) return;
     setBusy(true);
-    setError("");
+    setFailures([]);
     setNote("");
-    try {
-      const form = new FormData();
-      form.set("file", file);
-      form.set("title", title.trim());
-      if (superPick) form.set("brandId", brand);
-      const res = await fetch("/api/admin/magnets", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: form,
-      });
-      const d = await res.json();
-      if (!res.ok) {
-        setError(d.error ?? "Upload failed.");
-      } else {
-        setNote(`"${title.trim()}" uploaded ✓`);
-        setTitle("");
-        if (fileRef.current) fileRef.current.value = "";
-        load();
+    const failed: string[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      setProgress(`Uploading ${i + 1} of ${files.length} — ${f.name}`);
+      try {
+        const form = new FormData();
+        form.set("file", f);
+        if (superPick) form.set("brandId", brand);
+        const res = await fetch("/api/admin/magnets", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: form,
+        });
+        const d = await res.json().catch(() => ({}));
+        if (!res.ok) failed.push(`${f.name}: ${d.error ?? `HTTP ${res.status}`}`);
+      } catch {
+        failed.push(`${f.name}: connection dropped — try it again`);
       }
-    } catch {
-      setError("Couldn't reach the server.");
+      // Refresh as we go, so the library fills up live.
+      if (i % 3 === 2 || i === files.length - 1) await load();
     }
+    setProgress("");
+    setFailures(failed);
+    setNote(
+      failed.length === 0
+        ? `All ${files.length} uploaded ✓`
+        : `${files.length - failed.length} of ${files.length} uploaded — ${failed.length} failed (listed below).`
+    );
+    if (fileRef.current) fileRef.current.value = "";
     setBusy(false);
+  }
+
+  async function saveRename(m: Magnet) {
+    const title = renameVal.trim();
+    setRenaming(null);
+    if (!title || title === m.title) return;
+    await fetch("/api/admin/magnets", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ id: m.id, title }),
+    }).catch(() => {});
+    load();
   }
 
   async function remove(m: Magnet) {
@@ -147,7 +178,7 @@ export default function MagnetManager({
         </button>
       </div>
 
-      {/* Upload */}
+      {/* Upload — a drop zone, because "I've got like 30 of these". */}
       <div className="mt-4 flex flex-wrap items-center gap-3">
         {superPick && (
           <select
@@ -162,28 +193,43 @@ export default function MagnetManager({
             ))}
           </select>
         )}
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Guide title, as the ads name it"
-          className="min-w-[240px] flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm"
-        />
+      </div>
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+          uploadFiles(e.dataTransfer.files);
+        }}
+        onClick={() => !busy && fileRef.current?.click()}
+        className={`mt-3 cursor-pointer rounded-2xl border-2 border-dashed p-8 text-center transition ${
+          dragOver ? "border-gray-900 bg-gray-50" : "border-gray-300"
+        } ${busy ? "pointer-events-none opacity-60" : ""}`}
+      >
+        <p className="text-sm font-medium text-gray-700">
+          {busy ? progress : "Drop your PDFs here — as many as you like"}
+        </p>
+        <p className="mt-1 text-xs text-gray-400">
+          {busy
+            ? "Leave this tab open until it finishes."
+            : "…or click to pick files. Titles come from the filenames; rename any after with the ✎."}
+        </p>
         <input
           ref={fileRef}
           type="file"
+          multiple
           accept="application/pdf,image/png,image/jpeg"
-          className="text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-100 file:px-3 file:py-2 file:text-sm file:font-medium"
+          className="hidden"
+          onChange={(e) => e.target.files && uploadFiles(e.target.files)}
         />
-        <button
-          onClick={upload}
-          disabled={busy}
-          className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
-        >
-          {busy ? "Uploading…" : "Upload"}
-        </button>
       </div>
-      {error && (
-        <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+      {failures.length > 0 && (
+        <div className="mt-3 space-y-1 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          {failures.map((f) => (
+            <p key={f}>{f}</p>
+          ))}
+        </div>
       )}
       {note && (
         <p className="mt-3 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800">{note}</p>
@@ -201,7 +247,27 @@ export default function MagnetManager({
           <div key={m.id} className="flex flex-wrap items-center gap-3 py-3">
             <span className="text-lg">📄</span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-gray-900">{m.title}</p>
+              {renaming === m.id ? (
+                <input
+                  autoFocus
+                  value={renameVal}
+                  onChange={(e) => setRenameVal(e.target.value)}
+                  onBlur={() => saveRename(m)}
+                  onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+                  className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                />
+              ) : (
+                <p className="truncate text-sm font-medium text-gray-900">
+                  {m.title}{" "}
+                  <button
+                    onClick={() => { setRenaming(m.id); setRenameVal(m.title); }}
+                    title="Rename — the title is what leads get matched against"
+                    className="text-gray-300 hover:text-gray-600"
+                  >
+                    ✎
+                  </button>
+                </p>
+              )}
               <p className="text-xs text-gray-400">
                 {m.filename} · {mb(m.size)}
                 {m.uploadedBy ? ` · by ${m.uploadedBy}` : ""}

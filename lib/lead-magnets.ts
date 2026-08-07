@@ -169,6 +169,22 @@ export async function getMagnet(
   }
 }
 
+export async function renameMagnet(id: string, title: string): Promise<boolean> {
+  if (hasDb()) {
+    const rows = await q<{ id: string }>(
+      "UPDATE lead_magnets SET title = $2 WHERE id = $1 RETURNING id",
+      [id, title]
+    );
+    return rows.length > 0;
+  }
+  const all = await readMeta();
+  const idx = all.findIndex((x) => x.id === id);
+  if (idx === -1) return false;
+  all[idx] = { ...all[idx], title };
+  await writeMeta(all);
+  return true;
+}
+
 export async function deleteMagnet(id: string): Promise<boolean> {
   if (hasDb()) {
     const rows = await q<{ id: string }>(
