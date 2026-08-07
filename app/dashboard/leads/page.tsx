@@ -446,7 +446,10 @@ const SORTS: { id: SortOrder; label: string }[] = [
 type TimeRange = "all" | "7d" | "30d";
 
 const RANGES: { id: TimeRange; label: string; days?: number }[] = [
-  { id: "7d", label: "This week", days: 7 },
+  // "7d" is calendar-this-week (since Monday), not a rolling 7 days — the
+  // dashboard's "Leads this week" counts since Monday, and the two showing
+  // different leads under the same name reads as a bug.
+  { id: "7d", label: "This week" },
   { id: "30d", label: "Last 30 days", days: 30 },
   { id: "all", label: "All time" },
 ];
@@ -553,10 +556,23 @@ export default function LeadsPage() {
     if (view === "active" && stageFilter !== "all") {
       base = base.filter((l) => l.stage === stageFilter);
     }
-    const days = RANGES.find((r) => r.id === range)?.days;
-    if (days && view !== "archived") {
-      const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
-      base = base.filter((l) => new Date(l.receivedAt).getTime() >= cutoff);
+    if (view !== "archived") {
+      if (range === "7d") {
+        // Monday 00:00 local — the same boundary the dashboard uses.
+        const now = new Date();
+        const monday = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate() - ((now.getDay() + 6) % 7)
+        ).getTime();
+        base = base.filter((l) => new Date(l.receivedAt).getTime() >= monday);
+      } else {
+        const days = RANGES.find((r) => r.id === range)?.days;
+        if (days) {
+          const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+          base = base.filter((l) => new Date(l.receivedAt).getTime() >= cutoff);
+        }
+      }
     }
     const byNewest = (a: Lead, b: Lead) =>
       new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime();
@@ -1122,15 +1138,17 @@ export default function LeadsPage() {
       </div>
 
       {/* Desktop — mini profile cards in a snake pattern: newest at the
-          top-right, each row alternating direction, tapering smaller for
-          older rows so recency reads at a glance. */}
+          top-LEFT, each row alternating direction, tapering smaller for
+          older rows so recency reads at a glance. (It launched newest-at-
+          top-right; with only one or two leads the tiles hugged the right
+          edge and read as misplaced — James, 7 Aug.) */}
       <div className="mt-4 hidden flex-col gap-3 lg:flex">
         {chunk(visible, ROW_SIZE).map((row, ri) => {
           const size: TileSize = ri < 2 ? "lg" : ri < 5 ? "md" : "sm";
           return (
             <div
               key={ri}
-              dir={ri % 2 === 0 ? "rtl" : "ltr"}
+              dir={ri % 2 === 0 ? "ltr" : "rtl"}
               className="grid grid-cols-2 gap-3 sm:grid-cols-4"
             >
               {row.map((lead) => (
