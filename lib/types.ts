@@ -72,6 +72,9 @@ export interface UserProfile {
   // refresh token itself lives ONLY on the server-side StoredUser record —
   // these two fields are the safe-to-show status.
   msEmail?: string | null; // the connected mailbox's address
+  /** Last authenticated request, throttled to ~1/min. Drives the admin
+   *  "online" dot only — never shown to agents. */
+  lastSeenAt?: string | null;
   msConnectedAt?: string | null;
   // Set when the agent asks to cancel their subscription — the plan stays
   // active until the period end; clearing it resumes.

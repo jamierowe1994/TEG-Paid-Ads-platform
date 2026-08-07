@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
-import { findById, updateUser, toPublic } from "@/lib/users-store";
+import { findById, updateUser, toPublic, touchLastSeen } from "@/lib/users-store";
 
 async function currentUserId(req: NextRequest): Promise<string | null> {
   return verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
@@ -30,6 +30,8 @@ export async function GET(req: NextRequest) {
   if (!id) return NextResponse.json({ user: null }, { status: 401 });
   const user = await findById(id);
   if (!user) return NextResponse.json({ user: null }, { status: 401 });
+  // Fire-and-forget presence stamp — drives the admin online dot.
+  void touchLastSeen(id);
   // Deactivated (left the group, per Base44): the session dies here.
   if (user.deactivatedAt)
     return NextResponse.json({ user: null }, { status: 401 });

@@ -49,6 +49,7 @@ interface UserRow {
   meta_campaign_id: string | null;
   rex_user_id: string | null;
   ms_email: string | null;
+  last_seen_at: string | Date | null;
   ms_connected_at: string | Date | null;
   ms_refresh_token: string | null;
   cancel_requested_at: string | Date | null;
@@ -88,6 +89,7 @@ function fromRow(row: UserRow): StoredUser {
     metaCampaignId: row.meta_campaign_id,
     rexUserId: row.rex_user_id,
     msEmail: row.ms_email ?? null,
+    lastSeenAt: row.last_seen_at ? new Date(row.last_seen_at).toISOString() : null,
     msConnectedAt: row.ms_connected_at
       ? new Date(row.ms_connected_at).toISOString()
       : null,
@@ -126,6 +128,31 @@ function fromRow(row: UserRow): StoredUser {
 }
 
 // ── JSON fallback helpers ────────────────────────────────────────────────
+/* Presence: stamp "seen just now", at most once a minute per user per
+ * instance. Reads stay reads — this is called fire-and-forget from the two
+ * endpoints every live session hits anyway (auth/me, leads list), so an
+ * agent's ordinary use of the app IS the heartbeat. Admin-only output. */
+const lastTouch = new Map<string, number>();
+export async function touchLastSeen(userId: string): Promise<void> {
+  const prev = lastTouch.get(userId) ?? 0;
+  if (Date.now() - prev < 60_000) return;
+  lastTouch.set(userId, Date.now());
+  try {
+    if (hasDb()) {
+      await q("UPDATE users SET last_seen_at = now() WHERE id = $1", [userId]);
+      return;
+    }
+    const all = await readAllFile();
+    const idx = all.findIndex((u) => u.id === userId);
+    if (idx !== -1) {
+      all[idx] = { ...all[idx], lastSeenAt: new Date().toISOString() };
+      await writeAllFile(all);
+    }
+  } catch {
+    /* presence is a nicety — never let it surface as an error */
+  }
+}
+
 async function readAllFile(): Promise<StoredUser[]> {
   try {
     return JSON.parse(await fs.readFile(FILE, "utf8")) as StoredUser[];

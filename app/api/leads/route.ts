@@ -6,7 +6,7 @@ import {
   setLeadFollowUp,
 } from "@/lib/leads-store";
 import { syncReferralFromLead } from "@/lib/referrals-store";
-import { findById } from "@/lib/users-store";
+import { findById, touchLastSeen } from "@/lib/users-store";
 import { pushLeadToGhl, ghlConfigured, noteLeadStageToGhl } from "@/lib/ghl";
 import type { LeadStage } from "@/lib/types";
 
@@ -27,6 +27,9 @@ const STAGES: LeadStage[] = [
 export async function GET(req: NextRequest) {
   const guard = await requirePaidUser(req);
   if (guard.error) return guard.error;
+  // Fire-and-forget presence stamp — the leads list is the page open agents
+  // actually live on, so it's the best heartbeat there is.
+  void touchLastSeen(guard.user.id);
   return NextResponse.json(await listLeadsForUser(guard.user.id));
 }
 

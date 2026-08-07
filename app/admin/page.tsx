@@ -429,6 +429,24 @@ export default function AdminPage() {
     setMailboxBusy(false);
   }
 
+  /* Live view while the CRM tab is open: refresh just the users list every
+     30s so the Online dots and Email-connected chips move on their own —
+     launch morning is exactly when someone is watching this screen. */
+  useEffect(() => {
+    if (!authed || tab !== "crm" || !password) return;
+    const t = setInterval(async () => {
+      try {
+        const r = await fetch("/api/admin/users", {
+          headers: { Authorization: `Bearer ${password}` },
+        });
+        if (r.ok) setUsers(await r.json());
+      } catch {
+        /* next tick retries */
+      }
+    }, 30_000);
+    return () => clearInterval(t);
+  }, [authed, tab, password]);
+
   async function loadData(pass: string): Promise<boolean> {
     const headers = { Authorization: `Bearer ${pass}` };
     loadMailbox(pass);
@@ -1594,6 +1612,7 @@ export default function AdminPage() {
                       <th className="px-5 py-3 font-medium">Business</th>
                       <th className="px-5 py-3 font-medium">Stage</th>
                       <th className="px-5 py-3 font-medium">Package</th>
+                      <th className="px-5 py-3 font-medium">Online</th>
                       <th className="px-5 py-3 font-medium">Email connected</th>
                       <th className="px-5 py-3 font-medium">Signed up</th>
                     </tr>
@@ -1630,6 +1649,39 @@ export default function AdminPage() {
                             <span className="ml-1 text-xs text-gray-400">
                               £{packageById(u.packageId)?.price}/mo
                             </span>
+                          </td>
+                          {/* Presence from last_seen_at (stamped by ordinary
+                              authenticated requests, ~1/min): green within
+                              3 minutes, otherwise how long ago. Refreshes
+                              with the 30s CRM poll. */}
+                          <td className="px-5 py-3">
+                            {(() => {
+                              const seen = u.lastSeenAt
+                                ? Date.now() - new Date(u.lastSeenAt).getTime()
+                                : null;
+                              if (seen !== null && seen < 3 * 60_000)
+                                return (
+                                  <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700">
+                                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" />
+                                    Online
+                                  </span>
+                                );
+                              if (seen !== null) {
+                                const mins = Math.round(seen / 60_000);
+                                const label =
+                                  mins < 60
+                                    ? `${mins}m ago`
+                                    : mins < 60 * 24
+                                      ? `${Math.round(mins / 60)}h ago`
+                                      : `${Math.round(mins / (60 * 24))}d ago`;
+                                return (
+                                  <span className="text-xs text-gray-400">{label}</span>
+                                );
+                              }
+                              return (
+                                <span className="text-xs text-gray-300">—</span>
+                              );
+                            })()}
                           </td>
                           {/* Same rule as the email gate: connected only
                               counts when it's THEIR OWN address — a colleague's
