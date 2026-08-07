@@ -41,9 +41,17 @@ export async function whatsappStatus(): Promise<{
   number?: string;
   name?: string;
   verified?: boolean;
+  /** What a new-lead alert would send right now. */
+  template?: string;
+  deepLink?: boolean;
   error?: string;
 }> {
   if (!whatsappConfigured()) return { configured: false };
+  const dyn = dynamicTemplate();
+  const templateInfo = {
+    template: dyn ?? (process.env.WHATSAPP_TEMPLATE ?? "new_lead"),
+    deepLink: !!dyn,
+  };
   try {
     const res = await fetch(
       `${GRAPH}/${process.env.WHATSAPP_PHONE_ID}?fields=display_phone_number,verified_name,code_verification_status`,
@@ -71,6 +79,7 @@ export async function whatsappStatus(): Promise<{
       number: data.display_phone_number,
       name: data.verified_name,
       verified: data.code_verification_status === "VERIFIED",
+      ...templateInfo,
     };
   } catch (e) {
     return {
@@ -83,15 +92,86 @@ export async function whatsappStatus(): Promise<{
 
 // Fire a "new lead" alert. Best-effort: never throws, so it can't break lead
 // creation. First body param is the agent's name, second is the lead's name.
-/* Once a template with a DYNAMIC url button is approved, set
-   WHATSAPP_TEMPLATE_DYNAMIC to its name and every alert deep-links to the lead
-   it's about. Until then this stays unset and nothing changes.
+/* The deep-linking template. new_lead_link (approved 6 Aug 2026) has a
+   dynamic url button — https://launchpad.theexpertsgroup.co.uk/l/{{1}} — so
+   every alert can open the exact lead it's about. Defaulted in code so going
+   live needed no Railway change; WHATSAPP_TEMPLATE_DYNAMIC overrides the
+   name, and setting it to "off" turns deep-linking off entirely (back to the
+   static template).
 
-   It has to be a separate variable rather than just swapping WHATSAPP_TEMPLATE:
-   a button parameter sent to a template WITHOUT a dynamic button is rejected
-   by Meta outright, so the two must move together or alerts stop arriving. */
+   Still separate from WHATSAPP_TEMPLATE: a button parameter sent to a
+   template WITHOUT a dynamic button is rejected by Meta outright, so the two
+   must move together or alerts stop arriving. sendNewLeadAlert also retries
+   on the static template if Meta rejects the dynamic send — a template
+   mishap must degrade the button, not lose the alert. */
 function dynamicTemplate(): string | null {
-  return process.env.WHATSAPP_TEMPLATE_DYNAMIC?.trim() || null;
+  const v = process.env.WHATSAPP_TEMPLATE_DYNAMIC?.trim();
+  if (v?.toLowerCase() === "off") return null;
+  return v || "new_lead_link";
+}
+
+/** Body params both lead templates share, plus the button when deep-linking. */
+function leadComponents(
+  agentName: string,
+  leadName: string,
+  leadId?: string
+): Record<string, unknown>[] {
+  const components: Record<string, unknown>[] = [
+    {
+      type: "body",
+      parameters: [
+        { type: "text", text: agentName || "there" },
+        { type: "text", text: leadName || "a new lead" },
+      ],
+    },
+  ];
+  if (leadId) {
+    // Meta requires the variable to be a URL SUFFIX, so the template holds
+    // ".../l/{{1}}" and this supplies just the id.
+    components.push({
+      type: "button",
+      sub_type: "url",
+      index: "0",
+      parameters: [{ type: "text", text: leadId }],
+    });
+  }
+  return components;
+}
+
+/** POST one template message; returns Meta's verdict instead of throwing. */
+async function postTemplate(
+  to: string,
+  name: string,
+  components: Record<string, unknown>[]
+): Promise<{ ok: boolean; reason?: string }> {
+  const lang = process.env.WHATSAPP_TEMPLATE_LANG ?? "en_GB";
+  try {
+    const res = await fetch(`${GRAPH}/${process.env.WHATSAPP_PHONE_ID}/messages`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to,
+        type: "template",
+        template: { name, language: { code: lang }, components },
+      }),
+    });
+    if (res.ok) return { ok: true };
+    const data = (await res.json().catch(() => null)) as {
+      error?: { message?: string; code?: number };
+    } | null;
+    return {
+      ok: false,
+      reason:
+        (data?.error?.message ?? `HTTP ${res.status}`) +
+        (data?.error?.code ? ` (code ${data.error.code})` : ""),
+    };
+  } catch (e) {
+    return { ok: false, reason: e instanceof Error ? e.message : "unreachable" };
+  }
 }
 
 export async function sendNewLeadAlert(opts: {
@@ -106,67 +186,35 @@ export async function sendNewLeadAlert(opts: {
   if (!to) return;
 
   const dyn = dynamicTemplate();
+  const staticName = process.env.WHATSAPP_TEMPLATE ?? "new_lead";
   // Only use the deep-linking template when there's a lead to link to.
   const useDynamic = !!dyn && !!opts.leadId;
-  const name = useDynamic ? dyn! : (process.env.WHATSAPP_TEMPLATE ?? "new_lead");
-  const lang = process.env.WHATSAPP_TEMPLATE_LANG ?? "en_GB";
 
-  const components: Record<string, unknown>[] = [
-    {
-      type: "body",
-      parameters: [
-        { type: "text", text: opts.agentName || "there" },
-        { type: "text", text: opts.leadName || "a new lead" },
-      ],
-    },
-  ];
+  // Alerts stay best-effort — a failed alert must never affect lead creation —
+  // but no longer silent: an expired token or paused template used to look
+  // exactly like a successful send.
   if (useDynamic) {
-    // Meta requires the variable to be a URL SUFFIX, so the template holds
-    // ".../l/{{1}}" and this supplies just the id.
-    components.push({
-      type: "button",
-      sub_type: "url",
-      index: "0",
-      parameters: [{ type: "text", text: opts.leadId }],
-    });
+    const r = await postTemplate(
+      to,
+      dyn!,
+      leadComponents(opts.agentName, opts.leadName, opts.leadId)
+    );
+    if (r.ok) return;
+    // The deep-link template failing must degrade the BUTTON, not lose the
+    // ALERT — fall through and send the static template instead.
+    console.error(
+      `[whatsapp] dynamic template ${dyn} REJECTED, falling back to ${staticName}:`,
+      r.reason
+    );
   }
 
-  const body = {
-    messaging_product: "whatsapp",
+  const r = await postTemplate(
     to,
-    type: "template",
-    template: { name, language: { code: lang }, components },
-  };
-
-  try {
-    const res = await fetch(`${GRAPH}/${process.env.WHATSAPP_PHONE_ID}/messages`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
-    // The response USED TO BE IGNORED ENTIRELY, which made this unfalsifiable:
-    // an expired token (401) or a paused template (400) looked exactly like a
-    // successful send, so "I've had no pings" gave no clue whether anything
-    // was broken. Sending stays best-effort — a failed alert must never affect
-    // lead creation — but it is no longer silent.
-    if (!res.ok) {
-      const data = (await res.json().catch(() => null)) as {
-        error?: { message?: string; code?: number };
-      } | null;
-      console.error(
-        `[whatsapp] new-lead alert REJECTED (${res.status}):`,
-        data?.error?.message ?? "no detail",
-        data?.error?.code ? `code=${data.error.code}` : ""
-      );
-    }
-  } catch (e) {
-    console.error(
-      "[whatsapp] new-lead alert failed to send:",
-      e instanceof Error ? e.message : String(e)
-    );
+    staticName,
+    leadComponents(opts.agentName, opts.leadName)
+  );
+  if (!r.ok) {
+    console.error(`[whatsapp] new-lead alert REJECTED (${staticName}):`, r.reason);
   }
 }
 
@@ -227,57 +275,29 @@ export async function sendLeadNudge(opts: {
   }
 }
 
-// Admin test send: fires the real `new_lead` template at a chosen number and
-// reports Meta's exact response — proof the whole chain (token, number,
-// approved template, delivery) works before any real lead relies on it.
+// Admin test send: fires exactly what a real lead would fire — the dynamic
+// deep-link template when it's on, the static one otherwise — and reports
+// Meta's verdict plus WHICH template went, so the admin screen says what was
+// actually proven. Unlike the real alert this does NOT fall back on failure:
+// the test exists to prove the dynamic template works, and a silent
+// downgrade would report success while the thing being tested is broken.
+//
+// The button carries the placeholder id "testlead" — /l/testlead passes the
+// id check, and the leads page ignores an unknown id, so tapping it walks the
+// real journey (in-app browser -> sign in -> leads) without a real lead.
 export async function sendWhatsAppTest(
   toMobile: string
-): Promise<{ ok: boolean; reason?: string }> {
+): Promise<{ ok: boolean; reason?: string; template?: string; dynamic?: boolean }> {
   if (!whatsappConfigured()) return { ok: false, reason: "not_configured" };
   const to = toE164(toMobile);
   if (!to) return { ok: false, reason: "bad_number" };
 
-  const name = process.env.WHATSAPP_TEMPLATE ?? "new_lead";
-  const lang = process.env.WHATSAPP_TEMPLATE_LANG ?? "en_GB";
-  const body = {
-    messaging_product: "whatsapp",
+  const dyn = dynamicTemplate();
+  const name = dyn ?? (process.env.WHATSAPP_TEMPLATE ?? "new_lead");
+  const r = await postTemplate(
     to,
-    type: "template",
-    template: {
-      name,
-      language: { code: lang },
-      components: [
-        {
-          type: "body",
-          parameters: [
-            { type: "text", text: "there" },
-            { type: "text", text: "Portal Test Lead" },
-          ],
-        },
-      ],
-    },
-  };
-
-  try {
-    const res = await fetch(
-      `${GRAPH}/${process.env.WHATSAPP_PHONE_ID}/messages`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      }
-    );
-    if (!res.ok) {
-      const data = (await res.json().catch(() => ({}))) as {
-        error?: { message?: string };
-      };
-      return { ok: false, reason: data?.error?.message ?? `HTTP ${res.status}` };
-    }
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, reason: e instanceof Error ? e.message : "unreachable" };
-  }
+    name,
+    leadComponents("there", "Portal Test Lead", dyn ? "testlead" : undefined)
+  );
+  return { ...r, template: name, dynamic: !!dyn };
 }

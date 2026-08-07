@@ -497,13 +497,22 @@ export default function AdminPage() {
     const data = await res.json().catch(() => ({}));
     setWaSending(false);
     if (data.ok) {
-      setWaResult(`Sent ✓ — check WhatsApp on ${mobile}.`);
+      // Name the template so this proves the right thing: "via new_lead_link"
+      // means the deep-link button went out, not just any message.
+      setWaResult(
+        `Sent ✓ via ${data.template ?? "template"}${
+          data.dynamic ? " (deep-link button)" : ""
+        } — check WhatsApp on ${mobile}.`
+      );
     } else if (data.reason === "not_configured") {
       setWaError("WHATSAPP_TOKEN / WHATSAPP_PHONE_ID aren't set in Railway.");
     } else if (data.reason === "bad_number") {
       setWaError("That doesn't look like a valid UK mobile.");
     } else {
-      setWaError(data.reason ?? data.error ?? "Send failed — try again.");
+      setWaError(
+        (data.template ? `${data.template}: ` : "") +
+          (data.reason ?? data.error ?? "Send failed — try again.")
+      );
     }
   }
 
