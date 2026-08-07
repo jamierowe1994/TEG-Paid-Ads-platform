@@ -1,0 +1,157 @@
+"use client";
+
+// Lead alerts on the phone — the piece that makes the installed PWA open on
+// the exact lead.
+//
+// WHY: iOS never lets a tapped LINK open a home-screen web app — WhatsApp and
+// email links will always open Safari. The one mechanism Apple allows (iOS
+// 16.4+) is a push notification sent by the installed app: tapping it opens
+// the PWA at the URL we choose. So this component registers the service
+// worker, and — only inside the INSTALLED app, where the permission can
+// actually be granted — offers a one-tap "turn on alerts".
+//
+// Quietly does nothing in a plain browser tab on iOS (no Notification API
+// there), so nobody gets nagged somewhere the feature can't work.
+
+import { useEffect, useState } from "react";
+
+const DISMISSED_KEY = "teg-push-dismissed";
+
+function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
+  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
+  const b64 = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(b64);
+  const out = new Uint8Array(new ArrayBuffer(raw.length));
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
+async function subscribe(): Promise<boolean> {
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const keyRes = await fetch("/api/push/key");
+    if (!keyRes.ok) return false;
+    const { key } = await keyRes.json();
+    const sub =
+      (await reg.pushManager.getSubscription()) ??
+      (await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(key),
+      }));
+    const save = await fetch("/api/push/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ subscription: sub.toJSON() }),
+    });
+    return save.ok;
+  } catch {
+    return false;
+  }
+}
+
+export default function PushSetup() {
+  // "offer" -> show the banner; "enabled" -> offer a self-test; hidden else.
+  const [phase, setPhase] = useState<"hidden" | "offer" | "enabled" | "testing" | "tested">(
+    "hidden"
+  );
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    // Registering is always safe — the worker caches nothing.
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+
+    if (!("Notification" in window) || !("PushManager" in window)) return;
+
+    const standalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (navigator as unknown as { standalone?: boolean }).standalone === true;
+
+    if (Notification.permission === "granted") {
+      // Permission survives, subscriptions sometimes don't (reinstall, new
+      // phone) — re-assert quietly on every app open.
+      subscribe();
+      return;
+    }
+    // Only offer where granting is possible and sensible: the installed app.
+    if (standalone && Notification.permission === "default") {
+      if (localStorage.getItem(DISMISSED_KEY)) return;
+      setPhase("offer");
+    }
+  }, []);
+
+  async function enable() {
+    // Must be called from the tap itself — iOS refuses permission prompts
+    // that aren't user gestures.
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") {
+      setPhase("hidden");
+      return;
+    }
+    const ok = await subscribe();
+    setPhase(ok ? "enabled" : "hidden");
+  }
+
+  async function sendTest() {
+    setPhase("testing");
+    try {
+      await fetch("/api/push/test", { method: "POST" });
+    } catch {
+      /* the notification itself is the result — nothing useful to show here */
+    }
+    setPhase("tested");
+    setTimeout(() => setPhase("hidden"), 6000);
+  }
+
+  if (phase === "hidden") return null;
+
+  return (
+    <div className="fixed inset-x-4 top-4 z-[70] rounded-2xl border border-gray-200 bg-white p-4 shadow-xl">
+      {phase === "offer" ? (
+        <div className="flex items-center gap-3">
+          <span className="text-xl">🔔</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-gray-900">
+              Get lead alerts on this phone
+            </p>
+            <p className="text-xs text-gray-500">
+              A tap opens the lead right here in the app.
+            </p>
+          </div>
+          <button
+            onClick={enable}
+            className="btn-group shrink-0 rounded-full px-4 py-2 text-sm font-semibold"
+          >
+            Turn on
+          </button>
+          <button
+            aria-label="Not now"
+            onClick={() => {
+              localStorage.setItem(DISMISSED_KEY, "1");
+              setPhase("hidden");
+            }}
+            className="shrink-0 p-1 text-gray-400"
+          >
+            ✕
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-3">
+          <span className="text-xl">✅</span>
+          <p className="min-w-0 flex-1 text-sm font-medium text-gray-900">
+            {phase === "tested"
+              ? "Sent — it should appear in a moment."
+              : "Alerts are on."}
+          </p>
+          {phase === "enabled" && (
+            <button
+              onClick={sendTest}
+              className="shrink-0 rounded-full border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700"
+            >
+              Send a test
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

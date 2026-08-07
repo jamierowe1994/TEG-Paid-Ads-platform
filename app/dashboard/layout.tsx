@@ -21,6 +21,8 @@ import PaidLockOverlay from "@/components/PaidLockOverlay";
 import { REFERRALS_LOCKED_COPY } from "@/lib/launch-phase";
 import MobileLoading from "@/components/MobileLoading";
 import PullToRefresh from "@/components/PullToRefresh";
+import PushSetup from "@/components/PushSetup";
+import CoachToast from "@/components/CoachToast";
 
 // Toast copy when the admin advances a customer's campaign stage.
 const STAGE_TOAST: Record<string, string> = {
@@ -1147,6 +1149,13 @@ export default function DashboardLayout({
           children
         )}
       </main>
+
+      {/* Lead alerts on the phone + the keep-at-it stat pop-out. Mounted here
+          so they ride every dashboard page. */}
+      <PushSetup />
+      <CoachToast
+        uncontacted={leads.filter((l) => l.stage === "new" && !l.archivedAt).length}
+      />
 
       {/* ══ MOBILE bottom nav (<lg) — a dark, edge-to-edge pill: Overview ·
           Leads · Referrals · All Ads, with a lighter surround that slides to

@@ -132,6 +132,16 @@ ALTER TABLE brand_meta ADD COLUMN IF NOT EXISTS linkedin_ad_account TEXT;
 -- One-time links for password resets and invites. The raw token is NEVER
 -- stored: only its SHA-256, so a database leak can't be used to log in as
 -- anybody. purpose keeps a reset link from being reused as an invite.
+CREATE TABLE IF NOT EXISTS push_config (
+  k TEXT PRIMARY KEY,
+  v TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS push_subs (
+  endpoint TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  sub JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 CREATE TABLE IF NOT EXISTS auth_tokens (
   token_hash TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,

@@ -13,6 +13,7 @@ import { findById, listUsers } from "./users-store";
 import { createLead, resurfaceDueLeads, uid } from "./leads-store";
 import { syncReferralFromLead } from "./referrals-store";
 import { sendNewLeadAlert } from "./whatsapp";
+import { sendPushToUser } from "./push";
 import { BRANDS } from "./brands";
 import type { Lead } from "./types";
 
@@ -142,6 +143,16 @@ async function resurfaceSnoozedLeads(): Promise<void> {
         } catch {
           /* mirror is best-effort */
         }
+      }
+      try {
+        await sendPushToUser(lead.userId, {
+          title: "Lead back on 🔁",
+          body: `${lead.name} said they'd be ready about now — worth a call.`,
+          url: `/dashboard/leads?lead=${encodeURIComponent(lead.id)}`,
+          tag: `lead-${lead.id}`,
+        });
+      } catch {
+        /* push is best-effort */
       }
       try {
         const user = await findById(lead.userId);

@@ -5,6 +5,7 @@ import { DATA_DIR } from "./data-dir";
 import { hasDb, q } from "./db";
 import { findById } from "./users-store";
 import { sendNewLeadAlert } from "./whatsapp";
+import { sendPushToUser } from "./push";
 import type { CrmMatch, Lead, LeadStage } from "./types";
 
 // Leads, server-side — Postgres on Railway, JSON locally. Each lead belongs
@@ -97,9 +98,22 @@ async function writeAllFile(leads: OwnedLead[]): Promise<void> {
   await fs.writeFile(FILE, JSON.stringify(leads, null, 2), "utf8");
 }
 
-// Best-effort WhatsApp nudge to the agent when a lead lands. Never awaited by
-// createLead, and swallows its own errors, so it can't affect lead creation.
+// Best-effort nudges to the agent when a lead lands. Never awaited by
+// createLead, and each swallows its own errors, so neither can affect lead
+// creation. Two channels on purpose: WhatsApp reaches them anywhere but its
+// links can only open Safari (iOS never lets a link open an installed PWA);
+// the push is the one that opens the app itself, on the exact lead.
 async function notifyNewLead(userId: string, lead: Lead): Promise<void> {
+  try {
+    await sendPushToUser(userId, {
+      title: "New lead 🎉",
+      body: `${lead.name} just came in — first two hours count double.`,
+      url: `/dashboard/leads?lead=${encodeURIComponent(lead.id)}`,
+      tag: `lead-${lead.id}`,
+    });
+  } catch {
+    /* push is best-effort */
+  }
   try {
     const user = await findById(userId);
     if (user?.mobile) {
