@@ -48,6 +48,8 @@ interface RowState {
   flow: string | null;
   /** Per-row invite send: null = not sent, "…" = sending, else the outcome. */
   invite: string | null;
+  /** Disconnect: "confirm" = first tap, "…" = working. */
+  disc: null | "confirm" | "…";
 }
 
 export default function TleProInvite({ pass }: { pass: string }) {
@@ -92,6 +94,7 @@ export default function TleProInvite({ pass }: { pass: string }) {
             justConnected: false,
             flow: null,
             invite: null,
+            disc: null,
           };
         }
         return next;
@@ -240,6 +243,40 @@ export default function TleProInvite({ pass }: { pass: string }) {
       load();
     } catch {
       patch(k, { invite: "Couldn't reach the server." });
+    }
+  }
+
+  /* Detach the ads. Two taps — wrong-area attachments are exactly why this
+     exists, so it shouldn't itself be one accidental click. */
+  async function disconnect(row: ProRow) {
+    const k = key(row);
+    const s = state[k];
+    if (!row.userId || s?.disc === "…") return;
+    if (s?.disc !== "confirm") {
+      patch(k, { disc: "confirm" });
+      setTimeout(() => patch(k, { disc: null }), 4000);
+      return;
+    }
+    patch(k, { disc: "…" });
+    try {
+      const res = await fetch("/api/admin/tle-pro", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${pass}`,
+        },
+        body: JSON.stringify({ userId: row.userId }),
+      });
+      const d = await res.json();
+      patch(k, {
+        disc: null,
+        error: res.ok ? null : (d.error ?? "Couldn't disconnect."),
+        campaigns: [],
+        justConnected: false,
+      });
+      load();
+    } catch {
+      patch(k, { disc: null, error: "Couldn't reach the server." });
     }
   }
 
@@ -471,11 +508,38 @@ export default function TleProInvite({ pass }: { pass: string }) {
                 </div>
               )}
 
-              {done && !s.campaigns.length && (
-                <p className="mt-3 text-sm text-green-700">
-                  Connected — {row.campaignIds.length} campaign
-                  {row.campaignIds.length === 1 ? "" : "s"} attached.
-                </p>
+              {done && (
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <p className="text-sm text-green-700">
+                    Connected — {row.campaignIds.length} campaign
+                    {row.campaignIds.length === 1 ? "" : "s"}:
+                  </p>
+                  {/* The ids themselves — no more guessing which ads this
+                      row actually owns. */}
+                  {row.campaignIds.map((cid) => (
+                    <code
+                      key={cid}
+                      className="rounded bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-700"
+                    >
+                      {cid}
+                    </code>
+                  ))}
+                  <button
+                    onClick={() => disconnect(row)}
+                    disabled={s.disc === "…"}
+                    className={`ml-auto rounded-lg border px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${
+                      s.disc === "confirm"
+                        ? "border-red-300 bg-red-50 text-red-700"
+                        : "border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-600"
+                    }`}
+                  >
+                    {s.disc === "…"
+                      ? "Disconnecting…"
+                      : s.disc === "confirm"
+                        ? "Tap again to disconnect"
+                        : "Disconnect ads"}
+                  </button>
+                </div>
               )}
             </div>
           );

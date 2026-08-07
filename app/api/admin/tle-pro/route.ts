@@ -26,6 +26,7 @@ import {
   findByEmail,
   createUser,
   updateUser,
+  findById,
   type StoredUser,
 } from "@/lib/users-store";
 import { hashPassword } from "@/lib/auth";
@@ -208,4 +209,39 @@ export async function POST(req: NextRequest) {
     connection,
     campaignIds: connection.campaigns.map((c) => c.id),
   });
+}
+
+/* Detach an agent's Meta campaigns. Body: { userId }.
+ *
+ * Exists because a wrong attachment is worse than none: leads route STRICTLY
+ * by campaign, so ads connected to the wrong person quietly deliver their
+ * neighbour's leads (overlapping areas — James, launch day). Reversible:
+ * reconnecting is the same Connect flow, so this destroys nothing but the
+ * link. The note keeps the who-had-what history on the account.
+ */
+export async function DELETE(req: NextRequest) {
+  if (!mayUseInviteTab(req)) {
+    return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  }
+  const body = await req.json().catch(() => null);
+  const userId = String(body?.userId ?? "").trim();
+  if (!userId) {
+    return NextResponse.json({ error: "userId required" }, { status: 400 });
+  }
+  const user = await findById(userId);
+  if (!user) {
+    return NextResponse.json({ error: "No such account." }, { status: 404 });
+  }
+  const had = parseCampaignIds(user.metaCampaignId);
+  await updateUser(userId, {
+    metaCampaignId: null,
+    adminNotes: [
+      ...(user.adminNotes ?? []),
+      {
+        at: new Date().toISOString(),
+        text: `Ads disconnected (was: ${had.join(", ") || "none"}).`,
+      },
+    ],
+  });
+  return NextResponse.json({ ok: true, removed: had });
 }
