@@ -53,7 +53,7 @@ export default function PushSetup() {
   // "offer" -> show the banner; "enabled" -> offer a self-test;
   // "reinstall" -> the app is pinned to a retired origin (see below).
   const [phase, setPhase] = useState<
-    "hidden" | "offer" | "enabled" | "testing" | "tested" | "reinstall"
+    "hidden" | "offer" | "enabled" | "testing" | "tested" | "reinstall" | "blocked"
   >("hidden");
 
   useEffect(() => {
@@ -97,14 +97,22 @@ export default function PushSetup() {
 
   async function enable() {
     // Must be called from the tap itself — iOS refuses permission prompts
-    // that aren't user gestures.
-    const perm = await Notification.requestPermission();
-    if (perm !== "granted") {
-      setPhase("hidden");
-      return;
+    // that aren't user gestures. EVERY outcome must move the UI somewhere:
+    // this used to await requestPermission bare, and when iOS rejected the
+    // call outright (as it does in the out-of-scope browser view) the
+    // function died silently — the banner just sat there, came back on
+    // every launch, and looked like the button did nothing (James, 7 Aug).
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") {
+        setPhase("blocked");
+        return;
+      }
+      const ok = await subscribe();
+      setPhase(ok ? "enabled" : "blocked");
+    } catch {
+      setPhase("blocked");
     }
-    const ok = await subscribe();
-    setPhase(ok ? "enabled" : "hidden");
   }
 
   async function sendTest() {
@@ -144,18 +152,12 @@ export default function PushSetup() {
     <div className="fixed inset-x-4 top-4 z-[70] rounded-2xl border border-gray-200 bg-white p-4 shadow-xl">
       {phase === "offer" ? (
         <div className="flex items-center gap-3">
-          <span className="text-xl">🔔</span>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-gray-900">
-              Get lead alerts on this phone
-            </p>
-            <p className="text-xs text-gray-500">
-              A tap opens the lead right here in the app.
-            </p>
-          </div>
+          <p className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-900">
+            Get lead alerts on this phone
+          </p>
           <button
             onClick={enable}
-            className="btn-group shrink-0 rounded-full px-4 py-2 text-sm font-semibold"
+            className="shrink-0 rounded-full bg-[var(--group)] px-5 py-2 text-sm font-semibold text-white active:scale-[0.97]"
           >
             Turn on
           </button>
@@ -170,13 +172,26 @@ export default function PushSetup() {
             ✕
           </button>
         </div>
+      ) : phase === "blocked" ? (
+        <div className="flex items-center gap-3">
+          <p className="min-w-0 flex-1 text-sm text-gray-700">
+            Your phone didn&apos;t allow it. Check Settings → Notifications →
+            Launch Pad, or reinstall the app and try again.
+          </p>
+          <button
+            aria-label="Dismiss"
+            onClick={() => setPhase("hidden")}
+            className="shrink-0 p-1 text-gray-400"
+          >
+            ✕
+          </button>
+        </div>
       ) : (
         <div className="flex items-center gap-3">
-          <span className="text-xl">✅</span>
           <p className="min-w-0 flex-1 text-sm font-medium text-gray-900">
             {phase === "tested"
               ? "Sent — it should appear in a moment."
-              : "Alerts are on."}
+              : "Alerts are on ✓"}
           </p>
           {phase === "enabled" && (
             <button

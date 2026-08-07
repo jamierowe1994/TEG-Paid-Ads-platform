@@ -16,6 +16,7 @@ import {
 import { brandById, type Brand } from "@/lib/brands";
 import { packageById, PACKAGES, adSpendCapFor } from "@/lib/packages";
 import type { UserProfile } from "@/lib/types";
+import PushToggle from "@/components/PushToggle";
 
 // Card styling shared across the page. Desktop is outline-only on the page's
 // own surface, matching Overview and Leads; mobile keeps a white card with a
@@ -560,6 +561,17 @@ export default function ProfilePage() {
           </section>
 
           {/* Change password — self-service, needs the current one first */}
+          <section className={CARD}>
+            <h2 className="font-semibold">Notifications</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Where new-lead alerts reach you. WhatsApp pings are always on;
+              this controls the alerts that open the app itself.
+            </p>
+            <div className="mt-4">
+              <PushToggle />
+            </div>
+          </section>
+
           <section className={CARD}>
             <h2 className="font-semibold">Change password</h2>
             <p className="mt-1 text-sm text-gray-500">
