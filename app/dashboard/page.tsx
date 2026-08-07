@@ -503,40 +503,66 @@ export default function DashboardOverview() {
     return () => clearInterval(t);
   }, [myCreatives.length]);
 
-  // Leads bucketed into the last 6 weeks (oldest left, this week right) — the
-  // actual leads, so a week can be clicked open to list its names.
+  // Leads bucketed by CALENDAR week, Monday start (oldest left, this week
+  // right) — the actual leads, so a week can be clicked open to list its
+  // names.
+  //
+  // These were rolling windows anchored to the moment you looked ("the last
+  // 168 hours"), which read wrongly on both axes: "This week" counted leads
+  // from last Saturday, and the day graph pinned TODAY to the rightmost bar —
+  // so a lead that arrived this morning sat far right with six empty days to
+  // its left, reading right-to-left (Kayleigh, 7 Aug). A week now means the
+  // thing everyone else means: Monday to Sunday, filling left to right.
   const weeklyBuckets = useMemo(() => {
     const WEEKS = 6;
     const WEEK = 7 * 24 * 3600 * 1000;
-    const now = Date.now();
+    const now = new Date();
+    // Monday 00:00 local. getDay() is 0=Sun..6=Sat; (day+6)%7 = days since
+    // Monday. Date arithmetic via the constructor stays DST-safe.
+    const monday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() - ((now.getDay() + 6) % 7)
+    ).getTime();
     const buckets: Lead[][] = Array.from({ length: WEEKS }, () => []);
     for (const l of leads) {
-      const wi = Math.floor((now - new Date(l.receivedAt).getTime()) / WEEK);
-      if (wi >= 0 && wi < WEEKS) buckets[WEEKS - 1 - wi].push(l);
+      const t = new Date(l.receivedAt).getTime();
+      if (t >= monday) {
+        buckets[WEEKS - 1].push(l);
+      } else {
+        const w = Math.floor((monday - t) / WEEK); // 0 = last week
+        if (w < WEEKS - 1) buckets[WEEKS - 2 - w].push(l);
+      }
     }
     return buckets;
   }, [leads]);
   const weekly = weeklyBuckets.map((b) => b.length);
 
-  // Leads per day across the last 7 days (today on the right) — drives the
-  // little bar graph. Deliberately the SAME rolling-7-day window as
-  // `weekly[last]` ("This week"), so the graph's total always equals the This-
-  // week count (a lead 5 days ago belongs to both, even if that was before
-  // Monday).
+  // Leads per day across THIS calendar week — drives the little bar graph.
+  // Monday leftmost, today wherever it falls, the days still to come sit
+  // faint to the right. Same Monday boundary as weeklyBuckets, so the
+  // graph's total always equals the This-week count.
   const daily = useMemo(() => {
-    const DAY = 24 * 3600 * 1000;
-    const INIT = ["S", "M", "T", "W", "T", "F", "S"]; // getDay() 0=Sun
-    const now = Date.now();
-    const days = Array.from({ length: 7 }, (_, i) => {
-      const daysAgo = 6 - i; // index 6 (rightmost) = today
-      const d = new Date(now - daysAgo * DAY);
-      return { label: INIT[d.getDay()], count: 0, isToday: daysAgo === 0 };
-    });
+    const LABELS = ["M", "T", "W", "T", "F", "S", "S"];
+    const now = new Date();
+    const todayIdx = (now.getDay() + 6) % 7;
+    const monday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() - todayIdx
+    ).getTime();
+    const days = LABELS.map((label, i) => ({
+      label,
+      count: 0,
+      isToday: i === todayIdx,
+      future: i > todayIdx,
+    }));
     for (const l of leads) {
-      const daysAgo = Math.floor(
-        (now - new Date(l.receivedAt).getTime()) / DAY,
-      );
-      if (daysAgo >= 0 && daysAgo < 7) days[6 - daysAgo].count++;
+      const d = new Date(l.receivedAt);
+      if (d.getTime() >= monday) {
+        const i = (d.getDay() + 6) % 7;
+        if (days[i]) days[i].count++;
+      }
     }
     return days;
   }, [leads]);
@@ -993,12 +1019,12 @@ export default function DashboardOverview() {
                               : i % 2 === 1
                                 ? "repeating-linear-gradient(45deg, #111827 0 2px, transparent 2px 5px)"
                                 : "#111827",
-                            opacity: d.count === 0 && !d.isToday ? 0.14 : 1,
+                            opacity: d.future ? 0.06 : d.count === 0 && !d.isToday ? 0.14 : 1,
                           }}
                         />
                       </div>
                       <span
-                        className={`text-[10px] font-medium ${d.isToday ? "" : "text-gray-400"}`}
+                        className={`text-[10px] font-medium ${d.isToday ? "" : d.future ? "text-gray-300" : "text-gray-400"}`}
                         style={d.isToday ? { color: brand.accent } : undefined}
                       >
                         {d.label}
