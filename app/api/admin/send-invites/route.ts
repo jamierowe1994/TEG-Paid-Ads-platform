@@ -27,7 +27,7 @@ const TTL_DAYS = 14;
  */
 export async function POST(req: NextRequest) {
   const scope = adminScope(req);
-  if (!scope) {
+  if (!scope || scope.role === "marketing") {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
   // Any transport will do — Resend or the Microsoft mailbox. This used to

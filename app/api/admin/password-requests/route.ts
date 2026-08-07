@@ -10,6 +10,9 @@ import { adminScope } from "@/lib/admin-auth";
 // an MD sees only their own brand's people.
 export async function GET(req: NextRequest) {
   const scope = adminScope(req);
+  if (scope?.role === "marketing") {
+    return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  }
   if (!scope) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
@@ -29,7 +32,7 @@ export async function GET(req: NextRequest) {
     })
   );
   const visible =
-    scope.role === "md"
+    scope.role !== "super"
       ? rows.filter((r) => r.brandId === scope.brandId)
       : rows;
   return NextResponse.json({ requests: visible });
@@ -38,7 +41,7 @@ export async function GET(req: NextRequest) {
 // Clear an ask once the team has sorted them out. Body: { email }
 export async function POST(req: NextRequest) {
   const scope = adminScope(req);
-  if (!scope) {
+  if (!scope || scope.role === "marketing") {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
   const body = await req.json().catch(() => null);
@@ -47,7 +50,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "email is required" }, { status: 400 });
   }
   // An MD can only clear their own brand's people.
-  if (scope.role === "md") {
+  if (scope.role !== "super") {
     const user = await findByEmail(email);
     if (!user || user.brandId !== scope.brandId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

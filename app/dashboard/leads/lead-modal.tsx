@@ -710,6 +710,7 @@ export function LeadModal({
                   <QaRow q="Their enquiry" a={whatFor(lead)} />
                   {lead.adName && <QaRow q="Came from" a={lead.adName} />}
                   {lead.note && lead.note !== whatFor(lead) && <QaRow q="Note on the form" a={lead.note} />}
+                  <MagnetRow lead={lead} accent={accent} />
                 </div>
               </Expand>
             </div>
@@ -1326,6 +1327,45 @@ export function LeadModal({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// The guide this lead filled a form to get. Matched server-side against the
+// brand's uploaded lead magnets (fuzzy — ad names and guide titles are never
+// written identically), so the agent can pull up EXACTLY what the lead was
+// promised and talk it through with them instead of hunting for the PDF.
+// No match / no magnets uploaded yet -> renders nothing.
+function MagnetRow({ lead, accent }: { lead: Lead; accent: string }) {
+  const [magnet, setMagnet] = useState<{ id: string; title: string } | null>(null);
+  useEffect(() => {
+    const text = [lead.adName, lead.interestedIn, lead.note]
+      .filter(Boolean)
+      .join(" ");
+    if (!text.trim()) return;
+    fetch(`/api/magnets?match=${encodeURIComponent(text)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.match) setMagnet({ id: d.match.id, title: d.match.title });
+      })
+      .catch(() => {});
+  }, [lead.id, lead.adName, lead.interestedIn, lead.note]);
+
+  if (!magnet) return null;
+  return (
+    <div className="border-t border-gray-200 pt-3">
+      <p className="text-xs font-medium text-gray-400">The guide they asked for</p>
+      <a
+        href={`/api/magnets/${magnet.id}`}
+        download
+        className="mt-1.5 flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 text-sm font-medium transition hover:bg-gray-50"
+        style={{ borderColor: `${accent}55`, color: accent }}
+      >
+        <span className="min-w-0 truncate">📄 {magnet.title}</span>
+        <span className="shrink-0 text-xs font-semibold uppercase tracking-wide">
+          Download
+        </span>
+      </a>
     </div>
   );
 }

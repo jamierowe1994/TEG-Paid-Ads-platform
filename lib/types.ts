@@ -105,7 +105,19 @@ export interface Lead {
   name: string;
   phone: string;
   email: string;
-  source: "instagram" | "facebook" | "referral";
+  // instagram/facebook = the Meta lead sync; referral = the referrals system;
+  // the rest are AGENT-ADDED sources — leads they generate themselves (their
+  // own Google Ads spend, canvassing, word of mouth) and want tracked in the
+  // same funnel as everything else.
+  source:
+    | "instagram"
+    | "facebook"
+    | "referral"
+    | "self"
+    | "google"
+    | "website"
+    | "canvassing"
+    | "other";
   note: string;
   stage: LeadStage;
   receivedAt: string;

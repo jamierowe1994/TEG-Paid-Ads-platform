@@ -3,7 +3,7 @@ import crypto from "crypto";
 import type { NextRequest } from "next/server";
 import type { BrandId } from "./brands";
 
-// Two admin tiers:
+// Three admin tiers:
 //  • super — full access to everything (connections, every brand's data).
 //    Authenticate with ADMIN_PASSWORD; their bearer IS that password, so all
 //    the existing admin routes keep working untouched.
@@ -11,12 +11,17 @@ import type { BrandId } from "./brands";
 //    leads and stats. Authenticate with a SEPARATE ADMIN_MD_PASSWORD and get a
 //    signed, brand-stamped token. Because MDs never hold the super password
 //    they can't reach any super-only route.
+//  • marketing — a brand's marketing person (Francesca for TLE). Sees the
+//    stats for the agents they look after and manages that brand's lead
+//    magnets; none of the operational powers (invites, connections, view-as).
+//    Authenticate with ADMIN_MARKETING_PASSWORD — set it in Railway before
+//    telling anyone their login exists.
 //
 // The directory of who's who is env-driven (ADMIN_DIRECTORY = JSON array of
 // { email, role, brandId? }) so emails can be managed without a deploy; a
 // small default seed keeps dev + the known super admin working.
 
-export type AdminRole = "super" | "md";
+export type AdminRole = "super" | "md" | "marketing";
 
 export interface AdminEntry {
   email: string;
@@ -33,6 +38,9 @@ function superPassword(): string {
 }
 function mdPassword(): string {
   return process.env.ADMIN_MD_PASSWORD ?? "experts-md";
+}
+function marketingPassword(): string {
+  return process.env.ADMIN_MARKETING_PASSWORD ?? "experts-marketing";
 }
 
 const DEFAULT_DIRECTORY: AdminEntry[] = [
@@ -106,6 +114,14 @@ const DEFAULT_DIRECTORY: AdminEntry[] = [
     name: "Lee Armstrong",
   },
   // The Recruitment Experts' MD is James, who is already a super admin above.
+
+  // ── Marketing: their brand's stats + lead magnets, nothing operational ──
+  {
+    email: "francesca.barrett@thelettingexperts.co.uk",
+    role: "marketing",
+    brandId: "lettings",
+    name: "Francesca Barrett",
+  },
 ];
 
 function directory(): AdminEntry[] {
@@ -135,30 +151,36 @@ function sign(data: string): string {
   return crypto.createHmac("sha256", SECRET).update(data).digest("base64url");
 }
 
-function signMdToken(email: string, brandId: BrandId): string {
+function signScopedToken(
+  email: string,
+  brandId: BrandId,
+  role: "md" | "marketing"
+): string {
   const exp = Date.now() + MD_DAYS * 24 * 60 * 60 * 1000;
   // base64url payload so an email's dots can't be confused for delimiters.
   const payload = Buffer.from(
-    JSON.stringify({ email, brandId, exp })
+    JSON.stringify({ email, brandId, exp, role })
   ).toString("base64url");
   return `${payload}.${sign(payload)}`;
 }
 
-interface MdScope {
-  role: "md";
+interface ScopedAdmin {
+  role: "md" | "marketing";
   email: string;
   brandId: BrandId;
 }
 
-function verifyMdToken(token: string): MdScope | null {
+function verifyScopedToken(token: string): ScopedAdmin | null {
   const [payload, sig] = token.split(".");
   if (!payload || !sig || sign(payload) !== sig) return null;
   try {
-    const { email, brandId, exp } = JSON.parse(
+    const { email, brandId, exp, role } = JSON.parse(
       Buffer.from(payload, "base64url").toString("utf8")
-    ) as { email: string; brandId: BrandId; exp: number };
+    ) as { email: string; brandId: BrandId; exp: number; role?: string };
     if (!email || !brandId || exp < Date.now()) return null;
-    return { role: "md", email, brandId };
+    // Tokens minted before the marketing tier carry no role — they were all
+    // MD tokens, so that's what they stay.
+    return { role: role === "marketing" ? "marketing" : "md", email, brandId };
   } catch {
     return null;
   }
@@ -184,12 +206,14 @@ export function verifyAdminLogin(
     // Super's bearer is the raw password — the existing routes accept it.
     return { token: superPassword(), role: "super", name: entry.name, email: entry.email };
   }
-  // md
-  if (password !== mdPassword()) return null;
+  // Brand-scoped tiers share the token shape; each has its own password so
+  // neither can impersonate the other.
+  const pw = entry.role === "marketing" ? marketingPassword() : mdPassword();
+  if (password !== pw) return null;
   if (!entry.brandId) return null;
   return {
-    token: signMdToken(entry.email, entry.brandId),
-    role: "md",
+    token: signScopedToken(entry.email, entry.brandId, entry.role),
+    role: entry.role,
     brandId: entry.brandId,
     name: entry.name,
     email: entry.email,
@@ -199,20 +223,21 @@ export function verifyAdminLogin(
 // ── Request authorisation ────────────────────────────────────────────────────
 export type AdminScope =
   | { role: "super" }
-  | { role: "md"; email: string; brandId: BrandId };
+  | { role: "md"; email: string; brandId: BrandId }
+  | { role: "marketing"; email: string; brandId: BrandId };
 
 function bearer(req: NextRequest): string {
   return (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/, "");
 }
 
-// Who's calling — super (raw password) or a scoped MD (signed token). Null if
-// neither. Used by the data routes that both tiers can hit.
+// Who's calling — super (raw password) or a brand-scoped tier (signed token).
+// Null if neither. Used by the data routes all tiers can hit.
 export function adminScope(req: NextRequest): AdminScope | null {
   const tok = bearer(req);
   if (!tok) return null;
   if (tok === superPassword()) return { role: "super" };
-  const md = verifyMdToken(tok);
-  return md ? md : null;
+  const scoped = verifyScopedToken(tok);
+  return scoped ? scoped : null;
 }
 
 // Super-only guard (kept for routes that migrate to this helper).

@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   const preset = sanitizePreset(req.nextUrl.searchParams.get("preset"));
   // An MD only ever sees their own brand, whatever the query says.
   const brandId =
-    scope.role === "md" ? scope.brandId : req.nextUrl.searchParams.get("brand");
+    scope.role !== "super" ? scope.brandId : req.nextUrl.searchParams.get("brand");
   try {
     if (brandId) {
       const social = await getSocialSnapshot(brandId, preset);

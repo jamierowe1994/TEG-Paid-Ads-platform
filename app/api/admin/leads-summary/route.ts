@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
   }
 
   const summary = await summariseLeadsByUser(range);
-  if (scope.role === "md") {
+  if (scope.role !== "super") {
     const mine = new Set(
       (await listUsers())
         .filter((u) => u.brandId === scope.brandId)

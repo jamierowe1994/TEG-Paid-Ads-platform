@@ -22,6 +22,7 @@ import { packageById, adSpendCapFor } from "@/lib/packages";
 import SourceIcon from "@/components/SourceIcon";
 import { LeadModal, stageLabel, shortDate } from "./lead-modal";
 import type { Lead, LeadStage } from "@/lib/types";
+import AddLeadSheet from "@/components/AddLeadSheet";
 
 // Leads funnel — built to be usable by anyone. Compact clickable tiles,
 // newest first; click a tile to open a full modal with everything (contact,
@@ -492,6 +493,7 @@ export default function LeadsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [checkingCrm, setCheckingCrm] = useState(false);
   const [archiving, setArchiving] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => {
     const u = getUser();
@@ -894,6 +896,16 @@ export default function LeadsPage() {
       <div className="mt-4 hidden items-center justify-between gap-3 lg:flex">
         {view === "active" ? (
           <div className="flex flex-wrap items-center gap-2">
+            {/* Own leads join the funnel here — Google Ads spend, canvassing,
+                word of mouth. */}
+            <button
+              onClick={() => setAddOpen(true)}
+              className="rounded-full px-4 py-1.5 text-sm font-semibold text-white transition active:scale-[0.97]"
+              style={{ backgroundColor: brand.accent }}
+            >
+              + Add lead
+            </button>
+            <span className="mx-1 h-5 w-px bg-gray-400" aria-hidden />
             <button
               onClick={() => setNewOnly((v) => !v)}
               className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
@@ -1088,6 +1100,13 @@ export default function LeadsPage() {
               {view === "active" && (
                 <>
                   <FilterSection title="Show">
+                    <button
+                      onClick={() => { setMobileFiltersOpen(false); setAddOpen(true); }}
+                      className="rounded-full px-4 py-2 text-sm font-semibold text-white"
+                      style={{ backgroundColor: brand.accent }}
+                    >
+                      + Add lead
+                    </button>
                     <FilterChip label="New only" active={newOnly} accent={brand.accent} onClick={() => setNewOnly((v) => !v)} />
                     {RANGES.map((r) => (
                       <FilterChip key={r.id} label={r.label} active={range === r.id} accent={brand.accent} onClick={() => setRange(r.id)} />
@@ -1239,6 +1258,17 @@ export default function LeadsPage() {
               );
             }
             return { ok: res.ok, error: res.error };
+          }}
+        />
+      )}
+
+      {addOpen && brand && (
+        <AddLeadSheet
+          accent={brand.accent}
+          onClose={() => setAddOpen(false)}
+          onAdded={(lead) => {
+            setLeads((prev) => [lead, ...prev]);
+            showToast(`${lead.name} added to your funnel ✓`, 4000);
           }}
         />
       )}

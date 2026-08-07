@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BRANDS, brandById, type Brand } from "@/lib/brands";
+import MagnetManager from "@/components/MagnetManager";
 import Collapse from "@/components/Collapse";
 import { packageById, PACKAGES, type AdPackage } from "@/lib/packages";
 import { stageLabel } from "@/lib/onboarding";
@@ -296,7 +297,7 @@ export default function AdminPage() {
   const [mailboxError, setMailboxError] = useState("");
   const [authed, setAuthed] = useState(false);
   // "super" → the full dashboard below; "md" → the stripped brand view.
-  const [role, setRole] = useState<"super" | "md" | null>(null);
+  const [role, setRole] = useState<"super" | "md" | "marketing" | null>(null);
   const [mdToken, setMdToken] = useState("");
   const [mdBrandId, setMdBrandId] = useState<string | null>(null);
   const [adminName, setAdminName] = useState("");
@@ -780,13 +781,13 @@ export default function AdminPage() {
         setMdToken(data.token);
         setMdBrandId(data.brandId);
         setAdminName(data.name ?? "");
-        setRole("md");
+        setRole(data.role === "marketing" ? "marketing" : "md");
         setAuthed(true);
         sessionStorage.setItem(
           "teg_admin_v2",
           JSON.stringify({
             token: data.token,
-            role: "md",
+            role: data.role === "marketing" ? "marketing" : "md",
             brandId: data.brandId,
             name: data.name,
             email: data.email,
@@ -813,7 +814,7 @@ export default function AdminPage() {
     try {
       const s = JSON.parse(raw) as {
         token: string;
-        role: "super" | "md";
+        role: "super" | "md" | "marketing";
         brandId?: string;
         name?: string;
       };
@@ -829,7 +830,7 @@ export default function AdminPage() {
         setMdToken(s.token);
         setMdBrandId(s.brandId ?? null);
         setAdminName(s.name ?? "");
-        setRole("md");
+        setRole(s.role === "marketing" ? "marketing" : "md");
         setAuthed(true);
       }
     } catch {
@@ -986,12 +987,13 @@ export default function AdminPage() {
 
   // Managing-director view — a clean, brand-scoped overview. No connections,
   // no other businesses.
-  if (role === "md" && mdBrandId) {
+  if ((role === "md" || role === "marketing") && mdBrandId) {
     return (
       <MdDashboard
         token={mdToken}
         brandId={mdBrandId}
         name={adminName}
+        role={role}
         onSignOut={signOut}
       />
     );
@@ -1779,6 +1781,11 @@ export default function AdminPage() {
                 )}
               </div>
             </section>
+            <div className="mt-6">
+              {/* Super admins manage every brand's magnets from here; the
+                  scoped tiers get theirs on their own dashboard. */}
+              <MagnetManager token={password} superPick />
+            </div>
           </>
         )}
 
@@ -3488,7 +3495,7 @@ function MdSocials({
    The sidebar carries the brand's own colour rather than the neutral grey the
    super view uses, so it's obvious at a glance whose business you're in. */
 
-type MdTab = "overview" | "team" | "connections" | "invites";
+type MdTab = "overview" | "team" | "connections" | "invites" | "magnets";
 
 const MD_TABS: { id: MdTab; label: string; icon: string }[] = [
   { id: "overview", label: "Overview", icon: "M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10" },
@@ -3503,7 +3510,12 @@ const MD_TABS: { id: MdTab; label: string; icon: string }[] = [
     icon: "M13.5 10.5 21 3m0 0h-5m5 0v5M10.5 13.5 3 21m0 0h5m-5 0v-5",
   },
   { id: "invites", label: "Invites", icon: "M4 4h16v16H4z M22 6l-10 7L2 6" },
+  { id: "magnets", label: "Lead magnets", icon: "M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" },
 ];
+
+/* Marketing sees the stats and manages the magnets; the operational tabs
+   (connections, invites) are MD-only. */
+const MARKETING_TABS: MdTab[] = ["overview", "team", "magnets"];
 
 const RANGES = [
   { id: "7", label: "7 days", days: 7 },
@@ -3517,11 +3529,13 @@ function MdDashboard({
   token,
   brandId,
   name,
+  role = "md",
   onSignOut,
 }: {
   token: string;
   brandId: string;
   name: string;
+  role?: "md" | "marketing";
   onSignOut: () => void;
 }) {
   const brand = brandById(brandId);
@@ -3667,7 +3681,9 @@ function MdDashboard({
         </div>
 
         <nav className="mt-10 flex-1 px-3">
-          {MD_TABS.map((t) => {
+          {MD_TABS.filter(
+            (t) => role === "md" || MARKETING_TABS.includes(t.id)
+          ).map((t) => {
             const on = tab === t.id;
             return (
               <button
@@ -3745,6 +3761,8 @@ function MdDashboard({
             />
           ) : tab === "team" ? (
             <MdTeam card={card} accent={accent} users={users} byUser={byUser} />
+          ) : tab === "magnets" ? (
+            <MagnetManager token={token} brandId={brandId} />
           ) : tab === "connections" ? (
             <MdConnections card={card} brandName={brand.name} />
           ) : (

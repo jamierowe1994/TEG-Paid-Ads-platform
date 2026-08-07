@@ -9,7 +9,15 @@ export default function SourceIcon({
   size = 18,
   className = "",
 }: {
-  source: "instagram" | "facebook" | "referral";
+  source:
+    | "instagram"
+    | "facebook"
+    | "referral"
+    | "self"
+    | "google"
+    | "website"
+    | "canvassing"
+    | "other";
   size?: number;
   className?: string;
 }) {
@@ -52,18 +60,64 @@ export default function SourceIcon({
       </svg>
     );
   }
-  // referral
+  if (source === "referral") {
+    return (
+      <svg {...common}>
+        <title>Referral</title>
+        <circle cx="12" cy="12" r="12" fill="#F59E0B" />
+        <path
+          fill="none"
+          stroke="#fff"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M8 9h6.5m0 0-2-2m2 2-2 2M16 15H9.5m0 0 2-2m-2 2 2 2"
+        />
+      </svg>
+    );
+  }
+  if (source === "google") {
+    return (
+      <svg {...common}>
+        <title>Google</title>
+        <circle cx="12" cy="12" r="12" fill="#fff" stroke="#e5e7eb" strokeWidth="1" />
+        <path fill="#4285F4" d="M18.6 12.15c0-.47-.04-.92-.12-1.35H12v2.56h3.7a3.17 3.17 0 0 1-1.37 2.08v1.73h2.22c1.3-1.2 2.05-2.96 2.05-5.02z" />
+        <path fill="#34A853" d="M12 18.5c1.85 0 3.41-.61 4.55-1.66l-2.22-1.73c-.62.42-1.4.66-2.33.66-1.8 0-3.31-1.21-3.85-2.84H5.86v1.78A6.86 6.86 0 0 0 12 18.5z" />
+        <path fill="#FBBC05" d="M8.15 12.93a4.12 4.12 0 0 1 0-2.63V8.52H5.86a6.87 6.87 0 0 0 0 6.19l2.29-1.78z" />
+        <path fill="#EA4335" d="M12 7.46c1 0 1.9.35 2.62 1.03l1.96-1.96A6.86 6.86 0 0 0 5.86 8.52l2.29 1.78C8.69 8.67 10.2 7.46 12 7.46z" />
+      </svg>
+    );
+  }
+  if (source === "website") {
+    return (
+      <svg {...common}>
+        <title>Website</title>
+        <circle cx="12" cy="12" r="12" fill="#0EA5E9" />
+        <circle cx="12" cy="12" r="6.5" fill="none" stroke="#fff" strokeWidth="1.5" />
+        <path fill="none" stroke="#fff" strokeWidth="1.5" d="M5.5 12h13M12 5.5c-4.5 4-4.5 9 0 13 4.5-4 4.5-9 0-13z" />
+      </svg>
+    );
+  }
+  if (source === "canvassing") {
+    return (
+      <svg {...common}>
+        <title>Canvassing</title>
+        <circle cx="12" cy="12" r="12" fill="#8B5CF6" />
+        <path fill="none" stroke="#fff" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" d="M6.5 12 12 7l5.5 5M8 11v6h8v-6" />
+      </svg>
+    );
+  }
+  // self-generated + other — the agent's own work, in the brand's dark tone.
   return (
     <svg {...common}>
-      <title>Referral</title>
-      <circle cx="12" cy="12" r="12" fill="#F59E0B" />
+      <title>{source === "self" ? "Self-generated" : "Other"}</title>
+      <circle cx="12" cy="12" r="12" fill="#111827" />
       <path
         fill="none"
         stroke="#fff"
         strokeWidth="1.7"
         strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M8 9h6.5m0 0-2-2m2 2-2 2M16 15H9.5m0 0 2-2m-2 2 2 2"
+        d="M12 7.5v9M7.5 12h9"
       />
     </svg>
   );

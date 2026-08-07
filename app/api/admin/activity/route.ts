@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   }
   const [allLeads, allUsers] = await Promise.all([listAllLeads(), listUsers()]);
   const users =
-    scope.role === "md"
+    scope.role !== "super"
       ? allUsers.filter((u) => u.brandId === scope.brandId)
       : allUsers;
   const userMap = new Map(users.map((u) => [u.id, u]));

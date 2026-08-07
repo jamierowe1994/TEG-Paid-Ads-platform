@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   }
   const all = await listUsers();
   const visible =
-    scope.role === "md" ? all.filter((u) => u.brandId === scope.brandId) : all;
+    scope.role !== "super" ? all.filter((u) => u.brandId === scope.brandId) : all;
   return NextResponse.json(visible);
 }
 
@@ -38,6 +38,10 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
   // An MD can only touch their own brand's agents.
+  // Marketing reads stats; it doesn't manage people.
+  if (scope.role === "marketing") {
+    return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  }
   if (scope.role === "md" && current.brandId !== scope.brandId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
