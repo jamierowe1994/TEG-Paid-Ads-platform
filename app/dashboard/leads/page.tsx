@@ -734,13 +734,16 @@ export default function LeadsPage() {
   async function snooze(
     lead: Lead,
     until: string,
-    reason: string
+    reason: string,
+    mode: "nurture" | "lost" = "nurture"
   ): Promise<boolean> {
-    const res = await snoozeLeadUntil(lead.id, until, reason);
+    const res = await snoozeLeadUntil(lead.id, until, reason, mode);
     if (res.ok && res.lead) {
       setLeads((prev) => prev.map((l) => (l.id === res.lead!.id ? res.lead! : l)));
       showToast(
-        `${lead.name} saved for later — back as a new lead on ${shortDate(until)} ✓`,
+        mode === "lost"
+          ? `${lead.name} marked lost — back for another go on ${shortDate(until)} ✓`
+          : `${lead.name} saved for later — back as a new lead on ${shortDate(until)} ✓`,
         5000
       );
       return true;
@@ -1207,8 +1210,8 @@ export default function LeadsPage() {
             );
             if (ok) setOpenId(null);
           }}
-          onSnooze={async (until, reason) => {
-            const ok = await snooze(open, until, reason);
+          onSnooze={async (until, reason, mode) => {
+            const ok = await snooze(open, until, reason, mode);
             if (ok) setOpenId(null);
           }}
           onFollowUp={async (at) => {

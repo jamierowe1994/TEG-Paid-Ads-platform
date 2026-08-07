@@ -353,13 +353,14 @@ export async function archiveLeads(
 export async function snoozeLeadUntil(
   leadId: string,
   until: string,
-  reason: string
+  reason: string,
+  mode: "nurture" | "lost" = "nurture"
 ): Promise<{ ok: boolean; lead?: Lead; error?: string }> {
   try {
     const res = await fetch("/api/leads/snooze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ leadId, until, reason }),
+      body: JSON.stringify({ leadId, until, reason, mode }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) return { ok: false, error: data.error ?? "Couldn't save" };

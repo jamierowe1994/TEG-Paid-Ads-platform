@@ -5,6 +5,7 @@ import type { Lead, LeadStage } from "@/lib/types";
 import type { Brand } from "@/lib/brands";
 import SourceIcon from "@/components/SourceIcon";
 import { geocodeUk, extractPostcode } from "@/lib/geo-uk";
+import { loadGoogleMaps } from "@/lib/google-maps";
 import { lostReasonsFor, warmReasonsFor } from "@/lib/lost-reasons";
 
 export function stageLabel(stage: LeadStage, brand: Brand): string {
@@ -116,7 +117,7 @@ export function LeadModal({
   onCancelBooking: () => Promise<void>;
   onRexReset?: () => Promise<void>;
   onArchive?: (archived: boolean) => Promise<void>;
-  onSnooze?: (until: string, reason: string) => Promise<void>;
+  onSnooze?: (until: string, reason: string, mode?: "nurture" | "lost") => Promise<void>;
   onFollowUp?: (at: string | null) => Promise<void>;
   // Inline edits to the lead's own fields (name / contact / address).
   onUpdateFields?: (fields: Partial<Lead>) => Promise<Lead | null | void>;
@@ -187,7 +188,7 @@ export function LeadModal({
   const [locSheet, setLocSheet] = useState(false);
 
   // Mark-as-lost flow.
-  const [lostStep, setLostStep] = useState<null | "ask" | "reason" | "date" | "funnel" | "done">(null);
+  const [lostStep, setLostStep] = useState<null | "ask" | "reason" | "date" | "lostdate" | "funnel" | "funneldate" | "done">(null);
 
   // Any full-screen overlay (a sheet or the lost/nurture flow) tucks the bottom
   // nav out of the way so it can't sit over the content.
@@ -347,15 +348,21 @@ export function LeadModal({
     await onAddNote(`Added to marketing funnel — ${nurtureReason}`);
     onStage("nurture");
     setSavingLost(false);
-    setLostStep("done");
-    setTimeout(onClose, 1600);
+    // Offer the personal follow-up before closing — the funnel emails run
+    // either way; a date ALSO brings the lead back for a real call.
+    if (onSnooze) setLostStep("funneldate");
+    else { setLostStep("done"); setTimeout(onClose, 1600); }
   }
-  async function saveForLater(until: Date) {
+  async function saveForLater(
+    until: Date,
+    mode: "nurture" | "lost" = "nurture",
+    reason?: string
+  ) {
     if (!onSnooze || savingSnooze) return;
     const d = new Date(until);
     if (d.getTime() <= Date.now()) d.setTime(Date.now() + 60 * 60 * 1000);
     setSavingSnooze(true);
-    await onSnooze(d.toISOString(), lostReason || "Not the right time");
+    await onSnooze(d.toISOString(), reason ?? (lostReason || "Not the right time"), mode);
     setSavingSnooze(false);
   }
   function monthsFromNow(n: number): Date {
@@ -1226,7 +1233,7 @@ export function LeadModal({
                   <p className="mt-2 text-center text-sm text-gray-500">A quick reason helps us learn what&apos;s converting and what isn&apos;t.</p>
                   <div className="mt-5 space-y-2">
                     {lostReasons.map((reason) => (
-                      <button key={reason} disabled={savingLost} onClick={() => { if (onSnooze && warmReasons.has(reason)) { setLostReason(reason); setLostStep("date"); } else markLostWithReason(reason); }} className="flex w-full items-center justify-between rounded-2xl border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-700 transition hover:border-gray-900 hover:bg-gray-50 disabled:opacity-50">
+                      <button key={reason} disabled={savingLost} onClick={() => { setLostReason(reason); if (!onSnooze) { markLostWithReason(reason); return; } setLostStep(warmReasons.has(reason) ? "date" : "lostdate"); }} className="flex w-full items-center justify-between rounded-2xl border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-700 transition hover:border-gray-900 hover:bg-gray-50 disabled:opacity-50">
                         {reason}<span className="text-gray-300">→</span>
                       </button>
                     ))}
@@ -1248,6 +1255,40 @@ export function LeadModal({
                   <div className="mt-3"><InlineCalendar value={snoozeDay} accent={accent} onPick={(d) => { const dt = new Date(d); dt.setHours(9, 0, 0, 0); setSnoozeDay(dt); saveForLater(dt); }} /></div>
                   {savingSnooze && <p className="mt-3 text-center text-sm text-gray-400">Keeping warm…</p>}
                   <button disabled={savingLost || savingSnooze} onClick={() => markLostWithReason(lostReason || "Not the right time")} className="mt-3 w-full rounded-2xl py-2.5 text-sm font-medium text-gray-400 hover:text-gray-600 disabled:opacity-50">No date — just mark it lost</button>
+                </div>
+              )}
+              {lostStep === "lostdate" && (
+                <div className="mx-auto w-full max-w-lg">
+                  <GifCard src="" emoji="📅" tint="linear-gradient(135deg,#f9fafb,#f3f4f6)" />
+                  <h3 className="mt-5 text-center text-xl font-semibold">Marked as lost. One more try later?</h3>
+                  <p className="mt-2 text-center text-sm text-gray-500">Pick a follow-up date and we&apos;ll bring {firstName} back as a fresh lead on the day — with a nudge to call. Or just leave it closed.</p>
+                  <p className="mt-5 text-center text-xs font-medium uppercase tracking-wide text-gray-400">Follow up in</p>
+                  <div className="mt-3 flex flex-wrap justify-center gap-2">
+                    {[{ label: "1 month", m: 1 }, { label: "3 months", m: 3 }, { label: "6 months", m: 6 }, { label: "12 months", m: 12 }].map((p) => (
+                      <button key={p.label} disabled={savingSnooze} onClick={() => saveForLater(monthsFromNow(p.m), "lost")} className="rounded-full border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:border-gray-900 hover:bg-gray-50 disabled:opacity-50">{p.label}</button>
+                    ))}
+                  </div>
+                  <p className="mt-5 text-center text-xs font-medium uppercase tracking-wide text-gray-400">…or pick the exact date</p>
+                  <div className="mt-3"><InlineCalendar value={snoozeDay} accent={accent} onPick={(d) => { const dt = new Date(d); dt.setHours(9, 0, 0, 0); setSnoozeDay(dt); saveForLater(dt, "lost"); }} /></div>
+                  {savingSnooze && <p className="mt-3 text-center text-sm text-gray-400">Booking the follow-up…</p>}
+                  <button disabled={savingLost || savingSnooze} onClick={() => markLostWithReason(lostReason || "Not the right time")} className="mt-3 w-full rounded-2xl py-2.5 text-sm font-medium text-gray-400 hover:text-gray-600 disabled:opacity-50">No follow-up — just close it</button>
+                </div>
+              )}
+              {lostStep === "funneldate" && (
+                <div className="mx-auto w-full max-w-lg">
+                  <GifCard src="" emoji="📬" tint="linear-gradient(135deg,#f0fdf4,#dcfce7)" />
+                  <h3 className="mt-5 text-center text-xl font-semibold">In the funnel. Follow up personally too?</h3>
+                  <p className="mt-2 text-center text-sm text-gray-500">The marketing emails do their thing either way — a date here also brings {firstName} back to you as a fresh lead for a proper call.</p>
+                  <p className="mt-5 text-center text-xs font-medium uppercase tracking-wide text-gray-400">Follow up in</p>
+                  <div className="mt-3 flex flex-wrap justify-center gap-2">
+                    {[{ label: "1 month", m: 1 }, { label: "3 months", m: 3 }, { label: "6 months", m: 6 }, { label: "12 months", m: 12 }].map((p) => (
+                      <button key={p.label} disabled={savingSnooze} onClick={() => saveForLater(monthsFromNow(p.m), "nurture", nurtureReason || undefined)} className="rounded-full border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:border-gray-900 hover:bg-gray-50 disabled:opacity-50">{p.label}</button>
+                    ))}
+                  </div>
+                  <p className="mt-5 text-center text-xs font-medium uppercase tracking-wide text-gray-400">…or pick the exact date</p>
+                  <div className="mt-3"><InlineCalendar value={snoozeDay} accent={accent} onPick={(d) => { const dt = new Date(d); dt.setHours(9, 0, 0, 0); setSnoozeDay(dt); saveForLater(dt, "nurture", nurtureReason || undefined); }} /></div>
+                  {savingSnooze && <p className="mt-3 text-center text-sm text-gray-400">Booking the follow-up…</p>}
+                  <button disabled={savingSnooze} onClick={() => { setLostStep("done"); setTimeout(onClose, 1600); }} className="mt-3 w-full rounded-2xl py-2.5 text-sm font-medium text-gray-400 hover:text-gray-600 disabled:opacity-50">No thanks — the funnel&apos;s enough</button>
                 </div>
               )}
               {lostStep === "funnel" && (
@@ -1397,9 +1438,77 @@ function AddressField({ lead, onSave }: { lead: Lead; onSave?: (fields: Partial<
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(lead.address ?? "");
   const [saving, setSaving] = useState(false);
+  // Google Places suggestions under the input. The Places library was always
+  // loaded by lib/google-maps but nothing USED it — typing an address gave no
+  // recommendations at all (James, 7 Aug). Predictions are debounced and
+  // UK-restricted; no key configured -> the list just never appears and the
+  // field behaves as the plain text box it was.
+  const [suggestions, setSuggestions] = useState<{ id: string; text: string }[]>([]);
+  const acRef = useRef<{ svc: unknown; timer?: ReturnType<typeof setTimeout> }>({ svc: null });
+
   useEffect(() => setVal(lead.address ?? ""), [lead.address]);
+
+  function predict(input: string) {
+    const ac = acRef.current;
+    if (ac.timer) clearTimeout(ac.timer);
+    if (input.trim().length < 4) { setSuggestions([]); return; }
+    ac.timer = setTimeout(async () => {
+      try {
+        const maps = await loadGoogleMaps();
+        if (!maps) return;
+        if (!ac.svc) ac.svc = new maps.places.AutocompleteService();
+        (ac.svc as { getPlacePredictions: (r: unknown, cb: (res: unknown[] | null) => void) => void })
+          .getPlacePredictions(
+            { input, componentRestrictions: { country: "gb" } },
+            (res) => {
+              const list = ((res ?? []) as { place_id: string; description: string }[])
+                .slice(0, 5)
+                .map((r) => ({ id: r.place_id, text: r.description }));
+              setSuggestions(list);
+            }
+          );
+      } catch {
+        /* no maps -> no suggestions; the field still works as free text */
+      }
+    }, 250);
+  }
+
+  /* A picked suggestion geocodes by place id — street-level coordinates and
+     the real postcode, rather than the centre of a postcode district. */
+  async function pick(sug: { id: string; text: string }) {
+    setSuggestions([]);
+    setVal(sug.text);
+    setEditing(false);
+    setSaving(true);
+    let lat: number | null = null;
+    let lng: number | null = null;
+    let postcode: string | null = extractPostcode(sug.text);
+    try {
+      const maps = await loadGoogleMaps();
+      if (maps) {
+        const geo = new maps.Geocoder();
+        const res: { results?: { geometry?: { location?: { lat(): number; lng(): number } }; address_components?: { types: string[]; long_name: string }[] }[] } =
+          await geo.geocode({ placeId: sug.id });
+        const first = res.results?.[0];
+        const loc = first?.geometry?.location;
+        if (loc) { lat = loc.lat(); lng = loc.lng(); }
+        const pc = first?.address_components?.find((c) => c.types.includes("postal_code"))?.long_name;
+        if (pc) postcode = pc;
+      }
+    } catch {
+      /* fall back to the postcode-only path below */
+    }
+    if (lat == null && postcode) {
+      const c = await geocodeUk(postcode);
+      if (c) { lat = c.lat; lng = c.lng; }
+    }
+    await onSave?.({ address: sug.text || null, postcode, lat, lng });
+    setSaving(false);
+  }
+
   async function commit() {
     setEditing(false);
+    setSuggestions([]);
     const address = val.trim();
     if (address === (lead.address ?? "").trim()) return;
     setSaving(true);
@@ -1422,7 +1531,20 @@ function AddressField({ lead, onSave }: { lead: Lead; onSave?: (fields: Partial<
         {tagged && <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">geotagged ✓</span>}
       </p>
       {editing ? (
-        <input autoFocus value={val} onChange={(e) => setVal(e.target.value)} onBlur={commit} onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()} placeholder="Start typing an address…" className="w-full bg-transparent text-[15px] font-medium text-gray-900 outline-none placeholder:text-gray-400" />
+        <>
+          <input autoFocus value={val} onChange={(e) => { setVal(e.target.value); predict(e.target.value); }} onBlur={() => setTimeout(commit, 150)} onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()} placeholder="Start typing an address…" className="w-full bg-transparent text-[15px] font-medium text-gray-900 outline-none placeholder:text-gray-400" />
+          {suggestions.length > 0 && (
+            <div className="mt-2 overflow-hidden rounded-xl border border-gray-200 bg-white">
+              {suggestions.map((sug) => (
+                /* onMouseDown, not onClick — it fires BEFORE the input's blur,
+                   so picking wins over the delayed free-text commit. */
+                <button key={sug.id} onMouseDown={(e) => { e.preventDefault(); pick(sug); }} className="block w-full border-b border-gray-100 px-3 py-2.5 text-left text-sm text-gray-800 last:border-none hover:bg-gray-50">
+                  {sug.text}
+                </button>
+              ))}
+            </div>
+          )}
+        </>
       ) : (
         <p className={`text-[15px] font-medium ${lead.address ? "text-gray-900" : "text-gray-400"}`}>
           {saving ? "Geotagging…" : lead.address || "Add an address…"}

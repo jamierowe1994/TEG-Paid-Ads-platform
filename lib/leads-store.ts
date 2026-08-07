@@ -608,21 +608,30 @@ export async function snoozeLead(
   userId: string,
   leadId: string,
   until: string,
-  reason: string
+  reason: string,
+  // "nurture" is Keep Warm (not a no, just a not-yet). "lost" marks the deal
+  // honestly lost NOW — it counts in lost stats — while still booking the
+  // comeback; the resurface engine doesn't care what stage it sleeps in.
+  mode: "nurture" | "lost" = "nurture"
 ): Promise<Lead | undefined> {
   const untilIso = new Date(until).toISOString();
   const now = new Date().toISOString();
-  const label = `Saved for later — ${reason}. Coming back ${new Date(
-    untilIso
-  ).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`;
-  const entry = { stage: "nurture" as LeadStage, at: now, label };
+  const dateStr = new Date(untilIso).toLocaleDateString("en-GB", {
+    day: "numeric", month: "short", year: "numeric",
+  });
+  const label =
+    mode === "lost"
+      ? `Marked lost — ${reason}. Coming back ${dateStr} for another go`
+      : `Saved for later — ${reason}. Coming back ${dateStr}`;
+  const stage: LeadStage = mode === "lost" ? "lost" : "nurture";
+  const entry = { stage, at: now, label };
   if (hasDb()) {
     const rows = await q<LeadRow>(
       `UPDATE leads
-          SET archived_at = $3, resurface_at = $4, stage = 'nurture',
+          SET archived_at = $3, resurface_at = $4, stage = $6,
               history = history || $5::jsonb
         WHERE id = $2 AND user_id = $1 RETURNING *`,
-      [userId, leadId, now, untilIso, JSON.stringify([entry])]
+      [userId, leadId, now, untilIso, JSON.stringify([entry]), stage]
     );
     return rows[0] ? fromRow(rows[0]) : undefined;
   }
@@ -633,7 +642,7 @@ export async function snoozeLead(
     ...all[idx],
     archivedAt: now,
     resurfaceAt: untilIso,
-    stage: "nurture",
+    stage,
     history: [...all[idx].history, entry],
   };
   await writeAllFile(all);

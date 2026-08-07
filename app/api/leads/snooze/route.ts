@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
   const leadId = String(body?.leadId ?? "");
   const until = String(body?.until ?? "");
   const reason = String(body?.reason ?? "").trim() || "Not the right time";
+  const mode = body?.mode === "lost" ? ("lost" as const) : ("nurture" as const);
   if (!leadId || !until || Number.isNaN(new Date(until).getTime())) {
     return NextResponse.json(
       { error: "leadId and a valid until date are required" },
@@ -26,12 +27,12 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
-  const lead = await snoozeLead(userId, leadId, until, reason);
+  const lead = await snoozeLead(userId, leadId, until, reason, mode);
   if (!lead) {
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
   }
   // Mirror the stage move to the referral that sent this lead, if any — the
   // referrer sees "marketing funnel" rather than frozen progress.
-  if (lead.referralId) await syncReferralFromLead(leadId, "nurture");
+  if (lead.referralId) await syncReferralFromLead(leadId, mode === "lost" ? "lost" : "nurture");
   return NextResponse.json({ ok: true, lead });
 }
