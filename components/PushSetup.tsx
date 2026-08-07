@@ -130,7 +130,10 @@ export default function PushSetup() {
 
   if (phase === "reinstall") {
     return (
-      <div className="fixed inset-x-4 top-4 z-[70] rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-xl">
+      <div
+        className="fixed inset-x-4 z-[70] rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-xl"
+        style={{ bottom: "calc(env(safe-area-inset-bottom) + 96px)" }}
+      >
         <div className="flex items-start gap-3">
           <span className="text-xl">📲</span>
           <div className="min-w-0 flex-1">
@@ -138,9 +141,11 @@ export default function PushSetup() {
               Launch Pad has moved — reinstall to lose the browser bars
             </p>
             <p className="mt-1 text-xs leading-relaxed text-amber-800">
-              This icon points at our old address. Delete it from your home
-              screen, open launchpad.theexpertsgroup.co.uk in Safari, then
-              Share → Add to Home Screen. Takes about 30 seconds.
+              This copy of the app points at our old address, so it shows
+              browser bars. Fix (30 seconds): delete this icon from your home
+              screen → open <strong>launchpad.theexpertsgroup.co.uk</strong> in
+              Safari → Share → <strong>Add to Home Screen</strong> → sign in
+              once. Only devices showing this message need to do it.
             </p>
           </div>
         </div>
@@ -149,7 +154,10 @@ export default function PushSetup() {
   }
 
   return (
-    <div className="fixed inset-x-4 top-4 z-[70] rounded-2xl border border-gray-200 bg-white p-4 shadow-xl">
+    <div
+      className="fixed inset-x-4 z-[70] rounded-2xl border border-gray-200 bg-white p-4 shadow-xl"
+      style={{ bottom: "calc(env(safe-area-inset-bottom) + 96px)" }}
+    >
       {phase === "offer" ? (
         <div className="flex items-center gap-3">
           <p className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-900">

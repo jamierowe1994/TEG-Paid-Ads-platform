@@ -11,6 +11,10 @@
 // Frequency state lives in localStorage, so navigating between pages (or
 // reopening the PWA) doesn't reset the clock and turn "every 10 minutes"
 // into "every page view".
+//
+// DESKTOP ONLY (lg+). On a phone it fought the rest of the dashboard for
+// space (James, 7 Aug) — and mobile agents get the harder push: actual
+// notifications. Desktop, with no push nag and more room, keeps the coach.
 
 import { useEffect, useState } from "react";
 
@@ -65,8 +69,7 @@ export default function CoachToast({ uncontacted }: { uncontacted: number }) {
   return (
     <div
       role="status"
-      className="fixed inset-x-4 z-[60] rounded-2xl border border-gray-200 bg-white/95 p-4 shadow-xl backdrop-blur transition-all"
-      style={{ bottom: "calc(env(safe-area-inset-bottom) + 96px)" }}
+      className="fixed bottom-8 right-8 z-[60] hidden w-96 rounded-2xl border border-gray-200 bg-white p-4 shadow-xl lg:block"
     >
       <div className="flex items-start gap-3">
         <span className="text-xl">{stat.emoji}</span>
