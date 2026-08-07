@@ -36,6 +36,22 @@ export function referralsEnabled(): boolean {
   return launchPhase() === "v2";
 }
 
+/* The email-identity gate. "soft" (default) = dismissible, the launch-day
+ * state: the Microsoft flow is unproven with real agents, and a hard gate in
+ * front of an unproven flow locks everyone out of their own accounts.
+ *
+ * FLIP TO HARD (set EMAIL_GATE=hard in Railway) once one or two real agents
+ * have connected successfully — James's call, 7 Aug 2026. Hard = the gate is
+ * unskippable on every brand and every screen size: no dismiss, no continue.
+ * Sign-out stays even then — a blocking overlay with no exit at all is the
+ * trap that caught a tester AND James on 4 Aug. View-as sessions bypass the
+ * gate entirely: an admin inspecting an account can't connect a mailbox on
+ * the agent's behalf and must not be walled out.
+ */
+export function emailGateHard(): boolean {
+  return (process.env.EMAIL_GATE ?? "").trim().toLowerCase() === "hard";
+}
+
 /** Shown wherever referrals are locked, so the copy stays consistent. */
 export const REFERRALS_LOCKED_COPY = {
   title: "Referrals are coming soon",

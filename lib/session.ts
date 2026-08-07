@@ -640,13 +640,21 @@ export async function sendCampaignFeedback(
  * Fails CLOSED: any error leaves referrals locked, matching the server-side
  * default. A network blip must not flash an unavailable feature into the nav.
  */
-export async function fetchLaunchPhase(): Promise<{ referralsEnabled: boolean }> {
+export async function fetchLaunchPhase(): Promise<{
+  referralsEnabled: boolean;
+  emailGateHard: boolean;
+}> {
   try {
     const res = await fetch("/api/launch-phase", { cache: "no-store" });
-    if (!res.ok) return { referralsEnabled: false };
+    if (!res.ok) return { referralsEnabled: false, emailGateHard: false };
     const d = await res.json();
-    return { referralsEnabled: d?.referralsEnabled === true };
+    return {
+      referralsEnabled: d?.referralsEnabled === true,
+      // Fail SOFT: if this call breaks, the gate stays dismissible — a
+      // network blip must never harden the gate.
+      emailGateHard: d?.emailGateHard === true,
+    };
   } catch {
-    return { referralsEnabled: false };
+    return { referralsEnabled: false, emailGateHard: false };
   }
 }

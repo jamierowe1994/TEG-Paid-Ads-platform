@@ -401,3 +401,12 @@ decides who we offer to connect, never who is entitled.
   hairline dividers instead of boxes, outline-only panels across Overview,
   Leads, Referrals, All Ads and Profile.
 - ✅ (3 Aug) Advisory duplicate check on Rex push — reports, never blocks.
+- ⏳ (7 Aug, TONIGHT) Flip the email gate to HARD once 1–2 real agents have
+  connected their mailboxes (James's call after watching first sign-ins).
+  One step: set `EMAIL_GATE=hard` in Railway. No deploy needed. Hard mode =
+  unskippable on every brand and every screen size (no ✕, no continue;
+  sign-out stays as the only exit; view-as sessions bypass it). BEFORE
+  flipping: have one agent try "Continue with Microsoft" ON A PHONE — the
+  mobile OAuth round-trip has never been exercised, and hard mode extends
+  the gate to mobile. Watch who's connected in admin → CRM → "Email
+  connected" column.

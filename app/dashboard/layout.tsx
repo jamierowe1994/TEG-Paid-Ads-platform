@@ -242,6 +242,10 @@ export default function DashboardLayout({
      effect below corrects it once we've read storage. Per user, so one
      person dismissing it on a shared machine doesn't hide it from another. */
   const [emailGateSkipped, setEmailGateSkipped] = useState(true);
+  /* EMAIL_GATE=hard in Railway (flipped once real agents have proven the
+     Microsoft flow): the gate stops being dismissible and applies to every
+     brand. See lib/launch-phase.ts. */
+  const [emailGateHard, setEmailGateHard] = useState(false);
   /* Set when an admin is looking at this account through view-as. Read from a
      deliberately non-httpOnly cookie so the banner can appear without another
      request. Anything done while this is showing is done AS the agent, which
@@ -285,12 +289,16 @@ export default function DashboardLayout({
     !!user?.msEmail &&
     user.msEmail.trim().toLowerCase() === user.email.trim().toLowerCase();
 
+  /* Hard mode: every brand, no skip — but NEVER for a view-as session: an
+     admin inspecting an account can't connect a mailbox on the agent's
+     behalf, so a hard gate there just walls the admin out. */
+  const hardGateApplies = emailGateHard && !viewingAs;
   const needsEmailProof =
     !!user &&
     user.accountType === "paid" &&
-    user.brandId === "lettings" &&
     !emailProven &&
-    !emailGateSkipped;
+    (hardGateApplies ||
+      (user.brandId === "lettings" && !emailGateSkipped));
 
   /* Tell InstallGate to hold off.
      The install prompt lives in the root layout and sits above everything, so
@@ -306,7 +314,10 @@ export default function DashboardLayout({
     };
   });
   useEffect(() => {
-    fetchLaunchPhase().then((p) => setReferralsOn(p.referralsEnabled));
+    fetchLaunchPhase().then((p) => {
+      setReferralsOn(p.referralsEnabled);
+      setEmailGateHard(p.emailGateHard);
+    });
   }, []);
 
   /** Is this nav item locked, and why? One place, so the sidebar and the
@@ -1420,6 +1431,7 @@ export default function DashboardLayout({
           <ConnectEmailGate
             user={user}
             accent={brand.accent}
+            hard={hardGateApplies}
             onDismiss={dismissEmailGate}
           />
         )

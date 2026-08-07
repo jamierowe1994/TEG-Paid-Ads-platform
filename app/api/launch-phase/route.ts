@@ -9,7 +9,7 @@
 // anyone sees by looking at the nav.
 
 import { NextResponse } from "next/server";
-import { launchPhase, referralsEnabled } from "@/lib/launch-phase";
+import { launchPhase, referralsEnabled, emailGateHard } from "@/lib/launch-phase";
 
 export const dynamic = "force-dynamic";
 
@@ -17,5 +17,6 @@ export async function GET() {
   return NextResponse.json({
     phase: launchPhase(),
     referralsEnabled: referralsEnabled(),
+    emailGateHard: emailGateHard(),
   });
 }

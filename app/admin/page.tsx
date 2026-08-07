@@ -1594,6 +1594,7 @@ export default function AdminPage() {
                       <th className="px-5 py-3 font-medium">Business</th>
                       <th className="px-5 py-3 font-medium">Stage</th>
                       <th className="px-5 py-3 font-medium">Package</th>
+                      <th className="px-5 py-3 font-medium">Email connected</th>
                       <th className="px-5 py-3 font-medium">Signed up</th>
                     </tr>
                   </thead>
@@ -1629,6 +1630,29 @@ export default function AdminPage() {
                             <span className="ml-1 text-xs text-gray-400">
                               £{packageById(u.packageId)?.price}/mo
                             </span>
+                          </td>
+                          {/* Same rule as the email gate: connected only
+                              counts when it's THEIR OWN address — a colleague's
+                              mailbox proves employment, not identity. */}
+                          <td className="px-5 py-3">
+                            {u.msEmail &&
+                            u.msEmail.trim().toLowerCase() ===
+                              u.email.trim().toLowerCase() ? (
+                              <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700">
+                                Connected ✓
+                              </span>
+                            ) : u.msEmail ? (
+                              <span
+                                className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800"
+                                title={`Connected as ${u.msEmail} — not this account's own address`}
+                              >
+                                Different mailbox
+                              </span>
+                            ) : (
+                              <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-400">
+                                Not yet
+                              </span>
+                            )}
                           </td>
                           <td className="px-5 py-3 text-gray-500">
                             {new Date(u.createdAt).toLocaleDateString("en-GB")}

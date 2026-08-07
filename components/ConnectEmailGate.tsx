@@ -45,10 +45,15 @@ import type { UserProfile } from "@/lib/types";
 export default function ConnectEmailGate({
   user,
   accent,
+  hard = false,
   onDismiss,
 }: {
   user: UserProfile;
   accent: string;
+  /** EMAIL_GATE=hard: no dismiss, every screen size. Sign-out stays — an
+   *  overlay with zero exits is the trap that caught a tester and James on
+   *  4 Aug. See lib/launch-phase.ts for when this gets flipped. */
+  hard?: boolean;
   onDismiss: () => void;
 }) {
   /* They connected a mailbox, but not this account's. Say so plainly —
@@ -61,9 +66,10 @@ export default function ConnectEmailGate({
   const [leaving, setLeaving] = useState(false);
 
   return (
-    <div className="fixed inset-0 z-[100] hidden items-center justify-center bg-gray-950/60 p-4 backdrop-blur-sm lg:flex">
+    <div className={`fixed inset-0 z-[100] items-center justify-center bg-gray-950/60 p-4 backdrop-blur-sm ${hard ? "flex" : "hidden lg:flex"}`}>
       <div className="relative w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl">
-        {/* The escape hatch. Temporary — see the note at the top of this file. */}
+        {/* The escape hatch — soft mode only; hard mode removes it. */}
+        {!hard && (
         <button
           onClick={onDismiss}
           aria-label="Close"
@@ -73,6 +79,7 @@ export default function ConnectEmailGate({
             <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
           </svg>
         </button>
+        )}
         <span
           className="flex h-12 w-12 items-center justify-center rounded-2xl text-2xl"
           style={{ backgroundColor: `${accent}1a` }}
