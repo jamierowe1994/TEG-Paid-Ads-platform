@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { Lead, LeadStage } from "@/lib/types";
 import type { Brand } from "@/lib/brands";
@@ -1338,6 +1339,11 @@ export function LeadModal({
 // No match / no magnets uploaded yet -> renders nothing.
 function MagnetRow({ lead, accent }: { lead: Lead; accent: string }) {
   const [magnet, setMagnet] = useState<{ id: string; title: string } | null>(null);
+  // "none" = we looked, found no match, and the brand DOES have guides — the
+  // case that gets the See-all fallback (James, 7 Aug). Distinct from the
+  // initial state so nothing flashes while the fetch is in flight, and from
+  // an empty library, where a browse page would just be an empty page.
+  const [fallback, setFallback] = useState(false);
   useEffect(() => {
     const text = [lead.adName, lead.interestedIn, lead.note]
       .filter(Boolean)
@@ -1349,27 +1355,48 @@ function MagnetRow({ lead, accent }: { lead: Lead; accent: string }) {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d?.match) setMagnet({ id: d.match.id, title: d.match.title });
+        else if ((d?.magnets ?? []).length > 0) setFallback(true);
       })
       .catch(() => {});
   }, [lead.id, lead.adName, lead.interestedIn, lead.note]);
 
-  if (!magnet) return null;
-  return (
-    <div className="border-t border-gray-200 pt-3">
-      <p className="text-xs font-medium text-gray-400">The guide they asked for</p>
-      <a
-        href={`/api/magnets/${magnet.id}`}
-        download
-        className="mt-1.5 flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 text-sm font-medium transition hover:bg-gray-50"
-        style={{ borderColor: `${accent}55`, color: accent }}
-      >
-        <span className="min-w-0 truncate">📄 {magnet.title}</span>
-        <span className="shrink-0 text-xs font-semibold uppercase tracking-wide">
-          Download
-        </span>
-      </a>
-    </div>
-  );
+  if (magnet) {
+    return (
+      <div className="border-t border-gray-200 pt-3">
+        <p className="text-xs font-medium text-gray-400">The guide they asked for</p>
+        <a
+          href={`/api/magnets/${magnet.id}`}
+          download
+          className="mt-1.5 flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 text-sm font-medium transition hover:bg-gray-50"
+          style={{ borderColor: `${accent}55`, color: accent }}
+        >
+          <span className="min-w-0 truncate">📄 {magnet.title}</span>
+          <span className="shrink-0 text-xs font-semibold uppercase tracking-wide">
+            Download
+          </span>
+        </a>
+      </div>
+    );
+  }
+  if (fallback) {
+    return (
+      <div className="border-t border-gray-200 pt-3">
+        <p className="text-xs font-medium text-gray-400">The guide they asked for</p>
+        <Link
+          href="/dashboard/guides"
+          className="mt-1.5 flex items-center justify-between gap-3 rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+        >
+          <span className="min-w-0 truncate">
+            Couldn&apos;t tell which one — browse them all
+          </span>
+          <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-gray-500">
+            See all guides →
+          </span>
+        </Link>
+      </div>
+    );
+  }
+  return null;
 }
 
 // ── Small building blocks ─────────────────────────────────────────────────
