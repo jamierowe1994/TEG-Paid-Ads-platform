@@ -78,6 +78,15 @@ export const TLE_LAUNCH_LIST: LaunchListEntry[] = [
   { name: "Richard Callow", email: "richard.callow@thelettingexperts.co.uk", area: "Oxford" },
   { name: "Zilvinas Navickis", email: "zill@thepropertyexperts.co.uk", area: "Dorset" },
   { name: "Edward Westwood", email: "edward.westwood@thelettingexperts.co.uk", area: "Stourbridge" },
+  {
+    name: "Stuart Roper",
+    email: "stuart.roper@thelettingexperts.co.uk",
+    area: "",
+    // Missed off Susan's original 13 — found launch morning (7 Aug) when he
+    // didn't get an invite. Team Hub has him Pro + Active, so unlike the
+    // other Hub-only "Pro" names this one is confirmed genuine (James).
+    note: "Added launch morning — missed from the original list; Hub shows Pro/Active.",
+  },
 ];
 
 const byEmail = new Map<string, LaunchListEntry>();

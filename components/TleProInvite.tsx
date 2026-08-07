@@ -46,6 +46,8 @@ interface RowState {
   justConnected: boolean;
   /** Lead-flow check: null = not run, "…" = running, else the verdict. */
   flow: string | null;
+  /** Per-row invite send: null = not sent, "…" = sending, else the outcome. */
+  invite: string | null;
 }
 
 export default function TleProInvite({ pass }: { pass: string }) {
@@ -89,6 +91,7 @@ export default function TleProInvite({ pass }: { pass: string }) {
             accountId: null,
             justConnected: false,
             flow: null,
+            invite: null,
           };
         }
         return next;
@@ -204,6 +207,40 @@ export default function TleProInvite({ pass }: { pass: string }) {
       body: JSON.stringify({ userId }),
     });
     if (res.ok) window.open("/dashboard", "_blank", "noopener");
+  }
+
+  /* Invite ONE person. Exists because Send All re-invites EVERYONE still
+     pending — and a fresh link kills the one already in their inbox. Adding a
+     latecomer after the blast (Stuart, launch morning) must not invalidate
+     eleven people's unopened invites. */
+  async function sendOne(row: ProRow) {
+    const k = key(row);
+    if (!row.userId || state[k]?.invite === "…") return;
+    patch(k, { invite: "…" });
+    try {
+      const res = await fetch("/api/admin/send-invites", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${pass}`,
+        },
+        body: JSON.stringify({ userIds: [row.userId] }),
+      });
+      const d = await res.json();
+      if (!res.ok) {
+        patch(k, { invite: d.error ?? "Couldn't send." });
+        return;
+      }
+      const r = (d.results ?? [])[0];
+      patch(k, {
+        invite: r?.sent
+          ? `Invite sent to ${r.email} ✓`
+          : `Failed: ${r?.detail ?? r?.reason ?? "already signed in, or nothing to send"}`,
+      });
+      load();
+    } catch {
+      patch(k, { invite: "Couldn't reach the server." });
+    }
   }
 
   async function sendAll() {
@@ -357,6 +394,16 @@ export default function TleProInvite({ pass }: { pass: string }) {
                     View as
                   </button>
                 )}
+                {done && row.userId && row.awaitingFirstSignIn && (
+                  <button
+                    onClick={() => sendOne(row)}
+                    title="Email this person their invite — nobody else's pending link is touched"
+                    className="rounded-lg px-4 py-2 text-sm font-semibold text-white"
+                    style={{ backgroundColor: "#111827" }}
+                  >
+                    {s.invite === "…" ? "Sending…" : "Send invite"}
+                  </button>
+                )}
                 {done && (
                   <button
                     onClick={() => checkFlow(row)}
@@ -371,6 +418,18 @@ export default function TleProInvite({ pass }: { pass: string }) {
               {s.error && (
                 <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
                   {s.error}
+                </p>
+              )}
+
+              {s.invite && s.invite !== "…" && (
+                <p
+                  className={`mt-3 rounded-lg px-3 py-2 text-sm ${
+                    /✓/.test(s.invite)
+                      ? "bg-green-50 text-green-800"
+                      : "bg-red-50 text-red-700"
+                  }`}
+                >
+                  {s.invite}
                 </p>
               )}
 
