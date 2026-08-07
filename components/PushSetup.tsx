@@ -50,21 +50,37 @@ async function subscribe(): Promise<boolean> {
 }
 
 export default function PushSetup() {
-  // "offer" -> show the banner; "enabled" -> offer a self-test; hidden else.
-  const [phase, setPhase] = useState<"hidden" | "offer" | "enabled" | "testing" | "tested">(
-    "hidden"
-  );
+  // "offer" -> show the banner; "enabled" -> offer a self-test;
+  // "reinstall" -> the app is pinned to a retired origin (see below).
+  const [phase, setPhase] = useState<
+    "hidden" | "offer" | "enabled" | "testing" | "tested" | "reinstall"
+  >("hidden");
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
     // Registering is always safe — the worker caches nothing.
     navigator.serviceWorker.register("/sw.js").catch(() => {});
 
-    if (!("Notification" in window) || !("PushManager" in window)) return;
-
-    const standalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
+    const displayStandalone = window.matchMedia(
+      "(display-mode: standalone)"
+    ).matches;
+    const navStandalone =
       (navigator as unknown as { standalone?: boolean }).standalone === true;
+
+    // navigator.standalone true but display-mode NOT standalone = iOS's
+    // out-of-scope in-app browser: the home-screen app was installed against
+    // an address the site no longer lives on (the pre-launch Railway host),
+    // and the canonical redirect walks every page to the branded domain,
+    // which iOS treats as leaving the app — so it shows Safari's bars inside
+    // it (James's screenshot, 7 Aug). Nothing fixes that but reinstalling:
+    // the origin is baked in at install time. Say so, instead of leaving the
+    // user staring at browser chrome that "appeared from nowhere".
+    if (navStandalone && !displayStandalone) {
+      setPhase("reinstall");
+      return;
+    }
+
+    if (!("Notification" in window) || !("PushManager" in window)) return;
 
     if (Notification.permission === "granted") {
       // Permission survives, subscriptions sometimes don't (reinstall, new
@@ -73,7 +89,7 @@ export default function PushSetup() {
       return;
     }
     // Only offer where granting is possible and sensible: the installed app.
-    if (standalone && Notification.permission === "default") {
+    if (displayStandalone && Notification.permission === "default") {
       if (localStorage.getItem(DISMISSED_KEY)) return;
       setPhase("offer");
     }
@@ -103,6 +119,26 @@ export default function PushSetup() {
   }
 
   if (phase === "hidden") return null;
+
+  if (phase === "reinstall") {
+    return (
+      <div className="fixed inset-x-4 top-4 z-[70] rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-xl">
+        <div className="flex items-start gap-3">
+          <span className="text-xl">📲</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-amber-900">
+              Launch Pad has moved — reinstall to lose the browser bars
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-amber-800">
+              This icon points at our old address. Delete it from your home
+              screen, open launchpad.theexpertsgroup.co.uk in Safari, then
+              Share → Add to Home Screen. Takes about 30 seconds.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-x-4 top-4 z-[70] rounded-2xl border border-gray-200 bg-white p-4 shadow-xl">
