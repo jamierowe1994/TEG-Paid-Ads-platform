@@ -20,7 +20,7 @@ import { ghlPing } from "@/lib/ghl";
 // The integration probes below expose real detail — Rex account ids, the
 // WhatsApp number, token expiry, CRM errors — so they are ADMIN ONLY. Only the
 // bare store/connected check is public, so an uptime monitor still works.
-const PROBES = ["linkedin", "whatsapp", "rex", "ghl"] as const;
+const PROBES = ["linkedin", "whatsapp", "rex", "ghl", "stripe"] as const;
 
 export async function GET(req: NextRequest) {
   const usingDb = hasDb();
@@ -107,6 +107,47 @@ export async function GET(req: NextRequest) {
   // id it can see — the fastest way to find REX_ACCOUNT_ID.
   if (req.nextUrl.searchParams.has("rex")) {
     body.rex = await rexPing();
+  }
+
+  // /api/health?stripe=1 — the go-live checklist in one call: which MODE the
+  // key is (test/live), whether the webhook secret and all four price ids
+  // are set, and whether the key can actually READ one of those prices (the
+  // classic go-live trap: a live key with test-mode price ids, which fails
+  // only at checkout). Booleans and mode only — never key material.
+  if (req.nextUrl.searchParams.has("stripe")) {
+    const sk = process.env.STRIPE_SECRET_KEY ?? "";
+    const prices = {
+      management: !!process.env.STRIPE_PRICE_MANAGEMENT,
+      starter: !!process.env.STRIPE_PRICE_ADSPEND_STARTER,
+      growth: !!process.env.STRIPE_PRICE_ADSPEND_GROWTH,
+      accelerate: !!process.env.STRIPE_PRICE_ADSPEND_ACCELERATE,
+    };
+    const out: Record<string, unknown> = {
+      configured: !!sk,
+      mode: sk.startsWith("sk_live") ? "LIVE" : sk.startsWith("sk_test") ? "test" : "unknown",
+      webhookSecret: !!process.env.STRIPE_WEBHOOK_SECRET,
+      prices,
+    };
+    if (sk && process.env.STRIPE_PRICE_MANAGEMENT) {
+      try {
+        const { getStripe } = await import("@/lib/stripe");
+        const price = await getStripe().prices.retrieve(
+          process.env.STRIPE_PRICE_MANAGEMENT
+        );
+        out.priceCheck = {
+          ok: true,
+          active: price.active,
+          currency: price.currency,
+          amount: price.unit_amount,
+        };
+      } catch (e) {
+        out.priceCheck = {
+          ok: false,
+          error: e instanceof Error ? e.message : "unreachable",
+        };
+      }
+    }
+    body.stripe = out;
   }
 
   // /api/health?ghl=<brandId> checks that brand's own sub-account credentials
