@@ -48,6 +48,7 @@ interface UserRow {
   password_hash: string;
   meta_campaign_id: string | null;
   rex_user_id: string | null;
+  rex_account_id: string | null;
   ms_email: string | null;
   last_seen_at: string | Date | null;
   ms_connected_at: string | Date | null;
@@ -88,6 +89,7 @@ function fromRow(row: UserRow): StoredUser {
     passwordHash: row.password_hash,
     metaCampaignId: row.meta_campaign_id,
     rexUserId: row.rex_user_id,
+    rexAccountId: row.rex_account_id ?? null,
     msEmail: row.ms_email ?? null,
     lastSeenAt: row.last_seen_at ? new Date(row.last_seen_at).toISOString() : null,
     msConnectedAt: row.ms_connected_at
@@ -261,7 +263,7 @@ export async function updateUser(
          must_reset_password = $24, deactivated_at = $25,
          stripe_customer_id = $26, stripe_subscription_id = $27,
          subscription_status = $28, commitment_ends_at = $29,
-         renews_at = $30
+         renews_at = $30, rex_account_id = $31
        WHERE id = $1`,
       [
         next.id,
@@ -294,6 +296,7 @@ export async function updateUser(
         next.subscriptionStatus ?? null,
         next.commitmentEndsAt ?? null,
         next.renewsAt ?? null,
+        next.rexAccountId ?? null,
       ]
     );
     return next;

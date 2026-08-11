@@ -59,6 +59,10 @@ export interface UserProfile {
   // leads they push to Rex are owned/assigned to them (rather than sitting
   // against the shared API login).
   rexUserId?: string | null;
+  /** Which Rex ACCOUNT rexUserId was resolved against. A cached user id is
+   *  only trusted while the brand still pushes to that account — switching
+   *  accounts (demo -> live, 8 Aug 2026) silently invalidates every cache. */
+  rexAccountId?: string | null;
   // Admin-managed fields:
   location?: string | null; // the agent's town / patch
   onboardingStage?: OnboardingStage;

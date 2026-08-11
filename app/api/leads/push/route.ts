@@ -7,9 +7,9 @@ import {
   setLeadCrmMatch,
 } from "@/lib/leads-store";
 import { syncReferralFromLead } from "@/lib/referrals-store";
-import { findById } from "@/lib/users-store";
+import { findById, updateUser } from "@/lib/users-store";
 import { pushLeadToAtlas, atlasConfigured } from "@/lib/atlas";
-import { pushLeadToRex, rexConfigured, rexFindUserIdByEmail } from "@/lib/rex";
+import { pushLeadToRex, rexConfigured, rexFindUserIdByEmail, rexAccountForBrand } from "@/lib/rex";
 
 // Brands whose CRM is Rex (rexsoftware.com) — the rest either use Atlas
 // (recruitment) or don't have a CRM push wired up yet.
@@ -97,9 +97,24 @@ export async function POST(req: NextRequest) {
       // Who owns this in Rex: an explicit admin-set id wins, otherwise match
       // the agent by email — the same address they sign into Rex with. Both
       // missing → the push still goes through, just unowned.
+      // Only trust the cached Rex user id if it was resolved against the
+      // account this brand CURRENTLY pushes to — ids cached against the demo
+      // account are wrong in the live one (found 8 Aug, switching 4893->3517).
+      const currentAccount = rexAccountForBrand(user.brandId);
+      const cachedUsable =
+        user.rexUserId && user.rexAccountId === currentAccount
+          ? user.rexUserId
+          : null;
       const agentRexUserId =
-        user.rexUserId ??
-        (await rexFindUserIdByEmail(user.email, user.brandId));
+        cachedUsable ?? (await rexFindUserIdByEmail(user.email, user.brandId));
+      // Re-cache a fresh lookup with its account stamp, so the next push
+      // skips the lookup — and a future account switch invalidates it again.
+      if (!cachedUsable && agentRexUserId) {
+        await updateUser(userId, {
+          rexUserId: agentRexUserId,
+          rexAccountId: currentAccount,
+        }).catch(() => {});
+      }
       const result = await pushLeadToRex(lead, user.brandId, {
         agentRexUserId,
       });

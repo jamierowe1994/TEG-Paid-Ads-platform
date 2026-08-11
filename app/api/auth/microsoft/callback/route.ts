@@ -14,7 +14,8 @@ import {
   appOrigin,
 } from "@/lib/microsoft";
 import { setSystemMailbox } from "@/lib/system-mailbox";
-import { rexFindUserIdByEmail } from "@/lib/rex";
+import { rexFindUserIdByEmail,
+  rexAccountForBrand } from "@/lib/rex";
 import { atlasHasUser } from "@/lib/atlas";
 
 // Brands whose CRM is Rex — same set the push/duplicate-check routes use.
@@ -128,7 +129,12 @@ export async function GET(req: NextRequest) {
           } else {
             const rexId = await rexFindUserIdByEmail(me.email, user.brandId);
             if (rexId) {
-              await updateUser(userId, { rexUserId: rexId });
+              await updateUser(userId, {
+                rexUserId: rexId,
+                // Stamp WHICH account this id belongs to — an id from the
+                // demo account is meaningless in the live one.
+                rexAccountId: rexAccountForBrand(user.brandId),
+              });
               crm = "matched";
             } else {
               crm = "nomatch";
