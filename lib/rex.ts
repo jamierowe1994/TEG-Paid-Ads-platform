@@ -546,6 +546,10 @@ export async function rexPing(): Promise<{
   configured: boolean;
   ok: boolean;
   accounts?: Array<{ id: string; name: string | null }>;
+  /** Where "Push to CRM" actually lands, per Rex brand — the id the env
+   *  resolves to, with the account's NAME looked up from the accessible
+   *  list, so "is this still the demo account?" is answered by reading it. */
+  pushTargets?: Array<{ brandId: string; accountId: string | null; accountName: string | null }>;
   error?: string;
 }> {
   if (!rexConfigured()) return { configured: false, ok: false };
@@ -564,7 +568,18 @@ export async function rexPing(): Promise<{
         null;
       return { id: String(id), name };
     });
-    return { configured: true, ok: true, accounts };
+    const REX_BRANDS = ["property", "lettings", "fineandcountry", "auction"];
+    const pushTargets = REX_BRANDS.map((brandId) => {
+      const accountId = rexAccountForBrand(brandId);
+      return {
+        brandId,
+        accountId,
+        accountName: accountId
+          ? (accounts.find((a) => a.id === String(accountId))?.name ?? null)
+          : null,
+      };
+    });
+    return { configured: true, ok: true, accounts, pushTargets };
   } catch (e) {
     return {
       configured: true,
