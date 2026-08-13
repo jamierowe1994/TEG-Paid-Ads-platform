@@ -120,42 +120,29 @@ h5 {
   background: #d1d5db;
 }
 
-/* Experts Group primary button (marketing pages) — glossy 3D red pill:
-   top highlight + inner bottom shadow for depth, a red drop shadow so it
-   pops off the page, lifts on hover and presses in on click. */
+/* Experts Group primary button (marketing pages) — FLAT brand purple.
+   Was a glossy 3D pill: a three-stop gradient, a white gloss highlight, an
+   inner bottom shadow, and two purple-tinted drop shadows. Flat now (James,
+   13 Aug) — one solid #4D1D81, no gradient, no gloss, no inner shading. The
+   shadow that remains is NEUTRAL grey-black, not a purple glow: a coloured
+   halo behind a coloured button is the "backdrop" James wanted gone. The
+   lift and press are kept — they're motion, not paint. */
 .btn-group {
   color: #fff;
-  background: linear-gradient(
-    180deg,
-    var(--group-bright) 0%,
-    var(--group) 52%,
-    var(--group-deep) 100%
-  );
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.5), /* top gloss highlight */
-    inset 0 -3px 6px color-mix(in srgb, var(--group-deep) 55%, transparent), /* inner bottom shadow = depth */
-    0 2px 5px color-mix(in srgb, var(--group) 35%, transparent),
-    0 12px 24px -6px color-mix(in srgb, var(--group) 45%, transparent); /* brand float shadow */
+  background: var(--group);
+  box-shadow: 0 8px 20px -8px rgba(17, 17, 17, 0.35);
   transition:
     transform 0.18s cubic-bezier(0.34, 1.4, 0.5, 1),
     box-shadow 0.25s ease,
-    filter 0.2s ease;
+    background 0.2s ease;
 }
 .btn-group:hover {
   transform: translateY(-2px);
-  filter: brightness(1.05);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    inset 0 -3px 6px color-mix(in srgb, var(--group-deep) 58%, transparent),
-    0 3px 7px color-mix(in srgb, var(--group) 40%, transparent),
-    0 18px 34px -8px color-mix(in srgb, var(--group) 55%, transparent);
+  box-shadow: 0 12px 26px -8px rgba(17, 17, 17, 0.42);
 }
 .btn-group:active {
   transform: translateY(0) scale(0.95);
-  box-shadow:
-    inset 0 2px 5px color-mix(in srgb, var(--group-deep) 62%, transparent), /* pressed-in inner shadow */
-    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    0 1px 3px color-mix(in srgb, var(--group) 30%, transparent);
+  box-shadow: 0 4px 10px -4px rgba(17, 17, 17, 0.35);
 }
 
 /* Shared press/lift for other buttons — hover lifts, click presses in. */
@@ -169,36 +156,18 @@ h5 {
   transform: translateY(0) scale(0.95);
 }
 
-/* Dark 3D pill (Sign in) — black glossy backdrop, lightens on hover. */
-.btn-dark {
-  color: #fff;
-  background: linear-gradient(180deg, #2c2c2f 0%, #141416 55%, #0a0a0b 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    inset 0 -3px 6px rgba(0, 0, 0, 0.55),
-    0 2px 5px rgba(0, 0, 0, 0.3),
-    0 12px 24px -6px rgba(0, 0, 0, 0.4);
-  transition:
-    transform 0.18s cubic-bezier(0.34, 1.4, 0.5, 1),
-    box-shadow 0.25s ease,
-    filter 0.2s ease;
+/* Shared press/lift for other buttons — hover lifts, click presses in. */
+.btn-press {
+  transition: transform 0.18s cubic-bezier(0.34, 1.4, 0.5, 1);
 }
-.btn-dark:hover {
+.btn-press:hover {
   transform: translateY(-2px);
-  filter: brightness(1.45);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    inset 0 -3px 6px rgba(0, 0, 0, 0.55),
-    0 3px 7px rgba(0, 0, 0, 0.35),
-    0 18px 34px -8px rgba(0, 0, 0, 0.5);
 }
-.btn-dark:active {
+.btn-press:active {
   transform: translateY(0) scale(0.95);
-  box-shadow:
-    inset 0 2px 6px rgba(0, 0, 0, 0.7),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    0 1px 3px rgba(0, 0, 0, 0.3);
 }
+
+
 
 /* Brand pills (business names) — monochrome black-and-white by default, and
    each one fills with its own brand colour only when you hover that pill. */
@@ -1234,42 +1203,23 @@ h5 {
   display: inline-block;
   border-radius: 9999px;
   color: #111827;
-  background: linear-gradient(180deg, #fdfdfe 0%, #f3f3f5 55%, #ebebee 100%);
-  box-shadow:
-    inset 0 1.5px 1px rgba(255, 255, 255, 0.95), /* top bevel */
-    inset 0 -2px 3px rgba(17, 24, 39, 0.09), /* bottom bevel */
-    inset 0 -9px 14px -6px rgba(17, 24, 39, 0.14), /* inner shadow — depth */
-    inset 0 0 0 1px rgba(255, 255, 255, 0.6), /* glass edge */
-    0 1px 2px rgba(17, 24, 39, 0.12), /* contact line */
-    0 10px 18px -6px rgba(17, 24, 39, 0.16),
-    0 30px 44px -18px rgba(17, 24, 39, 0.26); /* soft float */
+  /* FLAT (James, 13 Aug). Was a glass pill: a gradient plus six bevel and
+     inner-shadow layers. One solid white now, with a single neutral drop
+     shadow to lift it off the page. Lift and press kept — motion, not
+     paint. */
+  background: #ffffff;
+  box-shadow: 0 10px 22px -10px rgba(17, 24, 39, 0.3);
   transition:
     transform 0.16s cubic-bezier(0.34, 1.3, 0.5, 1),
-    box-shadow 0.16s ease,
-    filter 0.16s ease;
+    box-shadow 0.16s ease;
 }
 .btn-hero-glass:hover {
   transform: translateY(-1px);
-  box-shadow:
-    inset 0 1.5px 1px rgba(255, 255, 255, 0.95),
-    inset 0 -2px 3px rgba(17, 24, 39, 0.09),
-    inset 0 -9px 14px -6px rgba(17, 24, 39, 0.14),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.65),
-    0 1px 2px rgba(17, 24, 39, 0.12),
-    0 13px 22px -6px rgba(17, 24, 39, 0.18),
-    0 36px 52px -18px rgba(17, 24, 39, 0.3);
+  box-shadow: 0 14px 28px -10px rgba(17, 24, 39, 0.36);
 }
 .btn-hero-glass:active {
-  /* Pressed flat into the screen. */
   transform: scale(0.9);
-  filter: brightness(1.04);
-  box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.75),
-    inset 0 -1px 2px rgba(17, 24, 39, 0.06),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.45),
-    inset 0 3px 7px rgba(17, 24, 39, 0.09), /* pressed-in pocket */
-    0 1px 1px rgba(17, 24, 39, 0.08),
-    0 4px 8px -4px rgba(17, 24, 39, 0.1); /* shadow all but gone */
+  box-shadow: 0 4px 10px -6px rgba(17, 24, 39, 0.28);
 }
 
 /* ── Landing page: light theme ─────────────────────────────────────────────
@@ -1373,8 +1323,9 @@ h5 {
 }
 
 /* ── Sign-in button (landing nav) ────────────────────────────────────────
-   James's "fancy" button, adapted: black outline at rest, brand purple on
-   hover, and slightly rounded rather than hard-cornered.
+   James's "fancy" button, adapted: outlined at rest, brand purple on hover.
+   The leading rule from the original is gone (James, 13 Aug) — the word
+   alone, centred.
 
    The notches are the trick. .top-key / .bottom-key-* are short segments
    painted in the PAGE'S OWN background colour and positioned on top of the
@@ -1419,24 +1370,11 @@ h5 {
   font-size: 13px;
   transition: background 0.3s ease-in-out, border-color 0.3s ease-in-out;
 }
-.fancy::before {
-  content: " ";
-  width: 1.25rem;
-  height: 1.5px;
-  background: var(--fancy-line);
-  top: 50%;
-  left: 1.1em;
-  position: absolute;
-  transform: translateY(-50%);
-  transform-origin: center;
-  transition: background 0.3s linear, width 0.3s linear;
-}
 .fancy .text {
   font-size: 1em;
   line-height: 1.2;
-  padding-left: 1.6em;
   display: block;
-  text-align: left;
+  text-align: center;
   transition: all 0.3s ease-in-out;
   text-transform: uppercase;
   text-decoration: none;
@@ -1475,13 +1413,8 @@ h5 {
   background: var(--group);
   border-color: var(--group);
 }
-.fancy:hover::before {
-  width: 0.75rem;
-  background: #ffffff;
-}
 .fancy:hover .text {
   color: #ffffff;
-  padding-left: 1.2em;
 }
 .fancy:hover .top-key {
   left: 1.5rem;
@@ -1502,15 +1435,9 @@ h5 {
 }
 .fancy:focus-visible .text {
   color: #ffffff;
-  padding-left: 1.2em;
-}
-.fancy:focus-visible::before {
-  width: 0.75rem;
-  background: #ffffff;
 }
 @media (prefers-reduced-motion: reduce) {
   .fancy,
-  .fancy::before,
   .fancy .text,
   .fancy .top-key,
   .fancy .bottom-key-1,
