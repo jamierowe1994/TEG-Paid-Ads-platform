@@ -20,7 +20,6 @@ import HowItWorksPhone from "@/components/HowItWorksPhone";
 import TrialProof from "@/components/TrialProof";
 import PainPoints from "@/components/PainPoints";
 import BackToTop from "@/components/BackToTop";
-import BrandColorPicker from "@/components/BrandColorPicker";
 import ICONS, { SocialIcon } from "@/components/SocialIcons";
 
 // The site's backdrop — a very light grey that runs the length of the page.
@@ -65,9 +64,6 @@ export default function LandingPage() {
     <main className="landing-light relative min-h-screen max-lg:overflow-x-clip">
       <StandaloneGuard />
       <SmoothScroll />
-      {/* Floating brand-colour switcher — lets the group audition a new
-          brand colour against the live page. Remove once they've chosen. */}
-      <BrandColorPicker />
       {/* The light grey backdrop, fixed so it runs the whole length of the page. */}
       <div
         aria-hidden
@@ -517,9 +513,16 @@ export default function LandingPage() {
           <BackToTop className="absolute right-6 top-6 sm:right-10 sm:top-10" />
           <div className="flex flex-col justify-between gap-10 sm:flex-row sm:gap-14">
             <div className="max-w-xs">
-              <p className="whitespace-nowrap text-lg font-semibold tracking-tight text-gray-700">
-                The Experts Group
-              </p>
+              {/* The group's own logo, per the 2026 brand guidelines. Purple
+                  logogram + black wordmark is the specified version over a
+                  light background; the lockup is fixed, so it ships as one
+                  image rather than being rebuilt from type. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/teg-logo.webp"
+                alt="The Experts Group"
+                className="h-14 w-auto"
+              />
               <p className="mt-3 text-sm leading-relaxed text-gray-500">
                 Paid ads, built and run for Experts Group agents — tracked
                 from first click to your CRM.

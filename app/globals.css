@@ -28,18 +28,23 @@
   --font-body: var(--font-montserrat), system-ui, -apple-system, sans-serif;
   --font-heading: var(--font-montserrat), system-ui, -apple-system, sans-serif;
 
-  /* Experts Group parent brand (marketing / pre-login pages) */
-  /* The official Experts Group red, as issued by marketing (and as used in the
-     partner pack). Deeper and less orange than the #e31f36 the marketing pages
-     ran on before. Marketing surfaces (landing + login) key off this. */
-  --group: #a72a35;
-  --group-dark: #c11a2e;
-  --group-soft: #fef2f2;
-  /* Derived shades for gradients/shadows. The landing page's brand-colour
-     picker (BrandColorPicker) overrides all three --group* variables inline
-     on <html>, so everything keyed off them repaints live. */
-  --group-bright: #cd3744;
-  --group-deep: #87222b;
+  /* Experts Group parent brand (marketing / pre-login pages).
+     TEG Brand Guidelines 2026: Experts Group Purple #4D1D81 is the accent
+     across the whole site — the colour was formally chosen on 13 Aug 2026,
+     replacing the interim red. */
+  --group: #4d1d81;
+  --group-dark: #5f2599;
+  --group-soft: #f4efff;
+  /* Gradient/shadow shades. --group-bright and the soft tint are the
+     guidelines' OWN secondaries (#9565FF, #E3D7FF) rather than computed
+     lightenings, so gradients land on real brand colours; --group-deep is a
+     darker purple for the inner shadows that give buttons their depth. */
+  --group-bright: #9565ff;
+  --group-deep: #35145a;
+  /* The rest of the 2026 palette, for anything that needs it directly. */
+  --group-lilac: #e3d7ff;
+  --group-ink: #111111;
+  --group-paper: #f1f1f1;
 
   /* Per-brand accent — overridden inside the dashboard via inline style */
   --accent: #111827;
