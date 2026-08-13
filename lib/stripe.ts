@@ -38,6 +38,15 @@ export function getStripe(): Stripe {
   return cached;
 }
 
+const DEFAULT_PROMO_EMAILS = "howard@thepropertyexperts.co.uk";
+export function promoAllowed(email: string): boolean {
+  const list = (process.env.STRIPE_PROMO_EMAILS ?? DEFAULT_PROMO_EMAILS)
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  return list.includes(email.trim().toLowerCase());
+}
+
 /** True when the configured key is a live one. Used to keep test data honest. */
 export function isLiveMode(): boolean {
   return (process.env.STRIPE_SECRET_KEY ?? "").startsWith("sk_live");
@@ -156,7 +165,11 @@ export async function createCheckoutSession(opts: {
     },
     success_url: opts.successUrl,
     cancel_url: opts.cancelUrl,
-    allow_promotion_codes: true,
+    // The promo-code box shows ONLY for allowlisted test emails (Howard's
+    // 50p go-live run). Everyone else gets a checkout with no code field —
+    // a visible "add promotion code" is an invitation to go hunting for
+    // one. STRIPE_PROMO_EMAILS (comma-separated) overrides the default.
+    allow_promotion_codes: promoAllowed(user.email),
     billing_address_collection: "auto",
   });
 
