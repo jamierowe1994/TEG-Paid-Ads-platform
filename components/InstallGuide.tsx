@@ -5,9 +5,10 @@
 // Agents overwhelmingly aren't installing the PWA (James, 13 Aug), and the
 // app is where Launch Pad actually works: full screen, and the only place a
 // lead alert can open the lead itself (iOS never lets a link open a
-// home-screen app — see PushSetup). So the prompt lives under their name in
-// the sidebar, is dismissed forever with one tap, and stays reachable from
-// Profile for anyone who dismissed it and later wants it.
+// home-screen app — see PushSetup). So the prompt sits ABOVE their name in
+// the sidebar — everything below the name is settings and sign-out, and this
+// isn't that — the whole card is one tap, and opening it is also what
+// dismisses it for good. Profile keeps it reachable afterwards.
 //
 // The illustrations are DRAWN, not screenshotted, and deliberately so: half
 // these steps are iOS's own share sheet, which no web page can capture, so a
@@ -45,47 +46,44 @@ export function InstallPrompt({ accent }: { accent: string }) {
     setShow(true);
   }, []);
 
-  function dismiss() {
+  /* Persisting "seen" and HIDING the card are separate on purpose. The card
+     renders the guide, so hiding it on tap unmounted the guide before it
+     could appear — the first cut did exactly that and the guide never
+     opened. Remember it on tap; hide the card once the guide is closed. */
+  function markSeen() {
     try {
       localStorage.setItem(SEEN_KEY, "1");
     } catch {
       /* ignore */
     }
-    setShow(false);
   }
 
   if (!show) return null;
   return (
     <>
-      <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-3.5">
+      {/* The whole card is the button — no "Show me how" / "No thanks" pair
+          (James, 13 Aug). Opening the guide IS the dismissal: they've seen
+          it, so it doesn't come back, and Profile keeps it reachable. */}
+      <button
+        onClick={() => {
+          markSeen();
+          setOpen(true);
+        }}
+        className="mb-4 w-full rounded-2xl border border-gray-200 bg-white p-3.5 text-left transition hover:border-gray-300 active:scale-[0.99]"
+      >
         <p className="text-[13px] font-semibold text-gray-900">
           📲 Got the app yet?
         </p>
         <p className="mt-1 text-[12px] leading-relaxed text-gray-500">
-          Full screen, and lead alerts open straight on the lead.
+          Full screen, and lead alerts open straight on the lead. Tap to see how.
         </p>
-        <div className="mt-2.5 flex items-center gap-2">
-          <button
-            onClick={() => setOpen(true)}
-            className="rounded-full px-3.5 py-1.5 text-[12px] font-semibold text-white transition active:scale-[0.97]"
-            style={{ backgroundColor: accent }}
-          >
-            Show me how
-          </button>
-          <button
-            onClick={dismiss}
-            className="rounded-full px-2.5 py-1.5 text-[12px] font-medium text-gray-400 hover:text-gray-600"
-          >
-            No thanks
-          </button>
-        </div>
-      </div>
+      </button>
       {open && (
         <InstallGuide
           accent={accent}
           onClose={() => {
-            dismiss();
             setOpen(false);
+            setShow(false);
           }}
         />
       )}

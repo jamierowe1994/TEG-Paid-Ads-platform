@@ -633,6 +633,9 @@ export default function DashboardLayout({
         {/* Name and photo only — the email was noise, and they know their own
             address. Sign out drops its box for an icon and a label. */}
         <div className="px-5 pb-7">
+          {/* Above the name: everything below it is settings / sign out, and
+              this isn't that. Dismissed forever on tap; Profile keeps it. */}
+          <InstallPrompt accent={brand.accent} />
           <div className="flex items-center gap-3.5">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-200 text-base font-semibold text-gray-600">
               {user.photo ? (
@@ -650,9 +653,7 @@ export default function DashboardLayout({
               {user.name}
             </p>
           </div>
-          {/* "Got the app yet?" — dismissed forever with one tap, and still
-              reachable from Profile after. */}
-          <InstallPrompt accent={brand.accent} />
+
           <button
             onClick={async () => {
               // AWAIT the logout before navigating. Fired-and-forgotten, the
