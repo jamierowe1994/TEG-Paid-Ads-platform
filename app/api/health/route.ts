@@ -116,11 +116,12 @@ export async function GET(req: NextRequest) {
   // only at checkout). Booleans and mode only — never key material.
   if (req.nextUrl.searchParams.has("stripe")) {
     const sk = process.env.STRIPE_SECRET_KEY ?? "";
+    const { packagePriceEnv } = await import("@/lib/stripe");
+    // One all-in price per package (12 Aug); legacy ADSPEND_* names honoured.
     const prices = {
-      management: !!process.env.STRIPE_PRICE_MANAGEMENT,
-      starter: !!process.env.STRIPE_PRICE_ADSPEND_STARTER,
-      growth: !!process.env.STRIPE_PRICE_ADSPEND_GROWTH,
-      accelerate: !!process.env.STRIPE_PRICE_ADSPEND_ACCELERATE,
+      starter: !!packagePriceEnv("starter"),
+      growth: !!packagePriceEnv("growth"),
+      accelerate: !!packagePriceEnv("accelerate"),
     };
     const out: Record<string, unknown> = {
       configured: !!sk,
@@ -128,12 +129,11 @@ export async function GET(req: NextRequest) {
       webhookSecret: !!process.env.STRIPE_WEBHOOK_SECRET,
       prices,
     };
-    if (sk && process.env.STRIPE_PRICE_MANAGEMENT) {
+    const probePrice = packagePriceEnv("starter");
+    if (sk && probePrice) {
       try {
         const { getStripe } = await import("@/lib/stripe");
-        const price = await getStripe().prices.retrieve(
-          process.env.STRIPE_PRICE_MANAGEMENT
-        );
+        const price = await getStripe().prices.retrieve(probePrice);
         out.priceCheck = {
           ok: true,
           active: price.active,

@@ -44,16 +44,40 @@ export function isLiveMode(): boolean {
   return (process.env.STRIPE_SECRET_KEY ?? "").startsWith("sk_live");
 }
 
-const AD_SPEND_ENV: Record<AdPackage["id"], string> = {
-  starter: "STRIPE_PRICE_ADSPEND_STARTER",
-  growth: "STRIPE_PRICE_ADSPEND_GROWTH",
-  accelerate: "STRIPE_PRICE_ADSPEND_ACCELERATE",
+/* ONE all-in price per package (James, 12 Aug 2026). The checkout used to
+ * split management fee + ad-spend tier into two line items — still a single
+ * payment, but it demanded FOUR Stripe prices where the live catalogue holds
+ * three all-in products, and the split told Stripe something only the app
+ * needs to know: how much of the price goes to Meta is portal logic
+ * (packages.ts adSpend / adSpendCapFor), not billing structure.
+ *
+ * Env: STRIPE_PRICE_<PACKAGE>, with the legacy STRIPE_PRICE_ADSPEND_<...>
+ * names still honoured so existing Railway config keeps working. The price
+ * must be the package's TOTAL (£250/£400/£550) — the amount charged is
+ * whatever the Stripe price says, so a tier-sized price here would
+ * undercharge by the management fee. STRIPE_PRICE_MANAGEMENT is no longer
+ * used anywhere.
+ */
+const PACKAGE_PRICE_ENV: Record<AdPackage["id"], string[]> = {
+  starter: ["STRIPE_PRICE_STARTER", "STRIPE_PRICE_ADSPEND_STARTER"],
+  growth: ["STRIPE_PRICE_GROWTH", "STRIPE_PRICE_ADSPEND_GROWTH"],
+  accelerate: ["STRIPE_PRICE_ACCELERATE", "STRIPE_PRICE_ADSPEND_ACCELERATE"],
 };
 
+export function packagePriceEnv(packageId: string): string | null {
+  const names = PACKAGE_PRICE_ENV[packageId as AdPackage["id"]];
+  if (!names) return null;
+  for (const n of names) {
+    const v = process.env[n]?.trim();
+    if (v) return v;
+  }
+  return null;
+}
+
 /**
- * The two line items for a package, or a list of what's missing. Returning the
- * missing names rather than throwing means the checkout route can say exactly
- * which env var to set instead of a generic 500.
+ * The line item for a package, or what's missing. Returning the missing name
+ * rather than throwing means the checkout route can say exactly which env var
+ * to set instead of a generic 500.
  */
 export function lineItemsFor(
   packageId: string
@@ -62,23 +86,9 @@ export function lineItemsFor(
   | { ok: false; missing: string[] } {
   const pkg = packageById(packageId);
   if (!pkg) return { ok: false, missing: ["a valid packageId"] };
-
-  const management = process.env.STRIPE_PRICE_MANAGEMENT;
-  const adSpend = process.env[AD_SPEND_ENV[pkg.id]];
-
-  const missing: string[] = [];
-  if (!management) missing.push("STRIPE_PRICE_MANAGEMENT");
-  if (!adSpend) missing.push(AD_SPEND_ENV[pkg.id]);
-  if (missing.length) return { ok: false, missing };
-
-  return {
-    ok: true,
-    pkg,
-    items: [
-      { price: management as string, quantity: 1 },
-      { price: adSpend as string, quantity: 1 },
-    ],
-  };
+  const price = packagePriceEnv(pkg.id);
+  if (!price) return { ok: false, missing: [PACKAGE_PRICE_ENV[pkg.id][0]] };
+  return { ok: true, pkg, items: [{ price, quantity: 1 }] };
 }
 
 /** The 3-month minimum term from the partner pack, as an ISO date. */
