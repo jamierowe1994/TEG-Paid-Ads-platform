@@ -39,9 +39,27 @@ export function saveUser(user: UserProfile) {
 
 // Re-validate the session against the server. Returns the fresh user (and
 // refreshes the cache) or null if not signed in.
+/* Tell the server when we're the INSTALLED app. A home-screen PWA sends the
+   same user-agent as the browser it was installed from, so display-mode is
+   the only signal there is, and only the page can read it. Feeds the admin's
+   "has the app" badge — nothing gated on it. */
+function standaloneHeaders(): Record<string, string> {
+  try {
+    const on =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (navigator as unknown as { standalone?: boolean }).standalone === true;
+    return on ? { "x-teg-standalone": "1" } : {};
+  } catch {
+    return {};
+  }
+}
+
 export async function refreshUser(): Promise<UserProfile | null> {
   try {
-    const res = await fetch("/api/auth/me", { cache: "no-store" });
+    const res = await fetch("/api/auth/me", {
+      cache: "no-store",
+      headers: standaloneHeaders(),
+    });
     if (!res.ok) {
       window.localStorage.removeItem(USER_KEY);
       return null;
@@ -216,7 +234,10 @@ export async function signOut() {
 // ── Leads (server-side, Postgres on Railway) ─────────────────────────────
 export async function fetchLeads(): Promise<Lead[]> {
   try {
-    const res = await fetch("/api/leads", { cache: "no-store" });
+    const res = await fetch("/api/leads", {
+      cache: "no-store",
+      headers: standaloneHeaders(),
+    });
     if (!res.ok) return [];
     return (await res.json()) as Lead[];
   } catch {

@@ -93,6 +93,8 @@ export function InstallPrompt({ accent }: { accent: string }) {
 
 /* ── The guide ──────────────────────────────────────────────────────────── */
 
+type Platform = "ios" | "android";
+
 export default function InstallGuide({
   accent,
   onClose,
@@ -100,8 +102,59 @@ export default function InstallGuide({
   accent: string;
   onClose: () => void;
 }) {
+  /* Ask, don't assume. Sniffing the user-agent gets it wrong often enough
+     (iPad reporting as desktop, Android tablets, someone reading this on a
+     laptop before doing it on their phone) that a two-button question is
+     both more reliable and faster than a wrong guess (James, 13 Aug). */
+  const [platform, setPlatform] = useState<Platform | null>(null);
   const [step, setStep] = useState(0);
-  const steps = STEPS(accent);
+
+  if (!platform) {
+    return (
+      <div
+        className="fixed inset-0 z-[120] flex items-end justify-center bg-gray-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-6"
+        onClick={onClose}
+      >
+        <div
+          className="w-full max-w-md rounded-t-3xl bg-white px-5 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-7 sm:rounded-3xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <p className="text-center text-lg font-semibold tracking-tight text-gray-900">
+            Which phone have you got?
+          </p>
+          <p className="mt-1 text-center text-sm text-gray-500">
+            The steps are slightly different on each.
+          </p>
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            {([
+              { id: "ios" as const, label: "iPhone", sub: "or iPad", icon: "" },
+              { id: "android" as const, label: "Android", sub: "Samsung, Pixel…", icon: "🤖" },
+            ]).map((p) => (
+              <button
+                key={p.id}
+                onClick={() => setPlatform(p.id)}
+                className="rounded-2xl border border-gray-200 px-4 py-6 transition hover:border-gray-900 active:scale-[0.98]"
+              >
+                <span className="block text-3xl">{p.icon}</span>
+                <span className="mt-2 block text-[15px] font-semibold text-gray-900">
+                  {p.label}
+                </span>
+                <span className="block text-[12px] text-gray-400">{p.sub}</span>
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={onClose}
+            className="mt-4 w-full rounded-2xl py-2.5 text-sm font-medium text-gray-400"
+          >
+            Not now
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const steps = STEPS(accent, platform);
   const s = steps[step];
   const last = step === steps.length - 1;
 
@@ -118,7 +171,17 @@ export default function InstallGuide({
         <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-              Step {step + 1} of {steps.length}
+              {platform === "ios" ? "iPhone" : "Android"} · step {step + 1} of{" "}
+              {steps.length}
+              <button
+                onClick={() => {
+                  setPlatform(null);
+                  setStep(0);
+                }}
+                className="ml-2 font-medium normal-case tracking-normal underline underline-offset-2"
+              >
+                change
+              </button>
             </p>
             <p className="truncate text-[15px] font-semibold text-gray-900">
               {s.title}
@@ -180,52 +243,79 @@ export default function InstallGuide({
 
 /* ── Steps ──────────────────────────────────────────────────────────────── */
 
-function STEPS(accent: string) {
+function STEPS(accent: string, platform: Platform) {
+  const ios = platform === "ios";
   return [
     {
       title: "Open it on your phone",
       art: <ArtSafari accent={accent} />,
       body: (
         <>
-          On your phone, open <strong>Safari</strong> and go to{" "}
-          <strong>launchpad.theexpertsgroup.co.uk</strong>. Sign in as normal.
+          On your phone, open <strong>{ios ? "Safari" : "Chrome"}</strong> and go
+          to <strong>launchpad.theexpertsgroup.co.uk</strong>. Sign in as normal.
         </>
       ),
-      note: "It has to be Safari on an iPhone — Chrome on iOS can't add apps to the home screen. On Android, use Chrome.",
+      note: ios
+        ? "It has to be Safari — Chrome on an iPhone can't add apps to the home screen."
+        : "Chrome is the reliable one. Samsung Internet works too; other browsers often can't install.",
     },
-    {
-      title: "Tap Share",
-      art: <ArtShareButton accent={accent} />,
-      body: (
-        <>
-          Tap the <strong>Share</strong> button — the square with an arrow
-          pointing up. It&apos;s at the bottom of the screen on newer iPhones,
-          top-right on older ones.
-        </>
-      ),
-    },
-    {
-      title: "Add to Home Screen",
-      art: <ArtAddToHome accent={accent} />,
-      body: (
-        <>
-          Scroll down the list and tap{" "}
-          <strong>Add to Home Screen</strong>, then <strong>Add</strong> in the
-          top corner.
-        </>
-      ),
-      note: "On Android it's the ⋮ menu → Install app / Add to Home screen.",
-    },
+    ios
+      ? {
+          title: "Tap Share",
+          art: <ArtShareButton accent={accent} />,
+          body: (
+            <>
+              Tap the <strong>Share</strong> button — the square with an arrow
+              pointing up. It&apos;s at the bottom of the screen on newer
+              iPhones, top-right on older ones.
+            </>
+          ),
+          note: undefined as string | undefined,
+        }
+      : {
+          title: "Open the menu",
+          art: <ArtAndroidMenu accent={accent} />,
+          body: (
+            <>
+              Tap the <strong>⋮</strong> menu in the top-right corner of Chrome.
+            </>
+          ),
+          note: undefined as string | undefined,
+        },
+    ios
+      ? {
+          title: "Add to Home Screen",
+          art: <ArtAddToHome accent={accent} />,
+          body: (
+            <>
+              Scroll down the list and tap <strong>Add to Home Screen</strong>,
+              then <strong>Add</strong> in the top corner.
+            </>
+          ),
+          note: undefined as string | undefined,
+        }
+      : {
+          title: "Install app",
+          art: <ArtAndroidInstall accent={accent} />,
+          body: (
+            <>
+              Tap <strong>Install app</strong> (some phones say{" "}
+              <strong>Add to Home screen</strong>), then <strong>Install</strong>{" "}
+              to confirm.
+            </>
+          ),
+          note: "Chrome sometimes offers an 'Install' banner at the bottom of the page — that does the same job in one tap.",
+        },
     {
       title: "Open it from your home screen",
       art: <ArtHomeIcon accent={accent} />,
       body: (
         <>
-          Close Safari and open <strong>Launch Pad</strong> from your home
-          screen. It fills the whole screen — no address bar.
+          Close {ios ? "Safari" : "Chrome"} and open <strong>Launch Pad</strong>{" "}
+          from your home screen. It fills the whole screen — no address bar.
         </>
       ),
-      note: "Sign in once more here. The app has its own memory, so signing in inside Safari doesn't carry over.",
+      note: "Sign in once more here. The app has its own memory, so signing in inside the browser doesn't carry over.",
     },
     {
       title: "Turn on lead alerts",
@@ -233,11 +323,13 @@ function STEPS(accent: string) {
       body: (
         <>
           A banner appears at the bottom: <strong>Get lead alerts on this
-          phone</strong>. Tap <strong>Turn on</strong>, then <strong>Allow</strong>{" "}
-          when your phone asks.
+          phone</strong>. Tap <strong>Turn on</strong>, then{" "}
+          <strong>Allow</strong> when your phone asks.
         </>
       ),
-      note: "This is the bit that matters: a tapped alert opens that exact lead inside the app. Without it you'll only get the WhatsApp message, which opens Safari.",
+      note: ios
+        ? "This is the bit that matters: a tapped alert opens that exact lead inside the app. Without it you'll only get the WhatsApp message, which opens Safari."
+        : "This is the bit that matters: a tapped alert opens that exact lead inside the app. Android may also ask you to allow notifications for Chrome — say yes.",
     },
     {
       title: "Check it works",
@@ -371,6 +463,54 @@ function ArtAddToHome({ accent }: { accent: string }) {
           <span className="text-[8px] text-gray-500">Markup</span>
           <span className="text-[8px] text-gray-300">✎</span>
         </div>
+      </div>
+    </Phone>
+  );
+}
+
+function ArtAndroidMenu({ accent }: { accent: string }) {
+  return (
+    <Phone>
+      {/* Chrome's top bar, with the overflow menu called out */}
+      <div className="absolute inset-x-0 top-7 flex items-center gap-1.5 bg-white px-2 py-1.5">
+        <span className="text-[7px] text-gray-400">🔒</span>
+        <span className="flex-1 truncate text-[7px] text-gray-700">
+          launchpad.theexpertsgroup.co.uk
+        </span>
+        <span className="relative px-1 text-[10px] font-bold" style={{ color: accent }}>
+          ⋮
+          <span
+            className="absolute -inset-1 animate-pulse rounded-full border-2"
+            style={{ borderColor: accent }}
+          />
+        </span>
+      </div>
+      <div className="pt-6">
+        <MiniDash accent={accent} />
+      </div>
+    </Phone>
+  );
+}
+
+function ArtAndroidInstall({ accent }: { accent: string }) {
+  return (
+    <Phone>
+      <div className="absolute right-2 top-9 w-[130px] rounded-lg bg-white p-1.5 shadow-2xl">
+        {["New tab", "Bookmarks", "History", "Downloads"].map((t) => (
+          <div key={t} className="px-1.5 py-1.5 text-[8px] text-gray-500">
+            {t}
+          </div>
+        ))}
+        <div
+          className="rounded px-1.5 py-1.5 text-[8px] font-bold"
+          style={{ backgroundColor: `${accent}18`, color: accent, outline: `2px solid ${accent}` }}
+        >
+          Install app
+        </div>
+        <div className="px-1.5 py-1.5 text-[8px] text-gray-500">Settings</div>
+      </div>
+      <div className="pt-6">
+        <MiniDash accent={accent} />
       </div>
     </Phone>
   );

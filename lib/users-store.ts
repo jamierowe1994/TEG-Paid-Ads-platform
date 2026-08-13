@@ -51,6 +51,9 @@ interface UserRow {
   rex_account_id: string | null;
   ms_email: string | null;
   last_seen_at: string | Date | null;
+  mobile_seen_at: string | Date | null;
+  desktop_seen_at: string | Date | null;
+  app_seen_at: string | Date | null;
   ms_connected_at: string | Date | null;
   ms_refresh_token: string | null;
   cancel_requested_at: string | Date | null;
@@ -92,6 +95,9 @@ function fromRow(row: UserRow): StoredUser {
     rexAccountId: row.rex_account_id ?? null,
     msEmail: row.ms_email ?? null,
     lastSeenAt: row.last_seen_at ? new Date(row.last_seen_at).toISOString() : null,
+    mobileSeenAt: row.mobile_seen_at ? new Date(row.mobile_seen_at).toISOString() : null,
+    desktopSeenAt: row.desktop_seen_at ? new Date(row.desktop_seen_at).toISOString() : null,
+    appSeenAt: row.app_seen_at ? new Date(row.app_seen_at).toISOString() : null,
     msConnectedAt: row.ms_connected_at
       ? new Date(row.ms_connected_at).toISOString()
       : null,
@@ -135,19 +141,41 @@ function fromRow(row: UserRow): StoredUser {
  * endpoints every live session hits anyway (auth/me, leads list), so an
  * agent's ordinary use of the app IS the heartbeat. Admin-only output. */
 const lastTouch = new Map<string, number>();
-export async function touchLastSeen(userId: string): Promise<void> {
-  const prev = lastTouch.get(userId) ?? 0;
+export type SeenSurface = "mobile" | "desktop" | "app";
+
+export async function touchLastSeen(
+  userId: string,
+  surface: SeenSurface = "desktop"
+): Promise<void> {
+  // Throttle per user PER SURFACE: someone on a laptop and a phone at once
+  // must stamp both, which a single per-user throttle would swallow.
+  const key = `${userId}:${surface}`;
+  const prev = lastTouch.get(key) ?? 0;
   if (Date.now() - prev < 60_000) return;
-  lastTouch.set(userId, Date.now());
+  lastTouch.set(key, Date.now());
+  // The installed app is also a mobile session — stamp both so "has a phone
+  // session" stays true regardless of how they got there.
+  const cols =
+    surface === "app"
+      ? ["app_seen_at", "mobile_seen_at"]
+      : surface === "mobile"
+        ? ["mobile_seen_at"]
+        : ["desktop_seen_at"];
   try {
     if (hasDb()) {
-      await q("UPDATE users SET last_seen_at = now() WHERE id = $1", [userId]);
+      const sets = ["last_seen_at = now()", ...cols.map((c) => `${c} = now()`)];
+      await q(`UPDATE users SET ${sets.join(", ")} WHERE id = $1`, [userId]);
       return;
     }
     const all = await readAllFile();
     const idx = all.findIndex((u) => u.id === userId);
     if (idx !== -1) {
-      all[idx] = { ...all[idx], lastSeenAt: new Date().toISOString() };
+      const now = new Date().toISOString();
+      const patch: Record<string, string> = { lastSeenAt: now };
+      if (cols.includes("app_seen_at")) patch.appSeenAt = now;
+      if (cols.includes("mobile_seen_at")) patch.mobileSeenAt = now;
+      if (cols.includes("desktop_seen_at")) patch.desktopSeenAt = now;
+      all[idx] = { ...all[idx], ...patch };
       await writeAllFile(all);
     }
   } catch {
@@ -263,7 +291,8 @@ export async function updateUser(
          must_reset_password = $24, deactivated_at = $25,
          stripe_customer_id = $26, stripe_subscription_id = $27,
          subscription_status = $28, commitment_ends_at = $29,
-         renews_at = $30, rex_account_id = $31
+         renews_at = $30, rex_account_id = $31,
+         mobile_seen_at = $32, desktop_seen_at = $33, app_seen_at = $34
        WHERE id = $1`,
       [
         next.id,
@@ -297,6 +326,9 @@ export async function updateUser(
         next.commitmentEndsAt ?? null,
         next.renewsAt ?? null,
         next.rexAccountId ?? null,
+        next.mobileSeenAt ?? null,
+        next.desktopSeenAt ?? null,
+        next.appSeenAt ?? null,
       ]
     );
     return next;

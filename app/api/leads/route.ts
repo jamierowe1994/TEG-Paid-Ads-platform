@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requestSurface } from "@/lib/surface";
 import { requirePaidUser } from "@/lib/api-guard";
 import {
   listLeadsForUser,
@@ -29,7 +30,7 @@ export async function GET(req: NextRequest) {
   if (guard.error) return guard.error;
   // Fire-and-forget presence stamp — the leads list is the page open agents
   // actually live on, so it's the best heartbeat there is.
-  void touchLastSeen(guard.user.id);
+  void touchLastSeen(guard.user.id, requestSurface(req));
   return NextResponse.json(await listLeadsForUser(guard.user.id));
 }
 

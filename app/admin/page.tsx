@@ -1614,6 +1614,7 @@ export default function AdminPage() {
                       <th className="px-5 py-3 font-medium">Business</th>
                       <th className="px-5 py-3 font-medium">Stage</th>
                       <th className="px-5 py-3 font-medium">Package</th>
+                      <th className="px-5 py-3 font-medium">Device</th>
                       <th className="px-5 py-3 font-medium">Online</th>
                       <th className="px-5 py-3 font-medium">Email connected</th>
                       <th className="px-5 py-3 font-medium">Signed up</th>
@@ -1650,6 +1651,41 @@ export default function AdminPage() {
                             {packageById(u.packageId)?.name ?? u.packageId}
                             <span className="ml-1 text-xs text-gray-400">
                               £{packageById(u.packageId)?.price}/mo
+                            </span>
+                          </td>
+                          {/* Which surfaces they've actually used. "App" only
+                              ever comes from the installed PWA (a home-screen
+                              app sends the browser's own user-agent, so the
+                              page self-reports it) — the thing James wants to
+                              track is exactly who has picked the app up. */}
+                          <td className="px-5 py-3">
+                            <span className="flex items-center gap-1.5">
+                              {u.appSeenAt ? (
+                                <span
+                                  className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700"
+                                  title={`App last opened ${new Date(u.appSeenAt).toLocaleString("en-GB")}`}
+                                >
+                                  📲 App
+                                </span>
+                              ) : u.mobileSeenAt ? (
+                                <span
+                                  className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800"
+                                  title={`Mobile browser, no app. Last ${new Date(u.mobileSeenAt).toLocaleString("en-GB")}`}
+                                >
+                                  📱 Mobile
+                                </span>
+                              ) : null}
+                              {u.desktopSeenAt && (
+                                <span
+                                  className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500"
+                                  title={`Desktop last ${new Date(u.desktopSeenAt).toLocaleString("en-GB")}`}
+                                >
+                                  💻
+                                </span>
+                              )}
+                              {!u.appSeenAt && !u.mobileSeenAt && !u.desktopSeenAt && (
+                                <span className="text-xs text-gray-300">—</span>
+                              )}
                             </span>
                           </td>
                           {/* Presence from last_seen_at (stamped by ordinary

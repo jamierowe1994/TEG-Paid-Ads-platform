@@ -79,6 +79,11 @@ export interface UserProfile {
   /** Last authenticated request, throttled to ~1/min. Drives the admin
    *  "online" dot only — never shown to agents. */
   lastSeenAt?: string | null;
+  /** Last seen on each surface, so the admin can tell who has actually
+   *  picked the app up. appSeenAt only ever set from the INSTALLED PWA. */
+  mobileSeenAt?: string | null;
+  desktopSeenAt?: string | null;
+  appSeenAt?: string | null;
   msConnectedAt?: string | null;
   // Set when the agent asks to cancel their subscription — the plan stays
   // active until the period end; clearing it resumes.
