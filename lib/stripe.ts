@@ -14,7 +14,6 @@ import type { StoredUser } from "./users-store";
  * Env (set in .env.local locally, and on the Railway service for deploys):
  *   STRIPE_SECRET_KEY           sk_test_… / sk_live_…
  *   STRIPE_WEBHOOK_SECRET       whsec_…  (from `stripe listen` or the dashboard)
- *   STRIPE_PRICE_MANAGEMENT     price_…  the flat £100/month fee
  *   STRIPE_PRICE_ADSPEND_STARTER|_GROWTH|_ACCELERATE   price_…
  *
  * Run `node scripts/stripe-setup.mjs` to create the products/prices and print
