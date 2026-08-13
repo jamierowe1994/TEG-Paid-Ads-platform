@@ -38,7 +38,7 @@ export function getStripe(): Stripe {
   return cached;
 }
 
-const DEFAULT_PROMO_EMAILS = "howard.russell@theexpertsgroup.co.uk";
+const DEFAULT_PROMO_EMAILS = "james@therecruitmentexperts.co.uk";
 export function promoAllowed(email: string): boolean {
   const list = (process.env.STRIPE_PROMO_EMAILS ?? DEFAULT_PROMO_EMAILS)
     .split(",")
