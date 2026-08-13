@@ -601,21 +601,29 @@ export default function DashboardOverview() {
     .filter((l) => l.stage !== "new" && !resting(l))
     .sort((a, b) => a.receivedAt.localeCompare(b.receivedAt));
 
-  // Ad spend running total. Real Meta spend for the agent's own campaign(s)
-  // when the admin has tagged them; otherwise paced against the monthly cap
-  // by day-of-month — an estimate, labelled as such.
+  /* Ad spend running total — REAL Meta spend only.
+   *
+   * This used to fall back to "cap ÷ days-in-month × today" whenever Meta
+   * had nothing to report, distinguished from real money by a small "Est.
+   * pace" label. James signed in minutes after paying, with no campaigns
+   * assigned, and saw £63 of spend (150/31*13) — a number the platform
+   * invented about the agent's own money. A made-up figure that looks
+   * exactly like a real one is worse than no figure: it can't be reconciled,
+   * it undermines every other number on the page, and here it implied we'd
+   * spent from a budget before a single ad existed.
+   *
+   * Now: no Meta data -> no number. The tile says the ads aren't running
+   * yet, which is the truth and is also useful. */
   const now = new Date();
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   // TLE's Pro licence allows £100/month, not the package tier — see
   // adSpendCapFor. Reading pkg.adSpend here showed them a budget twice the
   // size of the real one, so the bar never looked close to spent.
   const cap = adSpendCapFor(user.brandId, user.packageId);
   const spendIsLive = myMeta !== null;
-  const spent = spendIsLive
-    ? Math.round(myMeta.spend)
-    : Math.min(cap, Math.round((cap / daysInMonth) * now.getDate()));
+  const spent = spendIsLive ? Math.round(myMeta.spend) : 0;
   const spendLeft = Math.max(0, cap - spent);
-  const spendPct = cap > 0 ? Math.min(100, Math.round((spent / cap) * 100)) : 0;
+  const spendPct =
+    spendIsLive && cap > 0 ? Math.min(100, Math.round((spent / cap) * 100)) : 0;
 
   const openLead = openLeadId
     ? leads.find((l) => l.id === openLeadId) ?? null
@@ -1738,20 +1746,20 @@ export default function DashboardOverview() {
                   spendIsLive ? "text-green-600" : "text-gray-400"
                 }`}
               >
-                {spendIsLive ? "● Live" : "Est. pace"}
+                {spendIsLive ? "● Live" : "Not started"}
               </span>
             </div>
             <div>
               <p
                 className="text-4xl font-semibold tracking-tight"
-                style={{ color: brand.accent }}
+                style={{ color: spendIsLive ? brand.accent : "#9ca3af" }}
               >
-                £{spent}
+                {spendIsLive ? `£${spent}` : "—"}
               </p>
               <p className="mt-1 text-xs text-gray-500">
                 {spendIsLive
                   ? `of £${cap} · last 30 days`
-                  : `of £${cap} this month`}
+                  : `£${cap}/month budget · ads not running yet`}
               </p>
               {/* A spend curve rather than a bar: the same total, but it shows
                   the shape of the month as well as the number. Desktop only —
