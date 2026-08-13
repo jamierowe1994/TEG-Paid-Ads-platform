@@ -1371,3 +1371,150 @@ h5 {
   font-size: 0.875rem;
   color: #6b2731;
 }
+
+/* ── Sign-in button (landing nav) ────────────────────────────────────────
+   James's "fancy" button, adapted: black outline at rest, brand purple on
+   hover, and slightly rounded rather than hard-cornered.
+
+   The notches are the trick. .top-key / .bottom-key-* are short segments
+   painted in the PAGE'S OWN background colour and positioned on top of the
+   border, so they read as gaps cut out of it; on hover they slide to the
+   corners and collapse, and the outline "closes up" as the fill arrives.
+   That means the key colour must track the hero background (#f4f4f5) — hence
+   a variable rather than a hardcode, so a future backdrop change can't leave
+   three grey ticks floating over the border.
+
+   PILL SHAPE (James, 13 Aug). The keys are square, so on a fully rounded
+   border they only sit flush where the border is actually straight — that's
+   the middle span, between the two end curves. So the key insets are pulled
+   inward past the radius; anchored from the left and right edges they stay
+   in the straight zone as the button flexes. Push them back toward the ends
+   and they'd float off the curve.
+
+   Weight and colour: 2px near-black read as a slab against the light hero,
+   so the outline and the leading rule are 1.5px in gray-600 (#4b5563) —
+   the same grey as the "See pricing" link beside it, which is what makes
+   the two nav items look like a pair rather than a heavy button next to a
+   light link (James, 13 Aug). The keys thin to match, or they'd leave a
+   half-covered notch. */
+.fancy {
+  --fancy-bg: #f4f4f5;
+  --fancy-line: #4b5563;
+  background-color: transparent;
+  border: 1.5px solid var(--fancy-line);
+  border-radius: 999px;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: inline-block;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin: 0;
+  outline: none;
+  overflow: visible;
+  padding: 0.85em 1.5em;
+  position: relative;
+  text-align: center;
+  text-decoration: none;
+  user-select: none;
+  font-size: 13px;
+  transition: background 0.3s ease-in-out, border-color 0.3s ease-in-out;
+}
+.fancy::before {
+  content: " ";
+  width: 1.25rem;
+  height: 1.5px;
+  background: var(--fancy-line);
+  top: 50%;
+  left: 1.1em;
+  position: absolute;
+  transform: translateY(-50%);
+  transform-origin: center;
+  transition: background 0.3s linear, width 0.3s linear;
+}
+.fancy .text {
+  font-size: 1em;
+  line-height: 1.2;
+  padding-left: 1.6em;
+  display: block;
+  text-align: left;
+  transition: all 0.3s ease-in-out;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--fancy-line);
+  white-space: nowrap;
+}
+.fancy .top-key {
+  height: 1.5px;
+  width: 1.25rem;
+  top: -1.5px;
+  left: 2rem;
+  position: absolute;
+  background: var(--fancy-bg);
+  transition: width 0.5s ease-out, left 0.3s ease-out;
+}
+.fancy .bottom-key-1 {
+  height: 1.5px;
+  width: 1.25rem;
+  right: 2.6rem;
+  bottom: -1.5px;
+  position: absolute;
+  background: var(--fancy-bg);
+  transition: width 0.5s ease-out, right 0.3s ease-out;
+}
+.fancy .bottom-key-2 {
+  height: 1.5px;
+  width: 0.5rem;
+  right: 1.5rem;
+  bottom: -1.5px;
+  position: absolute;
+  background: var(--fancy-bg);
+  transition: width 0.5s ease-out, right 0.3s ease-out;
+}
+/* Hover: fills with the brand purple rather than black. */
+.fancy:hover {
+  background: var(--group);
+  border-color: var(--group);
+}
+.fancy:hover::before {
+  width: 0.75rem;
+  background: #ffffff;
+}
+.fancy:hover .text {
+  color: #ffffff;
+  padding-left: 1.2em;
+}
+.fancy:hover .top-key {
+  left: 1.5rem;
+  width: 0;
+}
+.fancy:hover .bottom-key-1,
+.fancy:hover .bottom-key-2 {
+  right: 1.5rem;
+  width: 0;
+}
+/* Keyboard users get the same treatment as a hover — the effect is the
+   affordance here, so focus must not be silently plainer. */
+.fancy:focus-visible {
+  background: var(--group);
+  border-color: var(--group);
+  outline: 2px solid var(--group);
+  outline-offset: 3px;
+}
+.fancy:focus-visible .text {
+  color: #ffffff;
+  padding-left: 1.2em;
+}
+.fancy:focus-visible::before {
+  width: 0.75rem;
+  background: #ffffff;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fancy,
+  .fancy::before,
+  .fancy .text,
+  .fancy .top-key,
+  .fancy .bottom-key-1,
+  .fancy .bottom-key-2 {
+    transition: none;
+  }
+}

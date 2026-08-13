@@ -90,11 +90,20 @@ export default function LandingPage() {
             >
               See pricing
             </a>
+            {/* The notch segments are painted in the hero's own background
+                colour, so they must track it — passed in rather than
+                hardcoded in the stylesheet. */}
             <Link
               href="/login"
-              className="rounded-full bg-[#16171a] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#2a2b30] sm:px-7 sm:py-3 sm:text-base"
+              className="fancy"
+              style={{ "--fancy-bg": HERO_BG } as React.CSSProperties}
             >
-              Sign in
+              {/* The spans ARE the effect: three border notches and a text
+                  block that shifts as the leading rule retracts. */}
+              <span className="top-key" />
+              <span className="text">Sign in</span>
+              <span className="bottom-key-1" />
+              <span className="bottom-key-2" />
             </Link>
           </div>
         </div>
