@@ -22,6 +22,7 @@ import { REFERRALS_LOCKED_COPY } from "@/lib/launch-phase";
 import MobileLoading from "@/components/MobileLoading";
 import PullToRefresh from "@/components/PullToRefresh";
 import PushSetup from "@/components/PushSetup";
+import { InstallPrompt } from "@/components/InstallGuide";
 import CoachToast from "@/components/CoachToast";
 
 // Toast copy when the admin advances a customer's campaign stage.
@@ -649,6 +650,9 @@ export default function DashboardLayout({
               {user.name}
             </p>
           </div>
+          {/* "Got the app yet?" — dismissed forever with one tap, and still
+              reachable from Profile after. */}
+          <InstallPrompt accent={brand.accent} />
           <button
             onClick={async () => {
               // AWAIT the logout before navigating. Fired-and-forgotten, the

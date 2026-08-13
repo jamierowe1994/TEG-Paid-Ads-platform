@@ -466,7 +466,7 @@ export default function DashboardOverview() {
     });
     // The agent's own live campaign figures, once the admin has tagged their
     // Meta campaign id(s). Quietly stays null until then.
-    fetch("/api/my/meta", { cache: "no-store" })
+    fetch("/api/my/meta?preset=this_month", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d?.configured && d?.snapshot) setMyMeta(d.snapshot);
@@ -613,7 +613,15 @@ export default function DashboardOverview() {
    * spent from a budget before a single ad existed.
    *
    * Now: no Meta data -> no number. The tile says the ads aren't running
-   * yet, which is the truth and is also useful. */
+   * yet, which is the truth and is also useful.
+   *
+   * WINDOW IS THE CALENDAR MONTH, not a rolling 30 days (James, 13 Aug).
+   * The budget renews monthly, so a rolling window made the figure
+   * meaningless: it sat at ~£103 every single day, including the 1st, and
+   * never related to the cap it was shown against. Month-to-date starts at
+   * £0 on the 1st and climbs toward the cap, which is the thing an agent
+   * actually wants to know. Meta's native this_month preset is exactly this
+   * window, so no client-side date maths is involved. */
   const now = new Date();
   // TLE's Pro licence allows £100/month, not the package tier — see
   // adSpendCapFor. Reading pkg.adSpend here showed them a budget twice the
@@ -1758,7 +1766,7 @@ export default function DashboardOverview() {
               </p>
               <p className="mt-1 text-xs text-gray-500">
                 {spendIsLive
-                  ? `of £${cap} · last 30 days`
+                  ? `of £${cap} · this month`
                   : `£${cap}/month budget · ads not running yet`}
               </p>
               {/* A spend curve rather than a bar: the same total, but it shows

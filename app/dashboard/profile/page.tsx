@@ -17,6 +17,7 @@ import { brandById, type Brand } from "@/lib/brands";
 import { packageById, PACKAGES, adSpendCapFor } from "@/lib/packages";
 import type { UserProfile } from "@/lib/types";
 import PushToggle from "@/components/PushToggle";
+import InstallGuide from "@/components/InstallGuide";
 
 // Card styling shared across the page. Desktop is outline-only on the page's
 // own surface, matching Overview and Leads; mobile keeps a white card with a
@@ -49,6 +50,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [brand, setBrand] = useState<Brand | null>(null);
+  const [guideOpen, setGuideOpen] = useState(false);
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
   const [location, setLocation] = useState("");
@@ -570,6 +572,14 @@ export default function ProfilePage() {
             <div className="mt-4">
               <PushToggle />
             </div>
+            {/* Always here, whether or not the sidebar prompt was dismissed. */}
+            <button
+              onClick={() => setGuideOpen(true)}
+              className="mt-3 text-sm font-medium underline-offset-4 hover:underline"
+              style={{ color: brand?.accent }}
+            >
+              📲 How to install the app on your phone
+            </button>
           </section>
 
           <section className={CARD}>
@@ -923,6 +933,9 @@ export default function ProfilePage() {
         <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-gray-900 px-5 py-3 text-sm font-medium text-white shadow-lg">
           {toast}
         </div>
+      )}
+      {guideOpen && brand && (
+        <InstallGuide accent={brand.accent} onClose={() => setGuideOpen(false)} />
       )}
     </div>
   );

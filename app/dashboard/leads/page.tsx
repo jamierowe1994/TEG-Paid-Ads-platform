@@ -503,7 +503,7 @@ export default function LeadsPage() {
     const pkg = packageById(u.packageId);
     // TLE's Pro licence caps ad spend at £100, not the package tier.
     setAdSpendCap(adSpendCapFor(u.brandId, u.packageId));
-    fetch("/api/my/meta", { cache: "no-store" })
+    fetch("/api/my/meta?preset=this_month", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d?.configured && d?.snapshot) setLiveSpend(d.snapshot.spend ?? 0);
