@@ -126,20 +126,22 @@ export default function InstallGuide({
             The steps are slightly different on each.
           </p>
           <div className="mt-6 grid grid-cols-2 gap-3">
+            {/* No logos or emoji on either: an Apple mark we aren't licensed
+                to use, paired with a robot emoji, read as a mismatch. Words
+                only, and the sub-line does the identifying. */}
             {([
-              { id: "ios" as const, label: "iPhone", sub: "or iPad", icon: "" },
-              { id: "android" as const, label: "Android", sub: "Samsung, Pixel…", icon: "🤖" },
+              { id: "ios" as const, label: "iPhone", sub: "or iPad" },
+              { id: "android" as const, label: "Android", sub: "Samsung, Pixel, etc." },
             ]).map((p) => (
               <button
                 key={p.id}
                 onClick={() => setPlatform(p.id)}
                 className="rounded-2xl border border-gray-200 px-4 py-6 transition hover:border-gray-900 active:scale-[0.98]"
               >
-                <span className="block text-3xl">{p.icon}</span>
-                <span className="mt-2 block text-[15px] font-semibold text-gray-900">
+                <span className="block text-[15px] font-semibold text-gray-900">
                   {p.label}
                 </span>
-                <span className="block text-[12px] text-gray-400">{p.sub}</span>
+                <span className="mt-1 block text-[12px] text-gray-400">{p.sub}</span>
               </button>
             ))}
           </div>
