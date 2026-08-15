@@ -381,7 +381,7 @@ export default function LandingPage() {
                 </p>
                 <p className="mt-1 text-sm text-gray-400">per month</p>
                 <p className="mt-4 text-sm leading-relaxed text-gray-500">
-                  Covers everything: campaign management, creative production,
+                  Covers: campaign management, creative production,
                   monthly optimisation, your dashboard, lead nurture and
                   reporting.
                 </p>

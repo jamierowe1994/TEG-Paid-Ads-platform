@@ -15,26 +15,16 @@ import MobileSheet from "./MobileSheet";
 
 const POINTS: { pain: string; answer: string; wide?: boolean }[] = [
   {
-    pain: "You've paid for leads before and got nothing back.",
-    answer:
-      "You choose the spend and see exactly what it bought. Three months minimum because ads need time to learn your location — then rolling monthly, and you can adjust at any renewal.",
-    wide: true,
-  },
-  {
-    pain: "Leads cost more than they used to.",
-    answer:
-      "Every month we review what's working and adjust to bring your cost per lead down. That's included, not an upsell.",
-  },
-  {
     pain: "You haven't got time to learn Meta's ad manager.",
     answer:
       "You never touch it. We write the copy, build the creative, set the targeting and launch. Not a brief needed from you.",
   },
   {
+    // No `wide` any more: with two points the grid is one balanced row of
+    // halves. Spanning this one would leave a hole beside the other.
     pain: "The leads you do get go cold before you can call them.",
     answer:
-      "We keep talking to them on your behalf until they're ready for a conversation — so when you do call, they already know who you are.",
-    wide: true,
+      "We stay in touch with them on your behalf until they're ready for a conversation — so when you do call, they already know who you are.",
   },
 ];
 

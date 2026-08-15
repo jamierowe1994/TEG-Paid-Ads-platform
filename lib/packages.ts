@@ -29,7 +29,7 @@ export const INCLUDED_IN_EVERY_PACKAGE: { title: string; detail: string }[] = [
       "We design and write everything. Not a brief or word of copy needed from you.",
   },
   {
-    title: "Monthly campaign optimisation",
+    title: "Monthly optimisation",
     detail:
       "Every month we review performance and adjust to improve your cost per lead.",
   },
@@ -118,7 +118,7 @@ export const PACKAGES: AdPackage[] = [
     tagline:
       "Maximum reach across your area. Designed for agents who want to dominate their location and scale quickly.",
     bestFor:
-      "Established agents looking to expand market share across a wider geography",
+      "Agents looking to increase market share or cover a wider area",
     features: FEATURES,
     stripePriceId: null,
   },
