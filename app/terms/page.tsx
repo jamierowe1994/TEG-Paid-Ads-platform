@@ -48,10 +48,6 @@ export default function TermsPage() {
         <li>Monthly review and adjustment of the campaign.</li>
         <li>Your own dashboard showing spend, reach, engagement and leads.</li>
         <li>Lead nurture — we stay in contact with leads on your behalf.</li>
-        <li>
-          Location exclusivity: no other Experts Group agent runs the same
-          campaign in your patch while your subscription is active.
-        </li>
       </ul>
       <p>
         Campaigns currently run on Meta (Facebook and Instagram). LinkedIn is
