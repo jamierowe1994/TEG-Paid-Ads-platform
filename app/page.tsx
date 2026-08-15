@@ -532,12 +532,7 @@ export default function LandingPage() {
                 alt="The Experts Group"
                 className="h-14 w-auto"
               />
-              <p className="mt-3 text-sm leading-relaxed text-gray-500">
-                Paid ads, built and run for Experts Group agents — tracked
-                from first click to your CRM.
-              </p>
-              {/* Socials — in the brand colour, so they follow whatever the
-                  colour picker is auditioning. hrefs are placeholders until
+              {/* Socials — in the brand colour. hrefs are placeholders until
                   marketing supplies the group's real profile URLs. */}
               <div className="mt-5 flex items-center gap-4 text-[var(--group)]">
                 {["Meta / Facebook", "Instagram", "LinkedIn", "YouTube", "TikTok"].map(

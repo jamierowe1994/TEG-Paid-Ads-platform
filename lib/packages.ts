@@ -43,16 +43,6 @@ export const INCLUDED_IN_EVERY_PACKAGE: { title: string; detail: string }[] = [
     detail:
       "We communicate with your leads until they are ready for a conversation.",
   },
-  {
-    title: "Location exclusivity",
-    detail:
-      "Your area is yours. No other agent in your location runs the same campaign.",
-  },
-  {
-    title: "LinkedIn coming soon",
-    detail:
-      "Meta is live now. LinkedIn is launching next. You will be first in line.",
-  },
 ];
 
 /** The commitment terms, shown as a row under the packages. */
