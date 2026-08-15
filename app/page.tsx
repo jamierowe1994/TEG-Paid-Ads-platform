@@ -218,9 +218,9 @@ export default function LandingPage() {
                 className="p-sub mt-5 max-w-md text-lg leading-relaxed text-gray-600 max-sm:hidden"
                 style={{ "--d": "0s" } as React.CSSProperties}
               >
-                We build your ads, run them on the platforms your local audience
-                actually uses, and drop every lead that comes back into one
-                dashboard — with the phone number already there, ready to call.
+                We build your ads, run them on Meta in your location, and drop
+                every lead that comes back into one dashboard — with the phone
+                number already there, ready to call.
               </p>
               {/* Mobile CTA sits ABOVE the photo, so the block reads
                   heading → promise → action, and the image closes it. */}
@@ -321,7 +321,7 @@ export default function LandingPage() {
           <ProofHowScene />
         </div>
 
-        {/* "Everything plugs into one place" — a plain section now; the page
+        {/* "Every lead — one place" — a plain section now; the page
             just scrolls into it. (The expanding-circle entrance moved down
             to the pricing section.) */}
         {/* Hidden on mobile — with the how-it-works cards right above it,

@@ -5,7 +5,7 @@ import MobileSheet from "./MobileSheet";
 
 /* The empathy beat, sitting after "how it works" and before the price.
    The order of the page is deliberate: what it is → why you can trust it →
-   how it runs → we know what you're up against → what it costs. This is the
+   how it runs → FAQs → what it costs. This is the
    section that has to land before anyone looks at a number.
 
    Every answer here is something the service actually does, taken from the
@@ -125,17 +125,11 @@ export default function PainPoints() {
           uneven grid beside it — no centred header, no equal columns. */}
       <div className="grid gap-14 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.6fr)] lg:gap-20">
         <div>
-          {/* Always exactly two lines — the second is kept whole. */}
+          {/* One word now — the two-line balancing the old headline needed
+              doesn't apply, and the standfirst below it is gone (James). */}
           <h2 className="text-4xl font-light leading-[1.05] tracking-[-0.035em] text-gray-900 sm:text-5xl">
-            We know what
-            <br />
-            <span className="whitespace-nowrap">you&apos;re up against.</span>
+            FAQs
           </h2>
-          <p className="mt-6 max-w-sm text-lg leading-relaxed text-gray-600">
-            Nobody needs another invoice for something that didn&apos;t work.
-            Here&apos;s what we hear from agents — and what we actually do
-            about it.
-          </p>
 
           {/* Mobile: the points open in a bottom sheet instead of running
               down the page. */}

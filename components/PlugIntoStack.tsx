@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import ICONS, { SocialIcon } from "./SocialIcons";
 
-// "Everything plugs into one place" — the platforms leads come from on the
+// "Every lead — one place" — the platforms leads come from on the
 // left, Launch Pad in the middle, the systems you already work in on the
 // right, joined by wires that flow into and out of the hub. Icons only; the
 // logos speak for themselves.
@@ -44,7 +44,7 @@ export default function PlugIntoStack() {
   return (
     <div className="mx-auto max-w-4xl text-center">
       <h2 className="text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl">
-        Everything plugs into one place.
+        Every lead — one place.
       </h2>
       <p className="mx-auto mt-4 max-w-xl text-gray-600">
         We pull from the platforms your leads come from and push into the
