@@ -8,6 +8,8 @@ import {
   toAdmin,
 } from "@/lib/users-store";
 import { adminScope } from "@/lib/admin-auth";
+import { adsCoveredByLicence } from "@/lib/ads-entitlement";
+import type { BrandId } from "@/lib/brands";
 
 // Admin user management. Super admins see every agent; an MD sees (and can
 // edit) only agents in their own brand.
@@ -21,7 +23,26 @@ export async function GET(req: NextRequest) {
   const all = await listUsers();
   const visible =
     scope.role !== "super" ? all.filter((u) => u.brandId === scope.brandId) : all;
-  return NextResponse.json(visible);
+  /* paymentState answers the question James had to open Stripe to ask:
+   * "paid" = Stripe confirmed money; "licence" = deliberately unpaid, a
+   * Pro licence covers it (the TLE launch partners); "unpaid" = a paid-tier
+   * signup that never finished paying — the abandoners. Referral accounts
+   * are simply "free". The licence check rides the memoised Team Hub
+   * directory, so annotating a few hundred rows costs one directory scan. */
+  const annotated = await Promise.all(
+    visible.map(async (u) => ({
+      ...u,
+      paymentState:
+        u.accountType === "referral"
+          ? "free"
+          : u.paid
+            ? "paid"
+            : (await adsCoveredByLicence(u.email, u.brandId as BrandId))
+              ? "licence"
+              : "unpaid",
+    }))
+  );
+  return NextResponse.json(annotated);
 }
 
 // Update admin-managed fields on an agent, or add an internal note.

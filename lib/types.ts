@@ -59,6 +59,13 @@ export interface UserProfile {
   // leads they push to Rex are owned/assigned to them (rather than sitting
   // against the shared API login).
   rexUserId?: string | null;
+  /** Derived by /api/auth/me, never stored: paid-tier account, no payment,
+   *  no licence covering it — the dashboard locks and offers to finish
+   *  checkout. */
+  paymentRequired?: boolean;
+  /** Admin-list annotation from /api/admin/users (never stored):
+   *  paid | licence | unpaid | free. */
+  paymentState?: "paid" | "licence" | "unpaid" | "free";
   /** Which Rex ACCOUNT rexUserId was resolved against. A cached user id is
    *  only trusted while the brand still pushes to that account — switching
    *  accounts (demo -> live, 8 Aug 2026) silently invalidates every cache. */

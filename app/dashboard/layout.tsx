@@ -339,8 +339,14 @@ export default function DashboardLayout({
   // Referrals-only accounts still see the paid pages, but blurred behind an
   // "Activate Paid Ads" card (see the main render below) — so they know what's
   // there and what unlocks it, rather than being bounced away.
+  /* Payment abandoned mid-signup: same blur-lock as referral-only, but the
+     card says finish paying and the button resumes their Stripe checkout
+     rather than pointing at the profile. The API gate 403s these accounts
+     anyway (code payment_incomplete) — this is the honest face on it. */
+  const needsPayment = !!user?.paymentRequired;
   const onLockedRoute =
-    isReferralOnly && NAV.some((n) => n.href === pathname && n.paidOnly);
+    (isReferralOnly || needsPayment) &&
+    NAV.some((n) => n.href === pathname && n.paidOnly);
 
   // Same treatment for the Referrals page itself while it's locked.
   const onReferralsLockedRoute =
@@ -1159,12 +1165,36 @@ export default function DashboardLayout({
         ) : onLockedRoute ? (
           <PaidLockOverlay
             accent={brand.accent}
-            title={LOCK_COPY[pathname]?.title ?? "This is a Paid Ads page"}
-            blurb={
-              LOCK_COPY[pathname]?.blurb ??
-              "Activate Paid Ads to unlock this page."
+            title={
+              needsPayment
+                ? "Finish setting up your account"
+                : (LOCK_COPY[pathname]?.title ?? "This is a Paid Ads page")
             }
-            onActivate={() => router.push("/dashboard/profile")}
+            blurb={
+              needsPayment
+                ? "Your sign-up stopped at the payment step, so your ads aren't live yet. Pick up where you left off — it takes about a minute."
+                : (LOCK_COPY[pathname]?.blurb ??
+                  "Activate Paid Ads to unlock this page.")
+            }
+            cta={needsPayment ? "Complete payment" : undefined}
+            onActivate={async () => {
+              if (!needsPayment) {
+                router.push("/dashboard/profile");
+                return;
+              }
+              // Resume their checkout with the package they originally chose.
+              try {
+                const res = await fetch("/api/checkout", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ packageId: user?.packageId }),
+                });
+                const d = await res.json();
+                if (d.url) window.location.href = d.url;
+              } catch {
+                /* the button can be pressed again */
+              }
+            }}
           >
             {children}
           </PaidLockOverlay>

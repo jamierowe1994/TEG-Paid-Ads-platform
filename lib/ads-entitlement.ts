@@ -128,3 +128,30 @@ export async function adsEntitlementFor(
     foundInHub: found && teamHubConfigured(),
   };
 }
+
+/* Hot-path form of the same question, for the API tier gate: is this unpaid
+ * account actually covered by a licence? Memoised per process because
+ * requirePaidUser runs on every leads/meta request — the underlying Team Hub
+ * directory is already cached, but even a cached scan per request is waste.
+ * 10 minutes matches the directory TTL, so a licence change propagates on
+ * the same clock either way. */
+const licenceMemo = new Map<string, { at: number; covered: boolean }>();
+const LICENCE_MEMO_MS = 10 * 60 * 1000;
+
+export async function adsCoveredByLicence(
+  email: string,
+  brandId: BrandId
+): Promise<boolean> {
+  const key = `${brandId}:${email.trim().toLowerCase()}`;
+  const hit = licenceMemo.get(key);
+  if (hit && Date.now() - hit.at < LICENCE_MEMO_MS) return hit.covered;
+  let covered = false;
+  try {
+    covered = (await adsEntitlementFor(email, brandId)).outcome === "included";
+  } catch {
+    /* Hub unreachable -> not covered; the gate then asks for payment, which
+       is recoverable, rather than silently giving free access, which isn't. */
+  }
+  licenceMemo.set(key, { at: Date.now(), covered });
+  return covered;
+}

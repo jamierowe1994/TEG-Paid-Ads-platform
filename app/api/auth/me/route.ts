@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requestSurface } from "@/lib/surface";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
 import { findById, updateUser, toPublic, touchLastSeen } from "@/lib/users-store";
+import { adsCoveredByLicence } from "@/lib/ads-entitlement";
+import type { BrandId } from "@/lib/brands";
 
 async function currentUserId(req: NextRequest): Promise<string | null> {
   return verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
@@ -36,7 +38,14 @@ export async function GET(req: NextRequest) {
   // Deactivated (left the group, per Base44): the session dies here.
   if (user.deactivatedAt)
     return NextResponse.json({ user: null }, { status: 401 });
-  return NextResponse.json({ user: toPublic(user) });
+  // Derived, never stored: the same question the API gate asks, answered
+  // here so the dashboard can show the finish-payment lock instead of
+  // letting every request 403 individually.
+  const paymentRequired =
+    user.accountType === "paid" &&
+    !user.paid &&
+    !(await adsCoveredByLicence(user.email, user.brandId as BrandId));
+  return NextResponse.json({ user: { ...toPublic(user), paymentRequired } });
 }
 
 // Update editable profile fields (name, mobile, location, photo).

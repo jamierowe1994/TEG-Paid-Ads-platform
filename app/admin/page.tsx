@@ -1652,6 +1652,23 @@ export default function AdminPage() {
                             <span className="ml-1 text-xs text-gray-400">
                               £{packageById(u.packageId)?.price}/mo
                             </span>
+                            {/* The truth about money, so nobody has to open
+                                Stripe to know who actually paid. */}
+                            {u.paymentState === "unpaid" && (
+                              <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700">
+                                NOT PAID
+                              </span>
+                            )}
+                            {u.paymentState === "licence" && (
+                              <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500">
+                                Licence
+                              </span>
+                            )}
+                            {u.paymentState === "paid" && (
+                              <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-700">
+                                Paid ✓
+                              </span>
+                            )}
                           </td>
                           {/* Which surfaces they've actually used. "App" only
                               ever comes from the installed PWA (a home-screen
