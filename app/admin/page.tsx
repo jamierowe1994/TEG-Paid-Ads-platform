@@ -377,6 +377,11 @@ export default function AdminPage() {
     "recent"
   );
   const [crmPackage, setCrmPackage] = useState<"all" | AdPackage["id"]>("all");
+  const [crmBrand, setCrmBrand] = useState<string>("all");
+  /* Payment filter, defaulting to everyone. "unpaid" is the one that earns
+     its keep: it's the list of people who abandoned checkout and would
+     otherwise sit unnoticed among the paying agents (James, 26 Aug). */
+  const [crmPay, setCrmPay] = useState<"all" | "paid" | "licence" | "unpaid">("all");
   const [crmSearch, setCrmSearch] = useState("");
   const [vp, setVp] = useState({ w: 0, h: 0 });
 
@@ -846,6 +851,8 @@ export default function AdminPage() {
       // "scale" id are found by the "Accelerate" filter.
       if (crmPackage !== "all" && packageById(u.packageId)?.id !== crmPackage)
         return false;
+      if (crmBrand !== "all" && u.brandId !== crmBrand) return false;
+      if (crmPay !== "all" && u.paymentState !== crmPay) return false;
       if (
         q &&
         !`${u.name} ${u.email} ${u.location ?? ""}`.toLowerCase().includes(q)
@@ -867,7 +874,15 @@ export default function AdminPage() {
       }
     });
     return list;
-  }, [users, crmSearch, crmPackage, crmSort]);
+  }, [users, crmSearch, crmPackage, crmBrand, crmPay, crmSort]);
+
+  const unpaidUsers = useMemo(
+    () =>
+      users
+        .filter((u) => u.paymentState === "unpaid")
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [users]
+  );
 
   const summaryFor = (userId: string) =>
     leadSummaries.find((s) => s.userId === userId);
@@ -1491,6 +1506,45 @@ export default function AdminPage() {
               />
             </div>
 
+            {/* Abandoned checkouts, called out rather than left to be
+                noticed. These are accounts that exist but never paid — until
+                26 Aug they had full access; now they're locked behind a
+                finish-payment screen. Each is a live sales prospect: they
+                wanted it enough to reach the payment page. Clicking one opens
+                the agent; the "Not paid" filter below shows them as a list. */}
+            {role === "super" && unpaidUsers.length > 0 && (
+              <section className="mt-10 rounded-2xl border border-red-200 bg-red-50 p-5">
+                <h2 className="text-sm font-semibold text-red-900">
+                  Signed up but never paid{" "}
+                  <span className="font-normal text-red-700/70">
+                    {unpaidUsers.length}
+                  </span>
+                </h2>
+                <p className="mt-0.5 text-xs text-red-800/70">
+                  They stopped at the payment page. Their account is locked
+                  behind a &ldquo;finish setting up&rdquo; screen that resumes
+                  their checkout — so this list should shrink on its own.
+                </p>
+                <ul className="mt-3 space-y-2">
+                  {unpaidUsers.map((u) => (
+                    <li key={u.id}>
+                      <button
+                        onClick={() => setSelectedAgent(u)}
+                        className="flex w-full items-center gap-3 rounded-lg bg-white/70 px-3 py-2 text-left text-sm hover:bg-white"
+                      >
+                        <span className="font-medium text-gray-800">{u.name}</span>
+                        <span className="text-xs text-gray-500">{u.email}</span>
+                        <span className="ml-auto text-xs text-gray-400">
+                          {brandById(u.brandId)?.shortName ?? u.brandId} ·{" "}
+                          {new Date(u.createdAt).toLocaleDateString("en-GB")}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
             {/* One-time launch import — pre-provision referrals-only accounts
                 for the whole group from a CSV. Super admin only. */}
             {role === "super" && <AccountImport pass={password} />}
@@ -1592,6 +1646,32 @@ export default function AdminPage() {
                         {p.name} (£{p.price})
                       </option>
                     ))}
+                  </select>
+                  <select
+                    value={crmBrand}
+                    onChange={(e) => setCrmBrand(e.target.value)}
+                    className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 outline-none focus:border-gray-900"
+                  >
+                    <option value="all">All businesses</option>
+                    {BRANDS.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.name}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={crmPay}
+                    onChange={(e) => setCrmPay(e.target.value as typeof crmPay)}
+                    className={`rounded-lg border bg-white px-3 py-1.5 text-sm font-medium outline-none focus:border-gray-900 ${
+                      crmPay === "unpaid"
+                        ? "border-red-300 text-red-700"
+                        : "border-gray-200 text-gray-700"
+                    }`}
+                  >
+                    <option value="all">Any payment</option>
+                    <option value="paid">Paid</option>
+                    <option value="licence">Licence</option>
+                    <option value="unpaid">Not paid (abandoned)</option>
                   </select>
                   <select
                     value={crmSort}
