@@ -32,6 +32,11 @@ import {
 import { hashPassword } from "@/lib/auth";
 import { packageForEmail, teamHubConfigured } from "@/lib/team-hub";
 import { TLE_LAUNCH_LIST } from "@/lib/tle-launch-list";
+import {
+  listLaunchExtras,
+  addLaunchExtra,
+  removeLaunchExtra,
+} from "@/lib/launch-list-extra";
 import { connectMetaRef, parseCampaignIds, metaTokenSet } from "@/lib/meta";
 import { licenceIncludesAds, adsException } from "@/lib/ads-entitlement";
 
@@ -70,6 +75,9 @@ export interface ProRow {
   campaignIds: string[];
   /** True while they still hold the shared launch password. */
   awaitingFirstSignIn: boolean;
+  /** Added through the admin rather than the hardcoded list — so the UI can
+   *  offer to remove them again. */
+  addedLater?: boolean;
 }
 
 export async function GET(req: NextRequest) {
@@ -81,7 +89,26 @@ export async function GET(req: NextRequest) {
   // never return them however their licence was set. See lib/tle-launch-list.ts.
   const rows: ProRow[] = [];
 
-  for (const p of TLE_LAUNCH_LIST) {
+  /* The fixed list plus anyone added since (see lib/launch-list-extra.ts).
+     Extras carry addedLater so the UI can show where they came from and
+     offer to take them off again — a hardcoded entry can't be removed from
+     the tab, but one James added should be. */
+  const extras = await listLaunchExtras(BRAND_ID);
+  const known = new Set(
+    TLE_LAUNCH_LIST.flatMap((p) =>
+      [p.email, ...(p.altEmails ?? [])].filter(Boolean).map((e) => e!.toLowerCase())
+    )
+  );
+  const roster: { name: string; email: string | null; note?: string; addedLater?: boolean }[] = [
+    ...TLE_LAUNCH_LIST.map((p) => ({ name: p.name, email: p.email, note: p.note })),
+    // Skip anyone already on the fixed list — re-adding a name shouldn't
+    // double them up on the roster.
+    ...extras
+      .filter((e) => !known.has(e.email))
+      .map((e) => ({ name: e.name, email: e.email, addedLater: true })),
+  ];
+
+  for (const p of roster) {
     const email = p.email ?? "";
     const existing = email ? await findByEmail(email) : undefined;
     const campaignIds = parseCampaignIds(existing?.metaCampaignId);
@@ -102,6 +129,7 @@ export async function GET(req: NextRequest) {
       email,
       partnerPackage: hubPackage,
       exceptionReason: p.note ?? adsException(email),
+      addedLater: !!p.addedLater,
       hasAccount: !!existing,
       connected: campaignIds.length > 0,
       campaignIds,
@@ -211,6 +239,36 @@ export async function POST(req: NextRequest) {
   });
 }
 
+/* Add someone to the TLE launch roster. Body: { name, email }.
+ *
+ * BRAND IS FORCED to lettings — this is TLE's tab, and the brand is never
+ * read from the request, so a crafted call can't file someone under another
+ * business. Adding here only puts them ON the roster; the account itself is
+ * still created by Connect, and the invite is still the same magic link the
+ * original thirteen got. Nothing about the downstream flow changes.
+ */
+export async function PUT(req: NextRequest) {
+  if (!mayUseInviteTab(req)) {
+    return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  }
+  const body = await req.json().catch(() => null);
+  const name = String(body?.name ?? "").trim();
+  const email = String(body?.email ?? "").trim().toLowerCase();
+  if (!name || !email) {
+    return NextResponse.json({ error: "Name and email are both needed." }, { status: 400 });
+  }
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return NextResponse.json({ error: "That email doesn't look right." }, { status: 400 });
+  }
+  const entry = await addLaunchExtra({
+    name,
+    email,
+    brandId: BRAND_ID,
+    addedBy: null,
+  });
+  return NextResponse.json({ ok: true, entry });
+}
+
 /* Detach an agent's Meta campaigns. Body: { userId }.
  *
  * Exists because a wrong attachment is worse than none: leads route STRICTLY
@@ -224,6 +282,14 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
   const body = await req.json().catch(() => null);
+  /* Two jobs on one verb: { rosterEmail } takes an admin-added person back
+     OFF the roster (their account, if Connect made one, is untouched);
+     { userId } detaches campaigns as before. */
+  const rosterEmail = String(body?.rosterEmail ?? "").trim();
+  if (rosterEmail) {
+    const removed = await removeLaunchExtra(rosterEmail);
+    return NextResponse.json({ ok: removed });
+  }
   const userId = String(body?.userId ?? "").trim();
   if (!userId) {
     return NextResponse.json({ error: "userId required" }, { status: 400 });

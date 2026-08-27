@@ -28,6 +28,7 @@ interface ProRow {
   campaignIds: string[];
   awaitingFirstSignIn: boolean;
   exceptionReason?: string | null;
+  addedLater?: boolean;
 }
 
 interface Campaign {
@@ -61,6 +62,10 @@ export default function TleProInvite({ pass }: { pass: string }) {
   const [sendingAll, setSendingAll] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [sendResult, setSendResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const [addName, setAddName] = useState("");
+  const [addEmail, setAddEmail] = useState("");
+  const [addBusy, setAddBusy] = useState(false);
+  const [addError, setAddError] = useState("");
 
   const key = (r: ProRow) => r.email || r.name;
 
@@ -280,6 +285,49 @@ export default function TleProInvite({ pass }: { pass: string }) {
     }
   }
 
+  /* Add a latecomer to the roster. Brand is NOT sent — the server forces
+     lettings — so this can't file someone under another business. */
+  async function addToRoster() {
+    if (!addName.trim() || !addEmail.trim() || addBusy) return;
+    setAddBusy(true);
+    setAddError("");
+    try {
+      const res = await fetch("/api/admin/tle-pro", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${pass}`,
+        },
+        body: JSON.stringify({ name: addName.trim(), email: addEmail.trim() }),
+      });
+      const d = await res.json();
+      if (!res.ok) {
+        setAddError(d.error ?? "Couldn't add them.");
+      } else {
+        setAddName("");
+        setAddEmail("");
+        load();
+      }
+    } catch {
+      setAddError("Couldn't reach the server.");
+    }
+    setAddBusy(false);
+  }
+
+  async function removeFromRoster(row: ProRow) {
+    // `confirm` is taken by the Send All state above — qualify the global.
+    if (!window.confirm(`Take ${row.name} off the launch list? Their account, if one exists, is untouched.`)) return;
+    await fetch("/api/admin/tle-pro", {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${pass}`,
+      },
+      body: JSON.stringify({ rosterEmail: row.email }),
+    }).catch(() => {});
+    load();
+  }
+
   async function sendAll() {
     if (!sendable.length || sendingAll) return;
     setSendingAll(true);
@@ -363,6 +411,45 @@ export default function TleProInvite({ pass }: { pass: string }) {
         )}
       </div>
 
+      {/* Add someone who joined after the launch list was written. They land
+          on the roster like everyone else: connect their ads, then send the
+          same magic-link invite. */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-5">
+        <h3 className="text-sm font-semibold text-gray-900">
+          Add someone to the list
+        </h3>
+        <p className="mt-1 text-sm text-gray-500">
+          For anyone who joins TLE after launch. They&apos;ll appear below —
+          connect their ads, then send them the same invite.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <input
+            value={addName}
+            onChange={(e) => setAddName(e.target.value)}
+            placeholder="Full name"
+            className="min-w-[180px] flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm"
+          />
+          <input
+            value={addEmail}
+            onChange={(e) => setAddEmail(e.target.value)}
+            placeholder="their@thelettingexperts.co.uk"
+            className="min-w-[240px] flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm"
+          />
+          <button
+            onClick={addToRoster}
+            disabled={addBusy || !addName.trim() || !addEmail.trim()}
+            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+          >
+            {addBusy ? "Adding…" : "Add to list"}
+          </button>
+        </div>
+        {addError && (
+          <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            {addError}
+          </p>
+        )}
+      </div>
+
       {loading && <p className="text-sm text-gray-500">Loading the roster…</p>}
       {loadError && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -400,6 +487,17 @@ export default function TleProInvite({ pass }: { pass: string }) {
                   {row.exceptionReason && (
                     <p className="mt-1 text-xs text-amber-700">
                       {row.exceptionReason}
+                    </p>
+                  )}
+                  {row.addedLater && (
+                    <p className="mt-1 text-xs text-gray-400">
+                      Added after launch ·{" "}
+                      <button
+                        onClick={() => removeFromRoster(row)}
+                        className="underline underline-offset-2 hover:text-red-600"
+                      >
+                        remove from list
+                      </button>
                     </p>
                   )}
                 </div>
