@@ -23,6 +23,7 @@
 import type { BrandId } from "./brands";
 import { packageForEmail, teamHubConfigured } from "./team-hub";
 import { LAUNCH_LIST_ACTIVE, onLaunchList } from "./tle-launch-list";
+import { listLaunchExtras } from "./launch-list-extra";
 
 /** Licence tiers that include Paid Ads. Pro only — confirmed by James. */
 const INCLUDES_ADS = new Set(["pro"]);
@@ -80,6 +81,33 @@ export function licenceIncludesAds(
   return INCLUDES_ADS.has((partnerPackage ?? "").trim().toLowerCase());
 }
 
+/* The same question, but also consulting people added to the roster through
+ * the admin (launch_list_extra) — which the hardcoded list can't know about.
+ *
+ * This has to be the version every gate uses, or a latecomer half-exists:
+ * Rhiannon Dodge was added to the roster on 26 Aug and Connect still refused
+ * her, because the entitlement check only read the fixed file. Worse, fixing
+ * Connect alone would have let her through and then locked her out — the
+ * payment gate asks this same question, and an unpaid launch partner who
+ * fails it gets a "finish payment" wall on an account that is supposed to be
+ * covered by her licence.
+ */
+export async function licenceIncludesAdsAsync(
+  email: string,
+  partnerPackage: string | null,
+  brandId: BrandId,
+  name?: string
+): Promise<boolean> {
+  if (licenceIncludesAds(email, partnerPackage, name)) return true;
+  if (!LAUNCH_LIST_ACTIVE) return false;
+  try {
+    const needle = email.trim().toLowerCase();
+    return (await listLaunchExtras(brandId)).some((e) => e.email === needle);
+  } catch {
+    return false;
+  }
+}
+
 /** Brands whose licence bundles Paid Ads. */
 const BUNDLED_BRANDS = new Set<BrandId>(["lettings"]);
 
@@ -121,7 +149,7 @@ export async function adsEntitlementFor(
   const { partnerPackage, found } = await packageForEmail(email);
 
   return {
-    outcome: licenceIncludesAds(email, partnerPackage)
+    outcome: (await licenceIncludesAdsAsync(email, partnerPackage, brandId))
       ? "included"
       : "needs-upgrade",
     partnerPackage,

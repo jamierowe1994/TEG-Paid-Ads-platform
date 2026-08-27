@@ -38,7 +38,7 @@ import {
   removeLaunchExtra,
 } from "@/lib/launch-list-extra";
 import { connectMetaRef, parseCampaignIds, metaTokenSet } from "@/lib/meta";
-import { licenceIncludesAds, adsException } from "@/lib/ads-entitlement";
+import { licenceIncludesAdsAsync, adsException } from "@/lib/ads-entitlement";
 
 export const dynamic = "force-dynamic";
 
@@ -164,11 +164,13 @@ export async function POST(req: NextRequest) {
 
   // Entitlement is re-read from Team Hub, never taken from the request.
   const { partnerPackage } = await packageForEmail(email);
-  if (!licenceIncludesAds(email, partnerPackage, name)) {
+  // Async form: consults the fixed list AND anyone added through this tab,
+  // so a latecomer isn't refused by a file that predates them.
+  if (!(await licenceIncludesAdsAsync(email, partnerPackage, BRAND_ID, name))) {
     return NextResponse.json(
       {
         error:
-          "That person isn't on the TLE launch list, so they don't get Paid Ads included. Check the list in lib/tle-launch-list.ts.",
+          "That person isn't on the TLE launch list. Add them with the form at the top of this tab first, then connect their ads.",
       },
       { status: 403 }
     );
