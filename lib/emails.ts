@@ -73,12 +73,17 @@ export function newSignupEmail(opts: {
 }) {
   const link = `${appOrigin()}/admin?tab=crm&agent=${encodeURIComponent(opts.userId)}`;
   return {
-    subject: `New Launch Pad signup — ${opts.name} (${opts.brandName})`,
+    subject: `New Launch Pad customer — ${opts.name} (${opts.brandName})`,
     html: shell({
-      heading: "You've had a new signup",
+      heading: "You've had a new paying customer",
       preheader: `${opts.name} — ${opts.brandName}`,
       body:
-        para(`<strong>${opts.name}</strong> has just signed up for Launch Pad.`) +
+        // Only sent once payment has cleared (see lib/pending-signups.ts), so
+        // it can say so plainly. It used to fire the moment someone reached
+        // the card page, which is why the count never matched the money.
+        para(
+          `<strong>${opts.name}</strong> has paid and their Launch Pad account is live.`
+        ) +
         `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:18px 0 4px;font-size:14px;color:#374151;">
           <tr><td style="padding:4px 18px 4px 0;color:${MUTED};">Business</td><td style="padding:4px 0;">${opts.brandName}</td></tr>
           <tr><td style="padding:4px 18px 4px 0;color:${MUTED};">Email</td><td style="padding:4px 0;">${opts.email}</td></tr>

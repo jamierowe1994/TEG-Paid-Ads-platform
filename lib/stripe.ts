@@ -113,8 +113,35 @@ export function commitmentEnd(from = new Date()): string {
  *
  * Never grants access. The webhook does that, and only after Stripe confirms.
  */
+/* Who we're charging. Either an existing account (the referrals→paid
+   upgrade) or a signup that hasn't been paid for yet and so has no account —
+   the normal path since payment moved in front of account creation. The two
+   differ only in which id the webhook needs back, so the shape is shared. */
+export interface CheckoutSubject {
+  /** Set for an existing account. */
+  userId?: string;
+  /** Set for a signup parked in pending_signups. Exactly one of the two. */
+  pendingId?: string;
+  email: string;
+  name: string;
+  mobile?: string;
+  brandId: string;
+  stripeCustomerId?: string | null;
+}
+
+export function subjectFromUser(user: StoredUser): CheckoutSubject {
+  return {
+    userId: user.id,
+    email: user.email,
+    name: user.name,
+    mobile: user.mobile,
+    brandId: user.brandId,
+    stripeCustomerId: user.stripeCustomerId ?? null,
+  };
+}
+
 export async function createCheckoutSession(opts: {
-  user: StoredUser;
+  user: CheckoutSubject;
   packageId: string;
   origin: string;
   successUrl: string;
@@ -147,22 +174,29 @@ export async function createCheckoutSession(opts: {
       email: user.email,
       name: user.name,
       phone: user.mobile || undefined,
-      metadata: { userId: user.id, brandId: user.brandId },
+      metadata: {
+        brandId: user.brandId,
+        ...(user.userId ? { userId: user.userId } : {}),
+        ...(user.pendingId ? { pendingId: user.pendingId } : {}),
+      },
     });
     customerId = customer.id;
     await opts.onCustomerCreated?.(customerId);
   }
 
+  const meta: Record<string, string> = { packageId: resolved.pkg.id };
+  if (user.userId) meta.userId = user.userId;
+  if (user.pendingId) meta.pendingId = user.pendingId;
+
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer: customerId,
     line_items: resolved.items,
-    // Both the session and the subscription carry the userId: the webhook
-    // reads it from whichever event arrives, rather than depending on one.
-    metadata: { userId: user.id, packageId: resolved.pkg.id },
-    subscription_data: {
-      metadata: { userId: user.id, packageId: resolved.pkg.id },
-    },
+    // Both the session and the subscription carry whichever id the webhook
+    // will need — a userId for an existing account, a pendingId for a signup
+    // that only becomes an account once this payment clears.
+    metadata: meta,
+    subscription_data: { metadata: meta },
     success_url: opts.successUrl,
     cancel_url: opts.cancelUrl,
     // The promo-code box shows ONLY for allowlisted test emails (Howard's

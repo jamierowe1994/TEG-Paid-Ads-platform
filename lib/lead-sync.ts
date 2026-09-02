@@ -156,12 +156,17 @@ async function resurfaceSnoozedLeads(): Promise<void> {
       }
       try {
         const user = await findById(lead.userId);
-        if (user?.mobile) {
+        if (user) {
           await sendNewLeadAlert({
             toMobile: user.mobile,
             agentName: user.name,
             leadName: `${lead.name} (back on — they said they'd be ready now)`,
             leadId: lead.id,
+            userId: user.id,
+            brandId: user.brandId,
+            // No lead-wait to measure here: a resurfaced lead is due now,
+            // not newly submitted, so latency would be days and meaningless.
+            kind: "resurface",
           });
         }
       } catch {

@@ -15,6 +15,12 @@ import "server-only";
 // Proactive messages to people who haven't messaged us in 24h MUST use an
 // approved template — see docs for the exact template text to submit.
 
+import {
+  recordWhatsApp,
+  maskNumber,
+  type WhatsAppKind,
+} from "./whatsapp-log";
+
 const GRAPH = "https://graph.facebook.com/v21.0";
 
 export function whatsappConfigured(): boolean {
@@ -138,13 +144,16 @@ function leadComponents(
   return components;
 }
 
-/** POST one template message; returns Meta's verdict instead of throwing. */
+/** POST one template message; returns Meta's verdict instead of throwing.
+    Also reports the message id (so the status webhook can match a delivery
+    back to this send) and how long Meta took to answer. */
 async function postTemplate(
   to: string,
   name: string,
   components: Record<string, unknown>[]
-): Promise<{ ok: boolean; reason?: string }> {
+): Promise<{ ok: boolean; reason?: string; messageId?: string; apiMs: number }> {
   const lang = process.env.WHATSAPP_TEMPLATE_LANG ?? "en_GB";
+  const started = Date.now();
   try {
     const res = await fetch(`${GRAPH}/${process.env.WHATSAPP_PHONE_ID}/messages`, {
       method: "POST",
@@ -159,18 +168,30 @@ async function postTemplate(
         template: { name, language: { code: lang }, components },
       }),
     });
-    if (res.ok) return { ok: true };
     const data = (await res.json().catch(() => null)) as {
+      messages?: { id?: string }[];
       error?: { message?: string; code?: number };
     } | null;
+    if (res.ok) {
+      return {
+        ok: true,
+        messageId: data?.messages?.[0]?.id,
+        apiMs: Date.now() - started,
+      };
+    }
     return {
       ok: false,
       reason:
         (data?.error?.message ?? `HTTP ${res.status}`) +
         (data?.error?.code ? ` (code ${data.error.code})` : ""),
+      apiMs: Date.now() - started,
     };
   } catch (e) {
-    return { ok: false, reason: e instanceof Error ? e.message : "unreachable" };
+    return {
+      ok: false,
+      reason: e instanceof Error ? e.message : "unreachable",
+      apiMs: Date.now() - started,
+    };
   }
 }
 
@@ -180,10 +201,51 @@ export async function sendNewLeadAlert(opts: {
   leadName: string;
   /** Lead id, so the button can open this exact lead. */
   leadId?: string;
+  /** Everything below is for the monitoring log only — never the message. */
+  userId?: string;
+  brandId?: string;
+  /** When the lead was SUBMITTED (Meta's own timestamp), not when we saw it.
+      This is what makes "how long did the agent wait?" answerable. */
+  leadReceivedAt?: string;
+  kind?: WhatsAppKind;
 }): Promise<void> {
+  const kind = opts.kind ?? "new_lead";
   if (!whatsappConfigured()) return;
+
+  // Shared fields for whichever outcome we end up recording.
+  const base = {
+    kind,
+    userId: opts.userId ?? null,
+    agentName: opts.agentName ?? "",
+    brandId: opts.brandId ?? null,
+    leadId: opts.leadId ?? null,
+    leadName: opts.leadName ?? "",
+    leadReceivedAt: opts.leadReceivedAt ?? null,
+    latencyMs: opts.leadReceivedAt
+      ? Date.now() - new Date(opts.leadReceivedAt).getTime()
+      : null,
+  };
+
   const to = toE164(opts.toMobile);
-  if (!to) return;
+  if (!to) {
+    // A missing or malformed mobile used to be an invisible non-event: the
+    // agent simply never heard about their lead and nobody knew. It's a
+    // failure, so it's logged as one.
+    await recordWhatsApp({
+      ...base,
+      template: "",
+      dynamic: false,
+      fellBack: false,
+      ok: false,
+      reason: opts.toMobile?.trim()
+        ? "Not a usable mobile number"
+        : "No mobile number on their account",
+      toMasked: maskNumber(opts.toMobile ?? ""),
+      messageId: null,
+      apiMs: null,
+    });
+    return;
+  }
 
   const dyn = dynamicTemplate();
   const staticName = process.env.WHATSAPP_TEMPLATE ?? "new_lead";
@@ -193,15 +255,32 @@ export async function sendNewLeadAlert(opts: {
   // Alerts stay best-effort — a failed alert must never affect lead creation —
   // but no longer silent: an expired token or paused template used to look
   // exactly like a successful send.
+  let fellBack = false;
   if (useDynamic) {
     const r = await postTemplate(
       to,
       dyn!,
       leadComponents(opts.agentName, opts.leadName, opts.leadId)
     );
-    if (r.ok) return;
+    if (r.ok) {
+      await recordWhatsApp({
+        ...base,
+        template: dyn!,
+        dynamic: true,
+        fellBack: false,
+        ok: true,
+        reason: null,
+        toMasked: maskNumber(to),
+        messageId: r.messageId ?? null,
+        apiMs: r.apiMs,
+      });
+      return;
+    }
     // The deep-link template failing must degrade the BUTTON, not lose the
-    // ALERT — fall through and send the static template instead.
+    // ALERT — fall through and send the static template instead. The log
+    // keeps the fallback visible, because a message that arrived without its
+    // deep link is a half-failure worth fixing, not a success.
+    fellBack = true;
     console.error(
       `[whatsapp] dynamic template ${dyn} REJECTED, falling back to ${staticName}:`,
       r.reason
@@ -216,6 +295,17 @@ export async function sendNewLeadAlert(opts: {
   if (!r.ok) {
     console.error(`[whatsapp] new-lead alert REJECTED (${staticName}):`, r.reason);
   }
+  await recordWhatsApp({
+    ...base,
+    template: staticName,
+    dynamic: false,
+    fellBack,
+    ok: r.ok,
+    reason: r.ok ? null : (r.reason ?? "Rejected by Meta"),
+    toMasked: maskNumber(to),
+    messageId: r.messageId ?? null,
+    apiMs: r.apiMs,
+  });
 }
 
 // Admin-triggered nudge: prompt an agent to go back to a lead that's going
@@ -225,54 +315,42 @@ export async function sendLeadNudge(opts: {
   toMobile: string;
   agentName: string;
   leadName: string;
+  userId?: string;
+  brandId?: string;
+  leadId?: string;
 }): Promise<{ ok: boolean; reason?: string }> {
   if (!whatsappConfigured()) return { ok: false, reason: "not_configured" };
   const to = toE164(opts.toMobile);
   if (!to) return { ok: false, reason: "bad_number" };
 
   const name = process.env.WHATSAPP_NUDGE_TEMPLATE ?? "lead_reminder";
-  const lang = process.env.WHATSAPP_TEMPLATE_LANG ?? "en_GB";
-  const body = {
-    messaging_product: "whatsapp",
+  const r = await postTemplate(
     to,
-    type: "template",
-    template: {
-      name,
-      language: { code: lang },
-      components: [
-        {
-          type: "body",
-          parameters: [
-            { type: "text", text: opts.agentName || "there" },
-            { type: "text", text: opts.leadName || "a lead" },
-          ],
-        },
-      ],
-    },
-  };
-
-  try {
-    const res = await fetch(
-      `${GRAPH}/${process.env.WHATSAPP_PHONE_ID}/messages`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      }
-    );
-    if (!res.ok) {
-      const data = (await res.json().catch(() => ({}))) as {
-        error?: { message?: string };
-      };
-      return { ok: false, reason: data?.error?.message ?? `HTTP ${res.status}` };
-    }
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, reason: e instanceof Error ? e.message : "unreachable" };
-  }
+    name,
+    leadComponents(opts.agentName, opts.leadName)
+  );
+  // Nudges go in the same log as everything else: when the number or the
+  // token is the problem, it's the same problem, and splitting the evidence
+  // across two places is how it stays unnoticed.
+  await recordWhatsApp({
+    kind: "nudge",
+    userId: opts.userId ?? null,
+    agentName: opts.agentName ?? "",
+    brandId: opts.brandId ?? null,
+    leadId: opts.leadId ?? null,
+    leadName: opts.leadName ?? "",
+    leadReceivedAt: null,
+    latencyMs: null,
+    template: name,
+    dynamic: false,
+    fellBack: false,
+    ok: r.ok,
+    reason: r.ok ? null : (r.reason ?? "Rejected by Meta"),
+    toMasked: maskNumber(to),
+    messageId: r.messageId ?? null,
+    apiMs: r.apiMs,
+  });
+  return r.ok ? { ok: true } : { ok: false, reason: r.reason };
 }
 
 // Admin test send: fires exactly what a real lead would fire — the dynamic
@@ -299,5 +377,23 @@ export async function sendWhatsAppTest(
     name,
     leadComponents("there", "Portal Test Lead", dyn ? "testlead" : undefined)
   );
-  return { ...r, template: name, dynamic: !!dyn };
+  await recordWhatsApp({
+    kind: "test",
+    userId: null,
+    agentName: "Admin test",
+    brandId: null,
+    leadId: null,
+    leadName: "Portal Test Lead",
+    leadReceivedAt: null,
+    latencyMs: null,
+    template: name,
+    dynamic: !!dyn,
+    fellBack: false,
+    ok: r.ok,
+    reason: r.ok ? null : (r.reason ?? "Rejected by Meta"),
+    toMasked: maskNumber(to),
+    messageId: r.messageId ?? null,
+    apiMs: r.apiMs,
+  });
+  return { ok: r.ok, reason: r.reason, template: name, dynamic: !!dyn };
 }

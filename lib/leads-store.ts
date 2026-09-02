@@ -116,12 +116,20 @@ async function notifyNewLead(userId: string, lead: Lead): Promise<void> {
   }
   try {
     const user = await findById(userId);
-    if (user?.mobile) {
+    if (user) {
+      // Deliberately called even with no mobile on file: the alert logs that
+      // as a failure, which is how "this agent never gets WhatsApps" becomes
+      // visible instead of silently normal.
       await sendNewLeadAlert({
         toMobile: user.mobile,
         agentName: user.name,
         leadName: lead.name,
         leadId: lead.id,
+        userId: user.id,
+        brandId: user.brandId,
+        // The lead's own submission time, so the log measures the wait the
+        // agent felt — including the sync poll — not just our send.
+        leadReceivedAt: lead.receivedAt,
       });
     }
   } catch {

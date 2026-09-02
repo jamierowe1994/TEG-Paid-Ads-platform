@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
 import { findById, updateUser, toPublic } from "@/lib/users-store";
 import { packageById } from "@/lib/packages";
-import { createCheckoutSession, stripeConfigured } from "@/lib/stripe";
+import {
+  createCheckoutSession,
+  stripeConfigured,
+  subjectFromUser,
+} from "@/lib/stripe";
 
 /* Upgrade a referrals-only account to the full Paid Ads system.
  * Body: { packageId }  →  { url } to redirect to, or { user } in demo mode.
@@ -54,7 +58,7 @@ export async function POST(req: NextRequest) {
   await updateUser(id, { packageId: pkg.id });
 
   const result = await createCheckoutSession({
-    user,
+    user: subjectFromUser(user),
     packageId: pkg.id,
     origin,
     successUrl: `${origin}/dashboard?checkout=success`,

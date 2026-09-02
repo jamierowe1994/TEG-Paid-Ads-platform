@@ -14,6 +14,8 @@ import TleProInvite from "@/components/TleProInvite";
 import AdReconciliation from "@/components/AdReconciliation";
 import EmailTest from "@/components/EmailTest";
 import WhatsAppTemplate from "@/components/WhatsAppTemplate";
+import WhatsAppMonitor from "@/components/WhatsAppMonitor";
+import SignupsBoard from "@/components/SignupsBoard";
 import PasswordInput from "@/components/PasswordInput";
 import type { UserProfile, Referral } from "@/lib/types";
 import ICONS, { SocialIcon } from "@/components/SocialIcons";
@@ -138,7 +140,9 @@ type Tab =
   | "activity"
   | "referrals"
   | "crm"
+  | "signups"
   | "performance"
+  | "whatsapp"
   | "connections"
   | "invite";
 
@@ -155,7 +159,21 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
     label: "CRM",
     icon: "M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4z",
   },
+  // Who has joined, and who stalled on the way. Separate from CRM because
+  // "signed up" is a funnel with stages, not one list.
+  {
+    id: "signups",
+    label: "Sign-ups",
+    icon: "M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM19 8v6M22 11h-6",
+  },
   { id: "performance", label: "Performance", icon: "M3 17l6-6 4 4 8-8M21 7v6M21 7h-6" },
+  // Are the lead alerts going out, and how fast? Super admin only — it
+  // carries every brand's agents, leads and Meta's raw error text.
+  {
+    id: "whatsapp",
+    label: "WhatsApp",
+    icon: "M21 11.5a8.4 8.4 0 01-12.3 7.5L3 21l2.1-5.6A8.4 8.4 0 1121 11.5z",
+  },
   // TEMPORARY — the TLE V1 launch tab. Remove once everyone's on the platform.
   {
     id: "invite",
@@ -173,6 +191,10 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 const SIDEBAR_W = 240;
 const TOPBAR_H = 64;
 const SWOOP = 22;
+// Phone chrome: the top bar plus the horizontal tab strip that stands in for
+// the sidebar.
+const TABSTRIP_H = 52;
+const MOBILE_CHROME_H = TOPBAR_H + TABSTRIP_H;
 
 // One seamless white L-shape (sidebar + top bar) drawn with a clip-path so
 // there's no seam where the two arms meet — the concave swoop is part of the
@@ -181,9 +203,15 @@ function ChromeSurface({ vw, vh }: { vw: number; vh: number }) {
   const sw = SIDEBAR_W;
   const th = TOPBAR_H;
   const r = SWOOP;
-  const d =
-    `M0 0 L${vw} 0 L${vw} ${th} L${sw + r} ${th} ` +
-    `A${r} ${r} 0 0 0 ${sw} ${th + r} L${sw} ${vh} L0 ${vh} Z`;
+  /* Below the desktop breakpoint the sidebar is replaced by a scrolling tab
+     strip, so there's no L-shape to cut — just a bar across the top. Drawing
+     the notch anyway is what put a 240px white column down the left of a
+     phone screen with nothing in it. */
+  const narrow = vw < 1024;
+  const d = narrow
+    ? `M0 0 L${vw} 0 L${vw} ${MOBILE_CHROME_H} L0 ${MOBILE_CHROME_H} Z`
+    : `M0 0 L${vw} 0 L${vw} ${th} L${sw + r} ${th} ` +
+      `A${r} ${r} 0 0 0 ${sw} ${th + r} L${sw} ${vh} L0 ${vh} Z`;
   return (
     <div
       aria-hidden
@@ -1024,7 +1052,7 @@ export default function AdminPage() {
       {vp.w > 0 && <ChromeSurface vw={vp.w} vh={vp.h} />}
 
       {/* ── Sidebar (transparent — the chrome provides the white surface) ── */}
-      <aside className="fixed inset-y-0 left-0 z-30 flex w-60 flex-col">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col lg:flex">
         <div className="px-5 pt-14">
           <div className="flex items-center gap-2.5">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-900 text-sm font-bold text-white">
@@ -1080,11 +1108,11 @@ export default function AdminPage() {
       </aside>
 
       {/* ── Top bar (transparent) ── */}
-      <header className="fixed left-[240px] right-0 top-0 z-40 flex h-16 items-center justify-between gap-3 px-8">
+      <header className="fixed left-0 right-0 top-0 z-40 flex h-16 items-center justify-between gap-3 px-4 lg:left-[240px] lg:px-8">
         <h1 className="text-lg font-semibold tracking-tight">
           {TABS.find((t) => t.id === tab)?.label}
         </h1>
-        <div className="flex items-center gap-3 text-sm">
+        <div className="flex items-center gap-2 text-sm lg:gap-3">
           <button
             onClick={() => loadData(password)}
             className="rounded-lg border border-gray-200 bg-gray-50 px-3.5 py-2 font-medium text-gray-500 transition hover:text-gray-900"
@@ -1093,15 +1121,51 @@ export default function AdminPage() {
           </button>
           <Link
             href="/"
-            className="rounded-lg border border-gray-200 bg-gray-50 px-3.5 py-2 font-medium text-gray-500 transition hover:text-gray-900"
+            className="hidden rounded-lg border border-gray-200 bg-gray-50 px-3.5 py-2 font-medium text-gray-500 transition hover:text-gray-900 sm:block"
           >
             View site
           </Link>
+          {/* Sign out lives at the foot of the sidebar, which doesn't exist
+              on a phone — so it comes up here instead. */}
+          <button
+            onClick={signOut}
+            className="rounded-lg border border-gray-200 bg-gray-50 px-3.5 py-2 font-medium text-gray-500 transition hover:text-gray-900 lg:hidden"
+          >
+            Sign out
+          </button>
         </div>
       </header>
 
+      {/* ── Tab strip (phones and tablets — stands in for the sidebar) ── */}
+      <nav
+        className="fixed left-0 right-0 top-16 z-40 flex gap-1.5 overflow-x-auto px-4 pb-2 lg:hidden"
+        style={{ height: TABSTRIP_H, scrollbarWidth: "none" }}
+      >
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            /* Pull the current tab into view — on a phone the strip is wider
+               than the screen, so without this the tab you're on is often
+               scrolled off and the strip looks like it's on the wrong one. */
+            ref={(el) => {
+              if (el && tab === t.id) {
+                el.scrollIntoView({ block: "nearest", inline: "center" });
+              }
+            }}
+            className={`shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+              tab === t.id
+                ? "bg-gray-900 text-white"
+                : "bg-gray-100 text-gray-500"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
+
       {/* ── Main ── */}
-      <main className="ml-[240px] px-8 pb-10 pt-[104px]">
+      <main className="px-4 pb-10 pt-[140px] lg:ml-[240px] lg:px-8 lg:pt-[104px]">
         <div className="mx-auto max-w-6xl">
         {/* ═══ OVERVIEW ═══ */}
         {tab === "overview" && (
@@ -2126,6 +2190,19 @@ export default function AdminPage() {
         )}
 
         {/* ═══ CONNECTIONS ═══ */}
+        {/* ═══ SIGN-UPS ═══ */}
+        {tab === "signups" && (
+          <SignupsBoard
+            pass={password}
+            users={users}
+            dropOffs={dropOffs}
+            onOpenAgent={setSelectedAgent}
+          />
+        )}
+
+        {/* ═══ WHATSAPP ═══ */}
+        {tab === "whatsapp" && <WhatsAppMonitor pass={password} />}
+
         {tab === "connections" && (
           <>
             {/* System mailbox — the address the platform sends from. Invite

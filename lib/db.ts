@@ -255,6 +255,72 @@ CREATE INDEX IF NOT EXISTS leads_follow_up_idx ON leads(follow_up_at)
 CREATE INDEX IF NOT EXISTS leads_resurface_idx ON leads(resurface_at)
   WHERE resurface_at IS NOT NULL;
 
+-- Signups that have NOT been paid for yet, and therefore are not accounts.
+--
+-- Before this table, signup created the account and Stripe decided later
+-- whether it was any good. That left real people with half-accounts they
+-- couldn't use, and put a "new signup" email in front of Hayley for someone
+-- who never paid a penny. Now the details wait here until Stripe confirms
+-- the money, and only then does a user row exist.
+--
+-- The password hash lives here because the account has to be creatable from
+-- the webhook, with the browser long gone. Rows are pruned after a week.
+CREATE TABLE IF NOT EXISTS pending_signups (
+  id            TEXT PRIMARY KEY,
+  email         TEXT NOT NULL UNIQUE,
+  name          TEXT NOT NULL DEFAULT '',
+  mobile        TEXT NOT NULL DEFAULT '',
+  photo         TEXT,
+  brand_id      TEXT NOT NULL,
+  platforms     JSONB NOT NULL DEFAULT '[]',
+  goal          TEXT NOT NULL DEFAULT '',
+  package_id    TEXT NOT NULL DEFAULT 'starter',
+  password_hash TEXT NOT NULL,
+  stripe_customer_id TEXT,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  consumed_at   TIMESTAMPTZ,
+  user_id       TEXT
+);
+
+-- Every WhatsApp alert we attempt, so "did it send, and how fast?" is a
+-- question with an answer. Two clocks matter and they measure different
+-- things: api_ms is how long Meta took to accept the send, latency_ms is how
+-- long the LEAD waited (Meta's submission time -> our WhatsApp going out),
+-- which is what agents actually feel when they say alerts are slow. The
+-- 5-minute lead poll lives inside latency_ms and nowhere else.
+--
+-- Meta ACCEPTING a template is not delivery. delivered_at/read_at/failed_at
+-- are stamped by the status webhook (app/api/webhooks/whatsapp) when it's
+-- configured in Meta; without it those stay null and the tab says so rather
+-- than implying everything arrived.
+CREATE TABLE IF NOT EXISTS whatsapp_log (
+  id           TEXT PRIMARY KEY,
+  sent_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  kind         TEXT NOT NULL DEFAULT 'new_lead',
+  user_id      TEXT,
+  agent_name   TEXT NOT NULL DEFAULT '',
+  brand_id     TEXT,
+  lead_id      TEXT,
+  lead_name    TEXT NOT NULL DEFAULT '',
+  template     TEXT NOT NULL DEFAULT '',
+  dynamic      BOOLEAN NOT NULL DEFAULT FALSE,
+  fell_back    BOOLEAN NOT NULL DEFAULT FALSE,
+  ok           BOOLEAN NOT NULL DEFAULT FALSE,
+  reason       TEXT,
+  to_masked    TEXT NOT NULL DEFAULT '',
+  message_id   TEXT,
+  lead_received_at TIMESTAMPTZ,
+  latency_ms   BIGINT,
+  api_ms       INTEGER,
+  delivered_at TIMESTAMPTZ,
+  read_at      TIMESTAMPTZ,
+  failed_at    TIMESTAMPTZ,
+  fail_detail  TEXT
+);
+CREATE INDEX IF NOT EXISTS whatsapp_log_sent_idx ON whatsapp_log(sent_at DESC);
+CREATE INDEX IF NOT EXISTS whatsapp_log_msg_idx ON whatsapp_log(message_id)
+  WHERE message_id IS NOT NULL;
+
 -- Raw capture of every Rex webhook delivery, so we can see real payload
 -- shapes before building the stage-mapping logic against them.
 CREATE TABLE IF NOT EXISTS rex_webhook_log (

@@ -14,7 +14,7 @@ import { PACKAGES, packageById } from "@/lib/packages";
 import BrandMark from "@/components/BrandMark";
 import PasswordInput from "@/components/PasswordInput";
 import DomainDenied from "@/components/DomainDenied";
-import { signUp, checkEmail, refreshUser } from "@/lib/session";
+import { signUp, checkEmail, refreshUser, claimCheckout } from "@/lib/session";
 
 // One-question-at-a-time signup. Order:
 // name → email (brand auto-detect) → password → package → payment →
@@ -137,25 +137,58 @@ function SignupWizard() {
   const stepIndex = steps.indexOf(step === "paid" ? "authenticate" : step);
   const progress = ((stepIndex + 1) / steps.length) * 100;
 
-  /* Coming back from Stripe the wizard is a fresh mount, so name/email/brand
-     are blank — which left the last step reading "Sign in with  to confirm".
-     The session cookie survives the round trip, so refill from the account
-     that was just created. */
+  /* Coming back from Stripe.
+     The wizard is a fresh mount with none of its state, and — since payment
+     moved in front of account creation — no session cookie either, because
+     there was no account to be signed into. So the first thing this does is
+     claim: hand the checkout session id back to the server, which verifies
+     the payment with Stripe and creates the account. The webhook does the
+     same job independently; this is just the browser not waiting for it. */
+  const sessionId = params.get("session_id");
+  const [claimError, setClaimError] = useState("");
+  /* True until the account behind a completed checkout actually exists. The
+     next step signs in with Microsoft, which needs a session, so Continue
+     stays disabled until this clears. */
+  const [settling, setSettling] = useState(checkout === "success");
   useEffect(() => {
     if (checkout !== "success") return;
     let cancelled = false;
-    refreshUser().then((u) => {
+
+    async function settle() {
+      // An upgrade (already signed in) has no session id and nothing to claim.
+      if (sessionId) {
+        const { user, error } = await claimCheckout(sessionId);
+        if (cancelled) return;
+        if (user) {
+          setName((n) => n || user.name);
+          setEmail((e) => e || user.email);
+          setBrand((b) => b ?? BRANDS.find((x) => x.id === user.brandId) ?? null);
+          setPackageId((p) => p || user.packageId);
+          setAccountType((a) => a || "paid");
+          return;
+        }
+        // The money is Stripe's business and it's fine; what failed is the
+        // last step of setup. Say that, rather than anything that sounds like
+        // the payment didn't work.
+        setClaimError(error ?? "We couldn't finish setting up your account.");
+        return;
+      }
+      const u = await refreshUser();
       if (cancelled || !u) return;
       setName((n) => n || u.name);
       setEmail((e) => e || u.email);
       setBrand((b) => b ?? BRANDS.find((x) => x.id === u.brandId) ?? null);
       setPackageId((p) => p || u.packageId);
       setAccountType((a) => a || (u.accountType === "referral" ? "referral" : "paid"));
+    }
+
+    void settle().finally(() => {
+      if (!cancelled) setSettling(false);
     });
     return () => {
       cancelled = true;
     };
-  }, [checkout]);
+  }, [checkout, sessionId]);
 
   function go(next: StepId) {
     setError("");
@@ -272,34 +305,68 @@ function SignupWizard() {
     return true;
   }
 
-  /* Paid signup: create the account (which signs them in, so /api/checkout has
-     a session), then hand off to Stripe Checkout. The account exists at this
-     point but is NOT paid — only the webhook sets that, so abandoning the
-     Stripe page leaves an account that simply hasn't paid yet rather than a
-     free one. */
+  /* Paid signup. Nothing is created here: the details are parked server-side
+     and Stripe is handed the id. The account comes into existence only once
+     the payment clears — so walking away from the card page leaves no
+     half-account behind, and nobody is told a customer has joined who hasn't.
+     See lib/pending-signups.ts. */
   async function payAndContinue() {
-    if (submitting) return;
+    if (submitting || !brand) return;
     setError("");
-    const created = await completeSignup(false);
-    if (!created) return;
-
     setSubmitting(true);
     try {
+      const { pendingId, user, error, code } = await signUp({
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+        mobile: "",
+        photo: null,
+        brandId: brand.id,
+        platforms: [],
+        goal: "",
+        packageId,
+        accountType: "paid",
+      });
+      if (error) {
+        setSubmitting(false);
+        if (code === "domain") {
+          setDomainBlocked(true);
+          go("email");
+        } else if (/already exists/i.test(error)) {
+          setAlreadyRegistered(true);
+          go("email");
+        } else if (/password/i.test(error)) {
+          setError(error);
+          go("password");
+        } else {
+          setError(error);
+        }
+        return;
+      }
+
+      /* No pendingId means the server decided this person owes nothing — a
+         licence covers them, or payments aren't configured — and made the
+         account outright. Carry on rather than sending them to a card form
+         for £0. */
+      if (!pendingId) {
+        setSubmitting(false);
+        if (user) go("authenticate");
+        else setError("Couldn't create your account. Please try again.");
+        return;
+      }
+
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ packageId }),
+        body: JSON.stringify({ packageId, pendingId }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.url) {
-        // Payments not configured yet, or Stripe refused. The account is made
-        // and they're signed in, so let them carry on rather than dead-end.
         setError(
           data?.error ??
-            "Couldn't start checkout. Your account is created — continue and we'll sort payment."
+            "Couldn't start checkout. Nothing has been charged — please try again."
         );
         setSubmitting(false);
-        go("authenticate");
         return;
       }
       window.location.href = data.url as string;
@@ -743,8 +810,9 @@ function SignupWizard() {
             <h1 className="text-3xl font-semibold tracking-tight">Payment</h1>
             {checkout === "cancelled" && (
               <p className="mt-3 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-600">
-                Payment cancelled — nothing has been charged. Your account is
-                saved; pick up where you left off whenever you're ready.
+                Payment cancelled — nothing has been charged. Start again
+                whenever you&apos;re ready; no account is created until a
+                payment goes through.
               </p>
             )}
             <div className="mt-8 rounded-2xl border border-gray-200 p-6">
@@ -830,21 +898,35 @@ function SignupWizard() {
               <h1 className="mt-7 text-3xl font-semibold tracking-tight">
                 Payment made
               </h1>
-              <p className="mt-3 max-w-sm text-gray-500">
-                You&apos;re on the{" "}
-                <span className="font-medium text-gray-900">
-                  {packageById(packageId)?.name ?? "Launch Pad"}
-                </span>{" "}
-                package. Stripe has emailed your receipt — one more step and
-                you&apos;re in.
-              </p>
+              {claimError ? (
+                /* The payment is safe — Stripe has it. What didn't finish is
+                   the account setup, and saying so plainly is the difference
+                   between a support call and a chargeback. */
+                <p className="mt-3 max-w-sm text-gray-500">
+                  Your payment went through and your receipt is on its way.
+                  We couldn&apos;t quite finish setting up your account —
+                  give us a shout and we&apos;ll have it sorted straight away.
+                </p>
+              ) : (
+                <p className="mt-3 max-w-sm text-gray-500">
+                  You&apos;re on the{" "}
+                  <span className="font-medium text-gray-900">
+                    {packageById(packageId)?.name ?? "Launch Pad"}
+                  </span>{" "}
+                  package. Stripe has emailed your receipt — one more step and
+                  you&apos;re in.
+                </p>
+              )}
 
-              <button
-                className={`${primaryBtn} mt-8`}
-                onClick={() => go("authenticate")}
-              >
-                Continue
-              </button>
+              {!claimError && (
+                <button
+                  className={`${primaryBtn} mt-8`}
+                  disabled={settling}
+                  onClick={() => go("authenticate")}
+                >
+                  {settling ? "Setting up your account…" : "Continue"}
+                </button>
+              )}
             </div>
           </div>
         )}

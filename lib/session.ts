@@ -83,7 +83,15 @@ export async function signUp(payload: {
   goal: string;
   packageId: string;
   accountType?: "paid" | "referral";
-}): Promise<{ user?: UserProfile; error?: string; code?: string }> {
+}): Promise<{
+  user?: UserProfile;
+  /* Set when the signup is parked awaiting payment rather than created. No
+     account exists yet, and won't until Stripe confirms — pass this id to
+     /api/checkout, which is what turns it into one. */
+  pendingId?: string;
+  error?: string;
+  code?: string;
+}> {
   const res = await fetch("/api/auth/signup", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -93,8 +101,31 @@ export async function signUp(payload: {
   if (!res.ok) {
     return { error: data.error ?? "Something went wrong", code: data.code };
   }
+  if (data.pending) return { pendingId: data.pendingId as string };
   saveUser(data.user);
   return { user: data.user };
+}
+
+/* Turn a paid checkout into a signed-in account. The Stripe webhook does the
+   same thing server-side; this is the browser not waiting for it. */
+export async function claimCheckout(
+  sessionId: string
+): Promise<{ user?: UserProfile; error?: string; code?: string }> {
+  try {
+    const res = await fetch("/api/auth/claim", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { error: data.error ?? "Couldn't finish setting up your account", code: data.code };
+    }
+    saveUser(data.user);
+    return { user: data.user };
+  } catch {
+    return { error: "Couldn't reach the server." };
+  }
 }
 
 // Is this email already registered? Lets the signup wizard catch a returning

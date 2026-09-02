@@ -31,6 +31,8 @@ export async function POST(req: NextRequest) {
     toMobile: user.mobile,
     agentName: user.name,
     leadName,
+    userId: user.id,
+    brandId: user.brandId,
   });
   return NextResponse.json({ ...result, agentName: user.name });
 }

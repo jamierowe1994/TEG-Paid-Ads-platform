@@ -3,6 +3,10 @@ import type Stripe from "stripe";
 import { findById, findByStripeCustomer, updateUser } from "@/lib/users-store";
 import { getStripe, commitmentEnd, stripeConfigured } from "@/lib/stripe";
 import { packageById } from "@/lib/packages";
+import {
+  materialisePendingSignup,
+  findPendingSignup,
+} from "@/lib/pending-signups";
 
 /* Stripe webhook — the ONLY thing that grants or removes paid access.
  *
@@ -100,30 +104,56 @@ async function handle(event: Stripe.Event, stripe: Stripe) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
       const userId = session.metadata?.userId;
+      const pendingId = session.metadata?.pendingId;
       const packageId = session.metadata?.packageId;
-      if (!userId) return;
+      if (!userId && !pendingId) return;
 
-      const user = await findById(userId);
+      const subId =
+        typeof session.subscription === "string"
+          ? session.subscription
+          : session.subscription?.id ?? null;
+      // Read the subscription back rather than assuming it's active — a
+      // session can complete with the subscription still incomplete.
+      let subStatus: string | null = null;
+      let subRenewsAt: string | null = null;
+      if (subId) {
+        const sub = await stripe.subscriptions.retrieve(subId);
+        subStatus = sub.status;
+        subRenewsAt = periodEnd(sub);
+      }
+
+      /* A signup that has no account yet: this payment is what creates it.
+         Idempotent, and the same call the browser makes on its way back from
+         Checkout — whichever gets here second does nothing. */
+      if (pendingId) {
+        const made = await materialisePendingSignup(pendingId, {
+          stripeCustomerId:
+            typeof session.customer === "string" ? session.customer : null,
+          stripeSubscriptionId: subId,
+          subscriptionStatus: subStatus,
+          renewsAt: subRenewsAt,
+          paid: subStatus ? OPEN.has(subStatus) : false,
+          packageId: packageById(packageId)?.id,
+        });
+        if (!made) {
+          console.error(`[stripe] no pending signup for id ${pendingId}`);
+          return;
+        }
+        console.log(
+          `[stripe] ${made.user.email} → account ${made.created ? "created" : "already existed"} (${subStatus})`
+        );
+        return;
+      }
+
+      const user = await findById(userId!);
       if (!user) {
         console.error(`[stripe] no user for id ${userId}`);
         return;
       }
 
-      const subscriptionId =
-        typeof session.subscription === "string"
-          ? session.subscription
-          : session.subscription?.id ?? null;
-
-      // Read the subscription back rather than assuming it's active — a
-      // session can complete with the subscription still incomplete.
-      let status: string | null = null;
-      let renewsAt: string | null = null;
-      if (subscriptionId) {
-        const sub = await stripe.subscriptions.retrieve(subscriptionId);
-        status = sub.status;
-        renewsAt = periodEnd(sub);
-      }
-
+      const subscriptionId = subId;
+      const status = subStatus;
+      const renewsAt = subRenewsAt;
       const pkg = packageById(packageId);
       await updateUser(user.id, {
         stripeCustomerId:
@@ -193,6 +223,18 @@ async function userForSubscription(sub: Stripe.Subscription) {
   if (userId) {
     const user = await findById(userId);
     if (user) return user;
+  }
+  /* A subscription created by the pay-first signup flow. Once the account
+     exists the pending row points at it; before that there's genuinely
+     nobody to update, and checkout.session.completed is right behind this
+     with the same status. */
+  const pendingId = sub.metadata?.pendingId;
+  if (pendingId) {
+    const pending = await findPendingSignup(pendingId);
+    if (pending?.userId) {
+      const user = await findById(pending.userId);
+      if (user) return user;
+    }
   }
   const customerId =
     typeof sub.customer === "string" ? sub.customer : sub.customer?.id;
