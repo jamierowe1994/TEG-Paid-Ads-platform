@@ -255,22 +255,27 @@ CREATE INDEX IF NOT EXISTS leads_follow_up_idx ON leads(follow_up_at)
 CREATE INDEX IF NOT EXISTS leads_resurface_idx ON leads(resurface_at)
   WHERE resurface_at IS NOT NULL;
 
--- Admin-centre accounts for people who aren't in the hard-coded directory:
--- a brand's marketing person, a new MD. Invited by magic link, they choose
--- their own password. Super admins stay in the directory (env / seed) and
--- the shared ADMIN_PASSWORD — this table never grants "super".
+-- Admin-centre accounts. Two kinds of row share it:
+--   · people INVITED by magic link (a brand's marketing person, a new MD),
+--     who choose their own password;
+--   · people from the hard-coded directory, adopted here the first time they
+--     sign in or are sent a link, so "last signed in" and a personal password
+--     exist for them too. brand_id is '' for super admins.
+-- Rows never CREATE a super admin — that tier is directory-only.
 CREATE TABLE IF NOT EXISTS admin_users (
   id            TEXT PRIMARY KEY,
   email         TEXT NOT NULL UNIQUE,
   name          TEXT NOT NULL DEFAULT '',
   role          TEXT NOT NULL,
-  brand_id      TEXT NOT NULL,
+  brand_id      TEXT NOT NULL DEFAULT '',
   password_hash TEXT,
   invited_by    TEXT,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   activated_at  TIMESTAMPTZ,
   last_login_at TIMESTAMPTZ
 );
+-- The table shipped a day before super admins were adopted into it.
+ALTER TABLE admin_users ALTER COLUMN brand_id SET DEFAULT '';
 
 -- Signups that have NOT been paid for yet, and therefore are not accounts.
 --

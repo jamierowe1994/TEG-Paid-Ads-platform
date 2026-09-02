@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     ok: true,
     name: admin.name,
     email: admin.email,
-    brandName: brandById(admin.brandId)?.name ?? admin.brandId,
+    brandName: admin.brandId ? (brandById(admin.brandId)?.name ?? admin.brandId) : "The Experts Group",
     role: admin.role,
   });
 }

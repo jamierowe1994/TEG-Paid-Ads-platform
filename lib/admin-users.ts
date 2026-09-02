@@ -18,13 +18,15 @@ import type { BrandId } from "./brands";
  */
 
 export type InvitedRole = "md" | "marketing";
+export type StoredAdminRole = InvitedRole | "super";
 
 export interface AdminUser {
   id: string;
   email: string;
   name: string;
-  role: InvitedRole;
-  brandId: BrandId;
+  role: StoredAdminRole;
+  /** Null for super admins — they aren't scoped to a business. */
+  brandId: BrandId | null;
   /** Null until they've followed their invite and chosen a password. */
   passwordHash: string | null;
   invitedBy: string | null;
@@ -59,8 +61,8 @@ function fromRow(r: Row): AdminUser {
     id: r.id,
     email: r.email,
     name: r.name,
-    role: r.role === "md" ? "md" : "marketing",
-    brandId: r.brand_id as BrandId,
+    role: r.role === "md" ? "md" : r.role === "super" ? "super" : "marketing",
+    brandId: r.brand_id ? (r.brand_id as BrandId) : null,
     passwordHash: r.password_hash,
     invitedBy: r.invited_by,
     createdAt: new Date(r.created_at).toISOString(),
@@ -110,8 +112,8 @@ export async function findAdminUserById(id: string): Promise<AdminUser | null> {
 export async function upsertAdminUser(input: {
   email: string;
   name: string;
-  role: InvitedRole;
-  brandId: BrandId;
+  role: StoredAdminRole;
+  brandId: BrandId | null;
   invitedBy: string | null;
 }): Promise<AdminUser> {
   const email = input.email.trim().toLowerCase();
@@ -122,7 +124,7 @@ export async function upsertAdminUser(input: {
        ON CONFLICT (email) DO UPDATE SET
          name = EXCLUDED.name, role = EXCLUDED.role, brand_id = EXCLUDED.brand_id
        RETURNING *`,
-      [uid(), email, input.name, input.role, input.brandId, input.invitedBy]
+      [uid(), email, input.name, input.role, input.brandId ?? "", input.invitedBy]
     );
     return fromRow(rows[0]);
   }
