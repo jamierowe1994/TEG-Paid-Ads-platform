@@ -7,11 +7,15 @@
  * not a customer, and each stage is listed separately so nobody has to
  * reconcile two numbers that were never counting the same people.
  *
- *   Joined          → paid, account live. This is the number to trust.
- *   At the card page → details parked, no payment yet, no account.
- *   Left earlier     → started the wizard, never reached payment.
- *   Legacy unpaid    → accounts made before payment came first. Should only
- *                      ever shrink; if it grows, something is wrong.
+ *   Joined            → paid (or licensed), account live. The number to trust.
+ *   Abandoned payment → details parked, no payment yet, no account.
+ *   Left earlier      → started the wizard, never reached payment.
+ *   Old unpaid        → accounts made before payment came first. Should only
+ *                       ever shrink; if it grows, something is wrong.
+ *
+ * This tab is for the NEW. Once someone has paid and their ads are connected
+ * they've finished arriving — they drop off here and live in People. Otherwise
+ * this list would be every customer ever, which is what People is for.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -74,7 +78,7 @@ function Stat({
           ? "text-emerald-600"
           : "text-gray-900";
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5">
+    <div className="rounded-2xl bg-gray-50 p-5">
       <p className="text-xs uppercase tracking-wide text-gray-400">{label}</p>
       <p className={`mt-1.5 text-2xl font-semibold tracking-tight ${colour}`}>
         {value}
@@ -126,7 +130,9 @@ export default function SignupsBoard({
           (u) =>
             new Date(u.createdAt).getTime() >= cutoff &&
             inBrand(u.brandId) &&
-            u.paymentState !== "unpaid"
+            u.paymentState !== "unpaid" &&
+            // Paid AND ads connected = settled in. They're in People now.
+            !(u.paymentState === "paid" && u.metaCampaignId)
         )
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -202,10 +208,10 @@ export default function SignupsBoard({
           label="Joined"
           value={String(joined.length)}
           tone="good"
-          note={`${paying} paying, ${joined.length - paying} on a licence`}
+          note={`${paying} paying, ${joined.length - paying} on a licence · still settling in`}
         />
         <Stat
-          label="At the card page"
+          label="Abandoned payment"
           value={String(atCardPage.length)}
           tone={atCardPage.length ? "warn" : "plain"}
           note="Details in, payment not made"
@@ -234,8 +240,9 @@ export default function SignupsBoard({
           </span>
         </h2>
         <p className="mt-0.5 text-sm text-gray-500">
-          Accounts that exist. Nobody reaches this list without either paying
-          or being covered by a licence.
+          Accounts that exist and are still settling in. Nobody reaches this
+          list without paying or a licence — and once their ads are connected
+          they move on to People.
         </p>
         <div className="mt-3 overflow-x-auto rounded-2xl border border-gray-200 bg-white">
           <table className="w-full text-left text-sm">
@@ -311,7 +318,7 @@ export default function SignupsBoard({
       {/* ── Stuck at payment ── */}
       <section>
         <h2 className="text-lg font-semibold">
-          Stopped at the payment page{" "}
+          Abandoned payment{" "}
           <span className="text-sm font-normal text-gray-400">
             {atCardPage.length}
           </span>
@@ -415,16 +422,15 @@ export default function SignupsBoard({
       {legacyUnpaid.length > 0 && (
         <section className="rounded-2xl border border-red-200 bg-red-50 p-5">
           <h2 className="text-sm font-semibold text-red-900">
-            Accounts that exist but were never paid for{" "}
+            Abandoned payment — older accounts{" "}
             <span className="font-normal text-red-700/70">
               {legacyUnpaid.length}
             </span>
           </h2>
           <p className="mt-0.5 text-xs text-red-800/70">
-            Made before payment came first, so they got an account without ever
-            paying. They&rsquo;re locked behind a finish-payment screen. This
-            list can only shrink — a new name appearing here means something
-            has gone wrong.
+            From before payment came first: they got an account without ever
+            paying, and it&rsquo;s locked behind a finish-payment screen. This
+            list can only shrink — a new name here means something is wrong.
           </p>
           <ul className="mt-3 space-y-2">
             {legacyUnpaid.map((u) => (

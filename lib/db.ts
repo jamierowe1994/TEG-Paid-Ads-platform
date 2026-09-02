@@ -255,6 +255,23 @@ CREATE INDEX IF NOT EXISTS leads_follow_up_idx ON leads(follow_up_at)
 CREATE INDEX IF NOT EXISTS leads_resurface_idx ON leads(resurface_at)
   WHERE resurface_at IS NOT NULL;
 
+-- Admin-centre accounts for people who aren't in the hard-coded directory:
+-- a brand's marketing person, a new MD. Invited by magic link, they choose
+-- their own password. Super admins stay in the directory (env / seed) and
+-- the shared ADMIN_PASSWORD — this table never grants "super".
+CREATE TABLE IF NOT EXISTS admin_users (
+  id            TEXT PRIMARY KEY,
+  email         TEXT NOT NULL UNIQUE,
+  name          TEXT NOT NULL DEFAULT '',
+  role          TEXT NOT NULL,
+  brand_id      TEXT NOT NULL,
+  password_hash TEXT,
+  invited_by    TEXT,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  activated_at  TIMESTAMPTZ,
+  last_login_at TIMESTAMPTZ
+);
+
 -- Signups that have NOT been paid for yet, and therefore are not accounts.
 --
 -- Before this table, signup created the account and Stripe decided later

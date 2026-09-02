@@ -71,7 +71,7 @@ export function newSignupEmail(opts: {
   packageName?: string;
   userId: string;
 }) {
-  const link = `${appOrigin()}/admin?tab=crm&agent=${encodeURIComponent(opts.userId)}`;
+  const link = `${appOrigin()}/admin?tab=people&agent=${encodeURIComponent(opts.userId)}`;
   return {
     subject: `New Launch Pad customer — ${opts.name} (${opts.brandName})`,
     html: shell({
@@ -142,6 +142,35 @@ export function inviteEmail(opts: {
         para(
           "Your ads are already connected, so there's nothing to set up. Choose a password and you're in — about a minute."
         ) +
+        button(opts.link, "Set my password") +
+        fallbackLink(opts.link) +
+        para(
+          `<span style="color:${MUTED};font-size:13px;">This link is just for you and expires in ${opts.days} days. If it runs out, ask and we'll send another.</span>`
+        ),
+    }),
+  };
+}
+
+/* ── Admin-centre invite ─────────────────────────────────────────────────── */
+export function adminInviteEmail(opts: {
+  name: string;
+  link: string;
+  brandName: string;
+  roleLabel: string;
+  invitedBy: string;
+  days: number;
+}) {
+  return {
+    subject: `You've been given access to the Launch Pad admin centre`,
+    html: shell({
+      heading: "Your admin access is ready",
+      preheader: `${opts.roleLabel} access for ${opts.brandName}`,
+      body:
+        para(`Hi ${opts.name.split(" ")[0]},`) +
+        para(
+          `${opts.invitedBy} has set you up with <strong>${opts.roleLabel}</strong> access to the Launch Pad admin centre for ${opts.brandName}. You'll be able to see every agent's ads, spend, leads and conversion rates in one place.`
+        ) +
+        para("Choose a password and you're in — about a minute.") +
         button(opts.link, "Set my password") +
         fallbackLink(opts.link) +
         para(

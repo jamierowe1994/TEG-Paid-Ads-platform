@@ -2,6 +2,8 @@ import "server-only";
 import crypto from "crypto";
 import type { NextRequest } from "next/server";
 import type { BrandId } from "./brands";
+import { findAdminUserByEmail, touchAdminLogin, type AdminUser } from "./admin-users";
+import { verifyPassword } from "./auth";
 
 // Three admin tiers:
 //  • super — full access to everything (connections, every brand's data).
@@ -195,12 +197,33 @@ export interface AdminLoginResult {
   email: string;
 }
 
-export function verifyAdminLogin(
+/** The bearer + role bundle for an invited (database) admin. Used by login
+    and by the invite-setup route, so a freshly-set password signs them
+    straight in rather than bouncing them to the login form. */
+export function loginResultFor(admin: AdminUser): AdminLoginResult {
+  return {
+    token: signScopedToken(admin.email, admin.brandId, admin.role),
+    role: admin.role,
+    brandId: admin.brandId,
+    name: admin.name,
+    email: admin.email,
+  };
+}
+
+export async function verifyAdminLogin(
   email: string,
   password: string
-): AdminLoginResult | null {
+): Promise<AdminLoginResult | null> {
   const entry = lookupAdmin(email);
-  if (!entry) return null;
+  if (!entry) {
+    // Not in the directory — an INVITED admin, with a password of their own.
+    // Never super: that tier is directory-only by design (see admin-users.ts).
+    const invited = await findAdminUserByEmail(email);
+    if (!invited?.passwordHash) return null;
+    if (!verifyPassword(password, invited.passwordHash)) return null;
+    await touchAdminLogin(invited.id);
+    return loginResultFor(invited);
+  }
   if (entry.role === "super") {
     if (password !== superPassword()) return null;
     // Super's bearer is the raw password — the existing routes accept it.

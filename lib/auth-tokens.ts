@@ -14,7 +14,9 @@ import { DATA_DIR } from "./data-dir";
  * invite (or vice versa), and every token is single-use.
  */
 
-export type TokenPurpose = "reset" | "invite";
+// "admin-invite" links an admin_users row (not an agent) — same table, the
+// user_id column just holds that id instead.
+export type TokenPurpose = "reset" | "invite" | "admin-invite";
 
 const FILE = path.join(DATA_DIR, "auth-tokens.json");
 

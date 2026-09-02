@@ -141,7 +141,7 @@ function Stat({
           ? "text-emerald-600"
           : "text-gray-900";
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5">
+    <div className="rounded-2xl bg-gray-50 p-5">
       <p className="text-xs uppercase tracking-wide text-gray-400">{label}</p>
       <p className={`mt-1.5 text-2xl font-semibold tracking-tight ${colour}`}>
         {value}
@@ -194,7 +194,7 @@ export default function WhatsAppMonitor({ pass }: { pass: string }) {
       <section
         className={`rounded-2xl border p-5 ${
           !data
-            ? "border-gray-200 bg-white"
+            ? "border-gray-100 bg-gray-50"
             : data.status.ok
               ? "border-emerald-200 bg-emerald-50"
               : "border-red-200 bg-red-50"
@@ -306,7 +306,7 @@ export default function WhatsAppMonitor({ pass }: { pass: string }) {
              screen: nearly all of the delay is the lead poll, not WhatsApp,
              and without saying so the obvious conclusion is the wrong one. ── */}
       {s && s.medianLatencyMs !== null && (
-        <section className="rounded-2xl border border-gray-200 bg-white p-5">
+        <section className="rounded-2xl bg-gray-50 p-5">
           <h3 className="text-sm font-semibold text-gray-900">
             Where the wait comes from
           </h3>
@@ -368,7 +368,7 @@ export default function WhatsAppMonitor({ pass }: { pass: string }) {
       )}
 
       {/* ── Delivery honesty ── */}
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 text-sm">
+      <section className="rounded-2xl bg-gray-50 p-5 text-sm">
         <h3 className="font-semibold text-gray-900">Did they actually arrive?</h3>
         {data?.deliveryWebhook && s?.deliveryKnown ? (
           <p className="mt-1 text-gray-500">

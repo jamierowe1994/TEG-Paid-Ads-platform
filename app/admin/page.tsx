@@ -9,13 +9,14 @@ import { packageById, PACKAGES, type AdPackage } from "@/lib/packages";
 import { stageLabel } from "@/lib/onboarding";
 import BrandMark from "@/components/BrandMark";
 import AgentProfile from "@/components/AgentProfile";
-import AccountImport from "@/components/AccountImport";
-import TleProInvite from "@/components/TleProInvite";
 import AdReconciliation from "@/components/AdReconciliation";
 import EmailTest from "@/components/EmailTest";
 import WhatsAppTemplate from "@/components/WhatsAppTemplate";
 import WhatsAppMonitor from "@/components/WhatsAppMonitor";
 import SignupsBoard from "@/components/SignupsBoard";
+import PeopleBoard from "@/components/PeopleBoard";
+import InviteTeam from "@/components/InviteTeam";
+import BrandAds from "@/components/BrandAds";
 import PasswordInput from "@/components/PasswordInput";
 import type { UserProfile, Referral } from "@/lib/types";
 import ICONS, { SocialIcon } from "@/components/SocialIcons";
@@ -137,44 +138,43 @@ interface RexStatus {
 
 type Tab =
   | "overview"
-  | "activity"
-  | "referrals"
-  | "crm"
+  | "people"
   | "signups"
+  | "referrals"
+  | "guides"
   | "performance"
   | "whatsapp"
-  | "connections"
-  | "invite";
+  | "invite"
+  | "connections";
 
+/* One job per tab. Activity (a feed of every lead event) and CRM (a signup
+   list wearing a CRM's clothes) are gone: People answers "who's actually
+   using it?", Sign-ups answers "who's new, who stalled?", and a lead's
+   story is read from the agent's own record. */
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "overview", label: "Overview", icon: "M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10" },
-  { id: "activity", label: "Activity", icon: "M3 12h4l3 8 4-16 3 8h4" },
   {
-    id: "referrals",
-    label: "Referrals",
-    icon: "M8 7h12m0 0l-4-4m4 4l-4 4M16 17H4m0 0l4 4m-4-4l4-4",
-  },
-  {
-    id: "crm",
-    label: "CRM",
+    id: "people",
+    label: "People",
     icon: "M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4z",
   },
-  // Who has joined, and who stalled on the way. Separate from CRM because
-  // "signed up" is a funnel with stages, not one list.
   {
     id: "signups",
     label: "Sign-ups",
     icon: "M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM19 8v6M22 11h-6",
   },
+  {
+    id: "referrals",
+    label: "Referrals",
+    icon: "M8 7h12m0 0l-4-4m4 4l-4 4M16 17H4m0 0l4 4m-4-4l4-4",
+  },
+  { id: "guides", label: "Guides", icon: "M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" },
   { id: "performance", label: "Performance", icon: "M3 17l6-6 4 4 8-8M21 7v6M21 7h-6" },
-  // Are the lead alerts going out, and how fast? Super admin only — it
-  // carries every brand's agents, leads and Meta's raw error text.
   {
     id: "whatsapp",
     label: "WhatsApp",
     icon: "M21 11.5a8.4 8.4 0 01-12.3 7.5L3 21l2.1-5.6A8.4 8.4 0 1121 11.5z",
   },
-  // TEMPORARY — the TLE V1 launch tab. Remove once everyone's on the platform.
   {
     id: "invite",
     label: "Invite",
@@ -187,44 +187,9 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   },
 ];
 
-// Chrome geometry (px) — the same wrap-around L-shape the customer portal uses.
-const SIDEBAR_W = 240;
-const TOPBAR_H = 64;
-const SWOOP = 22;
 // Phone chrome: the top bar plus the horizontal tab strip that stands in for
 // the sidebar.
 const TABSTRIP_H = 52;
-const MOBILE_CHROME_H = TOPBAR_H + TABSTRIP_H;
-
-// One seamless white L-shape (sidebar + top bar) drawn with a clip-path so
-// there's no seam where the two arms meet — the concave swoop is part of the
-// path. Neutral (no brand colour) for the admin section.
-function ChromeSurface({ vw, vh }: { vw: number; vh: number }) {
-  const sw = SIDEBAR_W;
-  const th = TOPBAR_H;
-  const r = SWOOP;
-  /* Below the desktop breakpoint the sidebar is replaced by a scrolling tab
-     strip, so there's no L-shape to cut — just a bar across the top. Drawing
-     the notch anyway is what put a 240px white column down the left of a
-     phone screen with nothing in it. */
-  const narrow = vw < 1024;
-  const d = narrow
-    ? `M0 0 L${vw} 0 L${vw} ${MOBILE_CHROME_H} L0 ${MOBILE_CHROME_H} Z`
-    : `M0 0 L${vw} 0 L${vw} ${th} L${sw + r} ${th} ` +
-      `A${r} ${r} 0 0 0 ${sw} ${th + r} L${sw} ${vh} L0 ${vh} Z`;
-  return (
-    <div
-      aria-hidden
-      className="pointer-events-none fixed inset-0 z-20 bg-white"
-      style={{
-        clipPath: `path('${d}')`,
-        WebkitClipPath: `path('${d}')`,
-        filter:
-          "drop-shadow(3px 0 12px rgba(0,0,0,0.05)) drop-shadow(0 4px 12px rgba(0,0,0,0.05))",
-      }}
-    />
-  );
-}
 
 const REFERRAL_STATUS_STYLE: Record<Referral["status"], string> = {
   pending: "bg-amber-50 text-amber-600",
@@ -395,31 +360,10 @@ export default function AdminPage() {
     }[]
   >([]);
   const [selected, setSelected] = useState<FeedbackItem | null>(null);
-  const [openLead, setOpenLead] = useState<ActivityLead | null>(null);
   const [nudging, setNudging] = useState<string | null>(null);
   const [toast, setToast] = useState("");
 
-  // CRM view state
   const [selectedAgent, setSelectedAgent] = useState<UserProfile | null>(null);
-  const [crmSort, setCrmSort] = useState<"recent" | "oldest" | "payHigh" | "payLow">(
-    "recent"
-  );
-  const [crmPackage, setCrmPackage] = useState<"all" | AdPackage["id"]>("all");
-  const [crmBrand, setCrmBrand] = useState<string>("all");
-  /* Payment filter, defaulting to everyone. "unpaid" is the one that earns
-     its keep: it's the list of people who abandoned checkout and would
-     otherwise sit unnoticed among the paying agents (James, 26 Aug). */
-  const [crmPay, setCrmPay] = useState<"all" | "paid" | "licence" | "unpaid">("all");
-  const [crmSearch, setCrmSearch] = useState("");
-  const [vp, setVp] = useState({ w: 0, h: 0 });
-
-  // Track the viewport so the chrome L-shape (a clip-path) can be sized to it.
-  useEffect(() => {
-    const on = () => setVp({ w: window.innerWidth, h: window.innerHeight });
-    on();
-    window.addEventListener("resize", on);
-    return () => window.removeEventListener("resize", on);
-  }, []);
 
   async function loadMailbox(pass: string) {
     try {
@@ -463,11 +407,10 @@ export default function AdminPage() {
     setMailboxBusy(false);
   }
 
-  /* Live view while the CRM tab is open: refresh just the users list every
-     30s so the Online dots and Email-connected chips move on their own —
-     launch morning is exactly when someone is watching this screen. */
+  /* Live view while People is open: refresh just the users list every 30s
+     so "last signed in" and the online dots move on their own. */
   useEffect(() => {
-    if (!authed || tab !== "crm" || !password) return;
+    if (!authed || tab !== "people" || !password) return;
     const t = setInterval(async () => {
       try {
         const r = await fetch("/api/admin/users", {
@@ -871,46 +814,23 @@ export default function AdminPage() {
     }
   }, []);
 
-  // Filtered + sorted agents for the CRM table.
-  const crmUsers = useMemo(() => {
-    const q = crmSearch.trim().toLowerCase();
-    let list = users.filter((u) => {
-      // Compare through packageById so accounts still stored under the old
-      // "scale" id are found by the "Accelerate" filter.
-      if (crmPackage !== "all" && packageById(u.packageId)?.id !== crmPackage)
-        return false;
-      if (crmBrand !== "all" && u.brandId !== crmBrand) return false;
-      if (crmPay !== "all" && u.paymentState !== crmPay) return false;
-      if (
-        q &&
-        !`${u.name} ${u.email} ${u.location ?? ""}`.toLowerCase().includes(q)
-      )
-        return false;
-      return true;
-    });
-    const price = (u: UserProfile) => packageById(u.packageId)?.price ?? 0;
-    list = [...list].sort((a, b) => {
-      switch (crmSort) {
-        case "recent":
-          return b.createdAt.localeCompare(a.createdAt);
-        case "oldest":
-          return a.createdAt.localeCompare(b.createdAt);
-        case "payHigh":
-          return price(b) - price(a);
-        case "payLow":
-          return price(a) - price(b);
-      }
-    });
-    return list;
-  }, [users, crmSearch, crmPackage, crmBrand, crmPay, crmSort]);
-
-  const unpaidUsers = useMemo(
-    () =>
-      users
-        .filter((u) => u.paymentState === "unpaid")
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    [users]
-  );
+  /* Deep links from emails: /admin?tab=people&agent=<id> opens that person
+     once the data is in. Read from window rather than useSearchParams so the
+     page needs no Suspense boundary for it. */
+  useEffect(() => {
+    if (!authed || role !== "super" || users.length === 0) return;
+    const sp = new URLSearchParams(window.location.search);
+    const wantTab = sp.get("tab");
+    const wantAgent = sp.get("agent");
+    if (wantTab && TABS.some((t) => t.id === wantTab)) setTab(wantTab as Tab);
+    if (wantAgent) {
+      const u = users.find((x) => x.id === wantAgent);
+      if (u) setSelectedAgent(u);
+    }
+    // Only ever act on the URL once; clear it so a refresh doesn't re-open.
+    if (wantTab || wantAgent) window.history.replaceState(null, "", "/admin");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed, role, users.length > 0]);
 
   const summaryFor = (userId: string) =>
     leadSummaries.find((s) => s.userId === userId);
@@ -1043,16 +963,10 @@ export default function AdminPage() {
   }
 
   return (
-    <div
-      className="relative min-h-screen isolate"
-      style={{ background: "#f6f6f7" }}
-    >
-      {/* One seamless white chrome surface (sidebar + top bar + swoop) —
-          mirrors the customer portal, but neutral (no brand colour). */}
-      {vp.w > 0 && <ChromeSurface vw={vp.w} vh={vp.h} />}
+    <div className="relative isolate min-h-screen bg-white">
 
       {/* ── Sidebar (transparent — the chrome provides the white surface) ── */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-gray-100 bg-white lg:flex">
         <div className="px-5 pt-14">
           <div className="flex items-center gap-2.5">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-900 text-sm font-bold text-white">
@@ -1108,7 +1022,7 @@ export default function AdminPage() {
       </aside>
 
       {/* ── Top bar (transparent) ── */}
-      <header className="fixed left-0 right-0 top-0 z-40 flex h-16 items-center justify-between gap-3 px-4 lg:left-[240px] lg:px-8">
+      <header className="fixed left-0 right-0 top-0 z-40 flex h-16 items-center justify-between gap-3 border-b border-gray-100 bg-white px-4 lg:left-[240px] lg:px-8">
         <h1 className="text-lg font-semibold tracking-tight">
           {TABS.find((t) => t.id === tab)?.label}
         </h1>
@@ -1138,7 +1052,7 @@ export default function AdminPage() {
 
       {/* ── Tab strip (phones and tablets — stands in for the sidebar) ── */}
       <nav
-        className="fixed left-0 right-0 top-16 z-40 flex gap-1.5 overflow-x-auto px-4 pb-2 lg:hidden"
+        className="fixed left-0 right-0 top-16 z-40 flex gap-1.5 overflow-x-auto bg-white px-4 pb-2 lg:hidden"
         style={{ height: TABSTRIP_H, scrollbarWidth: "none" }}
       >
         {TABS.map((t) => (
@@ -1165,8 +1079,8 @@ export default function AdminPage() {
       </nav>
 
       {/* ── Main ── */}
-      <main className="px-4 pb-10 pt-[140px] lg:ml-[240px] lg:px-8 lg:pt-[104px]">
-        <div className="mx-auto max-w-6xl">
+      <main className="px-4 pb-10 pt-[140px] lg:ml-[240px] lg:px-8 lg:pt-[96px]">
+        <div>
         {/* ═══ OVERVIEW ═══ */}
         {tab === "overview" && (
           <>
@@ -1194,7 +1108,7 @@ export default function AdminPage() {
                 return (
                   <div
                     key={b.id}
-                    className="rounded-2xl border border-gray-200 bg-white p-4"
+                    className="rounded-2xl bg-gray-50 p-4"
                   >
                     <div className="flex items-center gap-2.5">
                       <BrandMark
@@ -1225,7 +1139,7 @@ export default function AdminPage() {
                 {feedback.map((f) => (
                   <div
                     key={f.id}
-                    className="rounded-2xl border border-gray-200 bg-white p-5"
+                    className="rounded-2xl bg-gray-50 p-5"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
@@ -1257,162 +1171,6 @@ export default function AdminPage() {
                     page sends notes and annotated screenshots here.
                   </div>
                 )}
-              </div>
-            </section>
-          </>
-        )}
-
-        {/* ═══ ACTIVITY ═══ */}
-        {tab === "activity" && (
-          <>
-            {/* Attention needed — unanswered / cold leads, with a nudge button */}
-            <section>
-              <h2 className="text-lg font-semibold">Attention needed</h2>
-              <p className="mt-1 text-sm text-gray-500">
-                Leads going unanswered (&gt;1 day) or cold (no activity &gt;2
-                days). Send the agent a WhatsApp to jump back on them.
-              </p>
-              <div className="mt-4 space-y-2">
-                {(activity?.attention ?? []).slice(0, 20).map((a, i) => {
-                  const b = brandById(a.brandId);
-                  const key = `${a.userId}-${a.leadName}-${i}`;
-                  return (
-                    <div
-                      key={key}
-                      className={`flex flex-wrap items-center gap-3 rounded-2xl border p-3.5 ${
-                        a.kind === "unanswered"
-                          ? "border-red-200 bg-red-50"
-                          : "border-amber-200 bg-amber-50"
-                      }`}
-                    >
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                          a.kind === "unanswered"
-                            ? "bg-red-100 text-red-700"
-                            : "bg-amber-100 text-amber-700"
-                        }`}
-                      >
-                        {a.kind === "unanswered" ? "Unanswered" : "Going cold"}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">
-                          {a.leadName}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {b?.shortName ?? a.brandId} · {a.agentName}
-                        </p>
-                      </div>
-                      <span className="shrink-0 text-sm font-semibold text-gray-700">
-                        {agoDur(a.ageMs)}
-                      </span>
-                      <button
-                        onClick={() => nudgeAgent(a.userId, a.leadName, key)}
-                        disabled={nudging === key}
-                        className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[#25D366] px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
-                      >
-                        <svg
-                          viewBox="0 0 24 24"
-                          className="h-3.5 w-3.5"
-                          fill="currentColor"
-                        >
-                          <path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.8 4.9-1.3A10 10 0 1 0 12 2zm0 2a8 8 0 1 1-4.2 14.8l-.3-.2-2.9.8.8-2.8-.2-.3A8 8 0 0 1 12 4zm4.5 10.3c-.2-.1-1.3-.7-1.5-.8s-.4-.1-.5.1-.6.8-.7.9-.3.2-.5.1a6.5 6.5 0 0 1-3.2-2.8c-.2-.4.2-.4.6-1.2a.4.4 0 0 0 0-.4l-.7-1.7c-.2-.5-.4-.4-.5-.4h-.5a.9.9 0 0 0-.7.3A2.8 2.8 0 0 0 7 11c0 1.6 1.2 3.2 1.4 3.4a9.3 9.3 0 0 0 3.9 3.2c1.4.6 1.9.6 2.6.5a2.3 2.3 0 0 0 1.5-1.1 1.9 1.9 0 0 0 .1-1c-.1-.1-.3-.2-.5-.3z" />
-                        </svg>
-                        {nudging === key ? "Sending…" : "Send WhatsApp again"}
-                      </button>
-                    </div>
-                  );
-                })}
-                {(activity?.attention ?? []).length === 0 && (
-                  <div className="rounded-2xl border border-dashed border-gray-200 bg-white py-10 text-center text-sm text-gray-400">
-                    Nothing needs chasing — every lead's been actioned. 🎉
-                  </div>
-                )}
-              </div>
-            </section>
-
-            {/* Live activity — CRM-style lead table, click a row for the full picture */}
-            <section className="mt-10">
-              <h2 className="text-lg font-semibold">Live activity</h2>
-              <p className="mt-1 text-sm text-gray-500">
-                Every lead across the group, newest activity first. Click any row
-                to see the full timeline — including whether a lost lead went into
-                the marketing funnel.
-              </p>
-              <div className="mt-4 overflow-x-auto rounded-2xl border border-gray-200 bg-white">
-                <table className="w-full text-left text-sm">
-                  <thead className="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-400">
-                    <tr>
-                      <th className="px-5 py-3 font-medium">Lead</th>
-                      <th className="px-5 py-3 font-medium">Business · Agent</th>
-                      <th className="px-5 py-3 font-medium">Source</th>
-                      <th className="px-5 py-3 font-medium">Status</th>
-                      <th className="px-5 py-3 font-medium">Funnel</th>
-                      <th className="px-5 py-3 font-medium">Updated</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {(activity?.leads ?? []).map((l) => {
-                      const b = brandById(l.brandId);
-                      return (
-                        <tr
-                          key={l.id}
-                          onClick={() => setOpenLead(l)}
-                          className="cursor-pointer transition hover:bg-gray-50"
-                        >
-                          <td className="px-5 py-3 font-medium text-gray-800">
-                            {l.leadName}
-                          </td>
-                          <td className="px-5 py-3">
-                            <span className="inline-flex items-center gap-2">
-                              <span
-                                className="h-2 w-2 rounded-full"
-                                style={{ backgroundColor: b?.accent }}
-                              />
-                              {b?.shortName ?? l.brandId}
-                              <span className="text-gray-400">· {l.agentName}</span>
-                            </span>
-                          </td>
-                          <td className="px-5 py-3 capitalize text-gray-500">
-                            {l.source}
-                          </td>
-                          <td className="px-5 py-3">
-                            <span
-                              className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${LEAD_STAGE_STYLE[l.stage] ?? "bg-gray-100 text-gray-500"}`}
-                            >
-                              {LEAD_STAGE_LABEL[l.stage] ?? l.stage}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3">
-                            {l.stage === "nurture" ? (
-                              <span className="inline-flex items-center gap-1 text-xs font-medium text-purple-600">
-                                ✓ In funnel
-                              </span>
-                            ) : l.stage === "lost" ? (
-                              <span className="text-xs font-medium text-gray-400">
-                                Not in funnel
-                              </span>
-                            ) : (
-                              <span className="text-gray-300">—</span>
-                            )}
-                          </td>
-                          <td className="px-5 py-3 text-gray-500">
-                            {ago(l.lastAt)}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {(activity?.leads ?? []).length === 0 && (
-                      <tr>
-                        <td
-                          colSpan={6}
-                          className="px-5 py-12 text-center text-sm text-gray-400"
-                        >
-                          No leads yet — this fills in as leads arrive.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
               </div>
             </section>
           </>
@@ -1543,457 +1301,20 @@ export default function AdminPage() {
           </>
         )}
 
-        {/* ═══ CRM ═══ */}
-        {tab === "crm" && (
-          <>
-            {/* Headline stats */}
-            <div className="grid gap-4 sm:grid-cols-4">
-              <AdminStat label="Signed up" value={String(users.length)} />
-              <AdminStat
-                label="Started, never finished"
-                value={String(dropOffs.length)}
-                note="Left the signup wizard"
-              />
-              <AdminStat
-                label="Ads in production"
-                value={String(users.length)}
-                note="Every new signup until Meta is live"
-              />
-              <AdminStat
-                label="Best converting brand"
-                value={
-                  bestBrand
-                    ? `${bestBrand.brand.shortName} · ${Math.round((bestBrand.rate ?? 0) * 100)}%`
-                    : "—"
-                }
-                note={bestBrand ? "Demo leads until Meta is live" : "Needs lead data"}
-              />
-            </div>
+        {/* ═══ PEOPLE ═══ */}
+        {tab === "people" && (
+          <PeopleBoard users={users} summaries={leadSummaries} onOpen={setSelectedAgent} />
+        )}
 
-            {/* Abandoned checkouts, called out rather than left to be
-                noticed. These are accounts that exist but never paid — until
-                26 Aug they had full access; now they're locked behind a
-                finish-payment screen. Each is a live sales prospect: they
-                wanted it enough to reach the payment page. Clicking one opens
-                the agent; the "Not paid" filter below shows them as a list. */}
-            {role === "super" && unpaidUsers.length > 0 && (
-              <section className="mt-10 rounded-2xl border border-red-200 bg-red-50 p-5">
-                <h2 className="text-sm font-semibold text-red-900">
-                  Signed up but never paid{" "}
-                  <span className="font-normal text-red-700/70">
-                    {unpaidUsers.length}
-                  </span>
-                </h2>
-                <p className="mt-0.5 text-xs text-red-800/70">
-                  They stopped at the payment page. Their account is locked
-                  behind a &ldquo;finish setting up&rdquo; screen that resumes
-                  their checkout — so this list should shrink on its own.
-                </p>
-                <ul className="mt-3 space-y-2">
-                  {unpaidUsers.map((u) => (
-                    <li key={u.id}>
-                      <button
-                        onClick={() => setSelectedAgent(u)}
-                        className="flex w-full items-center gap-3 rounded-lg bg-white/70 px-3 py-2 text-left text-sm hover:bg-white"
-                      >
-                        <span className="font-medium text-gray-800">{u.name}</span>
-                        <span className="text-xs text-gray-500">{u.email}</span>
-                        <span className="ml-auto text-xs text-gray-400">
-                          {brandById(u.brandId)?.shortName ?? u.brandId} ·{" "}
-                          {new Date(u.createdAt).toLocaleDateString("en-GB")}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
+        {/* ═══ GUIDES ═══ */}
+        {tab === "guides" && <MagnetManager token={password} superPick />}
 
-            {/* One-time launch import — pre-provision referrals-only accounts
-                for the whole group from a CSV. Super admin only. */}
-            {role === "super" && <AccountImport pass={password} />}
-
-            {/* Locked out — "forgot password" asks from the login page. There's
-                no reset email yet, so the team issues a temporary password from
-                the agent's own record. */}
-            {pwRequests.length > 0 && (
-              <section className="mt-10 rounded-2xl border border-amber-200 bg-amber-50 p-5">
-                <h2 className="text-sm font-semibold text-amber-900">
-                  Locked out — waiting on a password{" "}
-                  <span className="font-normal text-amber-700/70">
-                    {pwRequests.length}
-                  </span>
-                </h2>
-                <p className="mt-0.5 text-xs text-amber-800/70">
-                  Open the agent, hit <strong>Reset password</strong>, and pass
-                  them the temporary one — then clear it here.
-                </p>
-                <ul className="mt-3 space-y-2">
-                  {pwRequests.map((r) => (
-                    <li
-                      key={r.email}
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white px-3.5 py-2.5"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-gray-900">
-                          {r.name ?? r.email}
-                        </p>
-                        <p className="truncate text-xs text-gray-400">
-                          {r.name ? `${r.email} · ` : ""}
-                          asked {new Date(r.createdAt).toLocaleString("en-GB")}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        {r.userId && (
-                          <button
-                            onClick={() => {
-                              const u = users.find((x) => x.id === r.userId);
-                              if (u) setSelectedAgent(u);
-                            }}
-                            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
-                          >
-                            Open agent
-                          </button>
-                        )}
-                        <button
-                          onClick={async () => {
-                            await fetch("/api/admin/password-requests", {
-                              method: "POST",
-                              headers: {
-                                "Content-Type": "application/json",
-                                Authorization: `Bearer ${password}`,
-                              },
-                              body: JSON.stringify({ email: r.email }),
-                            });
-                            setPwRequests((prev) =>
-                              prev.filter((x) => x.email !== r.email)
-                            );
-                          }}
-                          className="rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-700"
-                        >
-                          Done
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            {/* Signups — filterable, click a row for the full record */}
-            <section className="mt-10">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold">
-                  Signed-up agents{" "}
-                  <span className="text-sm font-normal text-gray-400">
-                    {crmUsers.length}
-                    {crmUsers.length !== users.length && ` of ${users.length}`}
-                  </span>
-                </h2>
-                <div className="flex flex-wrap items-center gap-2">
-                  <input
-                    value={crmSearch}
-                    onChange={(e) => setCrmSearch(e.target.value)}
-                    placeholder="Search name, email, location…"
-                    className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm outline-none focus:border-gray-900"
-                  />
-                  <select
-                    value={crmPackage}
-                    onChange={(e) =>
-                      setCrmPackage(e.target.value as typeof crmPackage)
-                    }
-                    className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 outline-none focus:border-gray-900"
-                  >
-                    <option value="all">All packages</option>
-                    {PACKAGES.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} (£{p.price})
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={crmBrand}
-                    onChange={(e) => setCrmBrand(e.target.value)}
-                    className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 outline-none focus:border-gray-900"
-                  >
-                    <option value="all">All businesses</option>
-                    {BRANDS.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.name}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={crmPay}
-                    onChange={(e) => setCrmPay(e.target.value as typeof crmPay)}
-                    className={`rounded-lg border bg-white px-3 py-1.5 text-sm font-medium outline-none focus:border-gray-900 ${
-                      crmPay === "unpaid"
-                        ? "border-red-300 text-red-700"
-                        : "border-gray-200 text-gray-700"
-                    }`}
-                  >
-                    <option value="all">Any payment</option>
-                    <option value="paid">Paid</option>
-                    <option value="licence">Licence</option>
-                    <option value="unpaid">Not paid (abandoned)</option>
-                  </select>
-                  <select
-                    value={crmSort}
-                    onChange={(e) => setCrmSort(e.target.value as typeof crmSort)}
-                    className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 outline-none focus:border-gray-900"
-                  >
-                    <option value="recent">Newest signup</option>
-                    <option value="oldest">Oldest signup</option>
-                    <option value="payHigh">Pays most</option>
-                    <option value="payLow">Pays least</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="mt-4 overflow-x-auto rounded-2xl border border-gray-200 bg-white">
-                <table className="w-full text-left text-sm">
-                  <thead className="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-400">
-                    <tr>
-                      <th className="px-5 py-3 font-medium">Agent</th>
-                      <th className="px-5 py-3 font-medium">Business</th>
-                      <th className="px-5 py-3 font-medium">Stage</th>
-                      <th className="px-5 py-3 font-medium">Package</th>
-                      <th className="px-5 py-3 font-medium">Device</th>
-                      <th className="px-5 py-3 font-medium">Online</th>
-                      <th className="px-5 py-3 font-medium">Email connected</th>
-                      <th className="px-5 py-3 font-medium">Signed up</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {crmUsers.map((u) => {
-                      const b = brandById(u.brandId);
-                      return (
-                        <tr
-                          key={u.id}
-                          onClick={() => setSelectedAgent(u)}
-                          className="cursor-pointer transition hover:bg-gray-50"
-                        >
-                          <td className="px-5 py-3">
-                            <p className="font-medium text-gray-800">{u.name}</p>
-                            <p className="text-xs text-gray-400">{u.email}</p>
-                          </td>
-                          <td className="px-5 py-3">
-                            <span className="inline-flex items-center gap-2">
-                              <span
-                                className="h-2 w-2 rounded-full"
-                                style={{ backgroundColor: b?.accent }}
-                              />
-                              {b?.shortName ?? u.brandId}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3">
-                            <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
-                              {stageLabel(u.onboardingStage)}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3">
-                            {packageById(u.packageId)?.name ?? u.packageId}
-                            <span className="ml-1 text-xs text-gray-400">
-                              £{packageById(u.packageId)?.price}/mo
-                            </span>
-                            {/* The truth about money, so nobody has to open
-                                Stripe to know who actually paid. */}
-                            {u.paymentState === "unpaid" && (
-                              <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700">
-                                NOT PAID
-                              </span>
-                            )}
-                            {u.paymentState === "licence" && (
-                              <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500">
-                                Licence
-                              </span>
-                            )}
-                            {u.paymentState === "paid" && (
-                              <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-700">
-                                Paid ✓
-                              </span>
-                            )}
-                          </td>
-                          {/* Which surfaces they've actually used. "App" only
-                              ever comes from the installed PWA (a home-screen
-                              app sends the browser's own user-agent, so the
-                              page self-reports it) — the thing James wants to
-                              track is exactly who has picked the app up. */}
-                          <td className="px-5 py-3">
-                            <span className="flex items-center gap-1.5">
-                              {u.appSeenAt ? (
-                                <span
-                                  className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700"
-                                  title={`App last opened ${new Date(u.appSeenAt).toLocaleString("en-GB")}`}
-                                >
-                                  📲 App
-                                </span>
-                              ) : u.mobileSeenAt ? (
-                                <span
-                                  className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800"
-                                  title={`Mobile browser, no app. Last ${new Date(u.mobileSeenAt).toLocaleString("en-GB")}`}
-                                >
-                                  📱 Mobile
-                                </span>
-                              ) : null}
-                              {u.desktopSeenAt && (
-                                <span
-                                  className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500"
-                                  title={`Desktop last ${new Date(u.desktopSeenAt).toLocaleString("en-GB")}`}
-                                >
-                                  💻
-                                </span>
-                              )}
-                              {!u.appSeenAt && !u.mobileSeenAt && !u.desktopSeenAt && (
-                                <span className="text-xs text-gray-300">—</span>
-                              )}
-                            </span>
-                          </td>
-                          {/* Presence from last_seen_at (stamped by ordinary
-                              authenticated requests, ~1/min): green within
-                              3 minutes, otherwise how long ago. Refreshes
-                              with the 30s CRM poll. */}
-                          <td className="px-5 py-3">
-                            {(() => {
-                              const seen = u.lastSeenAt
-                                ? Date.now() - new Date(u.lastSeenAt).getTime()
-                                : null;
-                              if (seen !== null && seen < 3 * 60_000)
-                                return (
-                                  <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700">
-                                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" />
-                                    Online
-                                  </span>
-                                );
-                              if (seen !== null) {
-                                const mins = Math.round(seen / 60_000);
-                                const label =
-                                  mins < 60
-                                    ? `${mins}m ago`
-                                    : mins < 60 * 24
-                                      ? `${Math.round(mins / 60)}h ago`
-                                      : `${Math.round(mins / (60 * 24))}d ago`;
-                                return (
-                                  <span className="text-xs text-gray-400">{label}</span>
-                                );
-                              }
-                              return (
-                                <span className="text-xs text-gray-300">—</span>
-                              );
-                            })()}
-                          </td>
-                          {/* Same rule as the email gate: connected only
-                              counts when it's THEIR OWN address — a colleague's
-                              mailbox proves employment, not identity. */}
-                          <td className="px-5 py-3">
-                            {u.msEmail &&
-                            u.msEmail.trim().toLowerCase() ===
-                              u.email.trim().toLowerCase() ? (
-                              <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700">
-                                Connected ✓
-                              </span>
-                            ) : u.msEmail ? (
-                              <span
-                                className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800"
-                                title={`Connected as ${u.msEmail} — not this account's own address`}
-                              >
-                                Different mailbox
-                              </span>
-                            ) : (
-                              <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-400">
-                                Not yet
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-5 py-3 text-gray-500">
-                            {new Date(u.createdAt).toLocaleDateString("en-GB")}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {crmUsers.length === 0 && (
-                      <tr>
-                        <td
-                          colSpan={5}
-                          className="px-5 py-12 text-center text-sm text-gray-400"
-                        >
-                          {users.length === 0
-                            ? "No signups yet."
-                            : "No agents match those filters."}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-
-            {/* Drop-offs */}
-            <section className="mt-10">
-              <h2 className="text-lg font-semibold">
-                Started but never finished{" "}
-                <span className="text-sm font-normal text-gray-400">
-                  {dropOffs.length}
-                </span>
-              </h2>
-              <p className="mt-1 text-sm text-gray-500">
-                People who got past the email step of signup but never
-                completed. Worth a follow-up call.
-              </p>
-              <div className="mt-4 space-y-2">
-                {dropOffs.map((d) => {
-                  const b = brandById(d.brandId ?? undefined);
-                  return (
-                    <div
-                      key={d.email}
-                      className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-5 py-3"
-                    >
-                      <div>
-                        <p className="text-sm font-medium">
-                          {d.name || "Unknown name"}
-                        </p>
-                        <p className="text-xs text-gray-400">{d.email}</p>
-                      </div>
-                      <div className="flex items-center gap-3 text-xs text-gray-400">
-                        {b && (
-                          <span className="inline-flex items-center gap-1.5">
-                            <span
-                              className="h-1.5 w-1.5 rounded-full"
-                              style={{ backgroundColor: b.accent }}
-                            />
-                            {b.shortName}
-                          </span>
-                        )}
-                        <span>
-                          {new Date(d.startedAt).toLocaleDateString("en-GB")}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-                {dropOffs.length === 0 && (
-                  <div className="rounded-2xl border border-dashed border-gray-200 bg-white py-10 text-center text-sm text-gray-400">
-                    No drop-offs — everyone who started signup finished it.
-                  </div>
-                )}
-              </div>
-            </section>
-            <div className="mt-6">
-              {/* Super admins manage every brand's magnets from here; the
-                  scoped tiers get theirs on their own dashboard. */}
-              <MagnetManager token={password} superPick />
-            </div>
-          </>
+        {/* ═══ INVITE ═══ */}
+        {tab === "invite" && (
+          <InviteTeam token={password} role="super" onAgentInvited={() => loadData(password)} />
         )}
 
         {/* ═══ PERFORMANCE ═══ */}
-        {/* TEMPORARY — the TLE V1 launch tab. Remove once everyone's on. */}
-        {tab === "invite" && (
-          <div className="space-y-6">
-            <AdReconciliation pass={password} />
-            <TleProInvite pass={password} />
-          </div>
-        )}
 
         {tab === "performance" && (
           <>
@@ -2205,6 +1526,11 @@ export default function AdminPage() {
 
         {tab === "connections" && (
           <>
+            {/* Which live Meta ads belong to which account — moved here from
+                the launch tab; it's a connections question. */}
+            <div className="mb-10">
+              <AdReconciliation pass={password} />
+            </div>
             {/* System mailbox — the address the platform sends from. Invite
                 emails, password resets and admin alerts all depend on it. */}
             <section className="mb-10">
@@ -2305,7 +1631,7 @@ export default function AdminPage() {
                     return (
                       <div
                         key={r.brandId}
-                        className="rounded-2xl border border-gray-200 bg-white p-5"
+                        className="rounded-2xl bg-gray-50 p-5"
                       >
                         <div className="flex items-center gap-2">
                           <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
@@ -2418,7 +1744,7 @@ export default function AdminPage() {
                   return (
                     <div
                       key={b.id}
-                      className="flex flex-wrap items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4"
+                      className="flex flex-wrap items-center gap-3 rounded-2xl bg-gray-50 p-4"
                     >
                       <div className="flex min-w-[220px] flex-1 items-center gap-3">
                         <BrandMark
@@ -2535,7 +1861,7 @@ export default function AdminPage() {
                       return (
                         <div
                           key={b.id}
-                          className="flex flex-wrap items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4"
+                          className="flex flex-wrap items-center gap-3 rounded-2xl bg-gray-50 p-4"
                         >
                           <div className="flex min-w-[220px] flex-1 items-center gap-3">
                             <BrandMark
@@ -2600,7 +1926,7 @@ export default function AdminPage() {
                   </span>
                 )}
               </div>
-              <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-5">
+              <div className="mt-4 rounded-2xl bg-gray-50 p-5">
                 <div className="flex items-center gap-3">
                   <BrandMark
                     name="The Recruitment Experts"
@@ -2773,7 +2099,7 @@ export default function AdminPage() {
                   </span>
                 )}
               </div>
-              <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-5">
+              <div className="mt-4 rounded-2xl bg-gray-50 p-5">
                 <p className="text-sm text-gray-600">
                   Property, Lettings, Fine &amp; Country and Auction push
                   converted leads into Rex (rexsoftware.com).
@@ -3003,7 +2329,7 @@ export default function AdminPage() {
                   </span>
                 )}
               </div>
-              <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-5">
+              <div className="mt-4 rounded-2xl bg-gray-50 p-5">
                 <p className="text-sm text-gray-600">
                   Agents get a WhatsApp the moment a lead lands, plus the
                   &ldquo;Send WhatsApp again&rdquo; nudge on cold leads. Both
@@ -3058,7 +2384,7 @@ export default function AdminPage() {
                 ].map((s) => (
                   <div
                     key={s.name}
-                    className="flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-4"
+                    className="flex items-center justify-between rounded-2xl bg-gray-50 p-4"
                   >
                     <div>
                       <p className="text-sm font-medium">{s.name}</p>
@@ -3134,9 +2460,6 @@ export default function AdminPage() {
         })()}
 
       {/* Lead timeline (from the Activity table) */}
-      {openLead && (
-        <LeadTimeline lead={openLead} onClose={() => setOpenLead(null)} />
-      )}
 
       {/* Toast */}
       {toast && (
@@ -3151,170 +2474,6 @@ export default function AdminPage() {
 // Full lead timeline for the admin Activity table — what's going on, the
 // booked appointment, agent notes, whether it went into the marketing funnel,
 // and the complete stage history.
-function LeadTimeline({
-  lead,
-  onClose,
-}: {
-  lead: ActivityLead;
-  onClose: () => void;
-}) {
-  const b = brandById(lead.brandId);
-  const inFunnel = lead.stage === "nurture";
-  const isLost = lead.stage === "lost";
-  return (
-    <div
-      className="fixed inset-0 z-50 flex justify-end bg-gray-900/40 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="h-full w-full max-w-md overflow-y-auto bg-white p-6 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-xl font-semibold">{lead.leadName}</h2>
-            <p className="mt-1 flex items-center gap-1.5 text-sm text-gray-500">
-              <span
-                className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: b?.accent }}
-              />
-              {b?.shortName ?? lead.brandId} · {lead.agentName}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1 text-gray-400 hover:bg-gray-100"
-            aria-label="Close"
-          >
-            <svg
-              className="h-5 w-5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path d="M6 6l12 12M18 6L6 18" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Status + funnel banner */}
-        <div className="mt-5 flex flex-wrap items-center gap-2">
-          <span
-            className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${LEAD_STAGE_STYLE[lead.stage] ?? "bg-gray-100 text-gray-500"}`}
-          >
-            {LEAD_STAGE_LABEL[lead.stage] ?? lead.stage}
-          </span>
-          <span className="rounded-full bg-gray-50 px-2.5 py-0.5 text-xs capitalize text-gray-500">
-            {lead.source}
-          </span>
-        </div>
-
-        {(inFunnel || isLost) && (
-          <div
-            className={`mt-4 rounded-2xl border p-4 text-sm ${
-              inFunnel
-                ? "border-purple-200 bg-purple-50 text-purple-700"
-                : "border-gray-200 bg-gray-50 text-gray-600"
-            }`}
-          >
-            {inFunnel ? (
-              <>
-                ✓ <strong>Sent into the marketing funnel.</strong> This lead was
-                marked lost but added to nurture — it&apos;ll be worked through
-                marketing rather than dropped.
-              </>
-            ) : (
-              <>
-                <strong>Lost — not in the marketing funnel.</strong> Marked lost
-                and not added to nurture.
-              </>
-            )}
-          </div>
-        )}
-
-        {lead.appointmentAt && (
-          <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-            📅 Appointment booked for{" "}
-            <strong>
-              {new Date(lead.appointmentAt).toLocaleString("en-GB", {
-                weekday: "short",
-                day: "numeric",
-                month: "long",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </strong>
-          </div>
-        )}
-
-        {/* Agent notes */}
-        {lead.notes.length > 0 && (
-          <div className="mt-6">
-            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
-              Notes
-            </p>
-            <div className="mt-3 space-y-2">
-              {[...lead.notes].reverse().map((n, i) => (
-                <div
-                  key={i}
-                  className="rounded-xl bg-gray-50 p-3 text-sm text-gray-700"
-                >
-                  <p>{n.text}</p>
-                  <p className="mt-1 text-xs text-gray-400">
-                    {new Date(n.at).toLocaleString("en-GB")}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Stage history */}
-        <div className="mt-6">
-          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
-            History
-          </p>
-          <ol className="mt-3 space-y-3">
-            <li className="flex gap-3 text-sm">
-              <span
-                className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
-                style={{ backgroundColor: b?.accent ?? "#111827" }}
-              />
-              <div>
-                <p className="text-gray-700">Lead received</p>
-                <p className="text-xs text-gray-400">
-                  {new Date(lead.receivedAt).toLocaleString("en-GB")}
-                </p>
-              </div>
-            </li>
-            {lead.history
-              .filter((h) => h.stage !== "new")
-              .map((h, i) => (
-                <li key={i} className="flex gap-3 text-sm">
-                  <span
-                    className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: b?.accent ?? "#111827" }}
-                  />
-                  <div>
-                    <p className="text-gray-700">
-                      {h.label ?? LEAD_STAGE_LABEL[h.stage] ?? h.stage}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      {new Date(h.at).toLocaleString("en-GB")}
-                    </p>
-                  </div>
-                </li>
-              ))}
-          </ol>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Per-brand drill-down: live Meta stats + best-performing ads for a chosen
-// date range, plus the portal's agents / conversion / speed-to-lead.
 function BrandDrillDown({
   brand,
   agents,
@@ -3507,7 +2666,7 @@ function AdminStat({
   note?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5">
+    <div className="rounded-2xl bg-gray-50 p-5">
       <p className="text-sm text-gray-500">{label}</p>
       <p className="mt-2 text-3xl font-semibold tracking-tight">{value}</p>
       {note && <p className="mt-1 text-xs text-gray-400">{note}</p>}
@@ -3705,7 +2864,7 @@ function MdSocials({
    The sidebar carries the brand's own colour rather than the neutral grey the
    super view uses, so it's obvious at a glance whose business you're in. */
 
-type MdTab = "overview" | "team" | "connections" | "invites" | "magnets";
+type MdTab = "overview" | "team" | "ads" | "connections" | "invites" | "magnets";
 
 const MD_TABS: { id: MdTab; label: string; icon: string }[] = [
   { id: "overview", label: "Overview", icon: "M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10" },
@@ -3714,18 +2873,20 @@ const MD_TABS: { id: MdTab; label: string; icon: string }[] = [
     label: "Team",
     icon: "M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4z",
   },
+  // Every agent's ads, spend, leads and conversions — per person, per ad.
+  { id: "ads", label: "Ads", icon: "M4 6h16M4 12h16M4 18h10" },
   {
     id: "connections",
     label: "Connections",
     icon: "M13.5 10.5 21 3m0 0h-5m5 0v5M10.5 13.5 3 21m0 0h5m-5 0v-5",
   },
-  { id: "invites", label: "Invites", icon: "M4 4h16v16H4z M22 6l-10 7L2 6" },
+  { id: "invites", label: "Invite", icon: "M4 4h16v16H4z M22 6l-10 7L2 6" },
   { id: "magnets", label: "Lead magnets", icon: "M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" },
 ];
 
 /* Marketing sees the stats and manages the magnets; the operational tabs
    (connections, invites) are MD-only. */
-const MARKETING_TABS: MdTab[] = ["overview", "team", "magnets"];
+const MARKETING_TABS: MdTab[] = ["overview", "team", "ads", "magnets"];
 
 const RANGES = [
   { id: "7", label: "7 days", days: 7 },
@@ -3754,20 +2915,12 @@ function MdDashboard({
   const [summaries, setSummaries] = useState<LeadSummary[]>([]);
   const [activity, setActivity] = useState<ActivityData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [vp, setVp] = useState({ w: 0, h: 0 });
 
   // Date range. "custom" reveals two date inputs; everything else is a
   // rolling window ending now.
   const [range, setRange] = useState("30");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-
-  useEffect(() => {
-    const on = () => setVp({ w: window.innerWidth, h: window.innerHeight });
-    on();
-    window.addEventListener("resize", on);
-    return () => window.removeEventListener("resize", on);
-  }, []);
 
   // Users and activity are range-independent; only the per-user summary is
   // refetched when the window changes, so changing the range doesn't reload
@@ -3866,15 +3019,13 @@ function MdDashboard({
   const accent = brand.accent;
   const attention = activity?.attention ?? [];
 
-  const card =
-    "rounded-2xl border border-gray-200 bg-white p-5 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.12),inset_0_1px_1px_rgba(255,255,255,0.7),inset_0_0_30px_rgba(0,0,0,0.06)]";
+  // Flat grey tiles on a white page — the same treatment as the group view.
+  const card = "rounded-2xl bg-gray-50 p-5";
 
   return (
-    <div className="relative isolate min-h-screen" style={{ background: "#f6f6f7" }}>
-      {vp.w > 0 && <ChromeSurface vw={vp.w} vh={vp.h} />}
-
+    <div className="relative isolate min-h-screen bg-white">
       {/* Sidebar — brand colour, so it's obvious whose business this is. */}
-      <aside className="fixed inset-y-0 left-0 z-30 flex w-60 flex-col">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-gray-100 bg-white lg:flex">
         <div className="px-5 pt-14">
           <div className="flex items-center gap-2.5">
             <span
@@ -3885,7 +3036,9 @@ function MdDashboard({
             </span>
             <div className="leading-tight">
               <p className="text-sm font-semibold">{brand.name}</p>
-              <p className="text-xs text-gray-400">Managing Director</p>
+              <p className="text-xs text-gray-400">
+                {role === "marketing" ? "Marketing" : "Managing Director"}
+              </p>
             </div>
           </div>
         </div>
@@ -3935,9 +3088,17 @@ function MdDashboard({
       </aside>
 
       {/* Top bar */}
-      <div className="fixed inset-x-0 top-0 z-20 h-16 pl-60">
-        <div className="flex h-16 items-center justify-between px-8">
-          <h1 className="text-sm font-semibold capitalize">{tab}</h1>
+      <div className="fixed inset-x-0 top-0 z-20 h-16 border-b border-gray-100 bg-white lg:pl-60">
+        <div className="flex h-16 items-center justify-between px-4 lg:px-8">
+          <h1 className="text-sm font-semibold">
+            {MD_TABS.find((t) => t.id === tab)?.label ?? tab}
+          </h1>
+          <button
+            onClick={onSignOut}
+            className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-500 lg:hidden"
+          >
+            Sign out
+          </button>
           {(tab === "overview" || tab === "team") && (
             <RangePicker
               range={range}
@@ -3952,8 +3113,28 @@ function MdDashboard({
         </div>
       </div>
 
-      <main className="pl-60 pt-16">
-        <div className="mx-auto max-w-5xl px-8 py-8">
+      {/* Tab strip — phones and tablets, in place of the sidebar. */}
+      <nav
+        className="fixed left-0 right-0 top-16 z-20 flex gap-1.5 overflow-x-auto bg-white px-4 pb-2 lg:hidden"
+        style={{ height: TABSTRIP_H, scrollbarWidth: "none" }}
+      >
+        {MD_TABS.filter((t) => role === "md" || MARKETING_TABS.includes(t.id)).map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            ref={(el) => {
+              if (el && tab === t.id) el.scrollIntoView({ block: "nearest", inline: "center" });
+            }}
+            className="shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium transition"
+            style={tab === t.id ? { background: accent, color: "#fff" } : { background: "#f3f4f6", color: "#6b7280" }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
+
+      <main className="pt-[132px] lg:pl-60 lg:pt-16">
+        <div className="px-4 py-6 lg:px-8 lg:py-8">
           {loading ? (
             <p className="text-sm text-gray-400">Loading…</p>
           ) : tab === "overview" ? (
@@ -3971,16 +3152,20 @@ function MdDashboard({
             />
           ) : tab === "team" ? (
             <MdTeam card={card} accent={accent} users={users} byUser={byUser} />
+          ) : tab === "ads" ? (
+            <BrandAds
+              token={token}
+              brandId={brandId}
+              accent={accent}
+              conversionLabel={brand.conversionLabel.replace(/\s*\(.*\)$/, "")}
+            />
           ) : tab === "magnets" ? (
             <MagnetManager token={token} brandId={brandId} />
           ) : tab === "connections" ? (
             <MdConnections card={card} brandName={brand.name} />
           ) : (
-            <div className="space-y-6">
-              {/* TEMPORARY — the TLE V1 launch panel, above the usual invites
-                  so it's the first thing on the tab during launch week. Only
-                  Lettings: it provisions TLE Pro partners and nobody else. */}
-              {brandId === "lettings" && <TleProInvite pass={token} />}
+            <div className="space-y-8">
+              <InviteTeam token={token} role="md" brandId={brandId} />
               <MdInvites card={card} accent={accent} users={users} token={token} />
             </div>
           )}
