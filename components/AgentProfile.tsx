@@ -366,29 +366,36 @@ export default function AgentProfile({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agent.id]);
 
-  // Add one campaign: append to the stored list, clear the box for the next
-  // one, and verify the new id so its tag shows the real name.
+  // Add one or more ids (pasted with commas, spaces or new lines between
+  // them): append to the stored list, clear the box for the next lot, and
+  // verify the new ids so their tags show the real names.
   async function addCampaign() {
-    const id = newCampaignId.trim().replace(/,+$/, "");
-    if (!id || addingCampaign) return;
-    setCampaignsError(null);
+    if (addingCampaign) return;
     const existing = campaignIdsRef.current;
-    if (existing.includes(id)) {
-      setCampaignsError("That campaign is already tagged.");
+    const typed = [
+      ...new Set(newCampaignId.split(/[\s,]+/).map((s) => s.trim()).filter(Boolean)),
+    ];
+    if (typed.length === 0) return;
+    setCampaignsError(null);
+    const ids = typed.filter((id) => !existing.includes(id));
+    if (ids.length === 0) {
+      setCampaignsError(
+        typed.length === 1 ? "That ID is already added." : "Those IDs are already added."
+      );
       return;
     }
     setAddingCampaign(true);
-    const next = [...existing, id];
+    const next = [...existing, ...ids];
     const saved = await patch({ metaCampaignId: next.join(", ") });
     if (!saved) {
       setAddingCampaign(false);
-      setCampaignsError("Couldn't save — please try again.");
+      setCampaignsError("Couldn't save - please try again.");
       return;
     }
     campaignIdsRef.current = next;
     setNewCampaignId("");
-    const [tag] = await checkCampaigns([id]);
-    setCampaignTags((prev) => [...prev, tag ?? { id }]);
+    const tags = await checkCampaigns(ids);
+    setCampaignTags((prev) => [...prev, ...tags]);
     setAddingCampaign(false);
   }
 
@@ -531,7 +538,7 @@ export default function AgentProfile({
 
         {/* Two columns on the big modal: pipeline/tools left, campaign +
             detail right. Stacks back to one column on smaller screens. */}
-        <div className="mt-2 grid items-start gap-x-6 lg:grid-cols-2">
+        <div className="mt-2 grid grid-cols-1 items-start gap-x-6 lg:grid-cols-2">
         <div>
         {/* Onboarding stage — click to move */}
         <div className="mt-6 rounded-2xl border border-gray-200 p-5">
@@ -851,17 +858,25 @@ export default function AgentProfile({
         </div>
 
         <div>
-        {/* Meta campaigns — the main thing once ads are LIVE. Supports several
-            at once (comma-separated), since agents can run multiple campaigns. */}
-        {agent.onboardingStage === "live" && (
+        {/* Meta ads — open at every stage, so IDs can go in the moment the
+            ads are built, not only once the stage is moved to Ads live. The
+            agent's dashboard still only pulls stats once they're live.
+            Supports several at once (comma-separated), since agents can run
+            multiple campaigns. */}
           <div className="mt-6 rounded-2xl border-2 border-gray-900 p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold">Meta campaigns</p>
+                <p className="text-sm font-semibold">Meta ads</p>
                 <p className="mt-0.5 text-xs text-gray-400">
-                  Add each campaign this agent&apos;s ads run under — they can
-                  have several live at once.
+                  Add the ID of every ad this agent has running. Campaign, ad
+                  set or ad IDs all work, and you can paste several at once.
                 </p>
+                {agent.onboardingStage !== "live" && (
+                  <p className="mt-1 text-xs text-amber-600">
+                    Their dashboard shows ad stats once the stage is on Ads
+                    live.
+                  </p>
+                )}
               </div>
               {campaignTags.length > 0 && (
                 <button
@@ -893,13 +908,13 @@ export default function AgentProfile({
                     {c.error ? (
                       <>
                         ✕{" "}
-                        <span className="font-mono text-xs">{c.id}</span>
-                        <span className="truncate text-xs">— {c.error}</span>
+                        <span className="min-w-0 truncate font-mono text-xs">{c.id}</span>
+                        <span className="min-w-0 shrink-[10000] truncate text-xs">— {c.error}</span>
                       </>
                     ) : (
                       <>
                         ✓{" "}
-                        <span className="truncate font-medium">
+                        <span className="min-w-0 truncate font-medium">
                           {c.name ?? c.id}
                         </span>
                       </>
@@ -932,8 +947,8 @@ export default function AgentProfile({
               <input
                 value={newCampaignId}
                 onChange={(e) => setNewCampaignId(e.target.value)}
-                placeholder="Campaign ID, e.g. 1201234567890"
-                className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gray-900"
+                placeholder="Campaign or ad ID, e.g. 1201234567890"
+                className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-gray-900"
                 onKeyDown={(e) => e.key === "Enter" && addCampaign()}
               />
               <button
@@ -984,7 +999,6 @@ export default function AgentProfile({
               </div>
             )}
           </div>
-        )}
 
         {/* Ad creatives — progressive with the onboarding stage:
             production = a "being built" note, review = the full uploader
@@ -1212,7 +1226,7 @@ function ReadRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4 text-sm">
       <span className="text-gray-400">{label}</span>
-      <span className="max-w-[65%] text-right font-medium text-gray-800">{value}</span>
+      <span className="max-w-[65%] [overflow-wrap:anywhere] text-right font-medium text-gray-800">{value}</span>
     </div>
   );
 }
