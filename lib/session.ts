@@ -24,17 +24,44 @@ function read<T>(key: string): T | null {
   }
 }
 
-function write(key: string, value: unknown) {
-  window.localStorage.setItem(key, JSON.stringify(value));
+// Never throws: a full or blocked localStorage must not break the caller.
+function write(key: string, value: unknown): boolean {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // ── Auth ─────────────────────────────────────────────────────────────────
+/* The full profile as last handed to us by the server, kept in memory for
+   this page session. localStorage caps out around 5 MB per site, and a
+   profile carrying data-URL ad creatives and a photo can be bigger than that
+   (one agent's was 5.3 MB) — setItem then throws, which used to leave the
+   sign-in button stuck on "Signing in…" forever. When the full copy won't
+   fit we cache a slim one instead and serve the full one from here. */
+let memUser: UserProfile | null = null;
+
 export function getUser(): UserProfile | null {
-  return read<UserProfile>(USER_KEY);
+  return memUser ?? read<UserProfile>(USER_KEY);
 }
 
 export function saveUser(user: UserProfile) {
-  write(USER_KEY, user);
+  memUser = user;
+  if (write(USER_KEY, user)) return;
+  const slim: UserProfile = { ...user, campaignAssets: [] };
+  if (slim.photo?.startsWith("data:")) slim.photo = null;
+  if (!write(USER_KEY, slim)) clearCachedUser();
+}
+
+function clearCachedUser() {
+  memUser = null;
+  try {
+    window.localStorage.removeItem(USER_KEY);
+  } catch {
+    /* ignore */
+  }
 }
 
 // Re-validate the session against the server. Returns the fresh user (and
@@ -61,7 +88,7 @@ export async function refreshUser(): Promise<UserProfile | null> {
       headers: standaloneHeaders(),
     });
     if (!res.ok) {
-      window.localStorage.removeItem(USER_KEY);
+      clearCachedUser();
       return null;
     }
     const { user } = await res.json();
@@ -152,17 +179,21 @@ export async function logIn(
   password: string,
   remember = true
 ): Promise<{ user?: UserProfile; error?: string; code?: string }> {
-  const res = await fetch("/api/auth/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, remember }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    return { error: data.error ?? "Something went wrong", code: data.code };
+  try {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, remember }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { error: data.error ?? "Something went wrong", code: data.code };
+    }
+    saveUser(data.user);
+    return { user: data.user };
+  } catch {
+    return { error: "Couldn't reach the server. Check your connection and try again." };
   }
-  saveUser(data.user);
-  return { user: data.user };
 }
 
 export async function updateProfile(patch: {
@@ -259,7 +290,7 @@ export async function signOut() {
   } catch {
     /* ignore network errors on sign-out */
   }
-  window.localStorage.removeItem(USER_KEY);
+  clearCachedUser();
 }
 
 // ── Leads (server-side, Postgres on Railway) ─────────────────────────────
@@ -511,11 +542,7 @@ export async function deleteAccount(
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) return { ok: false, error: data.error ?? "Couldn't delete" };
-    try {
-      window.localStorage.removeItem(USER_KEY);
-    } catch {
-      /* ignore */
-    }
+    clearCachedUser();
     return { ok: true };
   } catch {
     return { ok: false, error: "Network error — please try again" };
