@@ -147,6 +147,11 @@ export async function createLead(
   lead: Lead,
   opts?: { notify?: boolean }
 ): Promise<boolean> {
+  // A Meta lead the agent (or an admin) already typed in by hand: link the
+  // existing lead to Meta's id instead of adding a copy. Without this the
+  // first sync after a brand's Page is connected duplicates every lead that
+  // was keyed in manually while the pipe was down.
+  if (lead.metaLeadId && (await claimManualLead(userId, lead))) return false;
   let inserted = true;
   if (hasDb()) {
     const rows = await q<{ id: string }>(
@@ -186,6 +191,64 @@ export async function createLead(
   }
   if (inserted && opts?.notify !== false) void notifyNewLead(userId, lead);
   return inserted;
+}
+
+// Last 10 digits, so "+44 7700 900123" and "07700900123" match.
+function phoneKey(phone: string | null | undefined): string {
+  const digits = (phone ?? "").replace(/\D/g, "");
+  return digits.length >= 10 ? digits.slice(-10) : "";
+}
+
+function emailKey(email: string | null | undefined): string {
+  return (email ?? "").trim().toLowerCase();
+}
+
+// Attach a Meta lead id to the agent's oldest hand-added lead with the same
+// phone or email. True if one was claimed.
+async function claimManualLead(userId: string, lead: Lead): Promise<boolean> {
+  const phone = phoneKey(lead.phone);
+  const email = emailKey(lead.email);
+  if (!phone && !email) return false;
+  if (hasDb()) {
+    const rows = await q<{ id: string }>(
+      `UPDATE leads
+          SET meta_lead_id = $2,
+              campaign_id = COALESCE(campaign_id, $3),
+              ad_name = COALESCE(ad_name, $4)
+        WHERE id = (
+          SELECT id FROM leads
+           WHERE user_id = $1
+             AND meta_lead_id IS NULL
+             AND (($5 <> '' AND right(regexp_replace(coalesce(phone, ''), '\\D', '', 'g'), 10) = $5)
+               OR ($6 <> '' AND lower(trim(coalesce(email, ''))) = $6))
+           ORDER BY received_at
+           LIMIT 1)
+          AND NOT EXISTS (
+            SELECT 1 FROM leads WHERE user_id = $1 AND meta_lead_id = $2)
+       RETURNING id`,
+      [userId, lead.metaLeadId, lead.campaignId ?? null, lead.adName ?? null, phone, email]
+    );
+    return rows.length > 0;
+  }
+  const all = await readAllFile();
+  if (all.some((l) => l.userId === userId && l.metaLeadId === lead.metaLeadId)) {
+    return false;
+  }
+  const match = all
+    .filter(
+      (l) =>
+        l.userId === userId &&
+        !l.metaLeadId &&
+        ((phone && phoneKey(l.phone) === phone) ||
+          (email && emailKey(l.email) === email))
+    )
+    .sort((a, b) => a.receivedAt.localeCompare(b.receivedAt))[0];
+  if (!match) return false;
+  match.metaLeadId = lead.metaLeadId;
+  match.campaignId = match.campaignId ?? lead.campaignId ?? null;
+  match.adName = match.adName ?? lead.adName ?? null;
+  await writeAllFile(all);
+  return true;
 }
 
 // Every lead across all agents (admin activity feed). Carries userId so the
