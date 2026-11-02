@@ -179,3 +179,44 @@ export function adminInviteEmail(opts: {
     }),
   };
 }
+
+/* ── Lead sync has started failing for a brand → admin ─────────────────────
+   Sent once per failing streak (see lib/lead-sync.ts), never every run. */
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+export function leadSyncFailingEmail(opts: {
+  brandName: string;
+  explanation: string;
+  metaError: string;
+  failingSince: string;
+}) {
+  const link = `${appOrigin()}/admin?tab=connections`;
+  const since = new Date(opts.failingSince).toLocaleString("en-GB", {
+    timeZone: "Europe/London",
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return {
+    subject: `Lead sync failing - ${opts.brandName}`,
+    html: shell({
+      heading: `${opts.brandName} leads aren't coming in`,
+      preheader: opts.explanation,
+      body:
+        para(
+          `The automatic Meta lead sync for <strong>${escapeHtml(opts.brandName)}</strong> has failed on every run since ${since}. Until it's fixed, no ${escapeHtml(opts.brandName)} agent gets new Facebook or Instagram leads.`
+        ) +
+        para(`<strong>What to do:</strong> ${escapeHtml(opts.explanation)}`) +
+        para(
+          `<span style="color:${MUTED};font-size:13px;">Meta's error: ${escapeHtml(opts.metaError)}</span>`
+        ) +
+        button(link, "Open Connections") +
+        fallbackLink(link) +
+        para(
+          `<span style="color:${MUTED};font-size:13px;">You'll get this once per problem. It clears itself on the first successful run, and Launch Pad keeps retrying every five minutes.</span>`
+        ),
+    }),
+  };
+}

@@ -343,6 +343,25 @@ CREATE INDEX IF NOT EXISTS whatsapp_log_sent_idx ON whatsapp_log(sent_at DESC);
 CREATE INDEX IF NOT EXISTS whatsapp_log_msg_idx ON whatsapp_log(message_id)
   WHERE message_id IS NOT NULL;
 
+-- The last lead-sync result per brand, so a brand that's failing is visible
+-- after a restart and can't fail silently for weeks (TPE did, Oct 2026: no
+-- Page access, every run errored, nobody saw it). fail_count is consecutive
+-- failed runs; failing_since is when the current streak began. alerted_at is
+-- set once an admin has been told about THIS streak, and cleared on recovery,
+-- so the alert fires on working -> failing, not every five minutes.
+CREATE TABLE IF NOT EXISTS lead_sync_status (
+  brand_id      TEXT PRIMARY KEY,
+  last_run_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_ok_at    TIMESTAMPTZ,
+  failing_since TIMESTAMPTZ,
+  fail_count    INTEGER NOT NULL DEFAULT 0,
+  error         TEXT,
+  error_code    INTEGER,
+  forms         INTEGER NOT NULL DEFAULT 0,
+  imported      INTEGER NOT NULL DEFAULT 0,
+  alerted_at    TIMESTAMPTZ
+);
+
 -- Raw capture of every Rex webhook delivery, so we can see real payload
 -- shapes before building the stage-mapping logic against them.
 CREATE TABLE IF NOT EXISTS rex_webhook_log (

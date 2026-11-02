@@ -91,10 +91,103 @@ async function graph(
   });
   const data = (await res.json()) as Record<string, unknown>;
   if (!res.ok) {
-    const err = data?.error as { message?: string } | undefined;
-    throw new Error(err?.message ?? `Meta API error ${res.status}`);
+    const err = data?.error as
+      | { message?: string; code?: number; error_subcode?: number }
+      | undefined;
+    throw new MetaApiError(
+      err?.message ?? `Meta API error ${res.status}`,
+      err?.code,
+      err?.error_subcode
+    );
   }
   return data;
+}
+
+// Same message as before (callers that only read .message are unchanged),
+// plus Meta's numeric code so failures can be explained in plain English
+// rather than shown as "(#10) Application does not have permission…".
+export class MetaApiError extends Error {
+  constructor(
+    message: string,
+    public code?: number,
+    public subcode?: number
+  ) {
+    super(message);
+    this.name = "MetaApiError";
+  }
+}
+
+// What a Meta failure means for the lead sync, said the way an admin needs to
+// hear it: what's wrong and where to fix it. Falls back to Meta's own words.
+export function explainMetaError(
+  message: string,
+  code?: number | null
+): string {
+  const nodeType = /on node type \((\w+)\)/i.exec(message)?.[1];
+  if (nodeType && nodeType.toLowerCase() !== "page") {
+    return `The Page ID saved for this brand is actually a ${nodeType} ID, not a Facebook Page. Paste the Page's own ID from Meta Business Settings → Accounts → Pages.`;
+  }
+  if (code === 190) {
+    return "Launch Pad's Meta token has expired or been revoked. Generate a new system user token and update META_SYSTEM_TOKEN in Railway.";
+  }
+  if (code === 10 || (code != null && code >= 200 && code < 300)) {
+    return "Launch Pad doesn't have permission to read this brand's Facebook Page. In Meta Business Settings, open the Page, assign it to the Portal Server system user, and give it Leads access.";
+  }
+  if (code === 4 || code === 17 || code === 32 || code === 613 || code === 80001) {
+    return "Meta is rate-limiting Launch Pad for the moment. This normally clears on its own within an hour.";
+  }
+  if (code === 100 && /does not exist|cannot be loaded|unsupported get request/i.test(message)) {
+    return "Launch Pad can't find this Page. Either the Page ID is wrong, or the Page hasn't been assigned to the Portal Server system user in Meta Business Settings.";
+  }
+  return `Meta said: ${message}`;
+}
+
+// Checks a Page ID before it's saved: it must be a real Facebook Page (not a
+// business or ad account id, which is how TME broke), the system user must be
+// able to get its Page token, and that token must be able to read lead forms.
+// Returns the Page's name on success.
+export async function verifyLeadsPage(
+  pid: string
+): Promise<{ ok: true; name: string } | { ok: false; error: string }> {
+  const fail = (e: unknown) => ({
+    ok: false as const,
+    error:
+      e instanceof MetaApiError
+        ? explainMetaError(e.message, e.code)
+        : e instanceof Error
+          ? e.message
+          : "Couldn't reach Meta",
+  });
+  if (!/^\d+$/.test(pid)) {
+    return {
+      ok: false,
+      error: "A Page ID is a number only, e.g. 104512345678901.",
+    };
+  }
+  let name = "";
+  let pageToken: string | undefined;
+  try {
+    const page = (await graph(pid, {
+      fields: "id,name,access_token",
+    })) as { name?: string; access_token?: string };
+    name = page.name ?? pid;
+    pageToken = page.access_token;
+  } catch (e) {
+    return fail(e);
+  }
+  if (!pageToken) {
+    return {
+      ok: false,
+      error: `Launch Pad can see "${name}" but can't act as it. Assign the Page to the Portal Server system user in Meta Business Settings.`,
+    };
+  }
+  try {
+    await graph(`${pid}/leadgen_forms`, { fields: "id", limit: "1" }, pageToken);
+  } catch (e) {
+    return fail(e);
+  }
+  pageTokenCache.set(pid, pageToken);
+  return { ok: true, name };
 }
 
 export interface Snapshot {

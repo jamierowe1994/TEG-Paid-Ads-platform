@@ -104,6 +104,54 @@ interface MetaStatus {
   tokenSet: boolean;
   results: MetaResult[];
   config: Record<string, { adAccountId: string | null; pageId: string | null }>;
+  // Persisted last lead-sync result per brand; null = couldn't be loaded.
+  leadSync?: Record<string, LeadSyncView> | null;
+}
+
+interface LeadSyncView {
+  brandId: string;
+  lastRunAt: string;
+  lastOkAt: string | null;
+  failingSince: string | null;
+  failCount: number;
+  error: string | null;
+  explanation: string | null;
+  forms: number;
+  alertedAt: string | null;
+}
+
+// The loop runs every 5 minutes; three missed runs means it has stopped.
+const SYNC_STALE_MS = 20 * 60 * 1000;
+
+function fmtAgo(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  return ms < 60_000 ? "just now" : `${fmtDuration(ms)} ago`;
+}
+
+function fmtWhen(iso: string): string {
+  return new Date(iso).toLocaleString("en-GB", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function AlertIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      viewBox="0 0 24 24"
+      aria-hidden
+    >
+      <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01" />
+    </svg>
+  );
 }
 
 interface LinkedInSnap {
@@ -303,6 +351,10 @@ export default function AdminPage() {
   const [starts, setStarts] = useState<SignupEvent[]>([]);
   const [leadSummaries, setLeadSummaries] = useState<LeadSummary[]>([]);
   const [meta, setMeta] = useState<MetaStatus | null>(null);
+  // Per-brand result of the last Meta Save (Page check errors land here).
+  const [metaSave, setMetaSave] = useState<
+    Record<string, { busy?: boolean; error?: string; ok?: string }>
+  >({});
   const [linkedin, setLinkedin] = useState<LinkedInStatus | null>(null);
   const [atlas, setAtlas] = useState<AtlasStatus | null>(null);
   // GoHighLevel nurture funnel status, per brand (each has its own sub-account).
@@ -311,6 +363,10 @@ export default function AdminPage() {
   >({});
   const [ghlOpen, setGhlOpen] = useState(false);
   const connectedGhl = BRANDS.filter((b) => ghl[b.id]?.ok).length;
+  // Brands whose lead sync is erroring right now (shown red in Connections).
+  const syncFailing = BRANDS.filter(
+    (b) => (meta?.leadSync?.[b.id]?.failCount ?? 0) > 0
+  );
   const [rex, setRex] = useState<RexStatus | null>(null);
   const [whatsapp, setWhatsapp] = useState<{
     configured: boolean;
@@ -626,14 +682,27 @@ export default function AdminPage() {
     adAccountId: string,
     pageId?: string
   ) {
-    await fetch("/api/admin/meta", {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${password}`,
-      },
-      body: JSON.stringify({ brandId, adAccountId, pageId }),
-    });
+    setMetaSave((m) => ({ ...m, [brandId]: { busy: true } }));
+    let result: { error?: string; ok?: string } = {};
+    try {
+      const patch = await fetch("/api/admin/meta", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${password}`,
+        },
+        body: JSON.stringify({ brandId, adAccountId, pageId }),
+      });
+      const data = await patch.json().catch(() => ({}));
+      result = !patch.ok
+        ? { error: data.error ?? "Couldn't save - try again." }
+        : data.pageName
+          ? { ok: `Saved. Page checked: ${data.pageName} - lead forms readable.` }
+          : { ok: "Saved." };
+    } catch {
+      result = { error: "Couldn't reach Launch Pad - try again." };
+    }
+    setMetaSave((m) => ({ ...m, [brandId]: result }));
     const res = await fetch("/api/admin/meta", {
       headers: { Authorization: `Bearer ${password}` },
     });
@@ -1006,6 +1075,12 @@ export default function AdminPage() {
                   <path d={t.icon} />
                 </svg>
                 {t.label}
+                {t.id === "connections" && syncFailing.length > 0 && (
+                  <span
+                    className="ml-auto h-2 w-2 rounded-full bg-red-500"
+                    title="Lead sync failing"
+                  />
+                )}
               </button>
             );
           })}
@@ -1067,13 +1142,16 @@ export default function AdminPage() {
                 el.scrollIntoView({ block: "nearest", inline: "center" });
               }
             }}
-            className={`shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+            className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
               tab === t.id
                 ? "bg-gray-900 text-white"
                 : "bg-gray-100 text-gray-500"
             }`}
           >
             {t.label}
+            {t.id === "connections" && syncFailing.length > 0 && (
+              <span className="h-2 w-2 rounded-full bg-red-500" />
+            )}
           </button>
         ))}
       </nav>
@@ -1526,6 +1604,32 @@ export default function AdminPage() {
 
         {tab === "connections" && (
           <>
+            {/* Lead sync failing — top of the tab, because it means agents
+                are getting no automatic leads at all. */}
+            {syncFailing.length > 0 && (
+              <a
+                href="#meta-per-brand"
+                className="mb-8 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800 sm:p-5"
+              >
+                <AlertIcon className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">
+                    Lead Sync Failing for{" "}
+                    {syncFailing.map((b) => b.name).join(", ")}
+                  </p>
+                  <p className="mt-1 text-sm text-red-700">
+                    No new Meta leads are reaching{" "}
+                    {syncFailing.length === 1 ? "this brand's" : "these brands'"}{" "}
+                    agents. What&apos;s wrong and how to fix it is below.
+                  </p>
+                </div>
+              </a>
+            )}
+            {meta && meta.leadSync === null && (
+              <div className="mb-8 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                Couldn&apos;t load lead sync status. Refresh to try again.
+              </div>
+            )}
             {/* Which live Meta ads belong to which account — moved here from
                 the launch tab; it's a connections question. */}
             <div className="mb-10">
@@ -1725,7 +1829,7 @@ export default function AdminPage() {
             {/* Meta — connect each brand by pasting its ad account ID.
                 Shares the one System User token; saved to the DB, no
                 redeploy. */}
-            <section>
+            <section id="meta-per-brand" className="scroll-mt-40">
               <h2 className="text-lg font-semibold">Meta Ads — per brand</h2>
               <p className="mt-1 max-w-2xl text-sm text-gray-500">
                 Paste each business's <strong>Ad Account ID</strong> to connect
@@ -1741,6 +1845,12 @@ export default function AdminPage() {
                   const err = res?.error;
                   const currentAcc = meta?.config?.[b.id]?.adAccountId ?? "";
                   const currentPage = meta?.config?.[b.id]?.pageId ?? "";
+                  const sync = meta?.leadSync?.[b.id];
+                  const saveState = metaSave[b.id];
+                  const stale =
+                    !!sync &&
+                    Date.now() - new Date(sync.lastRunAt).getTime() >
+                      SYNC_STALE_MS;
                   return (
                     <div
                       key={b.id}
@@ -1771,13 +1881,13 @@ export default function AdminPage() {
                       <input
                         defaultValue={currentAcc}
                         placeholder="Ad Account ID (act_…)"
-                        className="w-40 rounded-lg border border-gray-200 px-3 py-1.5 text-sm outline-none focus:border-gray-900"
+                        className="w-full sm:w-40 rounded-lg border border-gray-200 px-3 py-1.5 text-sm outline-none focus:border-gray-900"
                         id={`meta-acc-${b.id}`}
                       />
                       <input
                         defaultValue={currentPage}
                         placeholder="Page ID"
-                        className="w-32 rounded-lg border border-gray-200 px-3 py-1.5 text-sm outline-none focus:border-gray-900"
+                        className="w-full sm:w-44 rounded-lg border border-gray-200 px-3 py-1.5 text-sm outline-none focus:border-gray-900"
                         id={`meta-page-${b.id}`}
                       />
                       <button
@@ -1794,10 +1904,67 @@ export default function AdminPage() {
                             page?.value ?? ""
                           );
                         }}
-                        className="rounded-lg bg-gray-900 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-gray-700"
+                        disabled={saveState?.busy}
+                        className="rounded-lg bg-gray-900 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-50"
                       >
-                        Save
+                        {saveState?.busy ? "Checking…" : "Save"}
                       </button>
+
+                      {saveState?.error && (
+                        <p className="basis-full text-sm text-red-600">
+                          {saveState.error}
+                        </p>
+                      )}
+                      {saveState?.ok && (
+                        <p className="basis-full text-sm text-green-700">
+                          {saveState.ok}
+                        </p>
+                      )}
+
+                      {/* Lead sync health — persisted, so it survives restarts. */}
+                      {sync && sync.failCount > 0 ? (
+                        <div className="basis-full rounded-xl border border-red-200 bg-red-50 p-3.5 text-red-800">
+                          <p className="flex items-center gap-2 text-sm font-medium">
+                            <AlertIcon className="h-4 w-4 shrink-0 text-red-600" />
+                            Lead Sync Failing
+                          </p>
+                          <p className="mt-1 text-xs text-red-700">
+                            Since {fmtWhen(sync.failingSince ?? sync.lastRunAt)} ·{" "}
+                            {sync.failCount.toLocaleString("en-GB")}{" "}
+                            {sync.failCount === 1 ? "run" : "runs in a row"} ·{" "}
+                            {sync.lastOkAt
+                              ? `last worked ${fmtWhen(sync.lastOkAt)}`
+                              : "hasn't worked since this check began"}
+                            {sync.alertedAt && " · alert emailed"}
+                          </p>
+                          {sync.explanation && (
+                            <p className="mt-2 text-sm leading-relaxed">
+                              {sync.explanation}
+                            </p>
+                          )}
+                          {sync.error && (
+                            <p className="mt-2 break-words font-mono text-[11px] text-red-700/80">
+                              Meta: {sync.error}
+                            </p>
+                          )}
+                        </div>
+                      ) : sync && stale ? (
+                        <p className="flex basis-full items-center gap-1.5 text-xs text-amber-700">
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                          Lead sync hasn&apos;t run since {fmtWhen(sync.lastRunAt)}
+                        </p>
+                      ) : sync ? (
+                        <p className="flex basis-full items-center gap-1.5 text-xs text-gray-500">
+                          <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                          Lead sync working · checked {fmtAgo(sync.lastRunAt)} ·{" "}
+                          {sync.forms} lead {sync.forms === 1 ? "form" : "forms"}
+                        </p>
+                      ) : currentPage ? (
+                        <p className="flex basis-full items-center gap-1.5 text-xs text-gray-400">
+                          <span className="h-1.5 w-1.5 rounded-full bg-gray-300" />
+                          Lead sync: waiting for its first run
+                        </p>
+                      ) : null}
                     </div>
                   );
                 })}

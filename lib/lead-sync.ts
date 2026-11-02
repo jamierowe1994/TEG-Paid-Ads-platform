@@ -8,13 +8,24 @@ import {
   resolveCampaignIds,
   pageConfigured,
   metaTokenSet,
+  MetaApiError,
+  explainMetaError,
 } from "./meta";
+import {
+  recordLeadSyncRun,
+  claimLeadSyncAlert,
+  releaseLeadSyncAlert,
+  clearLeadSyncStatus,
+  type LeadSyncStatus,
+} from "./lead-sync-status";
+import { sendSystemEmail } from "./mailer";
+import { leadSyncFailingEmail } from "./emails";
 import { findById, listUsers } from "./users-store";
 import { createLead, resurfaceDueLeads, uid } from "./leads-store";
 import { syncReferralFromLead } from "./referrals-store";
 import { sendNewLeadAlert } from "./whatsapp";
 import { sendPushToUser } from "./push";
-import { BRANDS } from "./brands";
+import { BRANDS, brandById } from "./brands";
 import type { Lead } from "./types";
 
 // Automatic Instant Form lead sync — the "live" pipe. Every few minutes,
@@ -42,6 +53,7 @@ export interface BrandSyncResult {
   skipped: number;
   unrouted: number;
   error?: string;
+  errorCode?: number; // Meta's numeric error code, when Meta was the cause
 }
 
 export interface SyncRun {
@@ -65,6 +77,14 @@ async function syncBrand(brandId: string): Promise<BrandSyncResult> {
     unrouted: 0,
   };
   try {
+    // Forms first, even for a brand with nobody to route to yet: it's the
+    // call that proves Launch Pad can still read the Page, and a brand that
+    // can't should show as failing BEFORE its first agent goes live.
+    const forms = await getLeadgenForms(brandId);
+    if (!forms || forms.length === 0) return out;
+    out.forms = forms.length;
+    const pageToken = (await getPageAccessToken(brandId)) ?? undefined;
+
     // Who gets the leads: campaign id -> agent, from the CRM's campaign tags.
     const agents = (await listUsers()).filter(
       (u) => u.brandId === brandId && parseCampaignIds(u.metaCampaignId).length > 0
@@ -83,12 +103,7 @@ async function syncBrand(brandId: string): Promise<BrandSyncResult> {
     // 600+-lead over-capture). No tagged campaigns → nothing to route.
     if (routes.size === 0) return out;
 
-    const forms = await getLeadgenForms(brandId);
-    if (!forms || forms.length === 0) return out;
-    const pageToken = (await getPageAccessToken(brandId)) ?? undefined;
-
     for (const form of forms) {
-      out.forms++;
       const metaLeads = await getFormLeads(form.id, LEADS_PER_FORM, pageToken);
       for (const ml of metaLeads) {
         const target = ml.campaignId ? routes.get(ml.campaignId) : undefined;
@@ -125,8 +140,56 @@ async function syncBrand(brandId: string): Promise<BrandSyncResult> {
     }
   } catch (e) {
     out.error = e instanceof Error ? e.message : "Sync failed";
+    if (e instanceof MetaApiError && e.code !== undefined) out.errorCode = e.code;
   }
   return out;
+}
+
+// Who hears about it when a brand's sync breaks. Email, because that's how
+// every other admin notice goes out (WhatsApp is template-only and reserved
+// for agents' lead alerts).
+const ALERT_TO =
+  process.env.LEAD_SYNC_ALERT_EMAIL ?? "james@therecruitmentexperts.co.uk";
+
+// Two failed runs in a row (ten minutes) before alerting, so one Meta blip
+// doesn't send an email. The admin view shows red from the first failure.
+const ALERT_AFTER_FAILURES = 2;
+
+// Persist the run and, on a brand's move from working to failing, send ONE
+// alert for that streak. Never throws: bookkeeping must not stop the sync.
+async function recordAndAlert(r: BrandSyncResult): Promise<void> {
+  let status: LeadSyncStatus;
+  try {
+    status = await recordLeadSyncRun(r);
+  } catch (e) {
+    console.error("[lead-sync] couldn't record status for", r.brandId, e);
+    return;
+  }
+  if (!r.error || status.failCount < ALERT_AFTER_FAILURES || status.alertedAt) {
+    return;
+  }
+  try {
+    if (!(await claimLeadSyncAlert(r.brandId))) return;
+    const mail = leadSyncFailingEmail({
+      brandName: brandById(r.brandId)?.name ?? r.brandId,
+      explanation: explainMetaError(r.error, r.errorCode),
+      metaError: r.error,
+      failingSince: status.failingSince ?? status.lastRunAt,
+    });
+    const sent = await sendSystemEmail({
+      to: ALERT_TO,
+      subject: mail.subject,
+      body: mail.html,
+      html: true,
+    });
+    if (!sent.sent) {
+      console.error("[lead-sync] failure alert not sent:", sent.reason, sent.detail);
+      await releaseLeadSyncAlert(r.brandId);
+    }
+  } catch (e) {
+    console.error("[lead-sync] failure alert errored:", e);
+    await releaseLeadSyncAlert(r.brandId).catch(() => {});
+  }
 }
 
 // "Saved for later" leads whose comeback date has arrived: bring them back
@@ -191,11 +254,18 @@ export function syncAllBrands(): Promise<SyncRun> {
       await resurfaceSnoozedLeads();
       const results: BrandSyncResult[] = [];
       if (metaTokenSet()) {
+        const unconfigured: string[] = [];
         for (const brand of BRANDS) {
           if (await pageConfigured(brand.id)) {
-            results.push(await syncBrand(brand.id));
+            const r = await syncBrand(brand.id);
+            results.push(r);
+            await recordAndAlert(r);
+          } else {
+            unconfigured.push(brand.id);
           }
         }
+        // A brand whose Page was removed has no sync to report on.
+        await clearLeadSyncStatus(unconfigured).catch(() => {});
       }
       lastRun = { at: new Date().toISOString(), results };
       return lastRun;
