@@ -122,13 +122,17 @@ const DEFAULT_DIRECTORY: AdminEntry[] = [
   },
   // The Recruitment Experts' MD is James, who is already a super admin above.
 
-  // ── Marketing: their brand's stats + lead magnets, nothing operational ──
+  // TLE's marketing lead, raised from "marketing" to MD-level access on
+  // 4 Nov 2026 so she can add and manage TLE agents alongside Susan.
   {
     email: "francesca.barrett@thelettingexperts.co.uk",
-    role: "marketing",
+    role: "md",
     brandId: "lettings",
     name: "Francesca Barrett",
   },
+
+  // ── Marketing: their brand's stats + lead magnets, nothing operational ──
+  // (none at the moment)
 ];
 
 function directory(): AdminEntry[] {
