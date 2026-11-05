@@ -76,6 +76,14 @@ const DEFAULT_DIRECTORY: AdminEntry[] = [
     role: "super",
     name: "Sean Newman",
   },
+  // TLE's marketing lead. Raised to super on 5 Nov 2026 so she can set up
+  // and change ads (People ad IDs, reconciliation, connections) the way
+  // James and Hayley do. That also means she sees every brand.
+  {
+    email: "francesca.barrett@thelettingexperts.co.uk",
+    role: "super",
+    name: "Francesca Barrett",
+  },
 
   // ── MDs: their own business only ────────────────────────────────────────
   // Adding people here is a deploy. They can also be managed without one via
@@ -122,14 +130,6 @@ const DEFAULT_DIRECTORY: AdminEntry[] = [
   },
   // The Recruitment Experts' MD is James, who is already a super admin above.
 
-  // TLE's marketing lead, raised from "marketing" to MD-level access on
-  // 4 Nov 2026 so she can add and manage TLE agents alongside Susan.
-  {
-    email: "francesca.barrett@thelettingexperts.co.uk",
-    role: "md",
-    brandId: "lettings",
-    name: "Francesca Barrett",
-  },
 
   // ── Marketing: their brand's stats + lead magnets, nothing operational ──
   // (none at the moment)
